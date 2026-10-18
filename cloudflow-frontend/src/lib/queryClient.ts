@@ -1,6 +1,11 @@
 import { QueryClient, hashKey } from '@tanstack/react-query';
 import { getCurrentUserSnapshot } from '@/utils/authStorage';
 
+export const backendMenuQueryKey = ['auth', 'routers'] as const;
+
+export const getBackendMenuQueryKey = (tenantId?: string | number | null, userId?: string | number) =>
+  [...backendMenuQueryKey, String(tenantId ?? ''), String(userId ?? '')] as const;
+
 /**
  * 全局 queryKey 哈希函数（多租户改造 P3.1）。
  *
@@ -10,6 +15,7 @@ import { getCurrentUserSnapshot } from '@/utils/authStorage';
  * - 未登录或 SSR 场景 tenantId 为空字符串，等价于"全局缓存"
  */
 const tenantAwareQueryKeyHashFn = (queryKey: readonly unknown[]): string => {
+  if (queryKey[0] === backendMenuQueryKey[0] && queryKey[1] === backendMenuQueryKey[1]) return hashKey(queryKey);
   const tenantId = getCurrentUserSnapshot()?.tenantId ?? '';
   return `t${tenantId}|${hashKey(queryKey)}`;
 };
@@ -44,6 +50,11 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+export const clearBackendMenuQueries = (): void => {
+  void queryClient.cancelQueries({ queryKey: backendMenuQueryKey });
+  queryClient.removeQueries({ queryKey: backendMenuQueryKey });
+};
 
 /**
  * Query Keys 常量 - 统一管理查询键

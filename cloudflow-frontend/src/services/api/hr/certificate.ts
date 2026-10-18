@@ -1,4 +1,5 @@
 import request from '@/services/api/request';
+import { readHrAuthorizedFile } from './fileDownload';
 import type {
   HrCertificateRequest,
   HrCertificateRequestPayload,
@@ -18,5 +19,7 @@ export const submitCertificateRequest = (data: HrCertificateRequestPayload) =>
 export const cancelCertificateRequest = (id: number) =>
   request.post<void>(`/hr/ess/certificates/${id}/cancel`, {});
 
-export const downloadCertificatePdf = (id: number) =>
-  request.get<Blob>(`/hr/ess/certificates/${id}/pdf`, { responseType: 'blob' });
+export const downloadCertificatePdf = async (id: number) => {
+  const record = await getCertificateRequest(id);
+  return readHrAuthorizedFile({ bizType: 'HR_EMPLOYEE_CERTIFICATE', bizId: String(id), fileId: record.pdfFileId ?? undefined });
+};

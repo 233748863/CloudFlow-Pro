@@ -92,6 +92,10 @@ export const getConfigByKey = (configKey: string) => {
   return request.get<string>(`/auth/system/config/configKey/${configKey}`);
 };
 
+export const getClientConfigByKey = (configKey: string) => {
+  return request.get<string>(`/auth/system/config/client/${encodeURIComponent(configKey)}`);
+};
+
 /** 新增参数配置 */
 export const addConfig = (data: SysConfig) => {
   return request.post('/auth/system/config', data);

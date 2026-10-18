@@ -1,4 +1,5 @@
 import request from './request';
+import type { SysAsset, OaAssetCategory } from './oaOperations';
 import {
   assertCurrentEmployeeCanStartSelfService,
   createHrScheduleRule,
@@ -36,7 +37,6 @@ export interface AttendanceRule {
   checkInTime: string;
   checkOutTime: string;
   elasticMinutes: number;
-  workDays?: string;
   lunchBreakStart?: string;
   lunchBreakEnd?: string;
   overtimeEnabled?: number;
@@ -64,8 +64,6 @@ export interface AttendanceStatistics {
   severeLateCount: number;
   totalRecords: number;
 }
-
-const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
 
 const normalizeTime = (value?: string | null, fallback = '00:00:00') => {
   const source = (value || fallback).trim();
@@ -133,7 +131,6 @@ const mapHrRuleToAttendanceRule = async () => {
   const ruleConfig = parseJsonSafely<Record<string, unknown>>(targetRule.ruleConfig) ?? {};
   const shiftId = Number(effectiveRule?.shiftId ?? ruleConfig.shiftId);
   const shift = shifts.find((item) => item.id === shiftId);
-  const workDays = Array.isArray(ruleConfig.workDays) ? ruleConfig.workDays : DEFAULT_WORK_DAYS;
 
   return {
     ruleId: targetRule.id,
@@ -141,7 +138,6 @@ const mapHrRuleToAttendanceRule = async () => {
     checkInTime: normalizeTime(effectiveRule?.checkInTime || shift?.startTime || (ruleConfig.checkInTime as string | undefined), '09:00:00'),
     checkOutTime: normalizeTime(effectiveRule?.checkOutTime || shift?.endTime || (ruleConfig.checkOutTime as string | undefined), '18:00:00'),
     elasticMinutes: effectiveRule?.lateThreshold ?? shift?.lateThreshold ?? Number(ruleConfig.elasticMinutes ?? 15),
-    workDays: JSON.stringify(workDays),
     lunchBreakStart: normalizeTime(ruleConfig.lunchBreakStart as string | undefined, '12:00:00'),
     lunchBreakEnd: normalizeTime(ruleConfig.lunchBreakEnd as string | undefined, '13:00:00'),
     overtimeEnabled: (effectiveRule?.overtimeEnabled ?? ruleConfig.overtimeEnabled) ? 1 : 0,
@@ -225,7 +221,6 @@ export const saveAttendanceRule = async (data: AttendanceRule) => {
   const ruleConfig = JSON.stringify({
     ...currentConfig,
     shiftId,
-    workDays: parseJsonSafely<number[]>(data.workDays) ?? DEFAULT_WORK_DAYS,
     lunchBreakStart: normalizeTime(data.lunchBreakStart, '12:00:00'),
     lunchBreakEnd: normalizeTime(data.lunchBreakEnd, '13:00:00'),
     overtimeEnabled: data.overtimeEnabled === 1,
@@ -314,20 +309,8 @@ export const getAttendanceStatistics = async (params: {
 
 // ================= 资产管理 =================
 
-export interface Asset {
-  assetId?: number;
-  assetCode?: string;
+export interface Asset extends SysAsset {
   name: string;
-  category?: string;
-  model?: string;
-  status?: string;
-  price?: number;
-  purchaseDate?: string;
-  ownerId?: number;
-  location?: string;
-  remark?: string;
-  createBy?: string;
-  createTime?: string;
 }
 
 export interface AssetLog {
@@ -347,7 +330,7 @@ export interface AssetQueryParams {
   pageSize?: number;
   name?: string;
   assetCode?: string;
-  category?: string;
+  categoryId?: number;
   status?: string;
 }
 
@@ -368,8 +351,8 @@ export const getAssetList = (params?: AssetQueryParams) => {
   return request.get('/oa/asset/list', { params });
 };
 
-export const getAssetDetail = (id: number) => {
-  return request.get<Asset>(`/oa/asset/${id}`);
+export const getAssetDetail = (id: number, signal?: AbortSignal) => {
+  return request.get<Asset>(`/oa/asset/${id}`, { signal });
 };
 
 export const addAsset = (data: Asset) => {
@@ -409,7 +392,7 @@ export const getAssetStatistics = () => {
 };
 
 export const getAssetCategories = () => {
-  return request.get<string[]>('/oa/asset/categories');
+  return request.get<OaAssetCategory[]>('/oa/asset/categories');
 };
 
 export const getAssetQrCodeBlob = (id: number) => {

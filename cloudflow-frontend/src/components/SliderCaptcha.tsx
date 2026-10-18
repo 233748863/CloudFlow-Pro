@@ -19,6 +19,7 @@ const BG_ORIGIN_HEIGHT = 150;
 const SLIDER_BTN_WIDTH = 42;
 const HANDLE_VISUAL_WIDTH = 36;
 const HANDLE_INSET = (SLIDER_BTN_WIDTH - HANDLE_VISUAL_WIDTH) / 2;
+const TRACK_HORIZONTAL_PADDING = 24;
 
 interface SliderCaptchaProps {
   onVerify: (token: string) => void;
@@ -82,11 +83,14 @@ export const SliderCaptcha = ({
   const renderHeight = Math.round((renderWidth / width) * height);
   const scaleX = renderWidth / (bgNaturalSize.width || BG_ORIGIN_WIDTH);
   const scaleY = renderHeight / (bgNaturalSize.height || BG_ORIGIN_HEIGHT);
-  const maxSliderLeft = Math.max(renderWidth - SLIDER_BTN_WIDTH, 0);
+  // 滑道沿用 CloudERP 的左右 12px 内边距，拖动范围必须按滑道内容宽度计算，
+  // 否则滑块会比可视滑道多移动 24px，末端位置与后端坐标失配。
+  const trackWidth = Math.max(renderWidth - TRACK_HORIZONTAL_PADDING, 0);
+  const maxSliderLeft = Math.max(trackWidth - SLIDER_BTN_WIDTH, 0);
   const progressWidth = clamp(
     sliderLeft + HANDLE_VISUAL_WIDTH + HANDLE_INSET,
     HANDLE_VISUAL_WIDTH,
-    renderWidth,
+    trackWidth,
   );
 
   const clearRefreshTimer = useCallback(() => {
@@ -330,19 +334,19 @@ export const SliderCaptcha = ({
       : STATUS_META[status].label;
 
   return (
-    <div ref={containerRef} className="w-full">
-      <div className="w-full" style={{ maxWidth: width }}>
+    <div ref={containerRef} className="w-full cf-slider-captcha">
+      <div className="w-full cf-slider-captcha-inner" style={{ maxWidth: width }}>
         <div
-          className="relative overflow-hidden rounded-[4px] border border-slate-200 bg-cf-surface-1/95 py-0 shadow-[0_10px_28px_rgba(0,0,0,0.09)] backdrop-blur-md dark:border-slate-700 /95"
+          className="relative overflow-hidden rounded-[4px] border border-slate-200 bg-cf-surface-1/95 py-0 shadow-[0_10px_28px_rgba(0,0,0,0.09)] backdrop-blur-md dark:border-slate-700 cf-slider-captcha-panel"
         >
           {/* 拼图区 */}
           <div
-            className="relative w-full overflow-hidden"
+            className="relative w-full overflow-hidden cf-slider-captcha-stage"
             style={{ width: renderWidth, height: renderHeight }}
           >
             <button
               type="button"
-              className="no-min-size absolute right-2 top-2 z-20 inline-flex h-8 w-8 items-center justify-center rounded-[4px] border border-white/60 bg-cf-surface-1/80 text-cf-subtle shadow-[0_1px_2px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-colors hover:text-[var(--cf-primary-600)] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600/60 /80 dark:hover:text-[var(--cf-primary-300)]"
+              className="no-min-size absolute right-2 top-2 z-20 inline-flex h-8 w-8 items-center justify-center rounded-[4px] border border-white/60 bg-cf-surface-1/80 text-cf-subtle shadow-[0_1px_2px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-colors hover:text-[var(--cf-primary-600)] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600/60 dark:hover:text-[var(--cf-primary-300)] cf-slider-captcha-refresh"
               onClick={() => {
                 void fetchCaptcha();
               }}
@@ -356,8 +360,8 @@ export const SliderCaptcha = ({
               <>
                 <img
                   src={captchaData.bgImage}
-                  alt="captcha background"
-                  className="absolute inset-0 h-full w-full object-fill"
+                  alt="验证码背景图"
+                  className="absolute inset-0 h-full w-full object-fill cf-slider-captcha-image"
                   draggable={false}
                   onLoad={(event) => {
                     const image = event.currentTarget;
@@ -369,7 +373,8 @@ export const SliderCaptcha = ({
                 />
                 <img
                   src={captchaData.sliderImage}
-                  alt="captcha puzzle piece"
+                  alt="验证码拼图滑块"
+                  className="cf-slider-captcha-piece"
                   style={pieceStyle}
                   draggable={false}
                 />
@@ -387,18 +392,20 @@ export const SliderCaptcha = ({
                     : status === 'verifying'
                       ? 'bg-[var(--cf-primary-500)]'
                       : 'bg-transparent',
+                'cf-slider-captcha-status',
               )}
+              data-status={status}
             />
 
             {loading ? (
-              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-cf-surface-1/88 text-sm text-cf-subtle backdrop-blur-sm /88">
+              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-cf-surface-1/88 text-sm text-cf-subtle backdrop-blur-sm cf-slider-captcha-loading">
                 <Loader2 size={18} className="animate-spin text-[var(--cf-primary-500)]" />
                 <span>正在加载拼图…</span>
               </div>
             ) : null}
 
             {loadError ? (
-              <div className="absolute inset-0 z-30 flex items-center justify-center bg-cf-surface-1/90 p-4 backdrop-blur-sm /88">
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-cf-surface-1/90 p-4 backdrop-blur-sm cf-slider-captcha-error">
                 <div className="w-full max-w-[15rem] rounded-[4px] border border-rose-200 bg-cf-surface-1 p-4 text-center shadow-[0_10px_28px_rgba(0,0,0,0.09)] dark:border-rose-900/50">
                   <CircleAlert size={18} className="mx-auto text-rose-500" />
                   <p className="mt-3 text-sm leading-6 text-cf-muted">
@@ -420,8 +427,8 @@ export const SliderCaptcha = ({
           </div>
 
           {/* 溶合滑道:主色细线分隔 + 内嵌 */}
-          <div className="relative border-t border-slate-200 bg-cf-surface-1/70 px-3 py-3 dark:border-slate-700/70 /40">
-            <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
+          <div className="relative border-t border-slate-200 bg-cf-surface-1/70 dark:border-slate-700/70 cf-slider-captcha-track-area">
+            <div className="mb-2 flex items-center justify-between gap-3 px-0.5 cf-slider-captcha-status-row">
               <div className={cn('inline-flex min-w-0 items-center gap-2 text-[13px] font-medium', statusToneClass)}>
                 {status === 'verifying' ? (
                   <Loader2 size={13} className="animate-spin" />
@@ -442,13 +449,15 @@ export const SliderCaptcha = ({
             <div
               ref={trackRef}
               className={cn(
-                'relative h-10 overflow-hidden rounded-[4px] border bg-cf-surface-1 transition-colors focus:outline-none /80',
+                'relative h-10 overflow-hidden rounded-[4px] border bg-cf-surface-1 transition-colors focus:outline-none',
                 status === 'success'
                   ? 'border-emerald-300 dark:border-emerald-800/50'
                   : status === 'fail'
                     ? 'border-rose-300 dark:border-rose-800/50'
                     : 'border-slate-200 focus:border-[var(--cf-primary-500)] focus:shadow-[0_0_0_3px_rgba(13,149,181,0.16)] dark:border-slate-700',
+                'cf-slider-captcha-track',
               )}
+              data-status={status}
               tabIndex={loadError ? -1 : 0}
               role="slider"
               aria-valuemin={0}
@@ -461,7 +470,7 @@ export const SliderCaptcha = ({
               <div
                 className={cn(
                   'absolute inset-y-0 left-0 bg-gradient-to-r transition-[width] duration-200',
-                  trackProgressClass,
+                  trackProgressClass, 'cf-slider-captcha-progress',
                 )}
                 style={{ width: progressWidth }}
               />
@@ -469,7 +478,7 @@ export const SliderCaptcha = ({
               <div
                 className={cn(
                   'pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-10 text-center text-[13px] font-medium transition-opacity duration-200',
-                  statusToneClass,
+                  statusToneClass, 'cf-slider-captcha-track-text',
                 )}
                 style={{ opacity: sliderLeft > maxSliderLeft * 0.48 ? 0.28 : 1 }}
               >
@@ -480,8 +489,9 @@ export const SliderCaptcha = ({
                 type="button"
                 className={cn(
                   'no-min-size absolute bottom-[3px] top-[3px] z-20 inline-flex items-center justify-center rounded-[4px] border transition',
-                  handleClass,
+                  handleClass, 'cf-slider-captcha-handle',
                 )}
+                data-status={status}
                 style={{ left: sliderLeft + HANDLE_INSET, width: HANDLE_VISUAL_WIDTH }}
                 onMouseDown={(event) => {
                   event.preventDefault();

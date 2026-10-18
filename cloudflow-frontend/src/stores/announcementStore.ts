@@ -6,6 +6,8 @@ const THROTTLE_MS = 20 * 60 * 1000;
 const POPUP_ADVANCE_DELAY_MS = 300;
 
 let shownPopupIds = new Set<number>();
+let identityGeneration = 0;
+let fetchGeneration = 0;
 
 interface AnnouncementStoreState {
   announcements: Announcement[];
@@ -80,13 +82,16 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
     if (!force && lastFetchTime > 0 && now - lastFetchTime < THROTTLE_MS) {
       return;
     }
+    const identity = identityGeneration;
+    const request = ++fetchGeneration;
 
     // 先写入时间戳，避免并发重复请求；失败后再回滚，和源码策略保持一致。
     set({ loading: true, lastFetchTime: now });
 
     try {
       const all = await getMyAnnouncements();
-      const announcements = sortAnnouncements(all).slice(0, 20);
+      if (identity !== identityGeneration || request !== fetchGeneration) return;
+      const announcements = sortAnnouncements(all);
 
       set((state) => {
         const queueIds = new Set(state.popupQueue.map((item) => item.announcementId));
@@ -119,14 +124,17 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
         };
       });
     } catch (error) {
+      if (identity !== identityGeneration || request !== fetchGeneration) return;
       console.error('获取公告列表失败:', error);
       set({ loading: false, lastFetchTime: 0 });
     }
   },
 
   markAsRead: async (announcementId: number) => {
+    const identity = identityGeneration;
     try {
       await markAnnouncementRead(String(announcementId));
+      if (identity !== identityGeneration) return;
 
       set((state) => ({
         announcements: state.announcements.map((item) => (
@@ -138,11 +146,13 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
 
       emitAnnouncementReadEvent();
     } catch (error) {
+      if (identity !== identityGeneration) return;
       console.error('标记公告已读失败:', error);
     }
   },
 
   markAllAsRead: async () => {
+    const identity = identityGeneration;
     const unreadAnnouncements = get().announcements.filter((item) => !item.isRead);
     if (unreadAnnouncements.length === 0) {
       return;
@@ -154,16 +164,19 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
       await Promise.all(
         unreadAnnouncements.map((item) => markAnnouncementRead(String(item.announcementId))),
       );
+      if (identity !== identityGeneration) return;
+      const readIds = new Set(unreadAnnouncements.map(item => item.announcementId));
 
       set((state) => ({
         loading: false,
-        announcements: state.announcements.map((item) => ({ ...item, isRead: true })),
-        popupQueue: [],
-        currentPopup: null,
+        announcements: state.announcements.map((item) => readIds.has(item.announcementId) ? { ...item, isRead: true } : item),
+        popupQueue: state.popupQueue.filter(item => !readIds.has(item.announcementId)),
+        currentPopup: state.currentPopup && readIds.has(state.currentPopup.announcementId) ? null : state.currentPopup,
       }));
 
       emitAnnouncementReadEvent();
     } catch (error) {
+      if (identity !== identityGeneration) return;
       console.error('全部标记已读失败:', error);
       set({ loading: false });
       throw error;
@@ -171,6 +184,7 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
   },
 
   dismissPopup: async () => {
+    const identity = identityGeneration;
     const currentPopup = get().currentPopup;
     if (!currentPopup) {
       return;
@@ -181,6 +195,7 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
 
     if (get().popupQueue.length > 0) {
       setTimeout(() => {
+        if (identity !== identityGeneration) return;
         set((state) => ({
           ...state,
           ...showNextPopup(state),
@@ -190,6 +205,8 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
   },
 
   reset: () => {
+    identityGeneration += 1;
+    fetchGeneration += 1;
     shownPopupIds = new Set<number>();
     set({
       announcements: [],

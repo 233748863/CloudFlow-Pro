@@ -1,5 +1,6 @@
 import request from './request';
 import type { PageQuery } from './auth';
+import type { TenantPackageSelection } from './tenantPackage';
 
 export interface SysTenant {
   tenantId?: number;
@@ -11,7 +12,11 @@ export interface SysTenant {
   companyName?: string;
   address?: string;
   domain?: string;
-  packageId?: number;
+  packageId?: number | null;
+  packageVersion?: number | null;
+  packageOverride?: string | null;
+  effectiveMenuIds?: string | null;
+  version?: number;
   expireTime?: string;
   accountCount?: number;
   userLimit?: number;
@@ -49,12 +54,32 @@ export const getTenantDetail = (tenantId: number) => {
   return request.get(`/auth/system/tenant/${tenantId}`) as Promise<SysTenant>;
 };
 
-export const addTenant = (data: SysTenant) => {
-  return request.post('/auth/system/tenant', data);
+export interface TenantSave {
+  tenantId?: number;
+  version?: number;
+  tenantCode: string;
+  tenantName: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  domain?: string;
+  status: string;
+  expireTime?: string;
+  userLimit?: number;
+  storageLimit?: number;
+  remark?: string;
+  packageSelection?: TenantPackageSelection;
+}
+
+export const getTenantPage = (params: { current: number; size: number; tenantName?: string }, signal?: AbortSignal) =>
+  request.get<{ records: SysTenant[]; total: number; current: number; size: number }>('/auth/system/tenant/list', { params, signal, silent: true });
+
+export const addTenant = (data: TenantSave) => {
+  return request.post('/auth/system/tenant', data, { silent: true });
 };
 
-export const updateTenant = (data: SysTenant) => {
-  return request.put('/auth/system/tenant', data);
+export const updateTenant = (data: TenantSave) => {
+  return request.put('/auth/system/tenant', data, { silent: true });
 };
 
 export const deleteTenant = (tenantIds: number[]) => {

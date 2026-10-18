@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/utils/cn';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import './TableScrollArea.css';
 
 export interface TableScrollAreaProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -11,6 +12,7 @@ export interface TableScrollAreaProps extends React.HTMLAttributes<HTMLDivElemen
 export const TableScrollArea = React.forwardRef<HTMLDivElement, TableScrollAreaProps>(
   ({ className, children, maxHeight = 'clamp(20rem, 52vh, 34rem)', style, ...props }, ref) => {
     const localRef = useRef<HTMLDivElement | null>(null);
+    const isMobile = useBreakpoint() === 'mobile';
     const [isScrollable, setIsScrollable] = useState(false);
 
     const setRefs = useCallback(
@@ -51,7 +53,7 @@ export const TableScrollArea = React.forwardRef<HTMLDivElement, TableScrollAreaP
       <div
         ref={setRefs}
         className={cn('cf-table-scroll-area table-wrapper', isScrollable && 'is-scrollable', className)}
-        style={{ ...style, maxHeight }}
+        style={{ ...style, maxHeight: isMobile ? 'none' : maxHeight }}
         tabIndex={isScrollable ? 0 : undefined}
         {...props}
       >

@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { getAuthToken } from '@/utils/authStorage';
 import { buildHttpUrl, buildWebSocketUrl, loadDesktopRuntimeConfig } from '@/services/desktopConfig';
+import { navigateTo } from '@/utils/navigation';
 
 interface WebSocketMessage {
     type: string;
@@ -154,13 +155,18 @@ export const useWebSocket = () => {
 
                 if (msg.topic && topicHandlers.has(msg.topic)) {
                     topicHandlers.get(msg.topic)!(msg.payload);
-                } else if (msg.type === 'NOTICE') {
-                    const notice = msg.data;
-                    toast.info(notice.noticeTitle, {
-                        description: notice.noticeContent,
+                } else if (msg.type === 'NOTICE' || msg.type === 'MESSAGE') {
+                    const notice = msg.data || {};
+                    const title = notice.noticeTitle || notice.title || '新消息';
+                    const content = notice.noticeContent || notice.content || '';
+                    toast.info(title, {
+                        description: content,
                         action: {
                             label: '查看',
-                            onClick: () => console.log('View notice', notice.noticeId)
+                            onClick: () => {
+                                const link = typeof notice.linkUrl === 'string' ? notice.linkUrl : '';
+                                if (link.startsWith('/')) navigateTo(link);
+                            }
                         }
                     });
                     window.dispatchEvent(new CustomEvent('sys-notice-received'));

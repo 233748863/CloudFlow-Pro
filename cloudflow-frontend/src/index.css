@@ -4000,6 +4000,25 @@
     overflow-wrap: anywhere;
   }
 
+  /* 通用详情栅格。上面 schedule/asset/seal/license/contract 那几套是逐个模块
+     复制出来的，规则完全一样，只有类名不同；新页面统一用这一套，别再加模块专属的。
+     配套组件是 components/common/DetailDialog.tsx。 */
+  .admin-detail-grid {
+    display: grid;
+    min-width: 0;
+    gap: 0.875rem 1.5rem;
+  }
+
+  .admin-detail-item {
+    min-width: 0;
+    border-bottom: 1px solid var(--cf-border);
+    padding-bottom: 0.75rem;
+  }
+
+  .admin-detail-item > div:last-child {
+    overflow-wrap: anywhere;
+  }
+
   .admin-asset-log-list {
     display: grid;
     min-width: 0;
@@ -4189,7 +4208,8 @@
     .admin-schedule-detail-grid,
     .admin-asset-detail-grid,
     .admin-seal-detail-grid,
-    .admin-license-detail-grid {
+    .admin-license-detail-grid,
+    .admin-detail-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
@@ -4227,7 +4247,8 @@
     .admin-schedule-detail-grid,
     .admin-asset-detail-grid,
     .admin-seal-detail-grid,
-    .admin-license-detail-grid {
+    .admin-license-detail-grid,
+    .admin-detail-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
@@ -4303,9 +4324,16 @@
     }
   }
 
+  /* align-content 必须显式 start。这是 grid 容器，默认 stretch：父级
+     admin-source-form-grid 的行高由该行最高的字段决定，带提示语的字段有
+     label/控件/提示三行，不带提示语的只有两行，多出来的高度会被 stretch
+     平摊到那两行的行高上，把输入框整体往下推——同一行里两个输入框差出
+     一个提示语的高度（约 16px），标签却是齐的。start 让行保持自然高度、
+     统一贴顶，多余空间留在底部。同文件的 admin-dialog-stack 早就这么写。 */
   .admin-dialog-field {
     display: grid;
     min-width: 0;
+    align-content: start;
     gap: 0.5rem;
   }
 
@@ -6409,12 +6437,15 @@
      新增不需要吸附的表时，只在下面的 :is() 里加一个类名，别再去别处写豁免。
      判据：表若是 table-layout: fixed + width/min-width: 100%（永不横向滚动），
      吸附零收益，只会留下一道多余竖线和一块不跟随行悬停的白底色块。
+     阶段分析等没有操作列的数据明细表也不吸附末列，避免遮挡手机查看其他列。
      ------------------------------------------------------------ */
   :is(.table-scroll-container, .admin-horizontal-scroll) :is(
       .workflow-monitor-alert-table,
       .admin-business-trip-table,
       .admin-expense-detail-table,
       .admin-performance-detail-table,
+      .crm-stage-analysis-table,
+      .crm-stage-rules-table,
       .admin-budget-table,
       .admin-meeting-minutes-table,
       .admin-invoice-table,
@@ -6433,6 +6464,17 @@
     z-index: auto;
     background: transparent;
     box-shadow: none;
+  }
+
+  /* 手机商机的多项操作不固定在右侧，保留数据列的完整查看空间。 */
+  @media (max-width: 640px) {
+    :is(.table-scroll-container, .admin-horizontal-scroll) .crm-opportunity-list-table :is(th, td):last-child {
+      position: static;
+      right: auto;
+      z-index: auto;
+      background: transparent;
+      box-shadow: none;
+    }
   }
 
   .unity-data-table tbody tr {
@@ -7158,6 +7200,18 @@
     border-color: rgba(13, 149, 181, 0.3);
     background: rgba(13, 149, 181, 0.12);
     color: #67e8f9;
+  }
+
+  html.dark .admin-project-detail-facts > div {
+    border-bottom-color: rgba(148, 163, 184, 0.18);
+  }
+
+  html.dark .admin-project-detail-facts span {
+    color: #94a3b8;
+  }
+
+  html.dark .admin-project-detail-facts strong {
+    color: #e2e8f0;
   }
 
   .admin-budget-detail-list,
@@ -8711,6 +8765,12 @@
 
   html.dark .workflow-studio-toolbar {
     box-shadow: none;
+  }
+
+  .workflow-studio-panel,
+  .workflow-quick-add-menu {
+    --cf-density-control-height: 44px;
+    --cf-density-control-height-sm: 44px;
   }
 
   /* 流程设计器面板在暗色下希望最弱一档文字更暗一些。
@@ -10684,6 +10744,91 @@ html.dark .admin-users-row-actions button {
   border-color: rgba(148, 163, 184, 0.18);
   background: rgba(15, 23, 42, 0.28);
   color: #cbd5e1;
+}
+
+/* 行操作按钮的语义色修饰（可选）。
+   基准列默认只有「中性 + .danger 悬停变玫红」两档，审批类的通过/驳回一旦压成同色，
+   两个后果相反的按钮在静止态长得一样，只能靠图标区分。所以给成对的审批决策补语义色：
+   静止态就给图标上色，几何尺寸/白底/浅边框一律不动，保证和基准列并排时仍然齐平。
+
+   适用范围有两类：
+   1) 「就地做出审批裁决」的按钮，即点下去审批结果立刻落库的通过/驳回/拒绝/审批通过；
+   2) 改造前本来就是静止红的按钮（如纪要的与会人删除，原先是内联 text-rose-500）——
+      这类换成 .danger 会比改造前更不显眼，用 tone-danger 保住原有的可见度。
+
+   不上色的三类（全仓已逐个核过，别再反复加）：
+   - 只是打开审批弹窗、本身不产生裁决的按钮：车辆用车的「审批」、客户的「释放审批 /
+     分级审批」、应收的「退款审批」、商机的「输单审批」。裁决发生在弹窗里，
+     给入口染绿会让人以为点一下就通过了。
+   - 单向确认：「确认收货」「确认纪要」「确认」这类没有反向按钮的动作，
+     同行里没有后果相反的兄弟按钮，不存在需要靠颜色区分的歧义。
+   - 状态前进：「提交」「完成」这类流程推进动作。
+
+   表格里成排的删除仍然沿用 .danger（静止中性、悬停才变红）：
+   一列几十行全是静止红会把表格搞花。判断标准是「这一处原本是不是静止红」。
+
+   必须放在未分层区：index.css 尾部这一段在 @layer 外，
+   这里的规则优先于 layer 内的 .admin-users-row-actions button，反之则被压掉。 */
+.admin-users-row-actions button.tone-success {
+  color: #047857;
+}
+
+.admin-users-row-actions button.tone-success:hover {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.admin-users-row-actions button.tone-danger {
+  color: #be123c;
+}
+
+.admin-users-row-actions button.tone-danger:hover {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+html.dark .admin-users-row-actions button.tone-success {
+  color: #6ee7b7;
+}
+
+html.dark .admin-users-row-actions button.tone-success:hover {
+  border-color: rgba(16, 185, 129, 0.42);
+  background: rgba(16, 185, 129, 0.16);
+  color: #a7f3d0;
+}
+
+html.dark .admin-users-row-actions button.tone-danger {
+  color: #fda4af;
+}
+
+html.dark .admin-users-row-actions button.tone-danger:hover {
+  border-color: rgba(244, 63, 94, 0.42);
+  background: rgba(244, 63, 94, 0.16);
+  color: #fecdd3;
+}
+
+/* 基准列原本没有 disabled 规则，靠 color 继承看不出禁用。
+   招聘/Offer 那批按钮按状态大量禁用，上了语义色后不压回灰色会显得可点。 */
+.admin-users-row-actions button:disabled {
+  border-color: #e5e7eb;
+  background: #f8fafc;
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.admin-users-row-actions button:disabled:hover {
+  border-color: #e5e7eb;
+  background: #f8fafc;
+  color: #cbd5e1;
+}
+
+html.dark .admin-users-row-actions button:disabled,
+html.dark .admin-users-row-actions button:disabled:hover {
+  border-color: rgba(148, 163, 184, 0.12);
+  background: rgba(15, 23, 42, 0.18);
+  color: #475569;
 }
 
 
@@ -12895,6 +13040,13 @@ html.dark .code-generation-state-icon {
   min-width: min(20rem, 100%);
 }
 
+/* 消息渠道只有两个下拉，没有搜索框。页尾这条未分层规则会把第一项当成搜索栏
+   拉满整行，渠道类型就占掉整条筛选条。这里收回和状态同一宽度。 */
+.admin-users-toolbar .admin-message-channel-filter-grid > label:first-child {
+  flex: 0 1 14rem;
+  min-width: 0;
+}
+
 .admin-users-toolbar [class*="filter-grid"] > .admin-users-toolbar-actions,
 .admin-users-toolbar .admin-toolbar-filter-grid > .admin-users-toolbar-actions,
 .admin-users-toolbar [class*="toolbar-grid"] > .admin-users-toolbar-actions,
@@ -13719,4 +13871,18 @@ body,
   background: transparent;
   opacity: 0;
   pointer-events: none;
+}
+
+@media (max-width: 639px) {
+  .admin-job-page .admin-users-row-actions {
+    flex-wrap: wrap;
+    max-width: 144px;
+    margin-left: auto;
+  }
+
+  .admin-job-page .admin-users-row-actions button {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+  }
 }

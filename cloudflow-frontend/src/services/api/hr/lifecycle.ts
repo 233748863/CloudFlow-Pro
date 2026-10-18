@@ -47,6 +47,10 @@ export const listLifecycleApplications = async (params?: HrRecord) =>
   (await request.get<LifecycleApplication[]>('/hr/lifecycle/applications', { params })).map(normalizeLifecycleApplication);
 export const createLifecycleApplication = (type: string, data: HrRecord) =>
   createLifecycle(type, data);
+export const getLifecycleApplication = (id: number) =>
+  request.get<LifecycleApplication>(`/hr/lifecycle/applications/${id}`);
+export const updateLifecycleSuccessor = (id: number, version: number, successorUserId: number | null) =>
+  request.put<void>(`/hr/lifecycle/applications/${id}`, { version, detailJson: { successorUserId } });
 export const changeLifecycleApplicationStatus = (id: number, action: string, data?: HrRecord) =>
   request.post<void>(`/hr/lifecycle/applications/${id}/${action}`, data || {});
 export const listLifecycleApplicationTasks = (id: number) =>
@@ -75,8 +79,8 @@ export const conductExitInterview = (id: number, interviewContent: string) =>
   request.put<void>(`/hr/lifecycle/applications/${id}`, { remark: interviewContent });
 export const completeResignationHandover = (handoverId: number, remark?: string) =>
   request.post<void>(`/hr/lifecycle/tasks/${handoverId}/complete`, { remark });
-export const confirmResignation = (applicationId: number, confirmDate?: string) =>
-  request.post<void>(`/hr/lifecycle/applications/${applicationId}/complete`, { confirmDate });
+export const confirmResignation = (applicationId: number, version: number, confirmDate?: string) =>
+  request.post<void>(`/hr/lifecycle/applications/${applicationId}/complete`, { version, confirmDate });
 export const getResignationApplication = async (id: number) => (await listLifecycle('RESIGNATION')).find((item) => item.id === id) as ResignationApplication;
 export const listResignationByEmployee = (employeeId: number) => listLifecycle('RESIGNATION', { employeeId }) as Promise<ResignationApplication[]>;
 export const listResignationHandovers = (applicationId: number) =>

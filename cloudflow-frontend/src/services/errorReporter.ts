@@ -9,7 +9,11 @@
  */
 
 /** 错误上报的额外上下文信息 */
+import { errorTraceId, getRecentRequestTraceId, validTraceId } from '@/utils/trace';
+import request from '@/services/api/request';
+
 interface ErrorContext {
+  traceId?: string;
   /** React 组件堆栈 */
   componentStack?: string;
   /** 错误发生的上下文描述 */
@@ -22,6 +26,7 @@ interface ErrorContext {
 
 /** 错误上报记录（发送到后端的数据结构） */
 interface ErrorReport {
+  traceId?: string;
   /** 错误消息 */
   message: string;
   /** 错误堆栈 */
@@ -70,7 +75,8 @@ class ErrorReporter {
     if (!error) return;
 
     // 去重检查
-    const errorKey = `${error.message}:${error.stack?.slice(0, 200)}`;
+    const traceId = validTraceId(context?.traceId) ?? errorTraceId(error) ?? getRecentRequestTraceId();
+    const errorKey = `${traceId ?? ''}:${error.message}:${error.stack?.slice(0, 200)}`;
     if (this.reportedErrors.has(errorKey)) {
       return;
     }
@@ -79,6 +85,7 @@ class ErrorReporter {
 
     const report: ErrorReport = {
       message: error.message,
+      traceId,
       stack: error.stack,
       componentStack: context?.componentStack,
       context: context?.context,
@@ -116,6 +123,7 @@ class ErrorReporter {
   captureWarning(message: string, context?: ErrorContext): void {
     const report: ErrorReport = {
       message,
+      traceId: validTraceId(context?.traceId) ?? getRecentRequestTraceId(),
       url: window.location.href,
       userAgent: navigator.userAgent,
       timestamp: new Date().toISOString(),
@@ -141,6 +149,9 @@ class ErrorReporter {
    * 设置自定义上报端点
    */
   setEndpoint(endpoint: string): void {
+    if (!endpoint.startsWith('/') || endpoint.startsWith('//') || endpoint.includes('\\')) {
+      throw new Error('错误上报地址必须是应用接口路径');
+    }
     this.endpoint = endpoint;
   }
 
@@ -172,33 +183,15 @@ class ErrorReporter {
 
   /**
    * 发送错误报告到后端
-   * 使用 navigator.sendBeacon 确保页面关闭时也能发送
-   * 降级为 fetch
    */
   private sendReport(report: ErrorReport): void {
-    const payload = JSON.stringify(report);
-
-    try {
-      // 优先使用 sendBeacon（不阻塞页面卸载）
-      if (navigator.sendBeacon) {
-        const blob = new Blob([payload], { type: 'application/json' });
-        const sent = navigator.sendBeacon(this.endpoint, blob);
-        if (sent) return;
-      }
-
-      // 降级为 fetch
-      fetch(this.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload,
-        // 使用 keepalive 确保页面关闭时请求不被取消
-        keepalive: true,
-      }).catch(() => {
-        // 上报失败静默处理，不影响用户体验
-      });
-    } catch {
-      // 上报失败静默处理
-    }
+    void request.post(this.endpoint, report, {
+      silent: true,
+      trackRequestTrace: false,
+      adapter: 'fetch',
+      fetchOptions: { keepalive: true },
+      headers: report.traceId ? { 'X-Trace-Id': report.traceId } : undefined,
+    }).catch(() => undefined);
   }
 }
 

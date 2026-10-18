@@ -19,8 +19,8 @@ export const updateMeetingRoom = async (room: MeetingRoom): Promise<boolean> => 
   return request.put('/oa/meeting-room', room) as unknown as Promise<boolean>;
 };
 
-export const deleteMeetingRoom = async (id: string): Promise<boolean> => {
-  return request.delete(`/oa/meeting-room/${id}`) as unknown as Promise<boolean>;
+export const deleteMeetingRoom = async (id: string, version: number): Promise<boolean> => {
+  return request.delete(`/oa/meeting-room/${id}`, { params: { version } }) as unknown as Promise<boolean>;
 };
 
 // Room Events - 查询会议室的预订记录（所有人可见）
@@ -87,11 +87,17 @@ export const getMyEvents = async (start: string, end: string): Promise<SysSchedu
 };
 
 export const createEvent = async (event: Partial<SysScheduleEvent>): Promise<boolean> => {
-  return request.post('/oa/schedule', event) as unknown as Promise<boolean>;
+  return request.post('/oa/schedule', { ...event, startTime: normalizeScheduleTime(event.startTime), endTime: normalizeScheduleTime(event.endTime) }) as unknown as Promise<boolean>;
 };
 
-export const deleteEvent = async (id: string): Promise<boolean> => {
-  return request.delete(`/oa/schedule/${id}`) as unknown as Promise<boolean>;
+export function normalizeScheduleTime(value?: string) {
+  if (!value) return value;
+  const normalized = value.replace('T', ' ').slice(0, 19);
+  return normalized.length === 16 ? `${normalized}:00` : normalized;
+}
+
+export const deleteEvent = async (id: string, version: number, reason: string): Promise<boolean> => {
+  return request.delete(`/oa/schedule/${id}`, { params: { version, reason } }) as unknown as Promise<boolean>;
 };
 
 /**
@@ -126,8 +132,8 @@ export const getMyBookings = async (status?: 'upcoming' | 'past'): Promise<SysSc
 /**
  * 取消预订
  */
-export const cancelBooking = async (id: number): Promise<boolean> => {
-  return request.put(`/oa/schedule/cancel/${id}`) as unknown as Promise<boolean>;
+export const cancelBooking = async (id: string, version: number, reason: string): Promise<boolean> => {
+  return request.put(`/oa/schedule/cancel/${id}`, null, { params: { version, reason } }) as unknown as Promise<boolean>;
 };
 
 /**

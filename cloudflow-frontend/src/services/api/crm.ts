@@ -20,6 +20,7 @@ import * as approval from './crm/approval';
 export const crmApi = {
   // 线索
   listLeads: lead.listLeads,
+  getLead: lead.getLead,
   addLead: lead.addLead,
   editLead: lead.editLead,
   convertLead: lead.convertLead,
@@ -35,6 +36,9 @@ export const crmApi = {
   editPriceBook: catalog.editPriceBook,
   removePriceBook: catalog.removePriceBook,
   listSalesTargets: catalog.listSalesTargets,
+  getSalesTarget: catalog.getSalesTarget,
+  getSalesTargetCreation: catalog.getSalesTargetCreation,
+  previewSalesTarget: catalog.previewSalesTarget,
   addSalesTarget: catalog.addSalesTarget,
   editSalesTarget: catalog.editSalesTarget,
   removeSalesTarget: catalog.removeSalesTarget,
@@ -69,6 +73,7 @@ export const crmApi = {
 
   // 商机 + 报价
   listOpportunities: opportunity.listOpportunities,
+  getOpportunityDetail: opportunity.getOpportunityDetail,
   addOpportunity: opportunity.addOpportunity,
   editOpportunity: opportunity.editOpportunity,
   winOpportunity: opportunity.winOpportunity,
@@ -92,6 +97,7 @@ export const crmApi = {
   listReceivables: service.listReceivables,
   addReceivable: service.addReceivable,
   editReceivable: service.editReceivable,
+  getReceivable: service.getReceivable,
   confirmReceivable: service.confirmReceivable,
   bindReceivableInvoice: service.bindReceivableInvoice,
   getReceivableAging: service.getReceivableAging,
@@ -104,6 +110,7 @@ export const crmApi = {
   listTickets: service.listTickets,
   addTicket: service.addTicket,
   editTicket: service.editTicket,
+  getTicket: service.getTicket,
   resolveTicket: service.resolveTicket,
   closeTicket: service.closeTicket,
   removeTicket: service.removeTicket,
@@ -113,6 +120,7 @@ export const crmApi = {
   submitCustomerLevelChange: approval.submitCustomerLevelChange,
   submitOpportunityDowngrade: approval.submitOpportunityDowngrade,
   submitRefund: approval.submitRefund,
+  listRefundReceipts: approval.listRefundReceipts,
 
   // 公海池 + 分配规则
   listCustomerPool: pool.listCustomerPool,

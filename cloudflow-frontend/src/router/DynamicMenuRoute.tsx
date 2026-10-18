@@ -5,7 +5,9 @@ import { RouteGuard } from '@/components/common/RouteGuard';
 import { Result404, Result500 } from '@/components/common/result';
 import { useBackendMenus } from '@/hooks/useBackendMenus';
 import type { MenuItem } from '@/services/api/menu';
-import { applyKnownMenuRouteFix } from '@/utils/menuRouteFixes';
+import { applyKnownMenuRouteFix, normalizeMenuRoutePath } from '@/utils/menuRouteFixes';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { findMobileMenuPage } from './ResponsiveMenuPage';
 
 type PageModule = Record<string, unknown> & {
   default?: React.ComponentType;
@@ -18,15 +20,6 @@ const pageModules = import.meta.glob<PageModule>([
   '!../pages/Register.tsx',
 ]);
 const componentCache = new Map<string, React.LazyExoticComponent<React.ComponentType>>();
-
-const normalizeRoutePath = (path?: string) => {
-  const trimmed = (path || '').trim();
-  if (!trimmed) {
-    return '';
-  }
-  const [purePath] = trimmed.split('?');
-  return purePath.startsWith('/') ? purePath : `/${purePath}`;
-};
 
 const normalizeSearch = (search?: string) => {
   const trimmed = (search || '').replace(/^\?/, '').trim();
@@ -61,7 +54,7 @@ const findMenuByLocation = (
       const fixedItem = applyKnownMenuRouteFix(item);
 
       if (isVisibleMenuPage(fixedItem)) {
-        const targetPath = normalizeRoutePath(fixedItem.path);
+        const targetPath = normalizeMenuRoutePath(fixedItem.path);
         const targetSearch = getMenuSearch(fixedItem);
         const queryMatches = targetSearch ? currentSearch === targetSearch : true;
         if (targetPath === pathname && queryMatches) {
@@ -157,6 +150,7 @@ const parsePermissions = (perms?: string) =>
     .filter(Boolean);
 
 export const DynamicMenuRoute = () => {
+  const breakpoint = useBreakpoint();
   const location = useLocation();
   const { data: menus = [], isLoading, isError, error } = useBackendMenus(true);
 
@@ -187,7 +181,8 @@ export const DynamicMenuRoute = () => {
     );
   }
 
-  const PageComponent = resolveLazyPage(menu.component);
+  const PageComponent = (breakpoint === 'mobile' && findMobileMenuPage(toPageModuleKey(menu.component), location.pathname))
+    || resolveLazyPage(menu.component);
   if (!PageComponent) {
     return (
       <Result404

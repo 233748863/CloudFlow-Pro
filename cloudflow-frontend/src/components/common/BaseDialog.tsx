@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useId } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { ModalOverlay } from '@/components/common/ModalOverlay';
@@ -43,9 +43,6 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   zIndex = 50,
 }) => {
   const titleId = useId();
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-  const previousActiveElementRef = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
   const widthClassMap: Record<BaseDialogWidth, string> = {
     narrow: 'max-w-md',
     normal: 'max-w-lg',
@@ -60,38 +57,6 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   );
   const useDefaultScrollBody = !hasCustomBodyOverflow;
 
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    previousActiveElementRef.current = document.activeElement as HTMLElement;
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (closeOnEscape && event.key === 'Escape') {
-        onCloseRef.current();
-      }
-    };
-
-    window.addEventListener('keydown', handleEscape);
-    window.requestAnimationFrame(() => {
-      const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(
-        '[data-autofocus], input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      firstFocusable?.focus();
-    });
-
-    return () => {
-      window.removeEventListener('keydown', handleEscape);
-      previousActiveElementRef.current?.focus?.();
-      previousActiveElementRef.current = null;
-    };
-  }, [closeOnEscape, open]);
-
   if (!open) {
     return null;
   }
@@ -99,13 +64,12 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   return (
     <ModalOverlay
       closeOnClickOutside={closeOnClickOutside}
-      closeOnEscape={false}
+      closeOnEscape={closeOnEscape}
       onClose={onClose}
       zIndex={zIndex}
       aria-labelledby={titleId}
     >
       <div
-        ref={dialogRef}
         className={cn(
           'modal-content card min-w-0 w-full !overflow-hidden',
           'cf-dialog-panel flex flex-col',
@@ -117,7 +81,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
       >
         <div className="modal-header p-4 admin-source-section-head flex flex-shrink-0 items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-800">
           <div className="min-w-0">
-            <h3 id={titleId} className="modal-title text-sm font-semibold text-cf-title">
+            <h3 id={titleId} className="modal-title text-sm font-semibold text-cf-title [overflow-wrap:anywhere]">
               {title}
             </h3>
             {description ? (
@@ -132,7 +96,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="modal-close rounded-md p-2 text-cf-faint transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:hover:bg-slate-800"
+                className="modal-close cf-mobile-touch rounded-md p-2 text-cf-faint transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:hover:bg-slate-800"
                 aria-label="关闭弹窗"
               >
                 <X size={18} />

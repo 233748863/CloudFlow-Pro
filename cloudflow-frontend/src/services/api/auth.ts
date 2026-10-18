@@ -1,6 +1,7 @@
 import request from '@/services/api/request';
-import type { AxiosRequestConfig } from 'axios';
+import { CanceledError, type AxiosRequestConfig } from 'axios';
 import { Role } from '@/types';
+import { getAuthSessionVersion } from '@/utils/authStorage';
 
 // ==================== 系统管理类型定义 ====================
 
@@ -14,6 +15,8 @@ export interface SysDept {
   phone?: string;
   email?: string;
   status?: string;
+  holidayCalendarId?: number | null;
+  version?: number;
   children?: SysDept[];
 }
 
@@ -206,6 +209,11 @@ export const getTenantOptions = (config?: AxiosRequestConfig): Promise<TenantOpt
   return request.get('/auth/tenant/options', config);
 };
 
+export interface SwitchTenantOption { tenantId: number; tenantCode: string; tenantName: string }
+export interface SwitchTenantPage { records: SwitchTenantOption[]; total: number; current: number; size: number }
+export const getTenantSwitchOptions = (params: { current: number; size: number; keyword: string }, signal?: AbortSignal): Promise<SwitchTenantPage> =>
+  request.get('/auth/tenant/switch-options', { params, signal, silent: true });
+
 export const login = async (
   tenantCode: string,
   username: string,
@@ -273,13 +281,31 @@ interface GetInfoOptions {
   silent?: boolean;
 }
 
-export const getInfo = async (options?: GetInfoOptions): Promise<UserInfo> => {
+let pendingUserInfo: { version: number; promise: Promise<UserInfo> } | null = null;
+
+export const getInfo = (options?: GetInfoOptions): Promise<UserInfo> => {
+  const version = getAuthSessionVersion();
+  if (pendingUserInfo?.version === version) return pendingUserInfo.promise;
+  const promise = loadUserInfo(options).then(user => {
+    if (version !== getAuthSessionVersion()) throw new CanceledError('登录身份已变化，请重新读取');
+    return user;
+  }).finally(() => {
+    if (pendingUserInfo?.promise === promise) pendingUserInfo = null;
+  });
+  pendingUserInfo = { version, promise };
+  return promise;
+};
+
+const loadUserInfo = async (options?: GetInfoOptions): Promise<UserInfo> => {
   const data = await request.get<AuthInfoResponse>('/auth/info', {
     silent: options?.silent,
   });
   // 后端返回格式 { user: {...}, roles: [...], permissions: [...] }
   // 需要将其扁平化为 UserInfo 格式
   const user = (data?.user || data) as Record<string, unknown> & { dept?: { deptName?: string } };
+  if (!user || !/^[1-9]\d*$/.test(String(user.userId ?? '')) || typeof user.userName !== 'string' || !user.userName.trim()) {
+    throw new Error('登录信息不完整，请重新验证');
+  }
   const toBooleanFlag = (value: unknown): boolean => {
     if (typeof value === 'boolean') {
       return value;
@@ -326,11 +352,11 @@ export const getDept = (deptId: number) => {
 };
 
 export const addDept = (data: SysDept) => {
-  return request.post('/auth/system/dept', data);
+  return request.post<boolean>('/auth/system/dept', data);
 };
 
 export const updateDept = (data: SysDept) => {
-  return request.put('/auth/system/dept', data);
+  return request.put<boolean>('/auth/system/dept', data);
 };
 
 export const migrateDeptUsers = (data: DeptMigrateRequest) => {

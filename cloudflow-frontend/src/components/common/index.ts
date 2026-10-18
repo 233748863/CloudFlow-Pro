@@ -42,6 +42,8 @@ export {
 export * from './TableScrollArea';
 
 export { BaseDialog } from './BaseDialog';
+export { DetailDialog, DetailPanel, DetailField, DetailFieldGrid } from './DetailDialog';
+export type { DetailFieldItem, DetailSectionSpec } from './DetailDialog';
 export { ModalOverlay } from './ModalOverlay';
 export { ConfirmDialog } from './ConfirmDialog';
 export * from './ConflictResolutionDialog';
@@ -93,7 +95,6 @@ export * from './SelectorShell';
 export * from './VirtualList';
 export * from './WarningConfirmDialog';
 
-export { AnnouncementBell } from './AnnouncementBell';
 export { AnnouncementContent } from './AnnouncementContent';
 export { AnnouncementDetailModal } from './AnnouncementDetailModal';
 export { AnnouncementHub } from './AnnouncementHub';
@@ -101,5 +102,4 @@ export { AnnouncementListItem } from './AnnouncementListItem';
 export { AnnouncementManageFilterBar } from './AnnouncementManageFilterBar';
 export { AnnouncementManageTable } from './AnnouncementManageTable';
 export { AnnouncementPopup } from './AnnouncementPopup';
-export { NoticeBell } from './NoticeBell';
 export { UnifiedMessageBell } from './UnifiedMessageBell';

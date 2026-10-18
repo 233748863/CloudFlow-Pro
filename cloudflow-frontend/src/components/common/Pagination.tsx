@@ -67,10 +67,11 @@ export const Pagination: React.FC<PaginationProps> = ({
   return (
     <div className="pagination-bar cf-pagination flex items-center justify-between">
       <div className="pagination-mobile flex flex-1 items-center justify-between sm:hidden">
-        <Button variant="outline" size="sm" onClick={() => goToPage(page - 1)} disabled={page === 1}>
+        <Button className="cf-mobile-touch" variant="outline" size="sm" onClick={() => goToPage(page - 1)} disabled={page <= 1}>
           <ChevronLeft size={15} /> 上一页
         </Button>
-        <Button variant="outline" size="sm" onClick={() => goToPage(page + 1)} disabled={page === totalPages}>
+        <span className="text-xs text-cf-subtle" aria-live="polite">{page} / {totalPages} 页</span>
+        <Button className="cf-mobile-touch" variant="outline" size="sm" onClick={() => goToPage(page + 1)} disabled={page >= totalPages}>
           下一页 <ChevronRight size={15} />
         </Button>
       </div>

@@ -37,7 +37,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
 
   const isAdmin = user?.role === Role.ADMIN;
 
-  if (requiredPermissions.length > 0 && !isAdmin) {
+  if (requiredPermissions.length > 0) {
     const ok = hasPermission(requiredPermissions, true);
     if (!ok) {
       return (

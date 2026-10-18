@@ -205,12 +205,14 @@ export const summarizeCrmPerformanceByDept = (deptIds: number[], range?: CrmPerf
     params: { deptIds: deptIds.join(','), ...(range || {}) },
   });
 
-export const listCrmTopOwners = (limit: number = 10, range?: CrmPerformanceRangeQuery) =>
+export const listCrmTopOwners = (limit: number = 10, range?: CrmPerformanceRangeQuery, signal?: AbortSignal) =>
   request.get<CrmPerformanceSummary[]>('/hr/performance/crm/top-owners', {
     params: { limit, ...(range || {}) },
+    signal,
   });
 
-export const listCrmTopDepartments = (limit: number = 10, range?: CrmPerformanceRangeQuery) =>
+export const listCrmTopDepartments = (limit: number = 10, range?: CrmPerformanceRangeQuery, signal?: AbortSignal) =>
   request.get<CrmPerformanceSummary[]>('/hr/performance/crm/top-depts', {
     params: { limit, ...(range || {}) },
+    signal,
   });

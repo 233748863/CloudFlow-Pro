@@ -15,6 +15,16 @@ interface NoticeApiRecord {
   updateTime?: string;
   senderId?: number;
   recipientId?: number;
+  linkUrl?: string;
+  recordId?: number;
+  title?: string;
+  content?: string;
+  messageCategory?: string;
+  readFlag?: number;
+  receiverName?: string;
+  senderName?: string;
+  bizType?: string;
+  bizId?: string;
 }
 
 interface NoticePageApiResult {
@@ -35,6 +45,9 @@ export interface Notice {
   sender?: string;
   senderId?: number;
   recipientId?: number;
+  linkUrl?: string;
+  bizType?: string;
+  bizId?: string;
 }
 
 // 分页查询参数
@@ -54,15 +67,18 @@ export interface PageResult<T> {
 
 function mapNotice(record: NoticeApiRecord): Notice {
   return {
-    id: Number(record.noticeId || 0),
-    title: record.noticeTitle || '',
-    content: record.noticeContent || '',
-    type: record.noticeType || '',
+    id: Number(record.recordId ?? record.noticeId ?? 0),
+    title: record.title || record.noticeTitle || '',
+    content: record.content || record.noticeContent || '',
+    type: record.messageCategory || record.noticeType || '',
     createTime: record.createTime || record.updateTime || '',
-    isRead: record.status === '1',
-    sender: record.createBy || undefined,
+    isRead: record.readFlag === 1 || record.status === '1',
+    sender: record.senderName || record.createBy || undefined,
     senderId: record.senderId,
     recipientId: record.recipientId,
+    linkUrl: record.linkUrl,
+    bizType: record.bizType,
+    bizId: record.bizId,
   };
 }
 
@@ -81,7 +97,7 @@ function normalizePageResult(result: NoticePageApiResult): PageResult<Notice> {
  * 获取消息列表（分页）
  */
 export const getNoticeList = async (params?: NoticePageQuery): Promise<PageResult<Notice>> => {
-  const result = await request.get<NoticePageApiResult>('/oa/notice/list', { params });
+  const result = await request.get<NoticePageApiResult>('/auth/system/message/mine', { params });
   return normalizePageResult(result || {});
 };
 
@@ -89,7 +105,7 @@ export const getNoticeList = async (params?: NoticePageQuery): Promise<PageResul
  * 获取消息详情
  */
 export const getNoticeDetail = async (noticeId: number): Promise<Notice> => {
-  const result = await request.get<NoticeApiRecord>(`/oa/notice/${noticeId}`);
+  const result = await request.get<NoticeApiRecord>(`/auth/system/message/mine/${noticeId}`);
   return mapNotice(result || {});
 };
 
@@ -97,20 +113,13 @@ export const getNoticeDetail = async (noticeId: number): Promise<Notice> => {
  * 标记消息已读
  */
 export const markNoticeRead = async (noticeId: number): Promise<void> => {
-  await request.post(`/oa/notice/read/${noticeId}`);
-};
-
-/**
- * 删除消息
- */
-export const deleteNotice = async (noticeId: number): Promise<void> => {
-  await request.delete(`/oa/notice/${noticeId}`);
+  await request.put('/auth/system/message/mine/read', { recordIds: [noticeId] });
 };
 
 /**
  * 获取未读消息数量
  */
 export const getUnreadCount = async (): Promise<number> => {
-  const count = await request.get<number>('/oa/notice/unread-count');
-  return Number(count || 0);
+  const result = await request.get<Record<string, number>>('/auth/system/message/mine/unread-count');
+  return Number(result?.TOTAL || 0);
 };

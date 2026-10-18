@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { cn } from '@/utils/cn';
 
-export interface SwitchProps {
+export interface SwitchProps extends React.AriaAttributes {
+  id?: string;
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
   disabled?: boolean;
@@ -9,7 +10,7 @@ export interface SwitchProps {
 }
 
 export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
-  ({ checked = false, onCheckedChange, disabled = false, className = '' }, ref) => {
+  ({ id, checked = false, onCheckedChange, disabled = false, className = '', ...accessibility }, ref) => {
     const handleClick = () => {
       if (!disabled && onCheckedChange) {
         onCheckedChange(!checked);
@@ -18,6 +19,8 @@ export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
 
     return (
       <button
+        {...accessibility}
+        id={id}
         ref={ref}
         type="button"
         role="switch"

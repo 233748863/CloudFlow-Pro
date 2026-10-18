@@ -57,18 +57,20 @@ export enum TaskType {
 
 /** 流程实例状态 */
 export enum ProcessInstanceStatus {
-  /** 运行中 */
+  DRAFT = 'DRAFT',
   RUNNING = 'RUNNING',
-  /** 已完成 */
-  COMPLETED = 'COMPLETED',
-  /** 已拒绝 */
+  PASSED = 'PASSED',
+  AUTO_PASSED = 'AUTO_PASSED',
   REJECTED = 'REJECTED',
-  /** 已撤回 */
-  REVOKED = 'REVOKED',
-  /** 已挂起 */
-  SUSPENDED = 'SUSPENDED',
-  /** 已终止 */
   TERMINATED = 'TERMINATED',
+  INVALIDATED = 'INVALIDATED',
+  CANCELLED = 'CANCELLED',
+  WITHDRAWN = 'WITHDRAWN',
+  TASK_BACK = 'TASK_BACK',
+  PAUSED = 'PAUSED',
+  RESTARTED = 'RESTARTED',
+  PENDING = 'PENDING',
+  FAILED = 'FAILED',
 }
 
 /** 流程定义状态 */

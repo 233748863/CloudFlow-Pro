@@ -286,6 +286,7 @@ export interface InterviewSchedulePayload extends HrRecord {
 
 export interface Offer extends HrRecord {
   id: number;
+  processInstanceId?: string;
   offerNo?: string;
   candidateId: number;
   candidateName?: string;
@@ -696,7 +697,6 @@ export interface HrScheduleRule extends HrRecord {
 
 export interface AttendanceRuleConfig {
   shiftId?: number;
-  workDays?: number[];
   checkMethods?: string[];
   [key: string]: any;
 }
@@ -767,6 +767,9 @@ export interface LifecycleApplication extends HrRecord {
   applicationNo: string;
   type: 'ONBOARDING' | 'PROBATION' | 'TRANSFER' | 'RESIGNATION' | string;
   employeeId?: number;
+  successorUserId?: number | null;
+  successorName?: string;
+  version: number;
   candidateId?: number;
   name?: string;
   status?: string;
@@ -781,11 +784,17 @@ export interface CrmPerformanceSummary {
   dimension: 'OWNER' | 'DEPT' | string;
   targetId: number;
   targetName?: string;
+  calculationBasis: 'OWNER_V1' | 'TEAM_V2';
+  currency: string;
   wonOpportunityCount: number;
-  wonAmount: number;
-  contractAmount: number;
-  receivedAmount: number;
-  outstandingAmount: number;
+  allocatedWonCount: string;
+  wonAmount: string;
+  contractAmount: string;
+  receivedAmount: string;
+  outstandingAmount: string;
+  baselineWonAmount: string;
+  baselineContractAmount: string;
+  baselineReceivedAmount: string;
   followUpCount: number;
   customerCount: number;
 }
@@ -793,6 +802,8 @@ export interface CrmPerformanceSummary {
 export interface CrmPerformanceRangeQuery {
   startDate?: string;
   endDate?: string;
+  calculationBasis?: 'OWNER_V1' | 'TEAM_V2';
+  currency?: string;
 }
 
 // ========== ESS / 培训 增量类型（2026-05 P0）==========
@@ -899,15 +910,15 @@ export interface HrContractSignaturePayload {
   comment?: string;
 }
 
-export interface HrSelfServiceMessage extends HrRecord {
-  id: number;
-  employeeId: number;
-  category?: string;
+export interface HrMessageRecord {
+  recordId: number;
+  messageCategory?: string;
   title: string;
-  summary?: string;
+  content?: string;
   linkUrl?: string;
-  readFlag: boolean;
-  relatedId?: number | null;
+  readFlag: number;
+  bizId?: string | null;
+  bizType?: string;
   createTime?: string;
 }
 
@@ -930,7 +941,7 @@ export interface HrEssPortalSummary {
   latestSlip: HrSalarySlip | Record<string, never>;
   pendingContracts: Array<HrRecord>;
   recentCertificates: HrCertificateRequest[];
-  unreadMessages: HrSelfServiceMessage[];
+  unreadMessages: HrMessageRecord[];
   unreadCount: number;
 }
 

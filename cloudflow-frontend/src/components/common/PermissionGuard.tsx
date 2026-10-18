@@ -31,17 +31,13 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
 }) => {
   const { user, hasPermission } = useAuth();
 
-  if (user?.role === Role.ADMIN) {
-    return <>{children}</>;
-  }
-
   let hasAccess = true;
 
   if (permissions.length > 0) {
     hasAccess = hasPermission(permissions, requireAll);
   }
 
-  if (hasAccess && roles.length > 0) {
+  if (hasAccess && roles.length > 0 && user?.role !== Role.ADMIN) {
     hasAccess = roles.some((r) => user?.role === r);
   }
 
@@ -77,7 +73,7 @@ export const PermissionButton: React.FC<
   const isAdmin = user?.role === Role.ADMIN;
   const permOk = permissions.length === 0 || hasPermission(permissions);
   const roleOk = roles.length === 0 || roles.some((r) => user?.role === r);
-  const hasAccess = isAdmin || (permOk && roleOk);
+  const hasAccess = permOk && (isAdmin || roleOk);
 
   return (
     <button {...props} disabled={!hasAccess || props.disabled} title={!hasAccess ? '无操作权限' : props.title}>

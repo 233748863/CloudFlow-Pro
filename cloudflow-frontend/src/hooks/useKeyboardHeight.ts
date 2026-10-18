@@ -57,10 +57,12 @@ export const useKeyboardHeight = () => {
  * 自动调整输入框位置的 Hook
  * 当输入框获得焦点时，自动滚动到可见区域
  */
-export const useKeyboardAwareScroll = () => {
+export const useKeyboardAwareScroll = (enabled = true) => {
   useEffect(() => {
-    const handleFocus = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
+    if (!enabled) return;
+    let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+    const handleFocus = (event: FocusEvent) => {
+      const target = event.target as HTMLElement;
       
       // 只处理输入元素
       if (
@@ -69,7 +71,9 @@ export const useKeyboardAwareScroll = () => {
         target.isContentEditable
       ) {
         // 延迟执行，等待键盘完全显示
-        setTimeout(() => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          if (!target.isConnected || document.activeElement !== target) return;
           target.scrollIntoView({
             behavior: 'smooth',
             block: 'center',
@@ -81,7 +85,8 @@ export const useKeyboardAwareScroll = () => {
     document.addEventListener('focusin', handleFocus);
 
     return () => {
+      clearTimeout(scrollTimer);
       document.removeEventListener('focusin', handleFocus);
     };
-  }, []);
+  }, [enabled]);
 };

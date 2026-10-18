@@ -19,7 +19,7 @@ interface LongPressOptions {
  * 检测触摸滑动手势（左、右、上、下）
  */
 export const useSwipeGesture = (
-  elementRef: RefObject<HTMLElement>,
+  elementRef: RefObject<HTMLElement | null>,
   options: SwipeGestureOptions
 ) => {
   const {
@@ -96,7 +96,7 @@ export const useSwipeGesture = (
  * 检测长按手势
  */
 export const useLongPress = (
-  elementRef: RefObject<HTMLElement>,
+  elementRef: RefObject<HTMLElement | null>,
   options: LongPressOptions
 ) => {
   const { onLongPress, delay = 500 } = options;
@@ -157,7 +157,7 @@ export const useLongPress = (
  * 检测双击手势
  */
 export const useDoubleTap = (
-  elementRef: RefObject<HTMLElement>,
+  elementRef: RefObject<HTMLElement | null>,
   onDoubleTap: () => void,
   delay = 300
 ) => {
@@ -192,7 +192,7 @@ export const useDoubleTap = (
  * 检测双指捏合缩放手势
  */
 export const usePinchZoom = (
-  elementRef: RefObject<HTMLElement>,
+  elementRef: RefObject<HTMLElement | null>,
   onPinch: (scale: number) => void
 ) => {
   const initialDistanceRef = useRef<number>(0);

@@ -31,6 +31,9 @@ import { getConfigIntSync } from '@/hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '@/constants/sysConfig';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface } from '@/components/layout/TablePageLayout';
+import { useAuth } from '@/context/AuthContext';
+import { getAllHolidayCalendars, type HolidayCalendar } from '@/services/api/holiday';
+import { getErrorMessage } from '@/utils/errorMessage';
 
 // ============================================================
 // 类型定义
@@ -45,6 +48,8 @@ interface DeptItem {
   phone: string;
   email: string;
   status: string;
+  holidayCalendarId?: number | null;
+  version?: number;
   ancestors?: string;
   children?: DeptItem[];
 }
@@ -73,6 +78,8 @@ interface DeptFormState {
   phone: string;
   email: string;
   status: string;
+  holidayCalendarId: number | null;
+  version?: number;
 }
 
 export interface OrgStructureStats {
@@ -106,6 +113,7 @@ const createDeptForm = (defaultParentId = 0): DeptFormState => ({
   phone: '',
   email: '',
   status: '0',
+  holidayCalendarId: null,
 });
 
 const getStatusBadgeClassName = (status: string) =>
@@ -117,6 +125,55 @@ const countDepartments = (depts: DeptItem[]): number =>
   depts.reduce((count, dept) => count + 1 + countDepartments(dept.children || []), 0);
 
 const countDeptChildren = (dept: DeptItem): number => countDepartments(dept.children || []);
+
+// 缩进深度上限。演示数据曾出现 50 层深的部门链，每层 18px 累加到 900px，
+// 而部门目录面板固定 320px 宽，树会斜向下坠出可视区、部门名被压成「战略投...」。
+// 超过这个层数后不再往右推，改在节点上显示层号标记，保证任意深度都留得住名字。
+const TREE_INDENT_MAX_LEVEL = 6;
+const TREE_INDENT_STEP = 18;
+
+const getIndentPx = (level: number, base: number): number =>
+  Math.min(level, TREE_INDENT_MAX_LEVEL) * TREE_INDENT_STEP + base;
+
+// 后端 /system/dept 不返回成员数，这里用已加载的成员列表按 deptId 归组自己算。
+// 注意：成员列表是分页拉取的，只有把该租户成员一次性取全时这个数才准确。
+const buildDeptUserCounts = (users: { deptId?: number | null }[]): Map<number, number> => {
+  const counts = new Map<number, number>();
+  users.forEach((user) => {
+    if (typeof user.deptId !== 'number') {
+      return;
+    }
+    counts.set(user.deptId, (counts.get(user.deptId) || 0) + 1);
+  });
+  return counts;
+};
+
+// 含子部门的成员总数：直属成员 + 所有后代部门的成员。
+const countUsersInSubtree = (dept: DeptItem, counts: Map<number, number>): number =>
+  (counts.get(dept.deptId) || 0)
+  + (dept.children || []).reduce((sum, child) => sum + countUsersInSubtree(child, counts), 0);
+
+// 搜索命中项 + 它的完整祖先路径。搜索结果原来是在树里就地过滤的，
+// 深层命中项仍然带着一长串缩进、还得手动展开父级才看得见；
+// 拍平成列表并显示「一级部门 / 二级部门」路径，一眼就知道命中的是哪个。
+type DeptMatch = { dept: DeptItem; path: string[] };
+
+const collectDeptMatches = (
+  depts: DeptItem[],
+  keyword: string,
+  trail: string[] = [],
+  out: DeptMatch[] = [],
+): DeptMatch[] => {
+  depts.forEach((dept) => {
+    const name = dept.deptName || '';
+    const leader = dept.leader || '';
+    if (name.toLowerCase().includes(keyword) || leader.toLowerCase().includes(keyword)) {
+      out.push({ dept, path: trail });
+    }
+    collectDeptMatches(dept.children || [], keyword, [...trail, name], out);
+  });
+  return out;
+};
 
 const flattenDepts = (
   depts: DeptItem[],
@@ -270,7 +327,7 @@ const DepartmentSelect: React.FC<{
                 onChange(dept.deptId);
                 setOpen(false);
               }}
-              style={{ paddingLeft: `${level * 18 + 12}px` }}
+              style={{ paddingLeft: `${getIndentPx(level, 12)}px` }}
             >
               {dept.deptName}
             </SideNavItem>
@@ -327,7 +384,7 @@ const DepartmentPickerList: React.FC<{
                   size="sm"
                   active={selected}
                   onClick={() => onChange(dept.deptId)}
-                  style={{ paddingLeft: `${level * 18 + 12}px` }}
+                  style={{ paddingLeft: `${getIndentPx(level, 12)}px` }}
                 >
                   <Building2 size={14} className="shrink-0 text-cf-faint" />
                   <span className="truncate">{dept.deptName}</span>
@@ -358,6 +415,7 @@ const DeptNode: React.FC<{
   onToggle: (deptId: number) => void;
   onAddChild: (dept: DeptItem) => void;
   onEdit: (dept: DeptItem) => void;
+  deptUserCounts: Map<number, number>;
 }> = ({
   dept,
   level = 0,
@@ -368,12 +426,15 @@ const DeptNode: React.FC<{
   onToggle,
   onAddChild,
   onEdit,
+  deptUserCounts,
 }) => {
   const hasChildren = Boolean(dept.children?.length);
   const expanded = forceExpanded || expandedDeptIds.has(dept.deptId);
   const isSelected = selectedDeptId === dept.deptId;
   const directChildren = dept.children?.length || 0;
   const childDepartments = countDeptChildren(dept);
+  const directUsers = deptUserCounts.get(dept.deptId) || 0;
+  const subtreeUsers = countUsersInSubtree(dept, deptUserCounts);
 
   return (
     <div className="select-none relative">
@@ -383,12 +444,12 @@ const DeptNode: React.FC<{
             {/* 竖向虚线连接线 */}
             <span
               className="pointer-events-none absolute top-0 bottom-0 border-l border-dashed border-slate-200/80 dark:border-slate-800/60"
-              style={{ left: `${(level - 1) * 18 + 20}px`, width: '1px' }}
+              style={{ left: `${getIndentPx(level - 1, 20)}px`, width: '1px' }}
             />
             {/* 横向折肘虚线 */}
             <span
               className="pointer-events-none absolute top-[18px] border-t border-dashed border-slate-200/80 dark:border-slate-800/60"
-              style={{ left: `${(level - 1) * 18 + 20}px`, width: '10px', height: '1px' }}
+              style={{ left: `${getIndentPx(level - 1, 20)}px`, width: '10px', height: '1px' }}
             />
           </>
         ) : null}
@@ -400,7 +461,7 @@ const DeptNode: React.FC<{
               ? 'border-[#b8e7f1] bg-[#effbfe] text-[#0b7894] shadow-none dark:border-[#0d95b5]/40 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]'
               : 'text-cf-muted hover:bg-[var(--cf-surface-muted)] hover:text-cf-title dark:hover:border-slate-800/50 dark:hover:bg-slate-900/40',
           )}
-          style={{ paddingLeft: `${level * 18 + 8}px` }}
+          style={{ paddingLeft: `${getIndentPx(level, 8)}px` }}
         >
           <button
             type="button"
@@ -435,6 +496,22 @@ const DeptNode: React.FC<{
             </span>
 
             <span className="truncate text-xs font-semibold">{dept.deptName}</span>
+            {level > TREE_INDENT_MAX_LEVEL ? (
+              <span
+                className="shrink-0 rounded bg-slate-100 px-1 text-[9px] font-bold leading-4 text-cf-faint dark:bg-slate-800"
+                title={`第 ${level + 1} 层`}
+              >
+                L{level + 1}
+              </span>
+            ) : null}
+            {subtreeUsers > 0 ? (
+              <span
+                className="ml-auto shrink-0 text-[10px] font-semibold tabular-nums text-cf-subtle"
+                title={`直属成员 ${directUsers} 人，含子部门 ${subtreeUsers} 人`}
+              >
+                {directUsers === subtreeUsers ? `${directUsers}` : `${directUsers}/${subtreeUsers}`}
+              </span>
+            ) : null}
           </button>
 
           <div
@@ -491,6 +568,7 @@ const DeptNode: React.FC<{
               onToggle={onToggle}
               onAddChild={onAddChild}
               onEdit={onEdit}
+              deptUserCounts={deptUserCounts}
             />
           ))}
         </div>
@@ -510,8 +588,31 @@ const DeptFormDialog: React.FC<{
   editing: DeptItem | null;
   deptTree: DeptItem[];
   defaultParentId?: number;
-}> = ({ open, onClose, onSubmit, editing, deptTree, defaultParentId = 0 }) => {
+  saving: boolean;
+}> = ({ open, onClose, onSubmit, editing, deptTree, defaultParentId = 0, saving }) => {
+  const { hasPermission } = useAuth();
+  const canSelectCalendar = hasPermission('system:holiday:list');
   const [form, setForm] = useState<DeptFormState>(createDeptForm(defaultParentId));
+  const [calendars, setCalendars] = useState<HolidayCalendar[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [calendarReload, setCalendarReload] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setCalendars([]);
+    setCalendarError(null);
+    if (!open || !canSelectCalendar) {
+      setCalendarLoading(false);
+      return;
+    }
+    setCalendarLoading(true);
+    void getAllHolidayCalendars()
+      .then((rows) => { if (active) setCalendars(rows); })
+      .catch((error) => { if (active) setCalendarError(getErrorMessage(error, '日历加载失败')); })
+      .finally(() => { if (active) setCalendarLoading(false); });
+    return () => { active = false; };
+  }, [open, canSelectCalendar, calendarReload]);
 
   useEffect(() => {
     if (!open) return;
@@ -526,6 +627,8 @@ const DeptFormDialog: React.FC<{
         phone: editing.phone || '',
         email: editing.email || '',
         status: editing.status || '0',
+        holidayCalendarId: editing.holidayCalendarId ?? null,
+        version: editing.version,
       });
       return;
     }
@@ -533,19 +636,29 @@ const DeptFormDialog: React.FC<{
     setForm(createDeptForm(defaultParentId));
   }, [defaultParentId, editing, open]);
 
+  const availableCalendars = calendars.filter((calendar) => calendar.status === 'ENABLED' && calendar.calendarId != null);
+  const selectedCalendar = calendars.find((calendar) => String(calendar.calendarId) === String(form.holidayCalendarId));
+  const keepUnavailableCalendar = form.holidayCalendarId != null
+    && !availableCalendars.some((calendar) => String(calendar.calendarId) === String(form.holidayCalendarId));
+
   return (
     <BaseDialog
       open={open}
-      onClose={onClose}
+      onClose={() => { if (!saving) onClose(); }}
+      closeOnEscape={!saving}
+      hideCloseButton={saving}
       title={editing ? '编辑部门' : '新增部门'}
       maxWidthClassName="max-w-3xl"
       footer={
         <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" className="!min-h-[44px]" onClick={onClose} disabled={saving}>
             取消
           </Button>
           <Button
+            className="!min-h-[44px]"
+            disabled={saving}
             onClick={() => {
+              if (saving) return;
               if (!form.deptName.trim()) {
                 toast.error('请输入部门名称');
                 return;
@@ -560,12 +673,12 @@ const DeptFormDialog: React.FC<{
               });
             }}
           >
-            {editing ? '保存' : '创建'}
+            {saving ? '保存中…' : editing ? '保存' : '创建'}
           </Button>
         </div>
       }
     >
-      <div className="grid gap-4 md:grid-cols-2">
+      <fieldset disabled={saving} className="grid gap-4 md:grid-cols-2">
         <div>
           <label className={fieldLabelClassName}>上级部门</label>
           <DepartmentSelect
@@ -613,6 +726,59 @@ const DeptFormDialog: React.FC<{
             </SelectContent>
           </Select>
         </div>
+        <div className="md:col-span-2">
+          <label htmlFor="department-holiday-calendar" className={fieldLabelClassName}>节假日日历</label>
+          <Select
+            value={form.holidayCalendarId == null ? 'INHERIT' : String(form.holidayCalendarId)}
+            disabled={saving || calendarLoading || !canSelectCalendar || Boolean(calendarError)}
+            onValueChange={(value) => setForm((previous) => ({
+              ...previous,
+              holidayCalendarId: value === 'INHERIT' ? null : Number(value),
+            }))}
+            searchPlaceholder="搜索日历名称"
+          >
+            <SelectTrigger
+              id="department-holiday-calendar"
+              aria-label="节假日日历"
+              aria-describedby="department-holiday-help"
+              aria-busy={calendarLoading}
+              className="!min-h-[44px] rounded-md transition-colors !duration-150 motion-reduce:!transition-none motion-reduce:!duration-0"
+            >
+              <SelectValue placeholder="继承租户默认日历" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="INHERIT">继承租户默认日历</SelectItem>
+              {availableCalendars.map((calendar) => (
+                <SelectItem key={calendar.calendarId} value={String(calendar.calendarId)}>
+                  {calendar.calendarName}{Number(calendar.defaultFlag) === 1 ? '（租户默认）' : ''}
+                </SelectItem>
+              ))}
+              {keepUnavailableCalendar ? (
+                <SelectItem value={String(form.holidayCalendarId)} disabled>
+                  {selectedCalendar?.calendarName || `当前日历 #${form.holidayCalendarId}`}（保留原配置）
+                </SelectItem>
+              ) : null}
+            </SelectContent>
+          </Select>
+          <p id="department-holiday-help" className="mt-2 text-xs leading-5 text-cf-subtle" role={calendarError ? 'alert' : undefined}>
+            {!canSelectCalendar
+              ? '当前账号没有日历列表权限，原日历配置保持不变。'
+              : calendarLoading
+                ? '正在加载可用日历，原日历配置保持不变。'
+                : calendarError
+                  ? `${calendarError}，原日历配置保持不变。`
+                  : '员工有班次日历时优先使用班次日历；否则使用此设置，选择继承则使用租户默认日历。'}
+          </p>
+          {calendarError && canSelectCalendar ? (
+            <Button type="button" variant="ghost" className="mt-1 !min-h-[44px]" disabled={saving} onClick={() => setCalendarReload((previous) => previous + 1)}>
+              重新加载日历
+            </Button>
+          ) : null}
+          {canSelectCalendar && !calendarLoading && !calendarError
+            && !availableCalendars.some((calendar) => Number(calendar.defaultFlag) === 1) ? (
+              <p className="mt-2 text-xs leading-5 text-cf-subtle">尚无启用的租户默认日历，选择继承后将无法按默认日历计算工作日。</p>
+            ) : null}
+        </div>
         <div>
           <label className={fieldLabelClassName}>负责人</label>
           <Input
@@ -637,7 +803,7 @@ const DeptFormDialog: React.FC<{
             placeholder="联系邮箱"
           />
         </div>
-      </div>
+      </fieldset>
     </BaseDialog>
   );
 };
@@ -918,6 +1084,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
   const [userPage, setUserPage] = useState(1);
   const [userPageSize, setUserPageSize] = useState(() => getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10));
   const [deptFormOpen, setDeptFormOpen] = useState(false);
+  const [deptSaving, setDeptSaving] = useState(false);
   const [editingDept, setEditingDept] = useState<DeptItem | null>(null);
   const [defaultParentId, setDefaultParentId] = useState(0);
   const [detailUser, setDetailUser] = useState<UserItem | null>(null);
@@ -928,7 +1095,6 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
 
   const selectedDept = useMemo(() => findDeptById(deptTree, selectedDeptId), [deptTree, selectedDeptId]);
   const filteredDeptTree = useMemo(() => filterDeptTree(deptTree, deptSearch), [deptTree, deptSearch]);
-  const forceExpandDeptTree = Boolean(deptSearch.trim());
   const filteredUsers = useMemo(
     () =>
       users.filter((user) => {
@@ -958,6 +1124,14 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
     [deptTree],
   );
   const activeUsers = useMemo(() => users.filter((user) => user.status === '0').length, [users]);
+  const deptUserCounts = useMemo(() => buildDeptUserCounts(users), [users]);
+  const deptSearchResults = useMemo(() => {
+    const keyword = deptSearch.trim().toLowerCase();
+    if (!keyword) {
+      return [];
+    }
+    return collectDeptMatches(deptTree, keyword);
+  }, [deptTree, deptSearch]);
 
   const fetchDepts = useCallback(async () => {
     setDeptLoading(true);
@@ -1043,20 +1217,21 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
   ]);
 
   const handleDeptSubmit = async (data: DeptFormState) => {
+    if (deptSaving) return;
+    setDeptSaving(true);
     try {
-      if (data.deptId) {
-        await updateDept(data as any);
-        toast.success('部门更新成功');
-      } else {
-        await addDept(data as any);
-        toast.success('部门创建成功');
+      const saved = data.deptId ? await updateDept(data) : await addDept(data);
+      if (saved !== true) {
+        throw new Error('部门未保存成功，请刷新后重试');
       }
-
+      toast.success(data.deptId ? '部门更新成功' : '部门创建成功');
       setDeptFormOpen(false);
       setEditingDept(null);
       await fetchDepts();
-    } catch (error: any) {
-      toast.error(error?.message || '部门保存失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '部门保存失败'));
+    } finally {
+      setDeptSaving(false);
     }
   };
 
@@ -1217,8 +1392,45 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                   <InlineState title="正在构筑部门模型..." loading className="py-12 scale-90" />
                 ) : deptError ? (
                   <InlineState icon={<Building2 className="h-5 w-5" />} title="模型加载失败" description={deptError} className="py-12 scale-90" />
+                ) : deptSearch.trim() ? (
+                  deptSearchResults.length === 0 ? (
+                    <InlineState icon={<Building2 className="h-5 w-5" />} title="无匹配项" description="请尝试其他关键词。" className="py-12 scale-90" />
+                  ) : (
+                    <div className="space-y-0.5">
+                      {deptSearchResults.map(({ dept, path }) => {
+                        const isSelected = selectedDeptId === dept.deptId;
+                        const direct = deptUserCounts.get(dept.deptId) || 0;
+                        return (
+                          <button
+                            key={dept.deptId}
+                            type="button"
+                            onClick={() => setSelectedDeptId((prev) => (prev === dept.deptId ? null : dept.deptId))}
+                            className={cn(
+                              'flex w-full items-center gap-2 border border-transparent px-2 py-1.5 text-left transition-all duration-300',
+                              isSelected
+                                ? 'border-[#b8e7f1] bg-[#effbfe] text-[#0b7894] dark:border-[#0d95b5]/40 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]'
+                                : 'text-cf-muted hover:bg-[var(--cf-surface-muted)] hover:text-cf-title',
+                            )}
+                          >
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-faint dark:border-slate-800 dark:bg-slate-900/50">
+                              <Building2 size={13} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-xs font-semibold">{dept.deptName}</span>
+                              {path.length > 0 ? (
+                                <span className="block truncate text-[10px] font-medium text-cf-subtle">{path.join(' / ')}</span>
+                              ) : null}
+                            </span>
+                            {direct > 0 ? (
+                              <span className="shrink-0 text-[10px] font-semibold tabular-nums text-cf-subtle">{direct}</span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )
                 ) : filteredDeptTree.length === 0 ? (
-                  <InlineState icon={<Building2 className="h-5 w-5" />} title="无匹配项" description={deptSearch ? '请尝试其他关键词。' : '暂无组织数据。'} className="py-12 scale-90" />
+                  <InlineState icon={<Building2 className="h-5 w-5" />} title="无匹配项" description="暂无组织数据。" className="py-12 scale-90" />
                 ) : (
                   <div className="space-y-0.5">
                     {filteredDeptTree.map((dept) => (
@@ -1227,11 +1439,11 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                         dept={dept}
                         selectedDeptId={selectedDeptId}
                         expandedDeptIds={expandedDeptIds}
-                        forceExpanded={forceExpandDeptTree}
                         onSelect={(item) => setSelectedDeptId((prev) => (prev === item.deptId ? null : item.deptId))}
                         onToggle={toggleDeptExpand}
                         onAddChild={(item) => openCreateDeptDialog(item.deptId)}
                         onEdit={openEditDeptDialog}
+                        deptUserCounts={deptUserCounts}
                       />
                     ))}
                   </div>
@@ -1440,6 +1652,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
         editing={editingDept}
         deptTree={deptTree}
         defaultParentId={defaultParentId}
+        saving={deptSaving}
       />
 
       <UserDetailDialog

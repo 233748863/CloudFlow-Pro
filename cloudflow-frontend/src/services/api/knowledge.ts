@@ -1,5 +1,6 @@
 import request from './request';
 import type { PageResult } from '@/types';
+import type { PortalKnowledge } from '@/services/portal';
 
 export type KnowledgeStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED';
 export type KnowledgeScopeType = 'ALL' | 'DEPT' | 'ROLE';
@@ -26,6 +27,9 @@ export interface KnowledgeDocument {
   updateTime?: string;
   isRead?: boolean;
   readCount?: number;
+  version?: number;
+  externalVisibleFlag?: number;
+  externalVersionId?: number;
 }
 
 export interface KnowledgeReadRecord {
@@ -90,7 +94,23 @@ export interface KnowledgeVersionDiffResult {
   contentDiff: KnowledgeVersionDiffLine[];
 }
 
+export interface KnowledgeExternalState {
+  documentId: number;
+  version: number;
+  status: KnowledgeStatus;
+  externalVisible: boolean;
+  externalVersionId?: number;
+  externalAttachmentFileIds: number[];
+  attachmentCandidates: PortalKnowledge['attachments'];
+  versions?: { id: number; versionNo: number; title: string; publishTime: string }[];
+  preview?: PortalKnowledge;
+  attachmentUnavailableReason?: string;
+}
+
 export const knowledgeApi = {
+  externalPreview: (id: number, versionId?: number) => request.get(`/oa/knowledge/${id}/external-preview`, { params: { versionId } }) as Promise<KnowledgeExternalState>,
+  externalPublish: (id: number, data: { version: number; versionId: number; attachmentFileIds: number[] }) => request.post(`/oa/knowledge/${id}/external-publish`, data) as Promise<KnowledgeExternalState>,
+  externalWithdraw: (id: number, version: number) => request.post(`/oa/knowledge/${id}/external-withdraw`, { version }) as Promise<KnowledgeExternalState>,
   myList: (params?: KnowledgeQuery) =>
     request.get('/oa/knowledge/my-list', { params }) as Promise<KnowledgeDocument[]>,
   mySubmissions: (params?: KnowledgeQuery) =>

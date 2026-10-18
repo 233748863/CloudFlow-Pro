@@ -65,6 +65,29 @@ const WORKFLOW_MENU_ROUTE_FIXES_BY_PATH: Record<string, Partial<MenuRouteLike>> 
   },
 };
 
+/**
+ * 把后端菜单的 path 归一成以 / 开头的绝对路径，并剥掉内联 query。
+ *
+ * sys_menu 里存的 path 有两种写法：大部分带前导斜杠（/system/user），
+ * 少数不带（message/channel、job/log、codegen 等）。而 location.pathname
+ * 永远带斜杠，直接拿去比就永远匹配不上——侧栏因此认不出当前路由，
+ * 刷新后父级不展开、面包屑掉回默认的「工作台 / 仪表盘」。
+ *
+ * 路由渲染侧本来就各自补过斜杠，所以页面能正常打开，只有侧栏没补。
+ * 这里收成一个函数，两边都用，避免再次跑偏。
+ */
+export const normalizeMenuRoutePath = (path?: string) => {
+  const trimmed = (path || '').trim();
+  if (!trimmed) {
+    return '';
+  }
+  const [purePath] = trimmed.split('?');
+  if (!purePath) {
+    return '';
+  }
+  return purePath.startsWith('/') ? purePath : `/${purePath}`;
+};
+
 export const applyKnownMenuRouteFix = <T extends MenuRouteLike>(item: T): T => {
   const menuId = Number(item.menuId);
   const path = item.path?.split('?')[0];

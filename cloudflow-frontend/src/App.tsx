@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TooltipLayer } from './components/common/Tooltip';
 import { NavigationProgress } from './components/common/NavigationProgress';
+import { PwaUpdatePrompt } from './components/common/PwaUpdatePrompt';
 import { CustomTitleBar } from './components/layout/CustomTitleBar';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -25,14 +26,15 @@ setNavigator((to, opts) => {
 });
 
 function AppInner() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const canReadLookups = hasPermission('system:lookup:read');
 
   useEffect(() => {
     restoreUnlockedBodyScroll();
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !canReadLookups) {
       return;
     }
 
@@ -71,7 +73,7 @@ function AppInner() {
         staleTime: 10 * 60 * 1000, // 10 分钟
       });
     });
-  }, [user]);
+  }, [user, canReadLookups]);
 
   useEffect(() => {
     subscribeWsTopic('workflow.task.completed', (payload: any) => {
@@ -109,6 +111,7 @@ function App() {
           <AuthProvider>
             {appInner}
             <Toaster />
+            <PwaUpdatePrompt />
             {/* 全局提示层：接管所有 data-tooltip 元素，替代原生 title */}
             <TooltipLayer />
           </AuthProvider>

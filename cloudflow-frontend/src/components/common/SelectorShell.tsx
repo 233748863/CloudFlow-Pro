@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import { Search, X, Check } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { BaseDialog } from './BaseDialog';
+import { Button } from './button';
 
 export interface SelectorShellOption {
   id: string;
@@ -12,12 +15,14 @@ export interface SelectorShellOption {
   disabled?: boolean;
 }
 
-export interface SelectorShellProps {
+export interface SelectorShellProps extends React.AriaAttributes {
+  id?: string;
   options: SelectorShellOption[];
   loading?: boolean;
   value: string[];
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
+  onOpen?: () => void;
   multiple?: boolean;
   placeholder?: string;
   searchPlaceholder?: string;
@@ -51,6 +56,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
   value,
   onToggle,
   onRemove,
+  onOpen,
   multiple = true,
   placeholder = '请选择',
   searchPlaceholder = '搜索...',
@@ -61,36 +67,50 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
   dropdownPlacement = 'bottom',
   filter = defaultFilter,
   showAvatar = true,
+  id,
+  ...accessibility
 }) => {
+  const isMobile = useBreakpoint() === 'mobile';
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [positioned, setPositioned] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0, maxHeight: 280, dropUp: false });
 
   const updateDropdownPos = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    if (dropdownPlacement === 'top') {
-      setDropdownPos({ top: rect.top, left: rect.left, width: rect.width });
-    } else {
-      setDropdownPos({ top: rect.bottom, left: rect.left, width: rect.width });
-    }
+    const viewportPadding = 12;
+    const gap = 6;
+    const spaceAbove = Math.max(0, rect.top - viewportPadding - gap);
+    const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - viewportPadding - gap);
+    const preferredSpace = dropdownPlacement === 'top' ? spaceAbove : spaceBelow;
+    const otherSpace = dropdownPlacement === 'top' ? spaceBelow : spaceAbove;
+    const flip = preferredSpace < 280 && otherSpace > preferredSpace;
+    const dropUp = dropdownPlacement === 'top' ? !flip : flip;
+    const width = Math.min(rect.width, Math.max(0, window.innerWidth - viewportPadding * 2));
+    setDropdownPos({
+      top: dropUp ? rect.top - gap : rect.bottom + gap,
+      left: Math.max(viewportPadding, Math.min(rect.left, window.innerWidth - viewportPadding - width)),
+      width,
+      maxHeight: Math.min(280, dropUp ? spaceAbove : spaceBelow),
+      dropUp,
+    });
     setPositioned(true);
   }, [dropdownPlacement]);
 
   // 先于绘制测量位置，避免下拉在左上角闪现后再归位
   useLayoutEffect(() => {
-    if (isOpen) updateDropdownPos();
+    if (isOpen && !isMobile) updateDropdownPos();
     else setPositioned(false);
-  }, [isOpen, updateDropdownPos]);
+  }, [isOpen, isMobile, updateDropdownPos]);
 
   useEffect(() => {
     if (isOpen) {
       const t = setTimeout(() => inputRef.current?.focus(), 0);
-      const onScroll = () => updateDropdownPos();
-      const onResize = () => updateDropdownPos();
+      const onScroll = () => { if (!isMobile) updateDropdownPos(); };
+      const onResize = () => { if (!isMobile) updateDropdownPos(); };
       window.addEventListener('scroll', onScroll, true);
       window.addEventListener('resize', onResize);
       return () => {
@@ -101,7 +121,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
     }
     setSearchTerm('');
     return undefined;
-  }, [isOpen, updateDropdownPos]);
+  }, [isOpen, isMobile, updateDropdownPos]);
 
   const selectedOptions = useMemo(
     () => value.map((id) => options.find((o) => o.id === id)).filter(Boolean) as SelectorShellOption[],
@@ -118,6 +138,12 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
     if (!multiple) setIsOpen(false);
   };
 
+  const toggleOpen = () => {
+    if (disabled) return;
+    if (!isOpen) onOpen?.();
+    setIsOpen(!isOpen);
+  };
+
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     value.forEach((id) => onRemove(id));
@@ -132,12 +158,60 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
     );
   };
 
+  const dropdownContent = (
+    <>
+      <div className="shrink-0 border-b border-slate-200 p-2 dark:border-slate-800">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-cf-faint" size={16} />
+          <input ref={inputRef} data-autofocus type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={searchPlaceholder} aria-label={searchPlaceholder} className="cf-control cf-mobile-touch h-10 w-full rounded-md pr-3 text-sm" style={{ paddingLeft: '2.25rem' }} />
+        </div>
+      </div>
+      <div role="listbox" aria-label={placeholder} aria-multiselectable={multiple} className="min-h-0 flex-1 overflow-y-auto overscroll-contain" onKeyDown={(event) => {
+        if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+        const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])'));
+        if (!buttons.length) return;
+        event.preventDefault();
+        const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+        buttons[next]?.focus();
+      }}>
+        {loading ? <div className="p-4 text-center text-sm text-cf-subtle">加载中...</div> : filteredOptions.length === 0 ? <div className="p-4 text-center text-sm text-cf-subtle">{emptyText}</div> : filteredOptions.map((option) => {
+          const selected = value.includes(option.id);
+          return (
+            <button key={option.id} type="button" role="option" aria-selected={selected} disabled={option.disabled} onClick={() => handleToggle(option.id)} className={cn('cf-mobile-touch flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition-colors', option.disabled ? 'cursor-not-allowed text-slate-300 dark:text-slate-600' : selected ? 'cf-option-active' : 'hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900')}>
+              <div className="flex min-w-0 items-center gap-2" style={option.indent ? { paddingLeft: option.indent * 14 } : undefined}>
+                {renderAvatar(option)}
+                <div className="min-w-0"><div className="truncate text-sm font-medium text-cf-title">{option.label}</div>{option.subLabel ? <div className="truncate text-xs text-cf-subtle">{option.subLabel}</div> : null}</div>
+              </div>
+              {selected ? <Check className="shrink-0 text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]" size={16} /> : null}
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+
   return (
     <div ref={triggerRef} className={cn('relative min-w-0 w-full max-w-full', className)}>
       <div
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        id={id}
+        {...accessibility}
+        onClick={toggleOpen}
+        role="combobox"
+        tabIndex={disabled ? -1 : 0}
+        aria-label={placeholder}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-disabled={disabled}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget || disabled) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleOpen();
+          }
+        }}
         className={cn(
-          'cf-control flex w-full max-w-full items-center overflow-hidden rounded-md px-3 py-1.5 text-[13px]',
+          'cf-control cf-mobile-touch flex w-full max-w-full items-center overflow-hidden rounded-md px-3 py-1.5 text-[13px]',
           multiple ? 'min-h-9' : 'h-9 min-h-9',
           disabled ? 'cursor-not-allowed bg-[var(--cf-surface-muted)] dark:bg-slate-900' : 'cursor-pointer',
           isOpen && 'cf-control-active',
@@ -160,7 +234,8 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
                       e.stopPropagation();
                       onRemove(opt.id);
                     }}
-                    className="rounded-md p-0.5 transition hover:bg-slate-200 dark:hover:bg-slate-800"
+                    aria-label={`移除${opt.label}`}
+                    className="cf-mobile-touch rounded-md p-0.5 transition hover:bg-slate-200 dark:hover:bg-slate-800"
                   >
                     <X size={12} />
                   </button>
@@ -180,7 +255,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
               <button
                 type="button"
                 onClick={handleClear}
-                className="rounded-md p-0.5 text-cf-faint transition hover:bg-slate-200 hover:text-cf-body dark:hover:bg-slate-800"
+                className="cf-mobile-touch rounded-md p-0.5 text-cf-faint transition hover:bg-slate-200 hover:text-cf-body dark:hover:bg-slate-800"
                 aria-label="清空"
               >
                 <X size={14} />
@@ -190,82 +265,41 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
         )}
       </div>
 
-      {isOpen && !disabled && positioned && createPortal(
+      {isMobile ? (
+        <BaseDialog open={isOpen && !disabled} title={placeholder} description={multiple ? `已选择 ${value.length} 项` : undefined} onClose={() => setIsOpen(false)} bodyClassName="!p-0 !overflow-hidden flex flex-col" zIndex={160} footer={multiple ? <Button type="button" onClick={() => setIsOpen(false)}>完成选择</Button> : undefined}>
+          {dropdownContent}
+        </BaseDialog>
+      ) : isOpen && !disabled && positioned && createPortal(
         <>
           <div
-            className="fixed inset-0 z-[79]"
+            className="fixed inset-0 z-[159]"
             onClick={() => setIsOpen(false)}
           />
           <div
+            role="dialog"
+            aria-label={placeholder}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setIsOpen(false);
+                triggerRef.current?.querySelector<HTMLElement>('[role="combobox"]')?.focus();
+              }
+            }}
             className={cn(
-              'cf-floating-panel fixed z-[80] overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950',
+              // 与通用 Select 浮层保持同级，确保覆盖工作流节点设置面板（100）。
+              'cf-floating-panel fixed z-[160] flex flex-col overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950',
             )}
             style={{
-              top: dropdownPlacement === 'top' ? dropdownPos.top - 6 : dropdownPos.top + 6,
+              top: dropdownPos.top,
               left: dropdownPos.left,
               width: dropdownPos.width,
-              transform: dropdownPlacement === 'top' ? 'translateY(-100%)' : undefined,
+              maxHeight: dropdownPos.maxHeight,
+              transform: dropdownPos.dropUp ? 'translateY(-100%)' : undefined,
               // 显式阴影：本项目 Tailwind shadow-* 不生效，浮层一律用 CSS box-shadow（与 .select-dropdown-portal 一致）
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
             }}
           >
-          <div className="border-b border-slate-200 p-2 dark:border-slate-800">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-cf-faint" size={16} />
-              <input
-                ref={inputRef}
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={searchPlaceholder}
-                className="cf-control h-10 w-full rounded-md pr-3 text-sm"
-                style={{ paddingLeft: '2.25rem' }}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          </div>
-
-          <div className="max-h-56 overflow-y-auto">
-            {loading ? (
-              <div className="p-4 text-center text-sm text-cf-subtle">加载中...</div>
-            ) : filteredOptions.length === 0 ? (
-              <div className="p-4 text-center text-sm text-cf-subtle">{emptyText}</div>
-            ) : (
-              filteredOptions.map((opt) => {
-                const isSelected = value.includes(opt.id);
-                return (
-                  <div
-                    key={opt.id}
-                    onClick={() => !opt.disabled && handleToggle(opt.id)}
-                    className={cn(
-                      'flex items-center justify-between gap-2 px-3 py-2 transition-colors',
-                      opt.disabled
-                        ? 'cursor-not-allowed text-slate-300 dark:text-slate-600'
-                        : isSelected
-                          ? 'cf-option-active cursor-pointer'
-                          : 'cursor-pointer hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900',
-                    )}
-                  >
-                    <div
-                      className="flex min-w-0 items-center gap-2"
-                      style={opt.indent ? { paddingLeft: opt.indent * 14 } : undefined}
-                    >
-                      {renderAvatar(opt)}
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-cf-title">{opt.label}</div>
-                        {opt.subLabel && (
-                          <div className="truncate text-xs text-cf-subtle">{opt.subLabel}</div>
-                        )}
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <Check className="shrink-0 text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]" size={16} />
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
+          {dropdownContent}
         </div>
         </>,
         document.body,

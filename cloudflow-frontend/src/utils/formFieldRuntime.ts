@@ -53,6 +53,17 @@ export const getFieldDisplayValue = (
   return rawValue;
 };
 
+export const formatFormReadOnlyDate = (value: unknown): string => {
+  if (value === null || value === undefined || value === '') return '';
+  // A date-only form value is a calendar day, so formatting must not shift it through UTC.
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value.replaceAll('-', '/');
+  if (typeof value === 'string' || typeof value === 'number' || value instanceof Date) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isNaN(date.getTime())) return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  }
+  return String(value);
+};
+
 export const supportsMasterDataSelect = (field: FormField) =>
   field.type === 'EMPLOYEE' ||
   field.type === 'DEPT' ||

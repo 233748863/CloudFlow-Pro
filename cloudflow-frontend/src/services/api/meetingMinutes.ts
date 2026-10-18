@@ -16,6 +16,7 @@ export interface OaMeetingDecision {
 
 export interface OaMeetingMinutes {
   id?: number;
+  version?: number;
   tenantId?: number;
   meetingId?: number;
   meetingTitle: string;
@@ -41,6 +42,9 @@ export interface OaMeetingAttendance {
   tenantId?: number;
   minutesId?: number;
   meetingId?: number;
+  scheduleEventId?: number;
+  acceptanceStatus?: 'NONE' | 'ACCEPTED' | 'DECLINED' | 'TENTATIVE';
+  invitationVersion?: number;
   userId?: number;
   userName?: string;
   attendStatus: MeetingAttendStatus;

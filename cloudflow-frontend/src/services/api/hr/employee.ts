@@ -35,14 +35,14 @@ export const listEmployees = async (params?: HrPageQuery) => {
 };
 
 /**
- * 选择器专用：拉取员工精简列表（默认按后端单页上限拉一页）
+ * 选择器专用：默认分批读取全部有权查看的员工，再提取展示字段
  * 仅返回 id/name/employeeNo/dept/post/position/status 等用于展示与筛选的字段
  */
 export const listEmployeesForSelect = async (
   params?: { onlyActive?: boolean } & HrPageQuery,
 ): Promise<EmployeeBrief[]> => {
   const { onlyActive = true, ...rest } = params || {};
-  const arr = await listEmployees({ pageNum: 1, pageSize: 500, ...rest });
+  const arr = await listEmployees(rest);
   return arr
     .filter((e) => !onlyActive || (e.employeeStatus ?? '') !== 'RESIGNED')
     .map((e) => ({
@@ -62,8 +62,8 @@ export const listEmployeesForSelect = async (
 export const getCurrentHrEmployee = () =>
   request.get<HrEmployee>('/hr/employees/current');
 
-export const getEmployeeDetail = (id: number) =>
-  request.get<HrEmployee>(`/hr/employees/${id}`);
+export const getEmployeeDetail = (id: number, signal?: AbortSignal) =>
+  request.get<HrEmployee>(`/hr/employees/${id}`, { signal });
 
 export const createEmployee = (data: HrEmployeePayload) =>
   request.post<number>('/hr/employees', data);

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeftCircle,
@@ -6,8 +6,6 @@ import {
   ChevronRight,
   Clock3,
   CornerUpLeft,
-  Download,
-  ExternalLink,
   FileText,
   GitBranch,
   GitMerge,
@@ -18,18 +16,31 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common';
-import { Button, LoadingSpinner, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
+import { Button, LoadingSpinner, SegmentedControl, SegmentedControlItem, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { formatDateTimeDisplay as formatDateTime } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { getAttachmentDisplayName, isAttachmentImage, normalizeAttachmentUrl } from '@/utils/attachment';
-import { FormRenderer } from './FormRenderer';
+import { AttachmentLinks } from '@/components/AttachmentLinks';
+import { getWorkflowBusinessAttachments } from '@/utils/workflowBusinessAttachments';
+import { FormRenderer, type FormRendererHandle } from './FormRenderer';
+import { useWorkflowFormAttachments } from '@/hooks/useWorkflowFormAttachments';
+import { WorkflowTaskReferenceField } from '@/components/workflow/WorkflowTaskReferenceField';
 import { ProcessTrace } from './ProcessTrace';
 import { SignatureModal } from './SignatureModal';
 import { getUserList } from '../services/api/auth';
-import { completeTask, getProcessTrace, readTask, rejectTask } from '../services/api/workflow';
+import { completeTask, getFlowchartData, getProcessTrace, getProcessInstance, readTask, rejectTask } from '../services/api/workflow';
+import { mapBackendFormDefinition } from '@/utils/formDefinition';
+import { getFormFieldErrors } from '@/utils/formFieldErrors';
+import { getRefundApprovalFields, getRefundApproverDescription } from '@/utils/workflowRefundDisplay';
+import { hrAdvanceApi } from '@/services/api/hr/advances';
+import { finalSettlementApi, type FinalSettlement } from '@/services/api/hr/finalSettlements';
+import type { AdvanceApprovalDetail } from '@/services/api/hr/advanceTypes';
+import { getWorkflowUpstreamNodes } from '@/utils/workflowGraph';
+import { allowsNodeOperation, allowsRejection, canHandleWorkflowTask, getTaskAgentMode } from '@/utils/workflowPermissions';
+import { WorkflowAgentActions } from './workflow/WorkflowAgentActions';
+import { REJECT_STRATEGY_LABELS, type RejectStrategy, type FieldPermission } from '@/types/workflowSemantic';
 import { mapBackendUserToFrontend } from '../utils/mappers';
-import { FormDefinition, Role, StepDetail, Task, TaskStatus, User } from '../types';
+import { FormDefinition, StepDetail, Task, TaskStatus, User } from '../types';
 import {
   formatWorkflowFieldValue,
   getWorkflowFieldLabel,
@@ -170,24 +181,6 @@ const TaskEmptyBlock = ({
     ) : null}
   </div>
 );
-
-const extractAttachmentFiles = (formData?: Record<string, any>) => {
-  const attachmentUrl = formData?.attachmentUrl;
-  if (!attachmentUrl || typeof attachmentUrl !== 'string' || !attachmentUrl.trim()) {
-    return [];
-  }
-
-  return attachmentUrl
-    .split(',')
-    .filter(Boolean)
-    .map((url) => {
-      const trimmed = url.trim();
-      const normalizedUrl = normalizeAttachmentUrl(trimmed);
-      const name = getAttachmentDisplayName(trimmed);
-      const isImg = isAttachmentImage(trimmed);
-      return { url: normalizedUrl, name, isImg };
-    });
-};
 
 const renderStepNode = (step: StepDetail, index: number, total: number) => {
   const isCompleted = step.status === 'completed';
@@ -364,6 +357,16 @@ export const TaskHandleModal = ({
   const [activeTab, setActiveTab] = useState<ModalTab>('handle');
   const [comment, setComment] = useState('');
   const [editedFormData, setEditedFormData] = useState<Record<string, any>>({});
+  const formRenderer = useRef<FormRendererHandle>(null);
+  const formOwner = `${currentUser.tenantId || ''}:${currentUser.id}`;
+  const isAdvanceTask = task?.formData?.businessType === 'HR_ADVANCE';
+  const isSettlementTask = task?.formData?.businessType === 'HR_SETTLEMENT';
+  const [settlementScope, setSettlementScope] = useState<{ owner: string; taskId: string; detail?: FinalSettlement; error?: string }>();
+  const [advanceScope, setAdvanceScope] = useState<{ owner: string; taskId: string; detail?: AdvanceApprovalDetail; error?: string }>();
+  const [formScope, setFormScope] = useState<{ owner: string; taskId: string; form?: FormDefinition; permissions: FieldPermission[]; nodeKey?: string; businessAttachments?: ReturnType<typeof getWorkflowBusinessAttachments>; error?: string }>();
+  const attachments = useWorkflowFormAttachments(task?.processInstanceId ? { instanceId: task.processInstanceId,
+    taskId: !viewOnly && (task.status === TaskStatus.PENDING || task.status === TaskStatus.DELEGATED) ? task.id : undefined } : undefined);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [delegationMode, setDelegationMode] = useState(false);
   const [delegateUser, setDelegateUser] = useState('');
   const [users, setUsers] = useState<User[]>([]);
@@ -371,18 +374,59 @@ export const TaskHandleModal = ({
   const [submitting, setSubmitting] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [rejectMode, setRejectMode] = useState(false);
+  const [rejectStrategy, setRejectStrategy] = useState<RejectStrategy | '__LEGACY__'>('__LEGACY__');
   const [rejectTargetNode, setRejectTargetNode] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [historyNodes, setHistoryNodes] = useState<Array<{ key: string; name: string }>>([]);
   const [historyNodesLoaded, setHistoryNodesLoaded] = useState(false);
+  const [historyNodesError, setHistoryNodesError] = useState('');
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [signatureMode, setSignatureMode] = useState<'add' | 'reduce'>('add');
 
   useEffect(() => {
-    const isTaskActionable =
-      task?.assigneeId === currentUser.id ||
-      Boolean(task?.assigneeRole && currentUser.role === task.assigneeRole) ||
-      currentUser.role === Role.ADMIN;
+    setSettlementScope(undefined);
+    if (!isOpen || !task || !isSettlementTask) return;
+    const controller = new AbortController();
+    finalSettlementApi.approvalDetail(task.id, controller.signal).then(detail => {
+      if (!controller.signal.aborted) setSettlementScope({ owner: formOwner, taskId: task.id, detail });
+    }).catch(error => {
+      if (!controller.signal.aborted) setSettlementScope({ owner: formOwner, taskId: task.id, error: getErrorMessage(error, '结算详情读取失败') });
+    });
+    return () => controller.abort();
+  }, [isOpen, task?.id, isSettlementTask, formOwner]);
+
+  useEffect(() => {
+    setAdvanceScope(undefined);
+    if (!isOpen || !task || !isAdvanceTask) return;
+    const controller = new AbortController();
+    hrAdvanceApi.approvalDetail(task.id, controller.signal).then(detail => {
+      if (!controller.signal.aborted) setAdvanceScope({ owner: formOwner, taskId: task.id, detail });
+    }).catch(error => {
+      if (!controller.signal.aborted) setAdvanceScope({ owner: formOwner, taskId: task.id, error: getErrorMessage(error, '借款详情读取失败') });
+    });
+    return () => controller.abort();
+  }, [isOpen, task?.id, isAdvanceTask, formOwner]);
+
+  useEffect(() => {
+    if (!isOpen || !task?.processInstanceId) return;
+    let cancelled = false;
+    setFormScope(undefined);
+    setFormErrors({});
+    const taskId = !viewOnly && (task.status === TaskStatus.PENDING || task.status === TaskStatus.DELEGATED) ? task.id : undefined;
+    getProcessInstance(task.processInstanceId, { taskId }).then((instance) => {
+      if (cancelled) return;
+      const values = typeof instance.variables === 'string' ? JSON.parse(instance.variables) : instance.variables || instance.formData || {};
+      const form = instance.formDefinition ? mapBackendFormDefinition(instance.formDefinition) : undefined;
+      setFormScope({ owner: formOwner, taskId: task.id, form, permissions: instance.fieldPermissions || [], nodeKey: instance.formNodeKey, businessAttachments: getWorkflowBusinessAttachments(values) });
+      setEditedFormData(values);
+    }).catch((error) => {
+      if (!cancelled) setFormScope({ owner: formOwner, taskId: task.id, permissions: [], error: getErrorMessage(error, '当前节点表单读取失败') });
+    });
+    return () => { cancelled = true; };
+  }, [isOpen, task?.id, task?.processInstanceId, task?.status, viewOnly, formOwner]);
+
+  useEffect(() => {
+    const isTaskActionable = canHandleWorkflowTask(task, currentUser) || Boolean(getTaskAgentMode(task, currentUser.id));
     const canReadTask =
       isOpen &&
       !viewOnly &&
@@ -411,29 +455,29 @@ export const TaskHandleModal = ({
   }, [delegationMode, hasTriedLoadUsers]);
 
   useEffect(() => {
+    let cancelled = false;
     if (rejectMode && task && task.processInstanceId && !historyNodesLoaded) {
-      getProcessTrace(task.processInstanceId)
-        .then((res) => {
-          if (res?.historyDetails && Array.isArray(res.historyDetails)) {
-            const nodes = res.historyDetails
-              .filter((item: any) => item.nodeKey && item.nodeName)
-              .map((item: any) => ({ key: item.nodeKey, name: item.nodeName }))
-              .filter(
-                (node: { key: string; name: string }, index: number, self: Array<{ key: string; name: string }>) =>
-                  index === self.findIndex((candidate) => candidate.key === node.key),
-              );
-            setHistoryNodes(nodes);
-          } else {
-            setHistoryNodes([]);
-          }
+      setHistoryNodesError('');
+      Promise.all([getProcessTrace(task.processInstanceId), getFlowchartData(task.processInstanceId)])
+        .then(([trace, graph]) => {
+          if (cancelled) return;
+          const currentNodeKey = task.nodeKey || trace.activeDetails?.find((detail) => detail.taskId === task.id)?.nodeKey;
+          const executedNodes = new Set(trace.historyDetails?.map((detail) => detail.nodeKey) ?? []);
+          const nodes = currentNodeKey ? getWorkflowUpstreamNodes(graph, currentNodeKey)
+            .filter((node) => executedNodes.has(node.id))
+            .map((node) => ({ key: node.id, name: node.label })) : [];
+          setHistoryNodes(nodes);
+          setRejectTargetNode((selected) => nodes.some((node) => node.key === selected) ? selected : '');
           setHistoryNodesLoaded(true);
         })
         .catch((error) => {
+          if (cancelled) return;
           console.error('加载历史节点失败:', error);
-          toast.error(getErrorMessage(error, '加载历史节点失败'));
+          setHistoryNodesError(getErrorMessage(error, '加载历史节点失败'));
           setHistoryNodesLoaded(true);
         });
     }
+    return () => { cancelled = true; };
   }, [historyNodesLoaded, rejectMode, task]);
 
   useEffect(() => {
@@ -442,10 +486,12 @@ export const TaskHandleModal = ({
       setDelegationMode(false);
       setDelegateUser('');
       setRejectMode(false);
-      setRejectTargetNode('');
+      setRejectStrategy(task?.rejectStrategy ?? '__LEGACY__');
+      setRejectTargetNode(task?.rejectToNodeKey ?? '');
       setRejectReason('');
       setHistoryNodes([]);
       setHistoryNodesLoaded(false);
+      setHistoryNodesError('');
       setComment('');
       setConfirmAction(null);
       setHasTriedLoadUsers(false);
@@ -458,13 +504,18 @@ export const TaskHandleModal = ({
     return null;
   }
 
-  const isAssignee =
-    task.assigneeId === currentUser.id ||
-    (task.assigneeRole && currentUser.role === task.assigneeRole) ||
-    currentUser.role === Role.ADMIN;
-  const canAct = isAssignee && (task.status === TaskStatus.PENDING || task.status === TaskStatus.DELEGATED);
-  const currentFormDef =
-    task.type === 'DYNAMIC' && task.formId ? availableForms.find((item) => item.id === task.formId) : null;
+  const agentMode = getTaskAgentMode(task, currentUser.id);
+  const canAct = canHandleWorkflowTask(task, currentUser);
+  const scopedForm = formScope?.taskId === task.id && formScope.owner === formOwner ? formScope : undefined;
+  const scopedAdvance = advanceScope?.taskId === task.id && advanceScope.owner === formOwner ? advanceScope : undefined;
+  const advanceDetail = scopedAdvance?.detail;
+  const scopedSettlement = settlementScope?.taskId === task.id && settlementScope.owner === formOwner ? settlementScope : undefined;
+  const settlementDetail = scopedSettlement?.detail;
+  const isRefundTask = task.workflowId === 'crm_refund_review' || task.formData?.businessType === 'crm_refund';
+  const isOfferTask = task.workflowId === 'offer_approval' || task.formData?.businessType === 'OFFER';
+  const refundFields = isRefundTask && scopedForm && !scopedForm.error ? getRefundApprovalFields(editedFormData.refundApproval) : null;
+  const currentFormDef = task.processInstanceId ? scopedForm?.form : task.type === 'DYNAMIC' && task.formId ? availableForms.find((item) => item.id === task.formId) : undefined;
+  const canEditForm = !isSettlementTask && !isAdvanceTask && !isRefundTask && !isOfferTask && canAct && !viewOnly && !scopedForm?.error && (task.allowEdit || Boolean(scopedForm?.permissions.some((permission) => permission.editableFlag)));
   const summaryParts =
     task.formData && Object.keys(task.formData).length > 0
       ? getWorkflowSummaryParts(task.formData as Record<string, any>, 3)
@@ -480,8 +531,21 @@ export const TaskHandleModal = ({
       'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-body dark:border-slate-800 dark:bg-slate-900',
   };
   const showAllButtons = !task.buttonPermissions || task.buttonPermissions.length === 0;
-  const hasBtn = (code: string) => showAllButtons || task.buttonPermissions!.includes(code);
-  const attachmentFiles = extractAttachmentFiles(task.formData as Record<string, any> | undefined);
+  const hasBtn = (code: string) => {
+    if ((isSettlementTask || isAdvanceTask || isRefundTask || isOfferTask) && ['DELEGATE', 'ADD_SIGN', 'REDUCE_SIGN', 'RETURN'].includes(code)) return false;
+    const permissionCode = code === 'REDUCE_SIGN' ? 'ADD_SIGN' : code;
+    if (!showAllButtons && !task.buttonPermissions!.includes(permissionCode)) return false;
+    if (code === 'ADD_SIGN') return allowsNodeOperation(task.nodePermissions, 'allowAddSign');
+    if (code === 'REDUCE_SIGN') return allowsNodeOperation(task.nodePermissions, 'allowReduceSign');
+    if (code === 'DELEGATE') return allowsNodeOperation(task.nodePermissions, 'allowDelegate');
+    if (code === 'RETURN') return allowsNodeOperation(task.nodePermissions, 'allowRollback');
+    if (code === 'REJECT') return allowsRejection(task.nodePermissions, task.rejectStrategy);
+    return true;
+  };
+  const rejectNeedsTarget = rejectStrategy === '__LEGACY__' || rejectStrategy === 'TO_SPECIFIED_NODE';
+  const businessAttachments = task.processInstanceId
+    ? scopedForm && !scopedForm.error ? scopedForm.businessAttachments || {} : {}
+    : getWorkflowBusinessAttachments(task.formData);
   const visibleBusinessEntries = task.formData
     ? Object.entries(task.formData).filter(([key]) =>
         !isWorkflowHiddenField(key, task.formData as Record<string, unknown>),
@@ -498,32 +562,16 @@ export const TaskHandleModal = ({
   const headerDescription = delegationMode
     ? '将当前待办转交给其他处理人，审批轨迹会保留本次转办记录。'
     : rejectMode
-      ? '选择一个已完成节点作为驳回目标，并填写驳回原因。'
+      ? '确认驳回去向并填写原因，审批轨迹会保留本次操作。'
       : activeTab === 'trace'
         ? '查看该流程的审批记录和流程图轨迹。'
         : '在统一任务弹层内查看详情、编辑表单并执行审批操作。';
 
   const buildEditableVariables = (): Record<string, any> | undefined => {
-    if (!(task.allowEdit && canAct && !viewOnly)) {
+    if (!canEditForm) {
       return undefined;
     }
-
-    const source = editedFormData || {};
-    if (!currentFormDef || !Array.isArray(currentFormDef.fields) || currentFormDef.fields.length === 0) {
-      return source;
-    }
-
-    const allowedKeys = new Set<string>();
-    currentFormDef.fields.forEach((field) => {
-      if (field.id) allowedKeys.add(field.id);
-      if (field.label) allowedKeys.add(field.label);
-    });
-
-    const filtered = Object.fromEntries(
-      Object.entries(source).filter(([key]) => allowedKeys.has(key)),
-    );
-
-    return Object.keys(filtered).length > 0 ? filtered : source;
+    return currentFormDef ? formRenderer.current?.getData() : editedFormData;
   };
 
   const resetSubMode = () => {
@@ -535,6 +583,7 @@ export const TaskHandleModal = ({
   };
 
   const closeOrBack = () => {
+    if (submitting) return;
     if (delegationMode || rejectMode) {
       resetSubMode();
       return;
@@ -543,6 +592,33 @@ export const TaskHandleModal = ({
   };
 
   const handleAction = async (action: 'APPROVED' | 'REJECTED' | 'DELEGATED') => {
+    if (!canAct || viewOnly || submitting) return;
+    if (action === 'APPROVED' && attachments.uploading) { toast.error('请等待附件上传完成'); return; }
+    if (action === 'APPROVED' && task.processInstanceId && (!scopedForm || scopedForm.error)) {
+      toast.error(scopedForm?.error || '请等待当前节点表单加载完成');
+      return;
+    }
+    if (action === 'APPROVED' && isSettlementTask && !settlementDetail) {
+      toast.error('请完整读取结算金额、取样核定和来源明细后再同意。');
+      return;
+    }
+    if (action === 'APPROVED' && isAdvanceTask && !advanceDetail) {
+      toast.error('请完整读取借款金额、用途和还款计划后再同意。');
+      return;
+    }
+    if (action === 'APPROVED' && isRefundTask && !refundFields) {
+      toast.error('退款详情未完整读取，请关闭后重新打开核对');
+      return;
+    }
+    if (action === 'APPROVED' && currentFormDef && !formRenderer.current?.validate()) return;
+    if (!hasBtn(action === 'APPROVED' ? 'APPROVE' : action === 'REJECTED' ? 'REJECT' : 'DELEGATE')) {
+      toast.error('当前节点不允许此操作');
+      return;
+    }
+    if (action === 'REJECTED' && task.rejectStrategy && !comment.trim()) {
+      toast.error('请填写驳回原因');
+      return;
+    }
     if (action === 'DELEGATED' && !delegateUser) {
       toast.error('请选择受托人');
       return;
@@ -588,6 +664,7 @@ export const TaskHandleModal = ({
       resetSubMode();
       setComment('');
     } catch (error) {
+      setFormErrors(getFormFieldErrors(error));
       console.error('任务处理失败:', error);
       toast.error(error instanceof Error ? error.message : '任务处理失败，请重试');
     } finally {
@@ -596,7 +673,12 @@ export const TaskHandleModal = ({
   };
 
   const handleReject = async () => {
-    if (!rejectTargetNode) {
+    if (!canAct || viewOnly || submitting) return;
+    if (!allowsRejection(task.nodePermissions, rejectStrategy === '__LEGACY__' ? 'TO_SPECIFIED_NODE' : rejectStrategy)) {
+      toast.error('当前节点不允许回退');
+      return;
+    }
+    if (rejectNeedsTarget && !historyNodes.some((node) => node.key === rejectTargetNode)) {
       toast.error('请选择驳回目标节点');
       return;
     }
@@ -607,7 +689,8 @@ export const TaskHandleModal = ({
 
     setSubmitting(true);
     try {
-      await rejectTask(task.id, rejectTargetNode, rejectReason);
+      await rejectTask(task.id, rejectNeedsTarget ? rejectTargetNode : undefined, rejectReason,
+        rejectStrategy === '__LEGACY__' ? undefined : rejectStrategy);
 
       const log = {
         operator: currentUser.name,
@@ -619,7 +702,7 @@ export const TaskHandleModal = ({
       toast.success('任务已驳回');
       onComplete({
         ...task,
-        status: TaskStatus.RETURNED,
+        status: rejectStrategy === 'TERMINATE' ? TaskStatus.REJECTED : TaskStatus.RETURNED,
         logs: [...(task.logs || []), log as any],
       });
 
@@ -636,7 +719,7 @@ export const TaskHandleModal = ({
   return (
     <>
       <SignatureModal
-        isOpen={signatureModalOpen}
+        isOpen={signatureModalOpen && canAct && !viewOnly}
         onClose={() => setSignatureModalOpen(false)}
         onSuccess={() => {
           setSignatureModalOpen(false);
@@ -703,12 +786,33 @@ export const TaskHandleModal = ({
               <ProcessTrace instanceId={task.processInstanceId} variant="default" />
             ) : rejectMode ? (
               <div className="admin-source-content-grid mx-auto max-w-3xl">
+                <TaskModalPanel title="驳回方式">
+                  <Select value={rejectStrategy} onValueChange={(value) => {
+                    setRejectStrategy(value as RejectStrategy | '__LEGACY__');
+                    setRejectTargetNode(value === 'TO_SPECIFIED_NODE' ? task.rejectToNodeKey ?? '' : '');
+                  }}>
+                    <SelectTrigger aria-label="驳回方式"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {!task.rejectStrategy && <SelectItem value="__LEGACY__">原有方式：退回已处理节点</SelectItem>}
+                      {(Object.entries(REJECT_STRATEGY_LABELS) as Array<[RejectStrategy, string]>).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {rejectStrategy === 'TO_PARENT_NODE' && <p className="mt-2 text-xs text-cf-muted">无父流程时退回发起人；父流程已结束时终止当前流程。</p>}
+                </TaskModalPanel>
+                {rejectNeedsTarget && (
                 <TaskModalPanel
                   title="选择驳回目标"
-                  description="只能选择历史上已处理过的节点作为驳回目标，驳回后流程将回退到该节点。"
+                  description="仅列出已处理过的上游节点；不能退回当前节点、后续节点或并行兄弟节点。"
                 >
                   {!historyNodesLoaded ? (
                     <TaskEmptyBlock title="正在加载历史节点..." loading />
+                  ) : historyNodesError ? (
+                    <div className="space-y-3">
+                      <p role="alert" className="text-sm text-red-600 dark:text-red-300">{historyNodesError}</p>
+                      <Button variant="outline" size="sm" onClick={() => setHistoryNodesLoaded(false)}>重新加载</Button>
+                    </div>
                   ) : historyNodes.length > 0 ? (
                     <div className="divide-y divide-slate-200 dark:divide-slate-800">
                       {historyNodes.map((node) => (
@@ -738,10 +842,11 @@ export const TaskHandleModal = ({
                   ) : (
                     <TaskEmptyBlock
                       title="当前没有可驳回的历史节点"
-                      description="若需终止流程，请在详情区直接执行拒绝。"
+                      description="可选择退回发起人修改，或直接结束流程。"
                     />
                   )}
                 </TaskModalPanel>
+                )}
 
                 <TaskModalPanel title="驳回原因">
                   <Textarea
@@ -759,7 +864,7 @@ export const TaskHandleModal = ({
                   <Button
                     variant="destructive"
                     onClick={handleReject}
-                    disabled={submitting || !rejectTargetNode || !rejectReason.trim()}
+                    disabled={submitting || (rejectNeedsTarget && (!historyNodesLoaded || Boolean(historyNodesError) || !historyNodes.some((node) => node.key === rejectTargetNode))) || !rejectReason.trim()}
                   >
                     {submitting ? '处理中...' : '确认驳回'}
                   </Button>
@@ -863,7 +968,7 @@ export const TaskHandleModal = ({
                     </div>
                   </div>
 
-                  {!canAct && !viewOnly && task.status === TaskStatus.PENDING ? (
+                  {!canAct && !agentMode && !viewOnly && task.status === TaskStatus.PENDING ? (
                     <div className="mt-4 rounded-md border border-amber-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-slate-950 dark:text-amber-200">
                       您当前没有处理权限。当前待办归属：{task.assigneeRole || '指定人员'}。
                     </div>
@@ -897,7 +1002,8 @@ export const TaskHandleModal = ({
                         {task.stepsDetail && task.stepsDetail.length > 0 ? (
                           <div className="admin-horizontal-scroll mt-4 flex items-start gap-0 pb-1">
                             {task.stepsDetail.map((step, index) =>
-                              renderStepNode(step, index, task.stepsDetail?.length || 0),
+                              renderStepNode(isRefundTask ? { ...step, approverDescription: getRefundApproverDescription(step.approverDescription) } : step,
+                                index, task.stepsDetail?.length || 0),
                             )}
                           </div>
                         ) : (
@@ -926,7 +1032,10 @@ export const TaskHandleModal = ({
 
                 <div className="grid gap-4">
                   <div className="admin-dialog-stack">
-                    {task.formId && !currentFormDef ? (
+                    {task.processInstanceId && (!scopedForm || scopedForm.error) ? (
+                      <TaskModalPanel title="读取当前节点表单"><div role={scopedForm?.error ? 'alert' : 'status'} className="text-sm text-cf-subtle">{scopedForm?.error || '正在按当前节点读取允许查看的字段…'}</div></TaskModalPanel>
+                    ) : null}
+                    {task.formId && scopedForm && !scopedForm.error && !currentFormDef ? (
                       <TaskModalPanel title="表单定义缺失">
                         <div className="rounded-md border border-amber-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-slate-950 dark:text-amber-200">
                           未加载到表单定义，当前显示原始业务字段。
@@ -934,23 +1043,86 @@ export const TaskHandleModal = ({
                       </TaskModalPanel>
                     ) : null}
 
-                    {currentFormDef && task.formData ? (
+                    {isSettlementTask ? (
+                      <TaskModalPanel title="离职结算财务复核" description="独立财务复核，提交人与离职本人回避；通过后仍待结算确认及实际收付款。">
+                        {settlementDetail ? <div data-testid="settlement-approval-summary" className="space-y-4">
+                          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                            <TaskField label="员工" value={settlementDetail.employeeName} valueClassName="break-all" />
+                            <TaskField label="结算单号" value={settlementDetail.settlementNo} valueClassName="break-all" />
+                            {settlementDetail.settlementKind === 'REVERSAL' && <>
+                              <TaskField label="单据类型" value="冲正单：按原已入账金额反向处理" valueClassName="break-all" />
+                              <TaskField label="原结算单号" value={settlementDetail.reversal.originalSettlementNo || '原单关系待核对'} valueClassName="break-all" />
+                              <TaskField label="冲正原因" value={settlementDetail.remark || '未填写'} valueClassName="break-all whitespace-pre-wrap" />
+                            </>}
+                            <TaskField label="离职日期" value={settlementDetail.relievingDate} />
+                            <TaskField label="补偿政策" value={settlementDetail.ruleName || '未核定'} valueClassName="break-all" />
+                            <TaskField label="应付合计" value={`${settlementDetail.totalPayable}元`} />
+                            <TaskField label="经济补偿" value={`${settlementDetail.severanceAmount}元`} />
+                            <TaskField label="应收合计" value={`${settlementDetail.totalReceivable}元`} />
+                            <TaskField label="资产损失" value={`${settlementDetail.assetRecoveryCost}元`} />
+                            <TaskField label="结算净额" value={`${settlementDetail.netAmount}元`} />
+                            <TaskField label="取样月份" value={settlementDetail.sampling?.months.join('、') || '未核定'} valueClassName="break-all" />
+                            <TaskField label="平均月份数" value={settlementDetail.sampling?.averagingMonths || '未核定'} />
+                            <TaskField label="取样核定原因" value={settlementDetail.sampling?.reason || '未核定'} valueClassName="break-all whitespace-pre-wrap" />
+                          </div>
+                          <p className="text-sm text-cf-subtle">各项金额四舍五入到分后合计；净额为正表示向员工支付，为负表示向员工收取。</p>
+                          {settlementDetail.items.map(item => <div key={item.itemId} className="flex flex-wrap justify-between gap-2 border-t border-[var(--cf-border)] pt-3 text-sm">
+                            <span className="min-w-0 break-all">{item.itemName}</span><span>{item.amount}元</span>
+                          </div>)}
+                          <a className="inline-flex min-h-11 items-center text-cf-primary underline" href={`/hr/final-settlements?settlementId=${settlementDetail.settlementId}`} target="_blank" rel="noopener noreferrer">查看完整结算依据</a>
+                        </div> : <div role={scopedSettlement?.error ? 'alert' : 'status'} className="text-sm text-cf-subtle">
+                          {scopedSettlement?.error ? `${scopedSettlement.error}；请关闭后重新打开核对，当前不能同意。` : '正在读取结算金额、取样核定和来源明细…'}
+                        </div>}
+                      </TaskModalPanel>
+                    ) : isAdvanceTask ? (
+                      <TaskModalPanel title="员工借款申请" description="部门负责人先审批、财务复核；通过后等待实际放款。额度已按提交时生效的固定月薪和已发布规则核验。">
+                        {advanceDetail ? <div data-testid="advance-approval-summary" className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                          <TaskField label="员工" value={advanceDetail.employeeName} valueClassName="break-all" />
+                          <TaskField label="借款单号" value={advanceDetail.advanceNo} valueClassName="break-all" />
+                          <TaskField label="申请金额" value={`${advanceDetail.amount}元`} />
+                          <TaskField label="申请日期" value={advanceDetail.applyDate} />
+                          <TaskField label="用途" value={advanceDetail.purpose} valueClassName="break-all whitespace-pre-wrap" />
+                          <TaskField label="还款计划" value={advanceDetail.repayMode === 'LUMP_SUM' ? '一次性归还' : `${advanceDetail.repayStartMonth}起，计划${advanceDetail.repayMonths}期，每期${advanceDetail.monthlyDeductAmount}元，末期按余额`} valueClassName="break-all" />
+                        </div> : <div role={scopedAdvance?.error ? 'alert' : 'status'} className="text-sm text-cf-subtle">
+                          {scopedAdvance?.error ? `${scopedAdvance.error}；请关闭后重新打开核对，当前不能同意。` : '正在读取借款金额、用途和还款计划…'}
+                        </div>}
+                      </TaskModalPanel>
+                    ) : isRefundTask ? (
+                      <TaskModalPanel title="原收款退款" description="申请提交时已固定原收款、金额与审批顺序，办理时仅可查看。客户业务负责人先审批，再由另一名财务复核，两段通过后才扣减到账。">
+                        {refundFields ? (
+                          <div data-testid="refund-approval-summary" className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                            {refundFields.map(field => <TaskField key={field.key} label={field.label} value={field.value} valueClassName="font-medium break-all whitespace-pre-wrap" />)}
+                          </div>
+                        ) : (
+                          <div role={scopedForm ? 'alert' : 'status'} className="text-sm text-cf-subtle">
+                            {scopedForm ? '退款详情未完整读取，请关闭后重新打开核对；当前不能同意。' : '正在读取原收款退款详情…'}
+                          </div>
+                        )}
+                      </TaskModalPanel>
+                    ) : currentFormDef ? (
                       <TaskModalPanel
                         title="表单内容"
                         description={
-                          canAct && !viewOnly && task.allowEdit
+                          canEditForm
                             ? '当前字段允许编辑，保存审批操作时会一并提交变更。'
                             : '当前以只读方式展示表单内容。'
                         }
                       >
                         <FormRenderer
+                          ref={formRenderer}
                           formDef={currentFormDef}
                           data={editedFormData}
-                          readonly={!(canAct && !viewOnly && task.allowEdit)}
+                          fieldPermissions={scopedForm?.permissions}
+                          fieldErrors={formErrors}
+                          renderUploadField={attachments.renderUploadField}
+                          renderReferenceField={task.processInstanceId ? (reference) => <WorkflowTaskReferenceField {...reference}
+                            identity={formOwner} taskId={task.id} formVersionKey={JSON.stringify([currentFormDef.id, currentFormDef.version, scopedForm?.nodeKey])}
+                            enabled={isOpen && canEditForm} /> : undefined}
+                          submitDisabled={attachments.uploading}
+                          nodeKey={scopedForm?.nodeKey}
+                          readonly={!canEditForm}
                           hideActions
-                          onChange={(id, value) =>
-                            setEditedFormData((previous) => ({ ...previous, [id]: value }))
-                          }
+                          onDataChange={(data) => { setEditedFormData(data); setFormErrors({}); }}
                         />
                       </TaskModalPanel>
                     ) : visibleBusinessEntries.length > 0 ? (
@@ -974,49 +1146,11 @@ export const TaskHandleModal = ({
                       </TaskModalPanel>
                     ) : null}
 
-                    {attachmentFiles.length > 0 ? (
+                    {businessAttachments.value ? (
                       <TaskModalPanel title="附件">
-                        <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                          {attachmentFiles.map((file, index) => (
-                            <div
-                              key={`${file.url}-${index}`}
-                              className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                              <div className="min-w-0 flex items-center gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-subtle dark:border-slate-800 dark:bg-slate-900">
-                                  <FileText size={15} />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="truncate text-sm font-medium text-cf-title">
-                                    {file.name}
-                                  </div>
-                                  <div className="mt-1 text-xs text-cf-subtle">
-                                    {file.isImg ? '图片附件' : '文件附件'}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <a
-                                  href={file.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="btn btn-secondary btn-sm"
-                                >
-                                  <ExternalLink size={14} />
-                                  查看
-                                </a>
-                                <a
-                                  href={file.url}
-                                  download={file.name}
-                                  className="btn btn-secondary btn-sm"
-                                >
-                                  <Download size={14} />
-                                  下载
-                                </a>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        {businessAttachments.downloadContext ? (
+                          <AttachmentLinks value={businessAttachments.value} downloadContext={businessAttachments.downloadContext} />
+                        ) : <p role="status" className="text-sm text-cf-subtle">请从原业务记录打开附件，核对当前访问权限。</p>}
                       </TaskModalPanel>
                     ) : null}
                   </div>
@@ -1052,6 +1186,7 @@ export const TaskHandleModal = ({
                   </div>
                 </div>
 
+                {!viewOnly && agentMode && <WorkflowAgentActions key={`${formOwner}:${task.id}:${task.version}`} task={task} currentUser={currentUser} disabled={submitting} onBusyChange={setSubmitting} onChanged={updated => { onComplete(updated); onClose(); }} />}
                 {canAct && !viewOnly ? (
                   <TaskModalPanel title="审批操作">
                     <div className="grid gap-4">
@@ -1063,8 +1198,9 @@ export const TaskHandleModal = ({
                       />
 
                       <div className="grid gap-3">
-                        {hasBtn('ADD_SIGN') ? (
+                        {hasBtn('ADD_SIGN') || hasBtn('REDUCE_SIGN') ? (
                           <div className="grid gap-2 sm:grid-cols-2">
+                            {hasBtn('ADD_SIGN') && (
                             <Button
                               variant="soft"
                               onClick={() => {
@@ -1076,6 +1212,8 @@ export const TaskHandleModal = ({
                               <UserPlus size={14} />
                               加签
                             </Button>
+                            )}
+                            {hasBtn('REDUCE_SIGN') && (
                             <Button
                               variant="outline"
                               onClick={() => {
@@ -1087,6 +1225,7 @@ export const TaskHandleModal = ({
                               <UserMinus size={14} />
                               减签
                             </Button>
+                            )}
                           </div>
                         ) : null}
 
@@ -1099,14 +1238,15 @@ export const TaskHandleModal = ({
                               </div>
                             </div>
                             <div className="mt-3 flex justify-end gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => setConfirmAction(null)}>
+                              <Button variant="ghost" size="sm" className={isRefundTask ? '!min-h-11 !min-w-11' : undefined} onClick={() => setConfirmAction(null)}>
                                 取消
                               </Button>
                               <Button
                                 size="sm"
+                                className={isRefundTask ? '!min-h-11 !min-w-11' : undefined}
                                 variant={confirmAction === 'APPROVED' ? 'default' : 'destructive'}
                                 onClick={() => void handleAction(confirmAction)}
-                                disabled={submitting}
+                                disabled={submitting || confirmAction === 'APPROVED' && (isSettlementTask && !settlementDetail || isRefundTask && !refundFields || isAdvanceTask && !advanceDetail)}
                               >
                                 {submitting ? '处理中...' : '确认'}
                               </Button>
@@ -1129,6 +1269,7 @@ export const TaskHandleModal = ({
                           {hasBtn('REJECT') ? (
                             <Button
                               variant="destructive"
+                              className={isRefundTask ? '!min-h-11 !min-w-11' : undefined}
                               onClick={() => setConfirmAction('REJECTED')}
                               disabled={submitting}
                             >
@@ -1136,7 +1277,7 @@ export const TaskHandleModal = ({
                             </Button>
                           ) : null}
                           {hasBtn('APPROVE') ? (
-                            <Button onClick={() => setConfirmAction('APPROVED')} disabled={submitting}>
+                            <Button className={isSettlementTask || isRefundTask || isAdvanceTask ? '!min-h-11 !min-w-11' : undefined} onClick={() => setConfirmAction('APPROVED')} disabled={submitting || attachments.uploading || isSettlementTask && !settlementDetail || isRefundTask && !refundFields || isAdvanceTask && !advanceDetail}>
                               {submitting ? '处理中...' : '同意'}
                             </Button>
                           ) : null}

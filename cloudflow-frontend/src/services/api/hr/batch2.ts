@@ -54,24 +54,29 @@ export const hrResumeApi = {
 // ============================================================
 export interface HrCompensationSimulateRequest {
   employeeId?: number;
-  baseSalary?: number;
-  positionLevel?: string;
-  positionLevelId?: number;
-  socialBaseAdjustment?: number;
-  performanceBonus?: number;
-  overrideItems?: Array<{ itemCode?: string; amount?: number }>;
+  structureId?: number;
+  gradeId?: number;
+  componentOverrides?: Record<string, string>;
+  socialBase?: string;
+  socialPersonalRate?: string;
+  specialDeductions?: string;
 }
 
 export interface HrCompensationSimulateResult {
-  baseSalary?: number;
-  performanceBonus?: number;
-  allowanceTotal?: number;
-  grossSalary?: number;
-  socialInsuranceTotal?: number;
-  housingFund?: number;
-  individualTax?: number;
-  netSalary?: number;
-  items?: Array<{ itemCode: string; itemName?: string; amount: number; calcType?: string }>;
+  employeeId?: number;
+  structureId: number;
+  gradeId?: number;
+  gross: string;
+  taxableGross: string;
+  socialBase: string;
+  socialPersonalRate: string;
+  socialPersonal: string;
+  specialDeductions: string;
+  threshold: string;
+  taxableIncome: string;
+  personalTax: string;
+  netSalary: string;
+  breakdown: Array<{ componentId: number; componentCode: string; componentName: string; componentType: string; amount: string; taxable: number }>;
 }
 
 export const hrCompensationSimulateApi = {
@@ -119,44 +124,41 @@ export const hrPerformanceInterviewApi = {
 // ============================================================
 // HR-P1-4 考勤异常申诉
 // ============================================================
-export type AttendanceAppealStatus = 'DRAFT' | 'SUBMITTED' | 'MANAGER_REVIEWING' | 'HR_REVIEWING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-export type AttendanceAppealReason = 'FORGOT_CLOCK' | 'BUSINESS_TRIP' | 'EQUIPMENT_FAULT' | 'SYSTEM_ERROR' | 'OTHER';
+export type AttendanceAppealStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type AttendanceAppealDecision = 'REWRITE' | 'REJECT' | 'IGNORE';
 
 export interface HrAttendanceAppeal {
   id?: number;
-  tenantId?: number;
   employeeId?: number;
   employeeName?: string;
   attendanceDate?: string;
-  recordId?: number;
-  appealReason?: AttendanceAppealReason;
-  appealDetail?: string;
-  evidenceUrl?: string;
-  expectedClockIn?: string;
-  expectedClockOut?: string;
+  attendanceRecordId?: number;
+  exceptionType?: string;
+  reason?: string;
+  evidenceUrls?: string[];
+  expectedCheckIn?: string;
+  expectedCheckOut?: string;
   status?: AttendanceAppealStatus;
   managerId?: number;
   managerRemark?: string;
-  managerReviewTime?: string;
-  hrId?: number;
+  hrReviewerId?: number;
   hrRemark?: string;
-  hrReviewTime?: string;
-  finalDecision?: 'ADJUST' | 'KEEP';
-  workflowInstanceId?: string;
+  decidedTime?: string;
+  finalDecision?: AttendanceAppealDecision;
   createTime?: string;
   updateTime?: string;
 }
 
 export const hrAttendanceAppealApi = {
-  page: (params: { pageNum?: number; pageSize?: number; status?: string; employeeName?: string }) =>
+  page: (params: { pageNum?: number; pageSize?: number; status?: string; keyword?: string }) =>
     request.get('/hr/attendance/appeals', { params }) as Promise<PageResult<HrAttendanceAppeal>>,
   detail: (id: number) =>
-    request.get(`/hr/attendance/appeals/${id}`) as Promise<Record<string, unknown>>,
+    request.get(`/hr/attendance/appeals/${id}`) as Promise<HrAttendanceAppeal>,
   submit: (payload: HrAttendanceAppeal) =>
     request.post('/hr/attendance/appeals', payload) as Promise<number>,
   managerReview: (id: number, params: { pass: boolean; remark?: string }) =>
     request.post(`/hr/attendance/appeals/${id}/manager-review`, undefined, { params }),
-  hrReview: (id: number, params: { finalDecision: 'ADJUST' | 'KEEP'; remark?: string }) =>
+  hrReview: (id: number, params: { finalDecision: AttendanceAppealDecision; remark?: string }) =>
     request.post(`/hr/attendance/appeals/${id}/hr-review`, undefined, { params }),
   cancel: (id: number) =>
     request.post(`/hr/attendance/appeals/${id}/cancel`),

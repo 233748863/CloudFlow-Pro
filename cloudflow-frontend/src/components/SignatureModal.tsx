@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Search, UserMinus, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common';
@@ -6,9 +6,9 @@ import { Button, Input, Textarea } from '@/components/common';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { cn } from '@/utils/cn';
-import { getUserList } from '../services/api/auth';
-import { addSignature, reductionSignature } from '../services/api/workflow';
-import { mapBackendUserToFrontend } from '../utils/mappers';
+import { addSignature, reductionSignature, addSign, removeSign, getTaskSignatures, getUsers } from '../services/api/workflow';
+import type { AddSignRequest, TaskSignatureContext } from '../services/api/workflow';
+import type { UserBrief } from '../types/workflow';
 import { User } from '../types';
 
 interface SignatureModalProps {
@@ -28,39 +28,54 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   mode,
   currentUser,
 }) => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserBrief[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [signType, setSignType] = useState<AddSignRequest['signType']>('BEFORE');
+  const [context, setContext] = useState<TaskSignatureContext>();
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [revision, setRevision] = useState(0);
+  const pending = useRef(false);
 
   useEffect(() => {
-    if (isOpen && users.length === 0) {
-      getUserList()
-        .then((res) => {
-          if (Array.isArray(res)) {
-            setUsers(res.map(mapBackendUserToFrontend));
-          }
-        })
-        .catch((error) => {
-          console.error('加载用户列表失败:', error);
-          toast.error(getErrorMessage(error, '加载用户列表失败'));
-        });
-    }
-  }, [isOpen, users.length]);
+    if (!isOpen) return;
+    let active = true;
+    setLoading(true);
+    setLoadError('');
+    setContext(undefined);
+    Promise.all([getTaskSignatures(taskId), mode === 'add' ? getUsers() : Promise.resolve([])])
+      .then(([details, options]) => {
+        if (!active) return;
+        setContext(details);
+        setUsers(mode === 'add' ? options : details.members.map(member => ({
+          id: String(member.userId), name: member.userName || String(member.userId),
+          deptName: member.status === 'PLANNED' ? '原审批通过后分派' : '尚未处理',
+        })));
+      })
+      .catch(error => { if (active) setLoadError(getErrorMessage(error, '无法读取当前加签人员，请重新加载')); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, taskId, mode, revision]);
 
   useEffect(() => {
     if (isOpen) {
       setSelectedUserIds([]);
       setComment('');
       setSearchKeyword('');
+      setSignType('BEFORE');
+      setSubmitError('');
     }
-  }, [isOpen]);
+  }, [isOpen, taskId, mode]);
 
   const filteredUsers = useMemo(
     () =>
       users.filter((user) => {
-        if (mode === 'add' && user.id === currentUser.id) {
+        if (mode === 'add' && (String(user.id) === String(context?.assigneeId ?? currentUser.id)
+          || context?.members.some(member => String(member.userId) === String(user.id)))) {
           return false;
         }
 
@@ -71,11 +86,13 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
         const keyword = searchKeyword.toLowerCase();
         return (
           user.name.toLowerCase().includes(keyword) ||
-          Boolean(user.username && user.username.toLowerCase().includes(keyword))
+          Boolean(user.deptName && user.deptName.toLowerCase().includes(keyword))
         );
       }),
-    [currentUser.id, mode, searchKeyword, users],
+    [context, currentUser.id, mode, searchKeyword, users],
   );
+
+  const allowed = mode === 'add' ? context?.canAdd : context?.canReduce;
 
   if (!isOpen) {
     return null;
@@ -88,6 +105,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   };
 
   const handleSubmit = async () => {
+    if (pending.current || !allowed || loading || loadError) return;
     if (selectedUserIds.length === 0) {
       toast.error(`请选择要${mode === 'add' ? '加签' : '减签'}的人员`);
       return;
@@ -97,9 +115,17 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
       return;
     }
 
+    pending.current = true;
+    setSubmitError('');
     setSubmitting(true);
     try {
-      if (mode === 'add') {
+      if (context?.kind === 'ORDERED' && mode === 'add') {
+        await addSign({ taskId, userIds: selectedUserIds, signType, reason: comment.trim() });
+        toast.success('加签成功');
+      } else if (context?.kind === 'ORDERED') {
+        await removeSign({ taskId, userIds: selectedUserIds, reason: comment.trim() });
+        toast.success('减签成功');
+      } else if (mode === 'add') {
         await addSignature(taskId, selectedUserIds, comment);
         toast.success('加签成功');
       } else {
@@ -109,9 +135,9 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
       onSuccess();
       onClose();
     } catch (error) {
-      console.error(`${mode === 'add' ? '加签' : '减签'}失败:`, error);
-      toast.error(error instanceof Error ? error.message : `${mode === 'add' ? '加签' : '减签'}失败`);
+      setSubmitError(getErrorMessage(error, `${mode === 'add' ? '加签' : '减签'}失败，选择和说明已保留`));
     } finally {
+      pending.current = false;
       setSubmitting(false);
     }
   };
@@ -119,10 +145,27 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   return (
     <BaseDialog
       open={isOpen}
-      onClose={onClose}
+      zIndex={70}
+      onClose={() => { if (!pending.current) onClose(); }}
+      hideCloseButton={submitting}
+      closeOnEscape={!submitting}
       maxWidthClassName="max-w-3xl"
-      panelClassName="max-h-[88vh] flex flex-col"
-      bodyClassName="!p-0 flex-1 overflow-hidden"
+      panelClassName="max-h-[88vh] flex flex-col [&_.modal-close]:!min-h-[44px] [&_.modal-close]:!min-w-[44px]"
+      bodyClassName="p-4 sm:p-5"
+      footer={
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" className="!min-h-[44px]" onClick={onClose} disabled={submitting}>
+            取消
+          </Button>
+          {allowed && <Button
+            onClick={() => void handleSubmit()}
+            className="!min-h-[44px]"
+            disabled={loading || Boolean(loadError) || !allowed || submitting || selectedUserIds.length === 0 || !comment.trim()}
+          >
+            {submitting ? '处理中...' : `确认${mode === 'add' ? '加签' : '减签'}`}
+          </Button>}
+        </div>
+      }
       title={
         <div className="flex items-center gap-2">
           <span
@@ -140,13 +183,15 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
       }
       description={
         mode === 'add'
-          ? '在会签节点中新增审批人，新的审批人会参与当前任务投票。'
-          : '减少会签节点的审批人，已投票人员通常不可被减签。'
+          ? '选择新增审批人和处理顺序，当前节点规则由服务器核对。'
+          : '只列出当前仍可移除的人员，已完成的审批记录始终保留。'
       }
     >
-      <div className="flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-          <div className="admin-dialog-stack">
+      <div className="admin-dialog-stack">
+            {loading && <p role="status" className="p-4 text-sm text-cf-muted">正在读取任务和可选人员…</p>}
+            {loadError && <div role="alert" className="p-4 text-sm text-red-700 dark:text-red-300">
+              <p>{loadError}</p><Button className="mt-2 !min-h-[44px]" onClick={() => setRevision(value => value + 1)}>重新加载</Button>
+            </div>}
             <div
               className={cn(
                 'px-4 py-4',
@@ -177,18 +222,30 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                     {mode === 'add' ? '加签说明' : '减签说明'}
                   </div>
                   <div className="text-xs leading-6 text-cf-muted">
-                    {mode === 'add'
-                      ? '仅支持会签节点，且只有当前任务处理人可以执行加签。'
-                      : '仅支持会签节点，任务处理人或管理员可减签，至少保留 1 名审批人。'}
+                    {context && !allowed ? `当前任务不允许${mode === 'add' ? '加签' : '减签'}。`
+                      : context?.message || '读取后显示当前节点允许的操作。'}
                   </div>
                 </div>
               </div>
             </div>
 
+            {context?.kind === 'ORDERED' && mode === 'add' && <fieldset disabled={submitting || !allowed} className="space-y-2 p-4">
+              <legend className="text-sm font-semibold text-cf-title">加签顺序</legend>
+              {([
+                ['BEFORE', '前加签', '新增人员全部通过后，交还原负责人审批。'],
+                ['AFTER', '后加签', '原负责人先通过，再由新增人员全部审批。'],
+                ['PARALLEL', '并行加签', '原负责人和新增人员同时处理，全部通过后继续。'],
+              ] as const).map(([value, label, explanation]) => <label key={value}
+                className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border border-[var(--cf-border)] p-3 text-sm transition-colors duration-150 motion-reduce:transition-none">
+                <input type="radio" name={`signature-order-${taskId}`} value={value} checked={signType === value} onChange={() => setSignType(value)} />
+                <span><span className="block font-medium text-cf-title">{label}</span><span className="block text-xs leading-5 text-cf-subtle">{explanation}</span></span>
+              </label>)}
+            </fieldset>}
+
             <div className="p-4">
               <div className="text-sm font-semibold text-cf-title">选择人员</div>
               <div className="mt-1 text-xs text-cf-subtle">
-                支持按姓名或账号搜索可选审批人。
+                {mode === 'add' ? '支持按姓名或部门搜索可选审批人。' : '仅显示尚未处理或尚未分派的本组人员。'}
               </div>
 
               <div className="mt-4 relative">
@@ -199,13 +256,15 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                 <Input
                   value={searchKeyword}
                   onChange={(event) => setSearchKeyword(event.target.value)}
-                  placeholder="搜索用户姓名或账号..."
-                  className="pl-10"
+                  placeholder="搜索用户姓名或部门..."
+                  aria-label="搜索加签人员"
+                  disabled={loading || submitting || !allowed}
+                  className="min-h-[44px] pl-10"
                 />
               </div>
 
               <div className="mt-4 max-h-72 overflow-y-auto">
-                {filteredUsers.length === 0 ? (
+                {loading || loadError ? null : filteredUsers.length === 0 ? (
                   <WorkspaceInlineState
                     type="info"
                     title={searchKeyword ? '未找到匹配用户' : '暂无可选用户'}
@@ -219,9 +278,11 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                         <button
                           key={user.id}
                           type="button"
+                          aria-pressed={active}
+                          disabled={submitting || !allowed}
                           onClick={() => toggleUser(Number(user.id))}
                           className={cn(
-                            'flex items-center gap-3 px-4 py-3 text-left transition',
+                            'flex min-h-[44px] items-center gap-3 px-4 py-3 text-left transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50',
                             active
                               ? 'border-cyan-300 bg-cyan-50 dark:border-cyan-800 dark:bg-cyan-950/30'
                               : 'bg-[var(--cf-surface-muted)] hover:border-cyan-200 hover:bg-[var(--cf-surface-strong)] dark:bg-slate-900/70 dark:hover:border-cyan-900 dark:hover:bg-slate-950',
@@ -246,7 +307,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                               {user.name}
                             </div>
                             <div className="mt-1 text-xs text-cf-subtle">
-                              {user.username ? `@${user.username}` : user.email || '暂无账号信息'}
+                              {user.deptName || user.email || '本租户用户'}
                             </div>
                           </div>
                         </button>
@@ -277,27 +338,14 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                   rows={4}
                   placeholder={`请填写${mode === 'add' ? '加签' : '减签'}原因...`}
                   value={comment}
+                  maxLength={500}
+                  aria-label={mode === 'add' ? '加签原因' : '减签原因'}
                   onChange={(event) => setComment(event.target.value)}
-                  disabled={submitting}
+                  disabled={submitting || !allowed}
                 />
+                {submitError && <p role="alert" className="mt-2 text-sm text-red-700 dark:text-red-300">{submitError}</p>}
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="px-5 py-4">
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" onClick={onClose} disabled={submitting}>
-              取消
-            </Button>
-            <Button
-              onClick={() => void handleSubmit()}
-              disabled={submitting || selectedUserIds.length === 0 || !comment.trim()}
-            >
-              {submitting ? '处理中...' : `确认${mode === 'add' ? '加签' : '减签'}`}
-            </Button>
-          </div>
-        </div>
       </div>
     </BaseDialog>
   );

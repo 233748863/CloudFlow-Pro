@@ -1,4 +1,5 @@
 import { User, Role, Task, TaskStatus, StepDetail } from '../types';
+import { isProcessSuccessful, isProcessTerminal } from './processStatus';
 
 /** 后端用户数据结构 */
 interface BackendUser {
@@ -14,6 +15,13 @@ interface BackendUser {
 /** 后端任务数据结构（待办任务） */
 interface BackendTask {
   taskId: string;
+  historyId?: string;
+  canWithdraw?: boolean;
+  nodeKey?: string;
+  taskType?: Task['taskType'];
+  nodePermissions?: Task['nodePermissions'];
+  rejectStrategy?: Task['rejectStrategy'];
+  rejectToNodeKey?: string;
   instanceId?: string;
   processDefKey?: string;
   processName?: string;
@@ -23,6 +31,14 @@ interface BackendTask {
   startUserName?: string;
   assignee?: string | number;
   assigneeName?: string;
+  proxyUserId?: string | number;
+  agentSettingId?: string;
+  agentMode?: Task['agentMode'];
+  version?: number;
+  operatorId?: string | number;
+  operatorName?: string;
+  onBehalfOfUserId?: string | number;
+  onBehalfOfUserName?: string;
   status?: string;
   createTime?: string;
   dueTime?: string;
@@ -93,7 +109,14 @@ const mapBackendTaskStatus = (status?: string): TaskStatus => {
 };
 
 export const mapBackendTaskToFrontend = (t: BackendTask): Task => ({
+  historyId: t.historyId,
+  canWithdraw: t.canWithdraw === true,
   id: t.taskId,
+  nodeKey: t.nodeKey,
+  taskType: t.taskType,
+  nodePermissions: t.nodePermissions,
+  rejectStrategy: t.rejectStrategy,
+  rejectToNodeKey: t.rejectToNodeKey,
   processInstanceId: t.instanceId || '',
   workflowId: t.processDefKey || '',
   workflowName: t.instanceTitle || t.processName || t.processDefKey || '未命名流程',
@@ -102,6 +125,14 @@ export const mapBackendTaskToFrontend = (t: BackendTask): Task => ({
   applicantName: t.startUserName || 'Unknown',
   assigneeId: t.assignee !== undefined && t.assignee !== null ? String(t.assignee) : undefined,
   assigneeName: t.assigneeName || (t.assignee ? String(t.assignee) : '待认领'), 
+  proxyUserId: t.proxyUserId != null ? String(t.proxyUserId) : undefined,
+  agentSettingId: t.agentSettingId || undefined,
+  agentMode: t.agentMode,
+  version: t.version,
+  operatorId: t.operatorId != null ? String(t.operatorId) : undefined,
+  operatorName: t.operatorName,
+  onBehalfOfUserId: t.onBehalfOfUserId != null ? String(t.onBehalfOfUserId) : undefined,
+  onBehalfOfUserName: t.onBehalfOfUserName,
   type: 'DYNAMIC',
   status: mapBackendTaskStatus(t.status),
   createdTime: t.createTime,
@@ -134,11 +165,8 @@ export const mapBackendInstanceToTask = (inst: BackendInstance): Task => ({
   assigneeId: inst.assignee ? String(inst.assignee) : undefined,
   assigneeName: inst.assigneeName || (inst.assignee ? String(inst.assignee) : '待认领'),
   type: 'DYNAMIC',
-  // REVOKED 状态映射为 REJECTED（已撤回）
-  status: inst.status === 'RUNNING' ? TaskStatus.PENDING 
-    : inst.status === 'COMPLETED' ? TaskStatus.APPROVED 
-    : inst.status === 'REVOKED' ? TaskStatus.REJECTED
-    : TaskStatus.REJECTED,
+  status: isProcessSuccessful(inst.status) ? TaskStatus.APPROVED
+    : isProcessTerminal(inst.status) ? TaskStatus.REJECTED : TaskStatus.PENDING,
   backendStatus: inst.status, // 保存后端原始状态，用于"我的申请"筛选
   createdTime: inst.startTime,
   allowEdit: false,

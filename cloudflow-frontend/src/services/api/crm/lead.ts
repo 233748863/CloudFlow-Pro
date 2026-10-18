@@ -11,9 +11,19 @@ export const listLeads = (params: {
   mobile?: string;
   status?: string;
   ownerId?: number;
+  qualificationStatus?: string;
+  territoryId?: number;
+  marketSegment?: string;
+  industry?: string;
+  campaignId?: number;
+  scoreMin?: number;
+  scoreMax?: number;
+  scoreOrder?: string;
 }) => request.get('/crm/lead/list', { params }) as Promise<PageResult<CrmLead>>;
 
 export const addLead = (data: CrmLead) => request.post('/crm/lead', data);
+
+export const getLead = (id: number, signal?: AbortSignal) => request.get<CrmLead>(`/crm/lead/${id}`, { signal });
 
 export const editLead = (data: CrmLead) => request.put('/crm/lead', data);
 

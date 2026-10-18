@@ -54,7 +54,17 @@ export const Tabs = ({
  */
 export const TabsList = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   return (
-    <div className={cn('cf-tabs min-h-11', className)}>
+    <div role="tablist" className={cn('cf-tabs cf-responsive-tabs min-h-11', className)} onKeyDown={(event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]:not([disabled])'));
+      if (!buttons.length) return;
+      const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
+      event.preventDefault();
+      buttons[next]?.focus();
+      buttons[next]?.click();
+      buttons[next]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }}>
       {children}
     </div>
   );
@@ -66,10 +76,12 @@ export const TabsList = ({ children, className = '' }: { children: React.ReactNo
 export const TabsTrigger = ({ 
   children, 
   value, 
+  disabled = false,
   className = '' 
 }: { 
   children: React.ReactNode; 
   value: string; 
+  disabled?: boolean;
   className?: string;
 }) => {
   const { value: selectedValue, onValueChange } = useContext(TabsContext);
@@ -78,8 +90,11 @@ export const TabsTrigger = ({
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={isActive}
+      disabled={disabled}
       className={cn(
-        'cf-tab disabled:pointer-events-none disabled:opacity-50',
+        'cf-tab cf-mobile-touch shrink-0 disabled:pointer-events-none disabled:opacity-50',
         isActive ? 'cf-tab-active' : '',
         className,
       )}
@@ -109,7 +124,7 @@ export const TabsContent = ({
   }
 
   return (
-    <div className={cn('mt-3', className)}>
+    <div role="tabpanel" className={cn('mt-3', className)}>
       {children}
     </div>
   );

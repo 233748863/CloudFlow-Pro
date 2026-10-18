@@ -7,7 +7,13 @@ import { Button } from './button';
 type PickerMode = 'date' | 'time' | 'datetime-local';
 type QuickDateKind = 'today' | 'tomorrow' | 'weekend' | 'nextMonday' | 'monthEnd';
 
-interface DatePickerProps {
+export interface DatePickerDayAnnotation {
+  label: string;
+  description: string;
+  className?: string;
+}
+
+interface DatePickerProps extends React.AriaAttributes {
   type?: PickerMode;
   value?: string;
   onChange?: (e: { target: { value: string } }) => void;
@@ -19,6 +25,8 @@ interface DatePickerProps {
   max?: string;
   id?: string;
   name?: string;
+  dayAnnotations?: Record<string, DatePickerDayAnnotation>;
+  dayLegend?: React.ReactNode;
 }
 
 interface DropdownPlacement {
@@ -151,6 +159,8 @@ interface CalendarPanelProps {
   onChangeMonth: (year: number, month: number) => void;
   onQuickDate?: (kind: QuickDateKind) => void;
   isDateDisabled?: (year: number, month: number, day: number) => boolean;
+  dayAnnotations?: Record<string, DatePickerDayAnnotation>;
+  dayLegend?: React.ReactNode;
 }
 
 function CalendarPanel({
@@ -161,6 +171,8 @@ function CalendarPanel({
   onChangeMonth,
   onQuickDate,
   isDateDisabled,
+  dayAnnotations,
+  dayLegend,
 }: CalendarPanelProps) {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
@@ -250,6 +262,7 @@ function CalendarPanel({
 
         {currentDays.map((day) => {
           const dateStr = formatDate(year, month, day);
+          const annotation = dayAnnotations?.[dateStr];
           const isToday = dateStr === todayStr;
           const isDisabled = isDateDisabled?.(year, month, day) ?? false;
           const isSelected = selectedDate
@@ -262,6 +275,8 @@ function CalendarPanel({
               key={`cur-${day}`}
               type="button"
               disabled={isDisabled}
+              aria-label={annotation ? `${dateStr}，${annotation.description}` : undefined}
+              title={annotation?.description}
               onClick={() => {
                 if (isDisabled) {
                   return;
@@ -270,12 +285,14 @@ function CalendarPanel({
               }}
               className={cn(
                 'cf-date-cell',
+                annotation && 'relative !min-h-[44px] !h-auto gap-0.5 py-1 motion-reduce:!transition-none motion-reduce:!duration-0',
                 isDisabled && 'is-disabled',
                 isSelected && 'is-selected',
                 isToday && !isSelected && 'is-today',
               )}
             >
-              {day}
+              <span>{day}</span>
+              {annotation?.label ? <span aria-hidden="true" className={cn('text-[10px] leading-3', !isSelected && annotation.className)}>{annotation.label}</span> : null}
             </button>
           );
         })}
@@ -310,6 +327,7 @@ function CalendarPanel({
         ))}
       </div>
 
+      {dayLegend ? <p className="mt-2 text-xs leading-5 text-cf-subtle">{dayLegend}</p> : null}
       <div className="cf-date-quickbar">
         <div className="cf-date-quickrow hide-scrollbar">
           <button
@@ -430,7 +448,7 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
 }
 
 export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
-  ({ type = 'date', value = '', onChange, placeholder, disabled, className = '', min, max, id, name, required }, ref) => {
+  ({ type = 'date', value = '', onChange, placeholder, disabled, className = '', min, max, id, name, required, dayAnnotations, dayLegend, ...accessibility }, ref) => {
     const [open, setOpen] = useState(false);
     const [positionReady, setPositionReady] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -667,9 +685,11 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
         }}
         className={cn('cf-date-picker', open && 'is-open')}
       >
-        <input type="hidden" id={id} name={name} value={value} required={required} />
+        <input type="hidden" name={name} value={value} required={required} />
 
         <button
+          id={id}
+          {...accessibility}
           type="button"
           disabled={disabled}
           onClick={() => {
@@ -736,6 +756,8 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                         year={viewYear}
                         month={viewMonth}
                         selectedDate={currentDate}
+                        dayAnnotations={dayAnnotations}
+                        dayLegend={dayLegend}
                         onSelectDate={handleSelectDate}
                         onChangeMonth={(y, m) => {
                           setViewYear(y);

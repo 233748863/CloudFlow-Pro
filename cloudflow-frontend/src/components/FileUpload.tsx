@@ -47,7 +47,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   // 从系统配置动态读取文件上传限制
   const [maxFileSizeMB] = useConfigInt(SYS_UPLOAD_MAX_FILE_SIZE, 50);
-  const [allowedTypes] = useConfigValue(SYS_UPLOAD_ALLOWED_TYPES, 'jpg,jpeg,png,gif,bmp,doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip,rar');
+  const [allowedTypes] = useConfigValue(SYS_UPLOAD_ALLOWED_TYPES, 'jpg,jpeg,png,gif,bmp,webp,doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip,rar');
 
   // 如果外部未传入 accept，则根据系统配置生成
   const resolvedAccept = accept ?? allowedTypes.split(',').map(t => `.${t.trim()}`).join(',');

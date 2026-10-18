@@ -3,14 +3,20 @@ import {
   CheckCircle2, Circle, Clock, AlertCircle, 
   ArrowDown, GitBranch, GitMerge, User, Shield, 
   CreditCard, FileText, Briefcase, MessageSquare,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, X, Plus, ArrowRight
 } from 'lucide-react';
-import { getProcessTrace, getProcessInstance, getProcessDefinition, urgeTask } from '../services/api/workflow';
+import { getProcessTrace, getProcessInstance, getFlowchartData, urgeTask } from '../services/api/workflow';
 import { NodeType, WorkflowGraphDefinition } from '../types';
 import { toast } from 'sonner';
 import { BellRing } from 'lucide-react';
 import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 import { getCurrentUserSnapshot } from '@/utils/authStorage';
+import { TaskSemanticBadge, TaskSemanticIcon, getTaskSemantic } from './workflow/TaskSemanticBadge';
+import { TimerFinishAction } from './workflow/TimerFinishAction';
+import { GatewayRoundProgress } from './workflow/GatewayRoundProgress';
+import type { WorkflowGatewayRound } from '@/types/workflow';
+import { getWorkflowGatewayBranches, getWorkflowGatewayJoinKey, isWorkflowGatewayRouter, isWorkflowGatewaySplit, workflowEdgeIsDefault } from '@/utils/workflowGateway';
+import { getWorkflowActionLabel, getWorkflowActionState, getWorkflowOperatorLabel } from '@/utils/workflowTrace';
 
 interface ProcessTraceProps {
   instanceId: string;
@@ -19,6 +25,7 @@ interface ProcessTraceProps {
 }
 
 interface HistoryDetail {
+  taskType?: string;
   nodeKey: string;
   nodeName: string;
   action: string;
@@ -31,9 +38,14 @@ interface HistoryDetail {
   adminOverride?: boolean;
   originalAssigneeId?: string | number;
   originalAssigneeName?: string;
+  onBehalfOfUserId?: string | number;
+  onBehalfOfUserName?: string;
 }
 
 interface ActiveDetail {
+  taskType?: string;
+  nodeType?: string;
+  allowUrge?: boolean;
   taskId?: string;
   nodeKey: string;
   nodeName: string;
@@ -43,22 +55,28 @@ interface ActiveDetail {
 }
 
 interface TraceData {
+  status?: string;
   finished: string[];
   active: string[];
   historyDetails?: HistoryDetail[];
   activeDetails?: ActiveDetail[];
   parallelBranches?: any[];
+  gatewayRounds?: WorkflowGatewayRound[];
 }
 
 // 节点图标组件
-const NodeIcon = ({ type, title, status }: { type: string, title: string, status: 'finished' | 'active' | 'pending' }) => {
+const NodeIcon = ({ type, title, status, taskType }: { type: string, title: string, status: 'finished' | 'active' | 'pending', taskType?: string }) => {
   const getIcon = () => {
+    if (getTaskSemantic(taskType)) return <TaskSemanticIcon taskType={taskType} />;
     if (title.includes('财务')) return <CreditCard size={16} />;
     if (title.includes('经理') || title.includes('上级')) return <User size={16} />;
     if (title.includes('法务') || title.includes('安全')) return <Shield size={16} />;
     if (type === NodeType.START) return <FileText size={16} />;
     if (type === NodeType.END) return <CheckCircle2 size={16} />;
-    if (type === NodeType.CONDITION || type === NodeType.PARALLEL) return <GitBranch size={16} />;
+    if (type === NodeType.CONDITION) return <X size={16} />;
+    if (type === NodeType.PARALLEL) return <Plus size={16} />;
+    if (type === NodeType.INCLUSIVE) return <Circle size={16} />;
+    if (type === NodeType.ROUTE) return <ArrowRight size={16} />;
     return <Briefcase size={16} />;
   };
 
@@ -93,7 +111,10 @@ const getActionStyle = (action: string) => {
   if (action.includes('转办') || action.includes('委托')) return map['DELEGATE'];
   if (action.includes('驳回') || action.includes('退回')) return map['RETURN'];
   if (action.includes('发起') || action.includes('提交')) return map['START'];
-  return map[action] || { label: action, color: 'text-cf-body', bgColor: 'bg-[var(--cf-surface-muted)] dark:bg-slate-900' };
+  if (getWorkflowActionState(action) === 'rejected') return { ...map.REJECT, label: getWorkflowActionLabel(action) };
+  if (action.includes('APPROVE') || action === 'AUTO_PASS') return { ...map.APPROVE, label: getWorkflowActionLabel(action) };
+  if (action === 'AUTO_SKIP') return { label: '自动跳过', color: 'text-cf-muted', bgColor: 'bg-[var(--cf-surface-muted)]' };
+  return map[action] || { label: getWorkflowActionLabel(action), color: 'text-cf-body', bgColor: 'bg-[var(--cf-surface-muted)] dark:bg-slate-900' };
 };
 
 // 格式化时间
@@ -171,16 +192,12 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
       const instanceRes = await getProcessInstance(instanceId);
       setInstance(instanceRes);
       
-      // 3. 获取流程定义（用于流程图渲染），严格依赖 definitionId
-      const definitionId = String((instanceRes as any)?.definitionId || '').trim();
-      if (!definitionId) {
-        console.warn('[ProcessTrace] 缺少 definitionId，无法加载流程图', { instanceId });
-        setGraphModel(null);
-        setRootNodeId(null);
-        return;
-      }
-      const def = await getProcessDefinition(definitionId);
-      const parsed = parseWorkflowGraph((def as any)?.modelJson);
+      // 实例参与人通过原实例权限读取展示结构，无需流程定义管理权限。
+      const diagram = await getFlowchartData(instanceId);
+      const parsed = parseWorkflowGraph({
+        nodes: diagram.nodes.map(node => ({ ...node, title: node.label })),
+        edges: diagram.edges.map(edge => ({ ...edge, condition: edge.label })),
+      });
       setGraphModel(parsed);
       if (!parsed || parsed.nodes.length === 0) {
         setRootNodeId(null);
@@ -282,8 +299,8 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
   }, [nodeMap, outgoingMap]);
 
   // 流程图递归渲染（直接基于 nodes+edges）
-  const renderNode = (nodeId: string, visited = new Set<string>(), forceRenderSharedEnd = false) => {
-    if (!nodeId || visited.has(nodeId)) return null;
+  const renderNode = (nodeId: string, visited = new Set<string>(), forceRenderSharedEnd = false, stopAt?: string) => {
+    if (!nodeId || nodeId === stopAt || visited.has(nodeId)) return null;
     const node = nodeMap.get(nodeId);
     if (!node) return null;
     if (!forceRenderSharedEnd && isEndGraphNode(node) && (incomingMap.get(nodeId) || []).length > 1 && visited.size > 0) {
@@ -308,7 +325,13 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
 
     let nextNodeId: string | null = null;
     let branchNodeIds: string[] = [];
-    if (outgoingEdges.length === 1) {
+    const pairedJoin = graphModel && isWorkflowGatewaySplit(node) ? getWorkflowGatewayJoinKey(graphModel, node) : undefined;
+    if (pairedJoin && graphModel) {
+      branchNodeIds = getWorkflowGatewayBranches(graphModel, node).map(edge => edge.target);
+      nextNodeId = pairedJoin;
+    } else if (graphModel && isWorkflowGatewayRouter(graphModel, node)) {
+      branchNodeIds = outgoingEdges.map(edge => edge.target);
+    } else if (outgoingEdges.length === 1) {
       nextNodeId = String((outgoingEdges[0] as any)?.target || '').trim() || null;
     } else if (outgoingEdges.length > 1) {
       const defaultEdges = outgoingEdges.filter((edge) => isDefaultEdge(edge));
@@ -328,7 +351,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
 
     const branchEndIds = branchNodeIds.map(resolveLinearEndNodeId);
     const sharedEndNodeId =
-      branchNodeIds.length > 1 &&
+      !pairedJoin && branchNodeIds.length > 1 &&
       branchEndIds[0] &&
       branchEndIds.every((endId) => endId === branchEndIds[0]) &&
       (incomingMap.get(branchEndIds[0]) || []).length > 1
@@ -337,8 +360,8 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
 
     return (
       <div className="flex flex-col items-center">
-        <div className="relative flex flex-col items-center group">
-          <NodeIcon type={nodeType} title={nodeTitle} status={status} />
+        <div className="relative flex flex-col items-center group" data-workflow-node={nodeId} data-node-type={nodeType}>
+          <NodeIcon type={nodeType} title={nodeTitle} status={status} taskType={nodeActive?.taskType || nodeHistory?.taskType} />
 
           <div className={`mt-2 max-w-[140px] rounded-md border px-3 py-1.5 text-center text-xs font-medium transition-colors
  ${status === 'active' ? 'bg-[var(--cf-surface-strong)] border-cyan-300 text-cyan-700' :
@@ -349,9 +372,12 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
  'dark:border-slate-800 dark:bg-slate-950 '}
  `}>
             {nodeTitle}
+            {[NodeType.CONDITION, NodeType.PARALLEL, NodeType.INCLUSIVE, NodeType.ROUTE].includes(nodeType as NodeType) &&
+              <div className="mt-1 text-[10px]">{{ CONDITION: '排他网关', PARALLEL: '并行网关', INCLUSIVE: '包含网关', ROUTE: '路由节点' }[nodeType]}</div>}
+            <div className="mt-1"><TaskSemanticBadge taskType={nodeActive?.taskType || nodeHistory?.taskType} /></div>
             {nodeHistory && (
               <div className="mt-0.5 text-[9px] opacity-75">
-                {nodeHistory.operatorName} · {getActionStyle(nodeHistory.action).label}
+                {getWorkflowOperatorLabel(nodeHistory)} · {getActionStyle(nodeHistory.action).label}
               </div>
             )}
             {nodeActive && (
@@ -361,7 +387,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
             )}
           </div>
           
-          {isActive && isInitiator && nodeActive?.taskId && (
+          {isActive && isInitiator && nodeActive?.taskId && nodeActive.allowUrge !== false && (
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -373,6 +399,9 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                   <BellRing size={12}/>
               </button>
           )}
+          {isActive && nodeActive?.nodeType === 'TIMER' && (
+            <TimerFinishAction instanceId={instanceId} nodeKey={nodeId} nodeName={nodeTitle} processStatus={trace.status} onFinished={fetchData} />
+          )}
         </div>
 
         {branchNodeIds.length > 0 && (
@@ -380,17 +409,20 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
               <div className="mb-2 h-4 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
               <div className="flex justify-center items-start gap-6 relative">
                  <div className="absolute top-0 left-0 right-0 mx-auto h-0.5 bg-slate-300 dark:bg-slate-700" style={{ width: `calc(100% - 4rem)` }}></div>
-                  {branchNodeIds.map((branchId, idx) => (
-                     <div key={`${branchId}-${idx}`} className="flex flex-col items-center pt-4 relative">
+                  {branchNodeIds.map((branchId, branchIndex) => (
+                     <div key={`${branchId}-${branchIndex}`} className="flex flex-col items-center pt-4 relative">
                         <div className="absolute top-0 h-4 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
-                        {renderNode(branchId, nextVisited)}
+                        <span className="mb-2 max-w-[160px] break-words text-center text-[10px] text-cf-subtle">
+                          {workflowEdgeIsDefault(outgoingEdges.find(edge => edge.target === branchId)!) ? '默认出口' : outgoingEdges.find(edge => edge.target === branchId)?.condition || `分支 ${branchIndex + 1}`}
+                        </span>
+                        {renderNode(branchId, nextVisited, false, pairedJoin || stopAt)}
                      </div>
                   ))}
                </div>
                {sharedEndNodeId && (
                  <div className="flex flex-col items-center">
                    <div className="h-6 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
-                   {renderNode(sharedEndNodeId, nextVisited, true)}
+                   {renderNode(sharedEndNodeId, nextVisited, true, stopAt)}
                  </div>
                )}
             </div>
@@ -401,7 +433,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
              <div className={`h-8 w-0.5 ${trace.finished.includes(nodeId) ? 'bg-emerald-300 dark:bg-emerald-700' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
              <ArrowDown size={14} className={`${trace.finished.includes(nodeId) ? 'text-emerald-300 dark:text-emerald-700' : 'text-slate-300 dark:text-slate-700'} -mt-1`} />
              <div className="h-4 w-0.5 bg-transparent"></div>
-             {renderNode(nextNodeId, nextVisited)}
+             {renderNode(nextNodeId, nextVisited, false, stopAt)}
            </div>
         )}
       </div>
@@ -430,7 +462,9 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
             <div key={`hist-${idx}`} className="flex gap-3 relative">
               {/* 时间线竖线 */}
               <div className="flex flex-col items-center flex-shrink-0 w-8">
-                <div className="z-10 mt-1.5 h-3 w-3 rounded-sm border border-emerald-600 bg-[var(--cf-surface-strong)] dark:border-emerald-500 dark:bg-slate-950" />
+                {getTaskSemantic(item.taskType) ? (
+                  <div className="z-10 mt-1 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-1 dark:border-slate-800"><TaskSemanticIcon taskType={item.taskType} /></div>
+                ) : <div className="z-10 mt-1.5 h-3 w-3 rounded-sm border border-emerald-600 bg-[var(--cf-surface-strong)] dark:border-emerald-500 dark:bg-slate-950" />}
                 {(idx < historyItems.length - 1 || activeItems.length > 0) && (
                   <div className="min-h-[40px] w-0.5 flex-1 bg-emerald-200 dark:bg-emerald-900/50" />
                 )}
@@ -439,8 +473,9 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
               {/* 内容 */}
               <div className="flex-1 pb-4">
                 <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3.5 py-3 dark:border-slate-800 dark:bg-slate-950">
-                  <div className="mb-1 flex items-center gap-2">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span className="text-sm font-semibold text-cf-title">{item.nodeName}</span>
+                    <TaskSemanticBadge taskType={item.taskType} />
                     <span className={`rounded-md border border-current/15 px-1.5 py-0.5 text-[10px] font-medium ${actionStyle.bgColor} ${actionStyle.color}`}>
                       {actionStyle.label}
                     </span>
@@ -453,7 +488,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                   <div className="space-y-0.5 text-xs text-cf-subtle">
                     <div className="flex items-center gap-2">
                       <User size={11} className="text-cyan-500" />
-                      <span>{item.operatorName || '系统'}</span>
+                      <span>{getWorkflowOperatorLabel(item)}</span>
                       <span className="text-slate-300 dark:text-slate-700">·</span>
                       <span>{formatTime(item.completeTime || item.createTime)}</span>
                     </div>
@@ -487,7 +522,9 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
         {activeItems.map((item, idx) => (
           <div key={`active-${idx}`} className="flex gap-3 relative">
             <div className="flex flex-col items-center flex-shrink-0 w-8">
-              <div className="z-10 mt-1.5 h-3 w-3 rounded-sm border border-cyan-600 bg-[var(--cf-surface-strong)] dark:border-cyan-500 dark:bg-slate-950" />
+              {getTaskSemantic(item.taskType) ? (
+                <div className="z-10 mt-1 rounded-md border border-cyan-200 bg-[var(--cf-surface-strong)] p-1 dark:border-cyan-800"><TaskSemanticIcon taskType={item.taskType} /></div>
+              ) : <div className="z-10 mt-1.5 h-3 w-3 rounded-sm border border-cyan-600 bg-[var(--cf-surface-strong)] dark:border-cyan-500 dark:bg-slate-950" />}
               {idx < activeItems.length - 1 && (
                 <div className="min-h-[40px] w-0.5 flex-1 bg-slate-200 dark:bg-slate-800" />
               )}
@@ -495,8 +532,9 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
             
             <div className="flex-1 pb-4">
               <div className="rounded-md border border-cyan-200 bg-[var(--cf-surface-strong)] px-3.5 py-3 dark:border-cyan-900 dark:bg-slate-950">
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
                   <span className="text-sm font-semibold text-cyan-700 dark:text-cyan-200">{item.nodeName}</span>
+                  <TaskSemanticBadge taskType={item.taskType} />
                   <span className="rounded-md border border-cyan-200 bg-[var(--cf-surface-strong)] px-1.5 py-0.5 text-[10px] font-medium text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200">
                     处理中
                   </span>
@@ -511,6 +549,14 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                     </>
                   )}
                 </div>
+                {item.taskId && item.allowUrge !== false && currentUserId === String(instance?.startUserId) && (
+                  <button type="button" className="mt-2 inline-flex min-h-9 items-center gap-1 text-xs text-amber-700 dark:text-amber-200" onClick={() => void handleUrge(item.taskId!, item.nodeName)}>
+                    <BellRing size={12} />催办
+                  </button>
+                )}
+                {item.nodeType === 'TIMER' && (
+                  <TimerFinishAction instanceId={instanceId} nodeKey={item.nodeKey} nodeName={item.nodeName} processStatus={trace.status} onFinished={fetchData} />
+                )}
               </div>
             </div>
           </div>
@@ -547,6 +593,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
 
   return (
     <div className="admin-dialog-stack">
+      <GatewayRoundProgress rounds={trace?.gatewayRounds} />
       {/* 审批记录时间线 - 默认展示 */}
       <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-4 dark:border-slate-800 dark:bg-slate-950">
         <h4 className="mb-4 text-xs font-bold text-cf-subtle">审批记录</h4>

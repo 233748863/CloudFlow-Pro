@@ -1,5 +1,6 @@
 import request from '../request';
 import type { PageResult } from '@/types';
+import type { LossRequest } from './operations';
 import type {
   CrmOpportunity,
   CrmOpportunityBoardColumn,
@@ -19,18 +20,18 @@ export const listOpportunities = (params: {
 
 export const addOpportunity = (data: CrmOpportunity) => request.post('/crm/opportunity', data);
 export const editOpportunity = (data: CrmOpportunity) => request.put('/crm/opportunity', data);
+export const getOpportunityDetail = (id: number) => request.get<CrmOpportunity>(`/crm/opportunity/${id}`);
 
-export const winOpportunity = (id: number) => request.post(`/crm/opportunity/${id}/win`);
-export const loseOpportunity = (id: number, lostReason?: string) =>
-  request.post(`/crm/opportunity/${id}/lose`, { lostReason });
+export const winOpportunity = (id: number, version: number, competitorId?: number) => request.post(`/crm/opportunity/${id}/win`, { version, competitorId });
+export const loseOpportunity = (id: number, data: LossRequest) => request.post<number>(`/crm/opportunity/${id}/lose`, data);
 
 export const getOpportunityBoard = () =>
   request.get('/crm/opportunity/board') as Promise<CrmOpportunityBoardColumn[]>;
 
 export const updateOpportunityStage = (data: {
-  opportunityId?: number;
-  stage?: string;
-  lostReason?: string;
+  opportunityId: number;
+  stage: string;
+  version: number;
 }) => request.put('/crm/opportunity/stage', data);
 
 export const createProjectDraft = (id: number) =>

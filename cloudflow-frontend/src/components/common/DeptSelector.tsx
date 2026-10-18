@@ -8,6 +8,7 @@ import { SelectorShell, type SelectorShellOption } from './SelectorShell';
 type DeptId = number | string;
 
 interface BaseProps {
+  controlProps?: React.AriaAttributes & { id?: string };
   placeholder?: string;
   disabled?: boolean;
   allowClear?: boolean;
@@ -136,6 +137,7 @@ export const DeptSelector: React.FC<DeptSelectorProps> = (props) => {
 
   return (
     <SelectorShell
+      {...props.controlProps}
       options={options}
       loading={loading}
       value={valueArray}

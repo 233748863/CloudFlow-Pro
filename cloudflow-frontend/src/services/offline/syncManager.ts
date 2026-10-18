@@ -220,7 +220,7 @@ class SyncManager {
       task_complete: { method: 'POST', url: `/workflow/wf/complete` },
       task_approve: { method: 'POST', url: `/workflow/wf/complete` },
       task_reject: { method: 'POST', url: `/workflow/wf/complete` },
-      notice_read: { method: 'POST', url: `/oa/notice/read/${action.payload.noticeId}` },
+      notice_read: { method: 'PUT', url: '/auth/system/message/mine/read' },
       schedule_create: { method: 'POST', url: `/oa/schedule` },
       hr_leave_request: { method: 'POST', url: `/workflow/wf/start` },
       reimbursement_request: { method: 'POST', url: `/workflow/wf/start` },
@@ -235,6 +235,8 @@ class SyncManager {
 
     if (endpoint.method === 'POST') {
       await request.post(endpoint.url, action.payload);
+    } else if (endpoint.method === 'PUT') {
+      await request.put(endpoint.url, { recordIds: [action.payload.noticeId] });
     } else {
       await request.get(endpoint.url, { params: action.payload });
     }

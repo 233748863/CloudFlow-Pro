@@ -239,8 +239,8 @@ export const sealApi = {
 };
 
 export const sealApplicationApi = {
-  list: (params: { pageNum?: number; pageSize?: number; applicationNo?: string; documentName?: string; sealId?: number; status?: string }) =>
-    request.get('/oa/seal/application/list', { params }) as Promise<PageResult<OaSealApplication>>,
+  list: (params: { pageNum?: number; pageSize?: number; applicationNo?: string; documentName?: string; sealId?: number; status?: string }, signal?: AbortSignal) =>
+    request.get('/oa/seal/application/list', { params, signal }) as Promise<PageResult<OaSealApplication>>,
   overdue: (params: { pageNum?: number; pageSize?: number }) =>
     request.get('/oa/seal/application/overdue', { params }) as Promise<PageResult<OaSealApplication>>,
   getInfo: (id: number) => request.get(`/oa/seal/application/${id}`) as Promise<OaSealApplication>,

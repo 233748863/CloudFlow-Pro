@@ -1,0 +1,338 @@
+/* Unity2 风格工作区覆盖：仅作用于已登录的 CloudFlow 壳层。 */
+.cf-app-shell {
+  --u2-page: #f5f7f9;
+  --u2-surface: #ffffff;
+  --u2-surface-soft: #f8fafc;
+  --u2-ink: #0f172a;
+  --u2-muted: #64748b;
+  --u2-border: rgba(15, 23, 42, 0.1);
+  --u2-accent: #0d95b5;
+  --u2-accent-soft: rgba(13, 149, 181, 0.1);
+  background: var(--u2-page);
+  color: var(--u2-ink);
+}
+
+html.dark .cf-app-shell {
+  --u2-page: #020617;
+  --u2-surface: #0f172a;
+  --u2-surface-soft: #16203a;
+  --u2-ink: #f8fafc;
+  --u2-muted: #94a3b8;
+  --u2-border: rgba(148, 163, 184, 0.2);
+  --u2-accent: #22a2bf;
+  --u2-accent-soft: rgba(34, 162, 191, 0.14);
+}
+
+.cf-app-sidebar {
+  width: 210px;
+  border-right: 1px solid var(--u2-border);
+  background: color-mix(in srgb, var(--u2-surface) 94%, transparent);
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(20px);
+}
+
+.cf-app-sidebar.sidebar-collapsed {
+  width: 64px;
+}
+
+.cf-app-sidebar .sidebar-header {
+  min-height: 50px;
+  height: 50px;
+  border-bottom-color: var(--u2-border);
+  padding-inline: 12px;
+}
+
+.cf-app-sidebar .sidebar-brand-title {
+  color: var(--u2-ink);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.cf-app-sidebar .sidebar-nav {
+  padding: 12px 8px;
+}
+
+.cf-app-sidebar .sidebar-link {
+  min-height: 32px;
+  margin-bottom: 2px;
+  gap: 8px;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: var(--u2-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.cf-app-sidebar .sidebar-link:hover {
+  background: color-mix(in srgb, var(--u2-muted) 10%, transparent);
+  color: var(--u2-ink);
+}
+
+.cf-app-sidebar .cf-side-link-active {
+  background: var(--u2-accent-soft);
+  color: var(--u2-accent);
+  font-weight: 600;
+}
+
+.cf-app-sidebar .sidebar-footer {
+  border-top-color: var(--u2-border);
+  padding: 8px;
+}
+
+.cf-app-main {
+  margin-left: 210px;
+  background: transparent;
+}
+
+body:has(.cf-app-sidebar.sidebar-collapsed) .cf-app-main {
+  margin-left: 64px;
+}
+
+.app-header.cf-app-header {
+  height: 50px;
+  min-height: 50px;
+  border-bottom: 1px solid var(--u2-border);
+  background: color-mix(in srgb, var(--u2-surface) 90%, transparent);
+  box-shadow: 0 1px 10px rgba(15, 23, 42, 0.03);
+  backdrop-filter: blur(20px);
+}
+
+.app-header-inner.cf-app-header-inner {
+  height: 50px;
+  padding-inline: 20px;
+}
+
+.app-header-action,
+.app-balance-pill {
+  height: 32px;
+  border-radius: 6px;
+  color: var(--u2-muted);
+  font-size: 13px;
+}
+
+.app-header-action:hover {
+  background: color-mix(in srgb, var(--u2-muted) 10%, transparent);
+  color: var(--u2-ink);
+}
+
+.cf-app-content {
+  min-height: calc(100vh - 50px);
+  padding: 20px;
+  background: transparent;
+}
+
+.dashboard-page.admin-source-page {
+  gap: 16px;
+}
+
+.dashboard-page .dashboard-hero {
+  min-height: 108px;
+  align-items: flex-end;
+  border: 1px solid var(--u2-border);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(13, 149, 181, 0.12), transparent 34%),
+    var(--u2-surface);
+  padding: 20px 22px;
+}
+
+.dashboard-page .dashboard-hero h2 {
+  color: var(--u2-ink);
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.dashboard-page .dashboard-hero p:last-child {
+  margin-top: 8px;
+  color: var(--u2-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dashboard-page .dashboard-kicker {
+  margin-bottom: 8px;
+  color: var(--u2-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.dashboard-page .dashboard-hero-actions {
+  gap: 8px;
+}
+
+.dashboard-page .dashboard-stats-grid {
+  min-height: 0;
+  border: 1px solid var(--u2-border);
+  border-radius: 8px;
+  background: var(--u2-surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.dashboard-page .dashboard-stat {
+  min-height: 92px;
+  padding: 16px;
+}
+
+.dashboard-page .dashboard-stat::after {
+  top: 16px;
+  bottom: 16px;
+  background: var(--u2-border);
+}
+
+.dashboard-page .dashboard-stat-label,
+.dashboard-page .dashboard-stat-meta {
+  color: var(--u2-muted);
+  font-size: 12px;
+}
+
+.dashboard-page .dashboard-stat-value {
+  margin-block: 5px 3px;
+  color: var(--u2-ink);
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.dashboard-page .dashboard-toolbar,
+.dashboard-page .dashboard-chart-toolbar {
+  min-height: 48px;
+  border: 1px solid var(--u2-border);
+  border-radius: 8px;
+  background: var(--u2-surface);
+  padding: 8px 12px;
+}
+
+.dashboard-page .dashboard-chart-surface {
+  gap: 20px;
+  border: 1px solid var(--u2-border);
+  border-radius: 8px;
+  background: var(--u2-surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  padding: 20px;
+}
+
+.dashboard-page .dashboard-chart-card {
+  min-height: 300px;
+}
+
+.dashboard-page .dashboard-chart-heading h2,
+.dashboard-page .dashboard-chart-heading h3,
+.dashboard-page .recent-usage-header h2,
+.dashboard-page .quick-actions-header h2 {
+  color: var(--u2-ink);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.dashboard-page .dashboard-chart-heading span,
+.dashboard-page .recent-usage-header span {
+  color: var(--u2-muted);
+  font-size: 12px;
+}
+
+.dashboard-page .recent-usage-card,
+.dashboard-page .quick-actions-card {
+  border: 1px solid var(--u2-border);
+  border-radius: 8px;
+  background: var(--u2-surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.dashboard-page .recent-usage-header,
+.dashboard-page .quick-actions-header {
+  min-height: 52px;
+  border-bottom-color: var(--u2-border);
+  padding: 14px 16px;
+}
+
+.dashboard-page .recent-usage-row,
+.dashboard-page .quick-action-row {
+  border-bottom-color: var(--u2-border);
+  transition: background-color 150ms ease;
+}
+
+.dashboard-page .recent-usage-row:hover,
+.dashboard-page .quick-action-row:hover {
+  background: color-mix(in srgb, var(--u2-muted) 7%, transparent);
+}
+
+html.dark .dashboard-page .dashboard-hero,
+html.dark .dashboard-page .dashboard-stats-grid,
+html.dark .dashboard-page .dashboard-toolbar,
+html.dark .dashboard-page .dashboard-chart-toolbar,
+html.dark .dashboard-page .dashboard-chart-surface,
+html.dark .dashboard-page .recent-usage-card,
+html.dark .dashboard-page .quick-actions-card {
+  box-shadow: none;
+}
+
+@media (max-width: 1023px) {
+  .cf-app-main,
+  body:has(.cf-app-sidebar.sidebar-collapsed) .cf-app-main {
+    margin-left: 0;
+  }
+
+  .cf-app-sidebar {
+    transform: translateX(-100%);
+  }
+
+  .cf-app-sidebar.cf-mobile-sidebar-open {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 767px) {
+  .cf-app-content {
+    padding: 14px;
+  }
+
+  .dashboard-page .dashboard-hero {
+    min-height: 0;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .dashboard-page .dashboard-hero h2 {
+    font-size: 24px;
+  }
+
+  .dashboard-page .dashboard-hero-actions,
+  .dashboard-page .dashboard-hero-actions .btn {
+    width: 100%;
+  }
+
+  .dashboard-page .dashboard-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-page .dashboard-stat {
+    min-height: 88px;
+    padding: 12px;
+  }
+
+  .dashboard-page .dashboard-stat-value {
+    font-size: 19px;
+  }
+
+  .dashboard-page .dashboard-toolbar,
+  .dashboard-page .dashboard-chart-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-app-sidebar,
+  .cf-app-main,
+  .dashboard-page .recent-usage-row,
+  .dashboard-page .quick-action-row {
+    transition: none;
+  }
+}

@@ -18,6 +18,24 @@ export type RiskStatus = 'OPEN' | 'HANDLING' | 'CLOSED' | 'IGNORED';
 export type RiskSource = 'RULE' | 'MANUAL';
 
 export interface OaContract {
+  version?: number;
+  supplierId?: number;
+  requiresFulfilmentFlag?: number;
+  fulfilmentStatus?: string;
+  fulfilmentDeadline?: string;
+  fulfilledTermCount?: number;
+  totalTermCount?: number;
+  fulfilmentProgress?: number;
+  signedFlag?: number;
+  signMethod?: string;
+  ourSigneeName?: string;
+  ourSignTime?: string;
+  ourSignIp?: string;
+  counterpartySignee?: string;
+  counterpartySignTime?: string;
+  signPlace?: string;
+  signRemark?: string;
+  signedFileUrl?: string;
   contractId?: number;
   contractNo?: string;
   contractName: string;
@@ -25,6 +43,9 @@ export interface OaContract {
   contractType: string;
   amount: number;
   currency?: string;
+  currencyLocked?: boolean;
+  sourceType?: string;
+  sourceId?: number;
   ownerId?: number;
   ownerName?: string;
   deptId?: number;
@@ -66,6 +87,20 @@ export interface OaContractTemplate {
   createTime?: string;
   updateBy?: string;
   updateTime?: string;
+}
+
+export interface ContractPerformanceView {
+  state: 'NOT_APPLICABLE' | 'INACTIVE' | 'WAITING_APPROVAL' | 'WAITING_SIGNATURE' | 'MISSING_START_DATE'
+    | 'WAITING_START_DATE' | 'READY' | 'PENDING_CONFIRMATION' | 'PENDING_SYNC' | 'CONFIRMED' | 'REVERSED';
+  message: string;
+  businessVersion: number;
+  approvalPassed: boolean;
+  signed: boolean;
+  startDate?: string;
+  endDate?: string;
+  confirmedAmount?: number;
+  currency: string;
+  confirmedTime?: string;
 }
 
 export interface OaTraceEvent {
@@ -117,7 +152,10 @@ export interface RiskStats {
 export const contractApi = {
   list: (params: { pageNum?: number; pageSize?: number; contractNo?: string; contractName?: string; counterpartyName?: string; contractType?: string; status?: string; riskLevel?: string }) =>
     request.get('/oa/contract/list', { params }) as Promise<PageResult<OaContract>>,
-  getInfo: (id: number) => request.get(`/oa/contract/${id}`) as Promise<OaContract>,
+  getInfo: (id: number, signal?: AbortSignal) => request.get(`/oa/contract/${id}`, { signal }) as Promise<OaContract>,
+  performance: (id: number) => request.get(`/oa/contract/${id}/performance`) as Promise<ContractPerformanceView>,
+  completeStartDate: (id: number, data: { version: number; startDate: string }) =>
+    request.put(`/oa/contract/${id}/start-date`, data) as Promise<ContractPerformanceView>,
   add: (data: OaContract) => request.post('/oa/contract', data),
   edit: (data: OaContract) => request.put('/oa/contract', data),
   remove: (ids: number[]) => request.delete(`/oa/contract/${ids.join(',')}`),
@@ -125,7 +163,7 @@ export const contractApi = {
   cancel: (id: number) => request.put(`/oa/contract/cancel/${id}`),
   linkSeal: (id: number, sealApplicationId: number) => request.put(`/oa/contract/${id}/link-seal/${sealApplicationId}`),
   timeline: (id: number) => request.get(`/oa/contract/${id}/timeline`) as Promise<OaTraceEvent[]>,
-  risks: (id: number) => request.get(`/oa/contract/${id}/risks`) as Promise<OaRiskAlert[]>,
+  risks: (id: number, signal?: AbortSignal) => request.get(`/oa/contract/${id}/risks`, { signal }) as Promise<OaRiskAlert[]>,
 };
 
 // OA-P0-2 合同模板 API

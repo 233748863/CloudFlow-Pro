@@ -1,252 +1,107 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Building2, Check, ChevronDown, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useAuth } from '@/context/AuthContext';
-import { getTenantList } from '@/services/api/tenant';
+import { getTenantSwitchOptions, type SwitchTenantPage } from '@/services/api/auth';
+import { getAuthSessionVersion } from '@/utils/authStorage';
 import './TenantSwitcher.css';
 
-interface Tenant {
-  tenantId: number;
-  tenantName: string;
-  status: string;
-}
-
-type TenantListResponse =
-  | Tenant[]
-  | {
-      records?: Tenant[];
-      rows?: Tenant[];
-      list?: Tenant[];
-      data?: {
-        records?: Tenant[];
-        rows?: Tenant[];
-        list?: Tenant[];
-      };
-    };
-
-const pickTenantArray = (source?: {
-  records?: Tenant[];
-  rows?: Tenant[];
-  list?: Tenant[];
-}) => {
-  if (Array.isArray(source?.records)) {
-    return source.records;
-  }
-
-  if (Array.isArray(source?.rows)) {
-    return source.rows;
-  }
-
-  if (Array.isArray(source?.list)) {
-    return source.list;
-  }
-
-  return [];
-};
-
-const normalizeTenantListResponse = (response: TenantListResponse): Tenant[] => {
-  if (Array.isArray(response)) {
-    return response;
-  }
-
-  const directList = pickTenantArray(response);
-  if (directList.length > 0) {
-    return directList;
-  }
-
-  return pickTenantArray(response?.data);
-};
-
-const getTenantName = (tenantName?: string, tenantId?: number) => {
-  const normalizedName = String(tenantName || '').trim();
-  if (normalizedName) {
-    return normalizedName;
-  }
-
-  if (typeof tenantId === 'number') {
-    return `租户 ${tenantId}`;
-  }
-
-  return '默认租户';
-};
-
-const getTenantIdText = (tenantId?: number) =>
-  typeof tenantId === 'number' ? `ID ${tenantId}` : 'ID --';
-
 export const TenantSwitcher: React.FC = () => {
-  const { user, switchTenant } = useAuth();
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const { user, switchTenant, hasPermission } = useAuth();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const operation = useRef(0);
+  const mounted = useRef(false);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [switching, setSwitching] = useState(false);
-
-  const normalizedRole = String(user?.role || '').trim().toUpperCase();
-  const canSwitchTenant =
-    Boolean(user) &&
-    (normalizedRole === 'ADMIN' ||
-      normalizedRole === 'ROLE_ADMIN' ||
-      normalizedRole === 'SUPER_ADMIN' ||
-      normalizedRole === 'SUPERADMIN' ||
-      normalizedRole.endsWith('_ADMIN') ||
-      normalizedRole.includes('ADMIN') ||
-      String(user?.username || '').trim().toLowerCase() === 'admin');
-
-  const fetchTenants = async (silent = false) => {
-    if (loading) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await getTenantList({ status: '0' });
-      setTenants(normalizeTenantListResponse(response as TenantListResponse));
-    } catch (error) {
-      console.error('获取租户列表失败:', error);
-      if (!silent) {
-        toast.error(getErrorMessage(error, '获取租户列表失败'));
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [keyword, setKeyword] = useState('');
+  const [current, setCurrent] = useState(1);
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<SwitchTenantPage | null>(null);
+  const [error, setError] = useState('');
+  const canSwitch = Boolean(user) && hasPermission('system:tenant:switch');
+  const currentName = user?.tenantName || `租户 ${user?.tenantId ?? '--'}`;
 
   useEffect(() => {
-    if (!canSwitchTenant) {
-      return;
-    }
-
-    void fetchTenants(true);
-  }, [canSwitchTenant]);
+    mounted.current = true;
+    return () => { mounted.current = false; operation.current++; };
+  }, []);
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+    operation.current++;
+    setIsOpen(false); setResult(null); setKeyword(''); setCurrent(1); setError(''); setSwitching(false);
+  }, [user?.id, user?.tenantId, canSwitch]);
 
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!dropdownRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+  useEffect(() => {
+    if (!canSwitch || !isOpen) return;
+    const controller = new AbortController();
+    const version = getAuthSessionVersion();
+    const active = () => !controller.signal.aborted && version === getAuthSessionVersion();
+    setLoading(true); setResult(null); setError('');
+    const timer = window.setTimeout(async () => {
+      try {
+        const page = await getTenantSwitchOptions({ current, size: 20, keyword: keyword.trim() }, controller.signal);
+        if (active()) setResult(page);
+      } catch (failure) {
+        if (active()) setError(getErrorMessage(failure, '可切换租户读取失败，请重试'));
+      } finally { if (active()) setLoading(false); }
+    }, 200);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [canSwitch, isOpen, current, keyword, attempt, user]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const outside = (event: MouseEvent) => {
+      if (!dropdownRef.current?.contains(event.target as Node)) setIsOpen(false);
     };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-      }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setIsOpen(false); triggerRef.current?.focus(); }
     };
-
-    document.addEventListener('click', handleClickOutside);
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    document.addEventListener('click', outside); window.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('click', outside); window.removeEventListener('keydown', escape); };
   }, [isOpen]);
 
-  if (!canSwitchTenant || !user) {
-    return null;
-  }
-
-  const currentTenant = tenants.find((tenant) => tenant.tenantId === user.tenantId);
-  const currentTenantName = getTenantName(
-    currentTenant?.tenantName || user.tenantName,
-    user.tenantId,
-  );
-  const currentTenantIdText = getTenantIdText(user.tenantId);
-
-  const handleSwitchTenant = async (tenantId: number) => {
-    if (tenantId === user.tenantId) {
-      setIsOpen(false);
-      return;
-    }
-
-    setSwitching(true);
-    try {
-      await switchTenant(tenantId);
-      setIsOpen(false);
-    } catch (error) {
-      console.error('租户切换失败:', error);
-    } finally {
-      setSwitching(false);
-    }
+  const select = async (tenantId: number) => {
+    if (!canSwitch || switching || loading || !result?.records.some(tenant => tenant.tenantId === tenantId)) return;
+    if (tenantId === user?.tenantId) { setIsOpen(false); return; }
+    const selectedOperation = ++operation.current;
+    const active = () => mounted.current && selectedOperation === operation.current;
+    setSwitching(true); setError('');
+    try { await switchTenant(tenantId); if (active()) setIsOpen(false); }
+    catch { if (active()) { setResult(null); setError('租户切换结果未确认，请重新读取当前身份后再操作'); } }
+    finally { if (active()) setSwitching(false); }
   };
 
-  return (
-    <div ref={dropdownRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        disabled={switching}
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
-        aria-label={`当前租户：${currentTenantName}`}
-        className="app-header-action hidden md:inline-flex disabled:cursor-wait disabled:opacity-70"
-      >
-        <Building2 size={16} />
-        <span className="hidden max-w-[7.5rem] truncate 2xl:inline">{currentTenantName}</span>
-        {switching ? (
-          <Loader2 size={14} className="shrink-0 animate-spin text-cf-faint" />
-        ) : (
-          <ChevronDown
-            size={14}
-            className={`shrink-0 text-cf-faint transition-transform duration-200 ${
- isOpen ? 'rotate-180' : ''
- }`}
-          />
-        )}
-      </button>
-
-      <div
-        className={`dropdown tenant-dropdown transition-all duration-150 ${
-          isOpen
-            ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
-            : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
-        }`}
-      >
-        {loading ? (
-          <div className="tenant-dropdown-state">
-            <Loader2 size={14} className="animate-spin" />
-            <span>正在加载</span>
-          </div>
-        ) : tenants.length === 0 ? (
-          <div className="tenant-dropdown-state">暂无租户</div>
-        ) : (
-          <>
-            <div className="tenant-dropdown-label">切换租户</div>
-            <div className="pb-1.5">
-              {tenants.map((tenant) => {
-                const active = tenant.tenantId === user.tenantId;
-                const tenantName = getTenantName(tenant.tenantName, tenant.tenantId);
-                const tenantIdText = getTenantIdText(tenant.tenantId);
-
-                return (
-                  <button
-                    key={tenant.tenantId}
-                    type="button"
-                    onClick={() => void handleSwitchTenant(tenant.tenantId)}
-                    disabled={switching}
-                    data-tooltip={`${tenantName} ${tenantIdText}`} aria-label={`${tenantName} ${tenantIdText}`}
-                    className={`tenant-option ${active ? 'is-active' : ''}`}
-                  >
-                    <div className="tenant-option-icon">
-                      <Building2 size={15} />
-                    </div>
-                    <div className="tenant-option-body">
-                      <div className="tenant-option-name">{tenantName}</div>
-                      <div className="tenant-option-id">{tenantIdText}</div>
-                    </div>
-                    {active ? <Check size={15} className="tenant-option-check" /> : null}
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
+  if (!canSwitch || !user) return null;
+  return <div ref={dropdownRef} className="relative">
+    <button ref={triggerRef} type="button" onClick={() => setIsOpen(open => !open)} disabled={switching}
+      aria-expanded={isOpen} aria-haspopup="dialog" aria-label={`当前租户：${currentName}`}
+      className="app-header-action min-h-11 min-w-11 disabled:opacity-70">
+      <Building2 size={16} /><span className="hidden max-w-[7.5rem] truncate 2xl:inline">{currentName}</span>
+      {switching ? <Loader2 size={14} className="animate-spin" /> : <ChevronDown size={14} />}
+    </button>
+    {isOpen && <div role="dialog" aria-label="切换租户" className="dropdown tenant-dropdown max-w-[calc(100vw-2rem)]">
+      <div className="p-3">
+        <label className="text-sm">查找可切换租户<input aria-label="查找可切换租户" maxLength={50} value={keyword}
+          onChange={event => { setKeyword(event.target.value); setCurrent(1); }}
+          className="mt-2 min-h-11 w-full rounded-md border border-[var(--cf-border)] bg-[var(--cf-surface)] px-3" /></label>
       </div>
-    </div>
-  );
+      {loading ? <p role="status" className="tenant-dropdown-state"><Loader2 size={14} className="animate-spin" />正在加载</p>
+        : error ? <div role="alert" className="p-3 text-sm"><p>{error}</p><button type="button" className="min-h-11" onClick={() => setAttempt(value => value + 1)}>重新读取</button></div>
+        : <><div className="max-h-64 overflow-y-auto">
+          {!result?.records.length && <p className="tenant-dropdown-state">没有符合条件的可切换租户</p>}
+          {result?.records.map(tenant => <button key={tenant.tenantId} type="button" className="tenant-option min-h-11" disabled={switching}
+            aria-label={`切换到${tenant.tenantName} ID ${tenant.tenantId}`} onClick={() => { void select(tenant.tenantId); }}>
+            <Building2 size={16} /><span className="tenant-option-body"><span className="tenant-option-name block">{tenant.tenantName}</span>
+              <span className="tenant-option-id block">{tenant.tenantCode} · ID {tenant.tenantId}</span></span>
+            {tenant.tenantId === user.tenantId && <Check size={16} />}
+          </button>)}
+        </div>{result && <div className="flex items-center justify-between gap-2 px-3 text-xs">
+          <button type="button" className="min-h-11 disabled:opacity-50" disabled={current <= 1 || switching} onClick={() => setCurrent(page => page - 1)}>上一页</button>
+          <span>第{current}页 · 共{result.total}户</span>
+          <button type="button" className="min-h-11 disabled:opacity-50" disabled={current * result.size >= result.total || switching} onClick={() => setCurrent(page => page + 1)}>下一页</button>
+        </div>}</>}
+    </div>}
+  </div>;
 };

@@ -1,6 +1,7 @@
 import request from "../request";
 import type { PageResult, ProcessInstance, ProcessTrace, StartProcessRequest } from "@/types/workflow";
 import { logApiCall } from "./internals";
+import { getWorkflowBusinessEntry } from "./businessEntry";
 import type { InstanceIdRequest, InvalidateProcessRequest, TerminateProcessRequest } from "./types";
 
 /**
@@ -9,6 +10,8 @@ import type { InstanceIdRequest, InvalidateProcessRequest, TerminateProcessReque
 export async function startProcess(
   data: StartProcessRequest,
 ): Promise<ProcessInstance> {
+  const businessEntry = getWorkflowBusinessEntry(data.processDefKey);
+  if (businessEntry) throw new Error(`请前往“${businessEntry.label}”办理此申请`);
   const variables: Record<string, unknown> = { ...(data.variables || {}) };
   if (data.title && !Object.prototype.hasOwnProperty.call(variables, "_title")) {
     variables._title = data.title;
@@ -19,8 +22,9 @@ export async function startProcess(
     processDefKey: data.processDefKey,
     businessKey: data.businessKey,
     variables,
+    nodeAssignees: data.nodeAssignees,
   };
-  logApiCall("POST", "/workflow/wf/start", payload);
+  logApiCall("POST", "/workflow/wf/start", { processDefKey: data.processDefKey });
   return request.post("/workflow/wf/start", payload);
 }
 
@@ -29,9 +33,11 @@ export async function startProcess(
  */
 export async function getProcessInstance(
   instanceId: string,
+  context?: { taskId?: string },
+  signal?: AbortSignal,
 ): Promise<ProcessInstance> {
   logApiCall("GET", `/workflow/wf/instance/${instanceId}`);
-  return request.get(`/workflow/wf/instance/${instanceId}`);
+  return request.get(`/workflow/wf/instance/${instanceId}`, { params: context, signal });
 }
 
 /**
@@ -100,6 +106,10 @@ export async function resumeProcess(instanceId: string): Promise<void> {
   logApiCall("POST", "/workflow/wf/resume", { instanceId });
   const data: InstanceIdRequest = { instanceId };
   return request.post("/workflow/wf/resume", data);
+}
+
+export async function finishTimerNode(instanceId: string, nodeKey: string, reason: string): Promise<void> {
+  return request.post(`/workflow/wf/instance/${encodeURIComponent(instanceId)}/timer/${encodeURIComponent(nodeKey)}/finish`, { reason });
 }
 
 /**

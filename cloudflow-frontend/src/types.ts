@@ -1,4 +1,6 @@
 
+import type { NodeOperationPermissions, RejectStrategy, WorkflowNodeSemantics, WorkflowTaskType } from './types/workflowSemantic';
+
 export enum Role {
   ADMIN = 'ADMIN',
   MANAGER = 'MANAGER',
@@ -36,7 +38,33 @@ export type FormFieldType =
   | 'EMPLOYEE'
   | 'DEPT'
   | 'POST'
-  | 'POSITION';
+  | 'POSITION'
+  | 'RICH_TEXT'
+  | 'AMOUNT'
+  | 'DATETIME'
+  | 'TIME'
+  | 'DATE_RANGE'
+  | 'MULTI_SELECT'
+  | 'RADIO_GROUP'
+  | 'CHECKBOX_GROUP'
+  | 'SWITCH'
+  | 'DICT_SELECT'
+  | 'USER_MULTI'
+  | 'DEPT_MULTI'
+  | 'UPLOAD_FILE'
+  | 'UPLOAD_IMAGE'
+  | 'DESCRIPTION'
+  | 'DIVIDER'
+  | 'GROUP'
+  | 'GRID'
+  | 'TABS'
+  | 'COLLAPSE'
+  | 'SUB_TABLE';
+
+export interface FormSummaryColumn {
+  columnId: string;
+  aggregation: 'SUM' | 'COUNT' | 'AVG';
+}
 
 export interface FormFieldFillMapping {
   targetFieldId: string;
@@ -53,6 +81,7 @@ export interface FormField {
   options?: string[]; // 用于 SELECT 类型
   placeholder?: string;
   readonly?: boolean;
+  imSummaryAllowed?: boolean;
   displayFieldId?: string;
   fillMappings?: FormFieldFillMapping[];
   filterByDeptFieldId?: string;
@@ -60,12 +89,51 @@ export interface FormField {
   // 新增验证字段
   regex?: string;
   errorMsg?: string;
+  min?: number | string;
+  max?: number | string;
+  precision?: number;
+  accept?: string;
+  maxSize?: number;
+  maxCount?: number;
+  dictType?: string;
+  defaultValue?: unknown;
+  multiple?: boolean;
+  rows?: number;
+  children?: FormField[];
+  title?: string;
+  columns?: number | FormField[];
+  span?: number;
+  defaultExpanded?: boolean;
+  minRows?: number;
+  maxRows?: number;
+  allowAdd?: boolean;
+  allowDelete?: boolean;
+  allowSort?: boolean;
+  allowCopyRow?: boolean;
+  summaryColumns?: FormSummaryColumn[];
+  emptyText?: string;
+  width?: number;
+  visibleExpr?: string;
+  disabledExpr?: string;
+  scopeDeptId?: string;
 }
 
 export interface FormDefinition {
   id: string;
+  formKey?: string;
   name: string;
   fields: FormField[];
+  version?: number;
+  versionLock?: number;
+  isLatest?: boolean;
+  checksum?: string;
+  changeLog?: string;
+  changeType?: string;
+  isRollback?: boolean;
+  rollbackFromVersion?: number;
+  createBy?: string;
+  createTime?: string;
+  versionUnknownFlag?: boolean;
 }
 
 // --- 组织架构类型 ---
@@ -82,6 +150,9 @@ export enum NodeType {
   START = 'START',
   APPROVAL = 'APPROVAL',
   CONDITION = 'CONDITION', // 排他网关 (XOR)
+  GATEWAY = 'GATEWAY',
+  INCLUSIVE = 'INCLUSIVE',
+  ROUTE = 'ROUTE',
   PARALLEL = 'PARALLEL',   // 并行网关 (AND)
   END = 'END',
   NOTIFICATION = 'NOTIFICATION', // 发送通知（无需审批）
@@ -101,13 +172,17 @@ export enum NodeType {
  *  - PERCENT: 比例签（按比例通过）
  *  - SEQUENTIAL: 顺序签（按顺序逐个审批）
  */
-export const PARALLEL_SIGN_MODES = ['ALL', 'ANY', 'PERCENT', 'SEQUENTIAL'] as const;
+export const PARALLEL_SIGN_MODES = ['ALL', 'ANY', 'PERCENT', 'SEQUENTIAL', 'WEIGHT'] as const;
 export type ParallelSignMode = (typeof PARALLEL_SIGN_MODES)[number];
 
-export interface WorkflowGraphNode {
+export type WorkflowBranchStrategy = 'PARALLEL' | 'EXCLUSIVE' | 'INCLUSIVE' | 'ROUTE';
+
+export interface WorkflowGraphNode extends WorkflowNodeSemantics {
   id: string;
   type: string;
   title?: string;
+  joinNodeKey?: string;
+  branchStrategy?: WorkflowBranchStrategy;
   [key: string]: unknown;
 }
 
@@ -171,6 +246,13 @@ export enum TaskStatus {
 
 export interface Task {
   id: string;
+  historyId?: string;
+  canWithdraw?: boolean;
+  nodeKey?: string;
+  taskType?: WorkflowTaskType;
+  nodePermissions?: NodeOperationPermissions;
+  rejectStrategy?: RejectStrategy;
+  rejectToNodeKey?: string;
   processInstanceId: string;
   workflowId: string; // 关联流程定义
   workflowName: string;
@@ -182,6 +264,14 @@ export interface Task {
   assigneeId?: string; // 指定处理人ID
   assigneeName?: string; // 处理人显示名称
   assigneeRole?: Role; // 角色类型处理人
+  proxyUserId?: string;
+  agentSettingId?: string;
+  agentMode?: 'AGENT' | 'AGENT_ASSIST';
+  version?: number;
+  operatorId?: string;
+  operatorName?: string;
+  onBehalfOfUserId?: string;
+  onBehalfOfUserName?: string;
   
   type: 'LEAVE' | 'REIMBURSEMENT' | 'DYNAMIC'; // 支持动态表单
   
@@ -195,7 +285,7 @@ export interface Task {
   reason: string;
   
   status: TaskStatus;
-  backendStatus?: string; // 后端原始状态（RUNNING/COMPLETED/REJECTED/REVOKED），用于"我的申请"筛选
+  backendStatus?: string;
   createdTime: string;
   dueDate?: string; // 任务截止时间
   allowEdit: boolean;
@@ -255,8 +345,8 @@ export interface StepDetail {
   signType?: ParallelSignMode;
   /** 会签通过百分比，仅 PERCENT 类型 */
   passPercent?: number;
-  /** 分支策略 (PARALLEL/EXCLUSIVE)，仅网关节点 */
-  branchStrategy?: 'PARALLEL' | 'EXCLUSIVE';
+  /** 分支策略，仅网关节点 */
+  branchStrategy?: WorkflowBranchStrategy;
   /** 分支步骤详情列表，仅网关节点。每个元素是一个分支的步骤数组 */
   branches?: StepDetail[][];
 }
@@ -346,15 +436,35 @@ export interface Announcement {
 // --- Schedule & Meeting Types ---
 export interface MeetingRoom {
   roomId: string;
+  version?: number;
   name: string;
   capacity: number;
   location: string;
   equipment: string; // JSON 字符串
   status: '1' | '0';
+  equipmentTags?: string;
+  bookableWeekdays?: string;
+  openTime?: string | null;
+  closeTime?: string | null;
+  holidayCalendarId?: string | number | null;
+  holidayBookableFlag?: number;
+  minBookingMinutes?: number;
+  maxBookingMinutes?: number | null;
+  advanceBookingDays?: number | null;
+  needApprovalFlag?: number;
+  approverId?: string | number | null;
+  bufferMinutes?: number;
+  photoFileId?: string | number | null;
 }
 
 export interface SysScheduleEvent {
   eventId: string;
+  version?: number;
+  status?: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NOT_HELD';
+  approvalStatus?: 'NOT_REQUIRED' | 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  expectedAttendees?: number;
+  confirmParticipantConflicts?: boolean;
+  bufferMinutesSnapshot?: number;
   title: string;
   description?: string;
   startTime: string;

@@ -9,6 +9,7 @@ import type {
 export const listCustomers = (params: {
   pageNum?: number;
   pageSize?: number;
+  keyword?: string;
   customerName?: string;
   customerCode?: string;
   customerTags?: string;
@@ -16,8 +17,8 @@ export const listCustomers = (params: {
   status?: string;
 }) => request.get('/crm/customer/list', { params }) as Promise<PageResult<CrmCustomer>>;
 
-export const addCustomer = (data: CrmCustomer) => request.post('/crm/customer', data);
-export const editCustomer = (data: CrmCustomer) => request.put('/crm/customer', data);
+export const addCustomer = (data: CrmCustomer, options?: { silent?: boolean }) => request.post('/crm/customer', data, options);
+export const editCustomer = (data: CrmCustomer, options?: { silent?: boolean }) => request.put('/crm/customer', data, options);
 export const removeCustomer = (ids: number[]) =>
   request.delete(`/crm/customer/${ids.join(',')}`);
 

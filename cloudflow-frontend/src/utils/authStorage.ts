@@ -1,13 +1,20 @@
 // Token 仅保存在内存；HTTP 请求头与 WebSocket 首帧共用这一份。
 let inMemoryToken: string | null = null;
+let authSessionVersion = 0;
+
+export const getAuthSessionVersion = (): number => authSessionVersion;
+
+export const invalidateAuthRequests = (): number => ++authSessionVersion;
 
 export const getAuthToken = (): string | null => inMemoryToken;
 
 export const setAuthToken = (token: string) => {
+  invalidateAuthRequests();
   inMemoryToken = token;
 };
 
 export const removeAuthToken = () => {
+  invalidateAuthRequests();
   inMemoryToken = null;
 };
 

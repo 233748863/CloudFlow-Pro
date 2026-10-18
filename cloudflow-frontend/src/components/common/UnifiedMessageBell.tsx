@@ -12,14 +12,18 @@ import {
 import { toast } from 'sonner';
 import { AnnouncementDetailModal } from '@/components/common/AnnouncementDetailModal';
 import { BaseDialog } from '@/components/common/BaseDialog';
+import { Button } from '@/components/common/button';
+import { PermissionGuard } from '@/components/common/PermissionGuard';
 import { getNoticeDetail, getNoticeList, getUnreadCount, markNoticeRead } from '@/services/api/notice';
 import type { Notice } from '@/services/api/notice';
-import { useAnnouncementStore, useAnnouncementUnreadCount } from '@/stores/announcementStore';
+import { useAnnouncementStore } from '@/stores/announcementStore';
+import { useAuth } from '@/context/AuthContext';
 import { AnnouncementType, type Announcement } from '@/types';
 import { getAnnouncementExcerpt } from '@/utils/announcementContent';
 import { formatAnnouncementRelativeTime } from '@/utils/announcementFormat';
 import { cn } from '@/utils/cn';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { navigateTo } from '@/utils/navigation';
 import './announcement-overlays.css';
 
 type MessageTab = 'all' | 'announcement' | 'notice';
@@ -80,9 +84,11 @@ function getAnnouncementTypeLabel(type: AnnouncementType) {
 }
 
 function getNoticeTypeLabel(type: string) {
-  if (type === '2') {
-    return '催办';
-  }
+  if (type === 'TODO') return '待办';
+  if (type === 'CC') return '抄送';
+  if (type === 'ANNOUNCEMENT') return '公告';
+  if (type === 'BIZ_REMINDER') return '业务提醒';
+  if (type === 'SYSTEM') return '系统';
   return '通知';
 }
 
@@ -99,11 +105,14 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
   triggerIconSize = 18,
   triggerBadgeVariant = 'count',
 }) => {
+  const { hasPermission } = useAuth();
+  const canReadAnnouncements = hasPermission('oa:announcement:list');
+  const canReadNotices = hasPermission('system:message:mine:list');
+  const canMarkNoticesRead = hasPermission('system:message:mine:read');
   const announcements = useAnnouncementStore((state) => state.announcements);
   const announcementLoading = useAnnouncementStore((state) => state.loading);
   const fetchAnnouncements = useAnnouncementStore((state) => state.fetchAnnouncements);
   const markAnnouncementAsRead = useAnnouncementStore((state) => state.markAsRead);
-  const announcementUnreadCount = useAnnouncementUnreadCount();
 
   const [notices, setNotices] = useState<Notice[]>([]);
   const [noticeUnreadCount, setNoticeUnreadCount] = useState(0);
@@ -113,17 +122,27 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
-  const totalUnreadCount = announcementUnreadCount + noticeUnreadCount;
+  // 公告发布后会同步生成 ANNOUNCEMENT 消息，铃铛未读数以统一消息表为准，避免双计数。
+  const totalUnreadCount = canReadNotices ? noticeUnreadCount : 0;
 
   const fetchNoticeUnreadCount = useCallback(async () => {
+    if (!canReadNotices) {
+      setNoticeUnreadCount(0);
+      return;
+    }
     try {
       setNoticeUnreadCount(await getUnreadCount());
     } catch {
       setNoticeUnreadCount(0);
     }
-  }, []);
+  }, [canReadNotices]);
 
   const fetchNotices = useCallback(async () => {
+    if (!canReadNotices) {
+      setNotices([]);
+      setNoticeLoading(false);
+      return;
+    }
     setNoticeLoading(true);
     try {
       const result = await getNoticeList({ pageNum: 1, pageSize: 20 });
@@ -133,15 +152,25 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
     } finally {
       setNoticeLoading(false);
     }
-  }, []);
+  }, [canReadNotices]);
+
+  useEffect(() => {
+    if (!canReadNotices) {
+      setNotices([]);
+      setNoticeUnreadCount(0);
+      setSelectedNotice(null);
+    }
+    if (!canReadAnnouncements) setSelectedAnnouncement(null);
+    if (!canReadNotices && !canReadAnnouncements) setIsModalOpen(false);
+  }, [canReadNotices, canReadAnnouncements]);
 
   const refreshMessages = useCallback(async () => {
     await Promise.all([
-      fetchAnnouncements(true),
+      ...(canReadAnnouncements ? [fetchAnnouncements(true)] : []),
       fetchNoticeUnreadCount(),
       fetchNotices(),
     ]);
-  }, [fetchAnnouncements, fetchNoticeUnreadCount, fetchNotices]);
+  }, [canReadAnnouncements, fetchAnnouncements, fetchNoticeUnreadCount, fetchNotices]);
 
   useEffect(() => {
     void fetchNoticeUnreadCount();
@@ -157,8 +186,10 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
     };
 
     window.addEventListener('sys-notice-received', handleNoticeReceived);
+    window.addEventListener('cloudflow:messages-read', handleNoticeReceived);
     return () => {
       window.removeEventListener('sys-notice-received', handleNoticeReceived);
+      window.removeEventListener('cloudflow:messages-read', handleNoticeReceived);
     };
   }, [fetchNoticeUnreadCount, isModalOpen, refreshMessages]);
 
@@ -197,7 +228,15 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
   }, [isModalOpen, selectedAnnouncement, selectedNotice]);
 
   const unifiedItems = useMemo<UnifiedMessageItem[]>(() => {
-    const announcementItems: UnifiedMessageItem[] = announcements.map((item) => ({
+    const linkedAnnouncementIds = new Set(
+      notices
+        .filter((item) => item.type === 'ANNOUNCEMENT' && item.bizType === 'OA_ANNOUNCEMENT')
+        .map((item) => Number(item.bizId))
+        .filter((id) => Number.isFinite(id)),
+    );
+    const announcementItems: UnifiedMessageItem[] = (canReadAnnouncements ? announcements : [])
+      .filter((item) => !linkedAnnouncementIds.has(item.announcementId))
+      .map((item) => ({
       kind: 'announcement',
       id: item.announcementId,
       title: item.title,
@@ -205,9 +244,9 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
       timeText: item.publishTime || item.createTime,
       isRead: item.isRead,
       source: item,
-    }));
+      }));
 
-    const noticeItems: UnifiedMessageItem[] = notices.map((item) => ({
+    const noticeItems: UnifiedMessageItem[] = (canReadNotices ? notices : []).map((item) => ({
       kind: 'notice',
       id: item.id,
       title: item.title,
@@ -221,14 +260,15 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
     return [...announcementItems, ...noticeItems].sort(
       (left, right) => parseMessageTime(right.timeText) - parseMessageTime(left.timeText),
     );
-  }, [announcements, notices]);
+  }, [announcements, notices, canReadAnnouncements, canReadNotices]);
 
   const filteredItems = useMemo(() => {
     if (activeTab === 'announcement') {
-      return unifiedItems.filter((item) => item.kind === 'announcement');
+      return unifiedItems.filter((item) => item.kind === 'announcement'
+        || (item.kind === 'notice' && item.type === 'ANNOUNCEMENT'));
     }
     if (activeTab === 'notice') {
-      return unifiedItems.filter((item) => item.kind === 'notice');
+      return unifiedItems.filter((item) => item.kind === 'notice' && item.type !== 'ANNOUNCEMENT');
     }
     return unifiedItems;
   }, [activeTab, unifiedItems]);
@@ -240,19 +280,15 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
   }, []);
 
   const syncNoticeReadState = useCallback((noticeId: number) => {
-    let decremented = false;
     setNotices((previous) =>
       previous.map((item) => {
         if (item.id !== noticeId || item.isRead) {
           return item;
         }
-        decremented = true;
         return { ...item, isRead: true };
       }),
     );
-    if (decremented) {
-      setNoticeUnreadCount((previous) => Math.max(0, previous - 1));
-    }
+    window.dispatchEvent(new Event('cloudflow:messages-read'));
   }, []);
 
   const openNoticeDetail = useCallback(async (notice: Notice) => {
@@ -264,7 +300,7 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
       detailNotice = notice;
     }
 
-    if (!detailNotice.isRead) {
+    if (!detailNotice.isRead && canMarkNoticesRead) {
       try {
         await markNoticeRead(detailNotice.id);
         detailNotice = { ...detailNotice, isRead: true };
@@ -275,7 +311,7 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
     }
 
     setSelectedNotice(detailNotice);
-  }, [syncNoticeReadState]);
+  }, [canMarkNoticesRead, syncNoticeReadState]);
 
   const openAnnouncementDetail = useCallback(async (announcement: Announcement) => {
     const nextAnnouncement = announcement.isRead ? announcement : { ...announcement, isRead: true };
@@ -314,7 +350,16 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
   };
 
   const [emptyTitle, emptyDescription] = getEmptyText();
-  const loading = announcementLoading || noticeLoading;
+  const loading = (canReadAnnouncements && announcementLoading) || (canReadNotices && noticeLoading);
+  let businessPath: string | null = null;
+  if (selectedNotice?.linkUrl) {
+    try {
+      const target = new URL(selectedNotice.linkUrl, window.location.origin);
+      if (target.origin === window.location.origin) businessPath = target.pathname + target.search + target.hash;
+    } catch { businessPath = null; }
+  }
+
+  if (!canReadNotices && !canReadAnnouncements) return null;
 
   return (
     <div>
@@ -341,11 +386,15 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
       <BaseDialog
         open={isModalOpen}
         title={selectedNotice ? '通知详情' : '消息中心'}
-        description={!selectedNotice ? `未读：公告 ${announcementUnreadCount} 条 · 通知 ${noticeUnreadCount} 条` : undefined}
+        description={!selectedNotice ? `未读消息 ${noticeUnreadCount} 条` : undefined}
         onClose={closeModal}
         closeOnEscape={false}
         maxWidthClassName="w-full max-w-[680px]"
         bodyClassName="p-0 !overflow-hidden"
+        footer={!selectedNotice ? <div className="flex flex-wrap gap-2">
+          <PermissionGuard permissions={['system:message:mine:list']} hidden><Button variant="outline" onClick={() => { closeModal(); navigateTo('/message/mine'); }}>查看全部消息</Button></PermissionGuard>
+          <PermissionGuard permissions={['system:message:subscribe:list']} hidden><Button variant="outline" onClick={() => { closeModal(); navigateTo('/message/subscribe'); }}>订阅与免打扰</Button></PermissionGuard>
+        </div> : undefined}
         headerAside={selectedNotice ? (
           <button
             type="button"
@@ -366,9 +415,10 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
                     {TAB_OPTIONS.map((tab) => {
                       const count =
                         tab.key === 'announcement'
-                          ? announcements.length
+                          ? unifiedItems.filter((item) => item.kind === 'announcement'
+                            || (item.kind === 'notice' && item.type === 'ANNOUNCEMENT')).length
                           : tab.key === 'notice'
-                            ? notices.length
+                            ? notices.filter((item) => item.type !== 'ANNOUNCEMENT').length
                             : unifiedItems.length;
 
                       return (
@@ -415,6 +465,15 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
                     <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-4 text-sm leading-7 text-cf-body dark:border-slate-800 dark:bg-slate-900/70">
                       <div className="whitespace-pre-wrap break-words">{selectedNotice.content || '暂无内容'}</div>
                     </div>
+                    {businessPath ? (
+                      <button
+                        type="button"
+                        className="self-start rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-700"
+                        onClick={() => { closeModal(); navigateTo(businessPath!); }}
+                      >
+                        查看详情
+                      </button>
+                    ) : null}
                   </div>
                 ) : filteredItems.length > 0 ? (
                   <div>

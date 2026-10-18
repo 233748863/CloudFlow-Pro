@@ -41,9 +41,10 @@ export async function getFormDefinitions(): Promise<FormDefinitionListItem[]> {
  */
 export async function getFormDefinition(
   formId: string,
+  context?: { instanceId?: string; definitionId?: string; taskId?: string },
 ): Promise<FormDefinition> {
   logApiCall("GET", `/workflow/wf/form/${formId}`);
-  return request.get(`/workflow/wf/form/${formId}`);
+  return request.get(`/workflow/wf/form/${formId}`, { params: context });
 }
 
 /**

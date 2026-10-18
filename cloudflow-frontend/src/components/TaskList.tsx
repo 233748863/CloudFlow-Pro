@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { Ban, Eye, RotateCcw } from 'lucide-react';
+import { Eye, RotateCcw } from 'lucide-react';
+import { getProcessStatusClass, getProcessStatusLabel } from '@/utils/processStatus';
 import { toast } from 'sonner';
 import { Button } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { recallProcess } from '../services/api/workflow';
 import { Task, TaskStatus } from '../types';
 import { getWorkflowSummaryParts } from '../utils/workflowFormDisplay';
+import { ApprovalWithdrawalButton } from './workflow/ApprovalWithdrawalButton';
 
 interface TaskListProps {
   tasks: Task[];
   onTaskClick?: (task: Task) => void;
   showRecallButton?: boolean;
+  showWithdrawalButton?: boolean;
   primaryActionLabel?: string;
   onRecallSuccess?: () => void;
 }
@@ -71,11 +74,10 @@ const InlineBadge = ({
 );
 
 const getStatusBadge = (task: Task) => {
-  if (task.backendStatus === 'REVOKED') {
+  if (task.backendStatus) {
     return (
-      <InlineBadge className="border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-        <Ban size={12} />
-        已撤回
+      <InlineBadge className={getProcessStatusClass(task.backendStatus)}>
+        {getProcessStatusLabel(task.backendStatus)}
       </InlineBadge>
     );
   }
@@ -107,6 +109,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   tasks,
   onTaskClick,
   showRecallButton = false,
+  showWithdrawalButton = false,
   primaryActionLabel,
   onRecallSuccess,
 }) => {
@@ -156,11 +159,14 @@ export const TaskList: React.FC<TaskListProps> = ({
 
         return (
           <div
-            key={task.id}
+            key={task.historyId || task.id}
+            data-history-id={task.historyId}
+            data-task-id={task.id}
             role="button"
             tabIndex={0}
             onClick={() => onTaskClick?.(task)}
             onKeyDown={(event) => {
+              if (event.target !== event.currentTarget) return;
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 onTaskClick?.(task);
@@ -231,6 +237,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                   </>
                 ) : (
                   <div className="admin-users-row-actions">
+                    {showWithdrawalButton && <ApprovalWithdrawalButton task={task} onSuccess={onRecallSuccess} />}
                     <button
                       type="button"
                       data-tooltip={actionLabel}

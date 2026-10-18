@@ -267,7 +267,14 @@ export const Select = ({
   );
 };
 
-export const SelectTrigger = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
+export const SelectTrigger = ({
+  children,
+  className = '',
+  ...accessibilityProps
+}: {
+  children: React.ReactNode;
+  className?: string;
+} & Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, 'id' | 'aria-label' | 'aria-labelledby' | 'aria-describedby' | 'aria-busy'>) => {
   const { setOpen, open, disabled } = React.useContext(SelectContext);
   const hasExplicitWidth = className
     .split(/\s+/)
@@ -275,6 +282,7 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
 
   return (
     <button
+      {...accessibilityProps}
       type="button"
       disabled={disabled}
       aria-expanded={open}
@@ -506,6 +514,7 @@ export const SelectItem: SelectItemComponent = ({ children, value, label, classN
     <div
       role="option"
       aria-selected={isSelected}
+      aria-disabled={disabled}
       className={cn(
         'select-option relative flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[13px] transition-colors',
         disabled && 'select-option-disabled cursor-not-allowed opacity-40',

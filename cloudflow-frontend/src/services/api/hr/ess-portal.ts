@@ -5,7 +5,7 @@ export const getEssPortalSummary = () =>
   request.get<HrEssPortalSummary>('/hr/ess/portal/summary');
 
 export const markMessageRead = (id: number) =>
-  request.post<void>(`/hr/ess/messages/${id}/read`, {});
+  request.put<void>('/auth/system/message/mine/read', { recordIds: [id] });
 
 export const markAllMessagesRead = () =>
-  request.post<void>('/hr/ess/messages/read-all', {});
+  request.put<void>('/auth/system/message/mine/read', { all: true });

@@ -8,6 +8,7 @@ import { SelectorShell, type SelectorShellOption } from './SelectorShell';
 type EmployeeId = number | string;
 
 interface BaseProps {
+  controlProps?: React.AriaAttributes & { id?: string };
   placeholder?: string;
   disabled?: boolean;
   allowClear?: boolean;
@@ -129,6 +130,7 @@ export const EmployeeSelector: React.FC<EmployeeSelectorProps> = (props) => {
 
   return (
     <SelectorShell
+      {...props.controlProps}
       options={options}
       loading={loading}
       value={valueArray}

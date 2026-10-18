@@ -1,4 +1,6 @@
 import { removeAuthToken, clearCurrentUserSnapshot } from '@/utils/authStorage';
+import { clearBackendMenuQueries } from '@/lib/queryClient';
+import { clearMobileSnapshots } from '@/utils/mobileSnapshots';
 
 // 兼容历史保留：仍清掉 SESSION_CACHE_PREFIXES 前缀的 key；
 // 同时统一兜底清掉所有 tenantStorage 桶（t<tenantId>:xxx）与历史 api_cache_ 残留
@@ -6,6 +8,7 @@ import { removeAuthToken, clearCurrentUserSnapshot } from '@/utils/authStorage';
 const SESSION_CACHE_PREFIXES = ['cloudflow_pro_api_cache_'];
 
 export const clearSessionCaches = (): void => {
+  clearMobileSnapshots();
   try {
     const removeList: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -34,5 +37,6 @@ export const clearSessionCaches = (): void => {
 export const clearAuthSession = (): void => {
   removeAuthToken();
   clearCurrentUserSnapshot();
+  clearBackendMenuQueries();
   clearSessionCaches();
 };

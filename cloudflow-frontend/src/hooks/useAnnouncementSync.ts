@@ -1,12 +1,15 @@
 import { useEffect } from 'react';
 import { useAnnouncementStore } from '@/stores/announcementStore';
+import { useAuth } from '@/context/AuthContext';
 
 export function useAnnouncementSync(enabled = true) {
+  const { hasPermission } = useAuth();
+  const authorized = enabled && hasPermission('oa:announcement:list');
   const fetchAnnouncements = useAnnouncementStore((state) => state.fetchAnnouncements);
   const reset = useAnnouncementStore((state) => state.reset);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!authorized) {
       reset();
       return;
     }
@@ -30,6 +33,5 @@ export function useAnnouncementSync(enabled = true) {
       window.removeEventListener('announcementRead', handleAnnouncementRead);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [enabled, fetchAnnouncements, reset]);
+  }, [authorized, fetchAnnouncements, reset]);
 }
-

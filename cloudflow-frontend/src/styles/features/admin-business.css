@@ -3,6 +3,22 @@
    随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
 
 @layer components {
+  @media (max-width: 639px) {
+    .admin-business-rules-page .unity-data-table.cf-mobile-table {
+      min-width: 0 !important;
+    }
+
+    .admin-business-rules-page .admin-source-header {
+      align-items: stretch;
+    }
+
+    .admin-business-rules-page .admin-source-header > div {
+      min-width: 0;
+      width: 100%;
+      overflow-wrap: anywhere;
+    }
+  }
+
   .admin-business-trip-detail-grid {
       display: grid;
       min-width: 0;

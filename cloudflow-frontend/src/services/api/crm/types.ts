@@ -2,7 +2,17 @@
 // CRM 模块所有业务类型
 // ============================================================================
 
-export interface CrmCustomer {
+export interface CrmProfile {
+  territoryId?: number;
+  marketSegment?: string;
+  employeeScale?: string;
+  annualRevenue?: number | string;
+  unsubscribeFlag?: number;
+  campaignId?: number;
+  version?: number;
+}
+
+export interface CrmCustomer extends CrmProfile {
   customerId?: number;
   customerCode?: string;
   customerName: string;
@@ -34,7 +44,17 @@ export interface CrmCustomer {
   status?: string;
 }
 
-export interface CrmLead {
+export interface CrmLead extends CrmProfile {
+  qualificationStatus?: string;
+  qualifiedBy?: number;
+  qualifiedByName?: string;
+  qualifiedTime?: string;
+  disqualifyReason?: string;
+  jobTitle?: string;
+  website?: string;
+  unsubscribeTime?: string;
+  leadScore?: number;
+  scoreUpdatedTime?: string;
   leadId?: number;
   leadNo?: string;
   leadName: string;
@@ -58,6 +78,10 @@ export interface CrmLead {
 }
 
 export interface CrmLeadConvertRequest {
+  createOpportunity?: boolean;
+  opportunityName?: string;
+  expectedAmount?: number | string;
+  expectedSignDate?: string;
   leadId: number;
   customerName?: string;
   customerType?: string;
@@ -77,6 +101,9 @@ export interface CrmLeadConvertRequest {
 }
 
 export interface CrmOpportunity {
+  campaignId?: number;
+  competitorId?: number;
+  version?: number;
   opportunityId?: number;
   customerId: number;
   customerName?: string;
@@ -94,6 +121,10 @@ export interface CrmOpportunity {
   contactName?: string;
   latestFollowUpTime?: string;
   stageChangedTime?: string;
+  lastStage?: string;
+  weightedAmount?: number;
+  stageDurationDays?: number;
+  teamVersion?: number;
   lostReason?: string;
   remark?: string;
   status?: string;
@@ -101,6 +132,8 @@ export interface CrmOpportunity {
 
 export interface CrmQuote {
   quoteId?: number;
+  version?: number;
+  currencyLocked?: boolean;
   instanceId?: string;
   quoteNo?: string;
   customerId: number;
@@ -156,6 +189,7 @@ export interface CrmPriceBook {
 
 export interface CrmSalesTarget {
   salesTargetId?: number;
+  version?: number;
   targetNo?: string;
   targetName: string;
   dimensionType: 'OWNER' | 'DEPT' | string;
@@ -166,15 +200,52 @@ export interface CrmSalesTarget {
   deptName?: string;
   ownerId?: number;
   ownerName?: string;
-  targetAmount: number;
-  achievedAmount?: number;
-  completionRate?: number;
-  gapAmount?: number;
+  targetAmount: number | string;
+  calculationBasis?: 'OWNER_V1' | 'TEAM_V2';
+  currency?: string;
+  achievedAmount?: number | string;
+  completionRate?: number | string;
+  gapAmount?: number | string;
+  baselineAmount?: number | string;
   periodLabel?: string;
   status?: string;
   remark?: string;
   createTime?: string;
   updateTime?: string;
+}
+
+export interface CrmSalesTargetWrite {
+  salesTargetId?: number;
+  version?: number;
+  requestKey?: string;
+  targetName: string;
+  dimensionType: string;
+  periodType: string;
+  targetYear: number;
+  targetPeriod?: number;
+  deptId?: number;
+  ownerId?: number;
+  targetAmount: string;
+  calculationBasis: 'OWNER_V1' | 'TEAM_V2';
+  currency: string;
+  status: string;
+  remark?: string;
+  previewFingerprint?: string;
+  basisChangeConfirmed?: boolean;
+}
+
+export interface CrmSalesTargetPreview {
+  version?: number;
+  previousBasis?: 'OWNER_V1' | 'TEAM_V2';
+  previousCurrency?: string;
+  calculationBasis: 'OWNER_V1' | 'TEAM_V2';
+  currency: string;
+  previousAchievedAmount: string;
+  ownerReceivedAmount: string;
+  teamReceivedAmount: string;
+  baselineAmount: string;
+  confirmationRequired: boolean;
+  fingerprint: string;
 }
 
 export interface CrmQuoteLine {
@@ -196,6 +267,8 @@ export interface CrmQuoteLine {
 }
 
 export interface CrmReceivable {
+  version?: number;
+  bindingLocked?: boolean;
   receivableId?: number;
   receivableNo?: string;
   customerId: number;
@@ -209,6 +282,7 @@ export interface CrmReceivable {
   dueDate?: string;
   receivedDate?: string;
   invoiceStatus?: string;
+  invoiceId?: number;
   ownerId?: number;
   ownerName?: string;
   remark?: string;
@@ -238,6 +312,21 @@ export interface CrmRenewal {
 }
 
 export interface CrmTicket {
+  portalContactId?: number;
+  portalSolution?: string;
+  portalSolutionTime?: string;
+  version?: number;
+  slaPolicyId?: number;
+  slaStatus?: string;
+  firstResponseDue?: string;
+  resolutionDue?: string;
+  firstResponseTime?: string;
+  firstResponseMinutes?: number;
+  resolutionMinutes?: number;
+  slaPausedMinutes?: number;
+  pauseStartTime?: string;
+  responseBreachedFlag?: number;
+  resolutionBreachedFlag?: number;
   ticketId?: number;
   ticketNo?: string;
   customerId: number;
@@ -311,7 +400,9 @@ export interface CrmOpportunityBoardCard {
   opportunityName?: string;
   expectedAmount?: number;
   winRate?: number;
-  stageStayDays?: number;
+  stageStayDays?: number | null;
+  weightedAmount?: number;
+  version?: number;
   ownerName?: string;
   expectedSignDate?: string;
 }
@@ -321,6 +412,10 @@ export interface CrmOpportunityBoardColumn {
   stageLabel?: string;
   count?: number;
   totalAmount?: number;
+  sortNo?: number;
+  enabled?: boolean;
+  allowSkipFlag?: number;
+  overdueDays?: number | null;
   items: CrmOpportunityBoardCard[];
 }
 
@@ -474,6 +569,7 @@ export interface CrmCustomerWorkspace {
 }
 
 export interface CrmDashboardSummary {
+  lostAnalysis?: import('./operations').LostReport;
   funnel: CrmOpportunityBoardColumn[];
   pendingQuotes: CrmQuote[];
   agingBuckets: CrmReceivableAgingBucket[];

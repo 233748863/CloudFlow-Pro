@@ -20,8 +20,9 @@ export const listReceivables = (params: {
 
 export const addReceivable = (data: CrmReceivable) => request.post('/crm/receivable', data);
 export const editReceivable = (data: CrmReceivable) => request.put('/crm/receivable', data);
+export const getReceivable = (id: number) => request.get(`/crm/receivable/${id}`) as Promise<CrmReceivable>;
 
-export const confirmReceivable = (id: number) => request.post(`/crm/receivable/${id}/confirm`);
+export const confirmReceivable = (id: number, version: number | undefined) => request.post(`/crm/receivable/${id}/confirm`, { version });
 
 export const bindReceivableInvoice = (id: number, invoiceId: number) =>
   request.post(`/crm/receivable/${id}/bind-invoice/${invoiceId}`);
@@ -54,6 +55,7 @@ export const removeRenewal = (ids: number[]) =>
 // ===== 工单 =====
 
 export const listTickets = (params: {
+  portalQueue?: boolean;
   pageNum?: number;
   pageSize?: number;
   customerId?: number;
@@ -64,6 +66,7 @@ export const listTickets = (params: {
 
 export const addTicket = (data: CrmTicket) => request.post('/crm/ticket', data);
 export const editTicket = (data: CrmTicket) => request.put('/crm/ticket', data);
+export const getTicket = (id: number, signal?: AbortSignal) => request.get<CrmTicket>(`/crm/ticket/${id}`, { signal });
 
 export const resolveTicket = (id: number, solution?: string) =>
   request.post(`/crm/ticket/${id}/resolve`, { solution });

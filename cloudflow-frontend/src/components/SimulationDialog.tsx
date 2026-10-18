@@ -20,6 +20,7 @@ import {
 } from '@/services/api/workflow';
 import { Button, Switch, Textarea } from '@/components/common';
 import { InnerTableSurface } from '@/components/layout/TablePageLayout';
+import { NODE_TYPE_LABELS } from './workflow-builder/constants';
 import {
   WorkspaceDialogShell,
   WorkspaceMetricCard,
@@ -31,6 +32,12 @@ interface SimulationDialogProps {
   onClose: () => void;
   definitionId: string;
 }
+
+const terminationLabels: Record<string, string> = {
+  COMPLETED: '流程完成', JOINED: '本分支已到达汇聚', WAITING_FOR_BRANCHES: '等待其余分支到达',
+  GATEWAY_NO_MATCH: '无出口命中且未配置默认出口', CYCLE: '检测到循环', MAX_DEPTH: '达到模拟深度限制',
+  NO_NEXT_NODE: '未配置后继节点', NODE_NOT_FOUND: '节点不存在', DEAD_END: '节点没有后继',
+};
 
 const getNodeStatusMeta = (detail: SimulationNodeDetail) => {
   if (!detail.reached) {
@@ -333,7 +340,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                   ))}
                 </div>
                 <div className="mt-3 text-xs text-cf-subtle">
-                  终止类型：{path.terminationType}
+                  终止类型：{terminationLabels[path.terminationType] || path.terminationType}
                 </div>
               </div>
             ))}
@@ -355,6 +362,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                     <th>类型</th>
                     <th>状态</th>
                     <th>条件</th>
+                    <th>网关出口</th>
                     <th>参与人</th>
                   </tr>
                 </thead>
@@ -375,7 +383,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                           </div>
                         </td>
                         <td className="align-top text-cf-muted">
-                          {detail.nodeType}
+                          {NODE_TYPE_LABELS[detail.nodeType] || detail.nodeType}
                         </td>
                         <td className="align-top">
                           <span
@@ -391,6 +399,15 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                             : detail.conditionResult
                               ? '条件满足'
                               : '条件不满足'}
+                        </td>
+                        <td className="align-top text-xs text-cf-subtle">
+                          {(detail.branchOrder?.length ?? 0) > 1 || detail.joinNodeKey || detail.nodeType === 'ROUTE' ? <div className="grid gap-1">
+                            <span>出口顺序：{detail.branchOrder?.map((_branch, index) => index + 1).join('、')}</span>
+                            <span>已激活出口：{detail.activatedBranches?.map(branch => (detail.branchOrder?.indexOf(branch) ?? -1) + 1).join('、') || '无'}</span>
+                            <span>默认出口：{detail.defaultBranch ? (detail.branchOrder?.indexOf(detail.defaultBranch) ?? -1) + 1 : '无'}</span>
+                            {detail.expectedCount != null && <span>本轮应到：{detail.expectedCount}</span>}
+                            {detail.joinNodeKey && <span>配对汇聚：{result.nodeDetails.find(node => node.nodeId === detail.joinNodeKey)?.title || detail.joinNodeKey}</span>}
+                          </div> : '-'}
                         </td>
                         <td className="align-top text-cf-subtle">
                           {detail.resolvedAssignees.length > 0

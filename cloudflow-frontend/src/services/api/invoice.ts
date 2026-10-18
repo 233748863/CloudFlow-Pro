@@ -24,6 +24,11 @@ export interface Invoice {
   paymentRequestId?: number;
   receivableId?: number;
   status?: string;
+  version?: number;
+  receivedAmount?: number;
+  outstandingAmount?: number;
+  pendingReceivedAmount?: number;
+  currency?: string;
   remark?: string;
   createTime?: string;
   updateTime?: string;
@@ -32,6 +37,7 @@ export interface Invoice {
 export interface InvoiceWriteoff {
   writeoffId?: number;
   invoiceId?: number;
+  invoiceVersion?: number;
   businessType: string;
   businessId: number;
   businessNo?: string;
@@ -43,6 +49,7 @@ export interface InvoiceWriteoff {
 export interface InvoiceLookupParams {
   pageNum?: number;
   pageSize?: number;
+  keyword?: string;
   invoiceDirection?: string;
   invoiceCode?: string;
   invoiceNo?: string;

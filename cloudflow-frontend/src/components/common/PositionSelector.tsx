@@ -8,13 +8,14 @@ import { SelectorShell, type SelectorShellOption } from './SelectorShell';
 type PositionId = number | string;
 
 interface BaseProps {
+  controlProps?: React.AriaAttributes & { id?: string };
   placeholder?: string;
   disabled?: boolean;
   allowClear?: boolean;
   className?: string;
   dropdownPlacement?: 'bottom' | 'top';
   /** 按部门 ID 过滤可选职位 */
-  deptId?: number | null;
+  deptId?: number | string | null;
 }
 
 interface SingleProps extends BaseProps {
@@ -80,7 +81,7 @@ export const PositionSelector: React.FC<PositionSelectorProps> = (props) => {
   }, []);
 
   const filtered = useMemo(
-    () => (deptId ? positions.filter((p) => !p.deptId || p.deptId === deptId) : positions),
+    () => (deptId ? positions.filter((position) => !position.deptId || String(position.deptId) === String(deptId)) : positions),
     [positions, deptId],
   );
 
@@ -133,6 +134,7 @@ export const PositionSelector: React.FC<PositionSelectorProps> = (props) => {
 
   return (
     <SelectorShell
+      {...props.controlProps}
       options={options}
       loading={loading}
       value={valueArray}

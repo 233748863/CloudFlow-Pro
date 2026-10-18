@@ -1,6 +1,7 @@
 import {
   NodeType,
   PARALLEL_SIGN_MODES,
+  WorkflowBranchStrategy,
   WorkflowGraphDefinition,
   WorkflowGraphEdge,
   WorkflowGraphLayout,
@@ -8,6 +9,16 @@ import {
   WorkflowGraphNodeLayout,
   WorkflowGraphViewport,
 } from '../types';
+import {
+  collectWorkflowGatewayBranch,
+  getWorkflowGatewayBranchStrategy,
+  getWorkflowGatewayBranches,
+  getWorkflowGatewayJoinKey,
+  isWorkflowGatewayJoin,
+  isWorkflowGatewayPointer,
+  isWorkflowGatewaySplit,
+  validateWorkflowGateways,
+} from './workflowGateway';
 
 /**
  * 仅判定 nodes+edges 图结构，树结构不再视为合法模型。
@@ -16,6 +27,37 @@ export const isWorkflowGraphDefinition = (value: unknown): value is WorkflowGrap
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Record<string, unknown>;
   return Array.isArray(candidate.nodes) && Array.isArray(candidate.edges);
+};
+
+/** Normalize only the outgoing write; loading an older model leaves it untouched. */
+export const prepareWorkflowModelForSave = (modelJson: string): string => {
+  try {
+    const graph: unknown = JSON.parse(modelJson);
+    if (!isWorkflowGraphDefinition(graph)) return modelJson;
+    const nodes = graph.nodes.map((node) => {
+      if (node.type !== NodeType.MANUAL) return node;
+      const saved = { ...node };
+      delete saved.approveSelf;
+      return saved;
+    });
+    return JSON.stringify({ ...graph, nodes });
+  } catch {
+    return modelJson; // The server reports malformed model input using its existing validation.
+  }
+};
+
+export const getWorkflowUpstreamNodes = <GraphNode extends { id: string }>(graph: { nodes: GraphNode[]; edges: Array<{ source: string; target: string }> }, currentNodeKey: string): GraphNode[] => {
+  const visited = new Set<string>();
+  const pending = [currentNodeKey];
+  while (pending.length > 0) {
+    const target = pending.shift();
+    for (const edge of graph.edges) {
+      if (edge.target !== target || visited.has(edge.source)) continue;
+      visited.add(edge.source);
+      pending.push(edge.source);
+    }
+  }
+  return graph.nodes.filter((node) => node.id !== currentNodeKey && visited.has(node.id));
 };
 
 const DEFAULT_WORKFLOW_VIEWPORT: WorkflowGraphViewport = { x: 0, y: 0, zoom: 1 };
@@ -318,7 +360,10 @@ const generateUniqueEdgeId = (
 const ensureExactlyOneDefault = (
   edges: WorkflowGraphEdge[],
   sourceId: string,
+  nodes: WorkflowGraphNode[],
 ): WorkflowGraphEdge[] => {
+  const source = nodes.find(node => node.id === sourceId);
+  if (isWorkflowGatewaySplit(source) || source?.type === NodeType.ROUTE) return edges;
   const outgoing = edges.filter((edge) => edge.source === sourceId);
   if (outgoing.length === 0) return edges;
   if (outgoing.length === 1) {
@@ -366,6 +411,7 @@ export const isMultiBranchDecisionNode = (
   graph: WorkflowGraphDefinition,
 ): boolean => {
   if (!node) return false;
+  if (isWorkflowGatewaySplit(node) || node.type === NodeType.ROUTE) return true;
   const type = String(node.type || '').toUpperCase();
   const isDecisionType =
     type === NodeType.CONDITION ||
@@ -395,6 +441,7 @@ const isBranchEdge = (
   // 与 L155-168 注释"多分支决策节点的出边均视为分支边"对齐。此判定必须先于 isDefaultEdge，
   // 否则 CONDITION/GATEWAY 的默认分支会被错误排除（payment_request seed: gw1→b1 isDefault 漏渲染）。
   const sourceNode = nodeMap.get(edge.source);
+  if (graph && isWorkflowGatewayPointer(graph, edge)) return false;
   if (graph && isMultiBranchDecisionNode(sourceNode, graph)) {
     return true;
   }
@@ -630,11 +677,8 @@ export const assertWorkflowGraphIntegrity = (
     }
     // P1-9: 自环显式拦截。理论上下方 reachable 的 path 检查也能在递归时捕获，
     // 但自环是合法图模型从不允许的形态，直接在边校验阶段抛出更直观。
-    if (source === target) {
-      throw new Error(`流程图存在自环连线: ${source} -> ${target}`);
-    }
-
     if (edge.id) {
+      if (edge.id.length > 64) throw new Error(`连线ID不能超过64字符: ${edge.id}`);
       if (edgeIdSet.has(edge.id)) {
         throw new Error(`流程图存在重复连线ID: ${edge.id}`);
       }
@@ -683,24 +727,20 @@ export const assertWorkflowGraphIntegrity = (
     }
   });
   const reachable = new Set<string>();
-  const collectReachable = (nodeId: string, path: Set<string>) => {
-    if (path.has(nodeId)) {
-      throw new Error(`流程图存在循环，节点ID: ${nodeId}`);
-    }
+  const collectReachable = (nodeId: string) => {
     if (reachable.has(nodeId)) {
       return;
     }
     reachable.add(nodeId);
-    const nextPath = new Set(path);
-    nextPath.add(nodeId);
     const nextEdges = outgoing.get(nodeId) ?? [];
-    nextEdges.forEach((edge) => collectReachable(edge.target, nextPath));
+    nextEdges.forEach((edge) => collectReachable(edge.target));
   };
-  collectReachable(startNode.id, new Set());
+  collectReachable(startNode.id);
   if (reachable.size !== nodeMap.size) {
     throw new Error('流程图存在不可达节点，请删除孤立节点后重试');
   }
-
+  const gatewayValidation = validateWorkflowGateways(graph);
+  if (gatewayValidation.errors.length) throw new Error(gatewayValidation.errors[0]);
 };
 
 /**
@@ -754,7 +794,7 @@ export const appendWorkflowGraphBranch = (
   graph: WorkflowGraphDefinition,
   parentId: string,
   branchNode: WorkflowGraphNode,
-  defaultStrategy: string,
+  defaultStrategy: WorkflowBranchStrategy,
 ): WorkflowGraphDefinition => {
   const parentNode = graph.nodes.find((node) => node.id === parentId);
   if (!parentNode) {
@@ -771,6 +811,8 @@ export const appendWorkflowGraphBranch = (
   // 避免 FlowNode 把同一节点同时作为 branch root 与 sharedMerge 双重渲染。
   const outgoingBefore = getWorkflowGraphOutgoingEdges(graph, parentId);
   const mergeNodeId: string | null = (() => {
+    const pairedJoin = getWorkflowGatewayJoinKey(graph, parentNode);
+    if (pairedJoin) return pairedJoin;
     if (outgoingBefore.length === 0) return null;
     const defaultEdge = outgoingBefore.find(isDefaultEdge);
     const anchor = defaultEdge?.target ?? outgoingBefore[0].target;
@@ -810,7 +852,7 @@ export const appendWorkflowGraphBranch = (
 
   // P2-5: 由 ensureExactlyOneDefault 统一收尾——之前"出边数=1 时提升原边为 default"的手写逻辑
   // 等价于"加入新分支后，原边自动成为该 source 的首条 default 候选"。
-  edges = ensureExactlyOneDefault(edges, parentId);
+  edges = ensureExactlyOneDefault(edges, parentId, graph.nodes);
 
   return { nodes, edges };
 };
@@ -970,6 +1012,9 @@ export const findWorkflowGraphBranchSharedMergeId = (
   graph: WorkflowGraphDefinition,
   nodeId: string,
 ): string | null => {
+  const node = graph.nodes.find(candidate => candidate.id === nodeId);
+  const pairedJoin = node && getWorkflowGatewayJoinKey(graph, node);
+  if (pairedJoin) return pairedJoin;
   const branchChildIds = getWorkflowGraphBranchChildIds(graph, nodeId);
   if (branchChildIds.length < 2) {
     return null;
@@ -1042,10 +1087,15 @@ export const cloneWorkflowGraphSubgraph = (
   const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
   const mainEdge = resolveGraphMainEdge(graph, nodeId, nodeMap);
   const idsToClone = new Set<string>([nodeId]);
-
-  collectDownstreamSubtreeIds(graph, getWorkflowGraphBranchChildIds(graph, nodeId)).forEach((id) => {
-    idsToClone.add(id);
-  });
+  const original = nodeMap.get(nodeId)!;
+  const pairedJoin = getWorkflowGatewayJoinKey(graph, original);
+  if (pairedJoin && !options?.includeMainPath) {
+    idsToClone.add(pairedJoin);
+    getWorkflowGatewayBranches(graph, original).forEach(branch =>
+      collectWorkflowGatewayBranch(graph, branch.target, pairedJoin).forEach(identifier => idsToClone.add(identifier)));
+  } else {
+    collectDownstreamSubtreeIds(graph, getWorkflowGraphBranchChildIds(graph, nodeId)).forEach(identifier => idsToClone.add(identifier));
+  }
 
   if (options?.includeMainPath && mainEdge?.target) {
     collectDownstreamSubtreeIds(graph, [mainEdge.target]).forEach((id) => {
@@ -1074,6 +1124,10 @@ export const cloneWorkflowGraphSubgraph = (
 
       return clonedNode;
     });
+
+  nodes.forEach(node => {
+    if (node.joinNodeKey) node.joinNodeKey = idMap.get(node.joinNodeKey) ?? node.joinNodeKey;
+  });
 
   const edges = graph.edges.reduce((result: WorkflowGraphEdge[], edge) => {
     if (!idsToClone.has(edge.source) || !idsToClone.has(edge.target)) {
@@ -1120,6 +1174,9 @@ export const insertWorkflowGraphSubgraphAfter = (
   if (!subgraph.nodes.some((node) => node.id === rootId)) {
     return graph;
   }
+  const parent = graph.nodes.find(node => node.id === parentId)!;
+  const pairedJoin = getWorkflowGatewayJoinKey(graph, parent);
+  if (pairedJoin) return insertWorkflowGraphSubgraphAfter(graph, pairedJoin, subgraph, rootId);
 
   const existingIds = new Set(graph.nodes.map((node) => node.id));
   if (subgraph.nodes.some((node) => existingIds.has(node.id))) {
@@ -1144,15 +1201,12 @@ export const insertWorkflowGraphSubgraphAfter = (
   });
 
   if (mainEdge) {
-    edges.push({
-      id: generateUniqueEdgeId(edges, rootId, mainEdge.target),
-      source: rootId,
-      target: mainEdge.target,
-    });
+    const exits = subgraph.nodes.filter(node => !subgraph.edges.some(edge => edge.source === node.id) && node.type !== NodeType.END);
+    exits.forEach(node => edges.push({ id: generateUniqueEdgeId(edges, node.id, mainEdge.target), source: node.id, target: mainEdge.target }));
   }
 
   // P2-5: 收尾归一 default 不变量
-  edges = ensureExactlyOneDefault(edges, parentId);
+  edges = ensureExactlyOneDefault(edges, parentId, graph.nodes);
 
   return {
     nodes: [...graph.nodes, ...subgraph.nodes],
@@ -1174,6 +1228,44 @@ export const insertWorkflowGraphNodeAfter = (
     { nodes: [newNode], edges: [] },
     newNode.id,
   );
+};
+
+export const insertWorkflowGatewayAfter = (
+  graph: WorkflowGraphDefinition,
+  parentId: string,
+  type: NodeType,
+  createNodeId: (prefix?: string) => string,
+): WorkflowGraphDefinition => {
+  if (![NodeType.CONDITION, NodeType.PARALLEL, NodeType.INCLUSIVE, NodeType.ROUTE].includes(type)) {
+    throw new Error('请选择排他、并行、包含或路由网关');
+  }
+  const parent = graph.nodes.find(node => node.id === parentId);
+  if (!parent || isMultiBranchDecisionNode(parent, graph)) throw new Error('请在分支内部或汇聚后添加网关');
+  const paired = type === NodeType.PARALLEL || type === NodeType.INCLUSIVE;
+  const labels: Record<string, string> = { CONDITION: '排他网关', PARALLEL: '并行网关', INCLUSIVE: '包含网关', ROUTE: '路由网关' };
+  const split: WorkflowGraphNode = { id: createNodeId('gateway'), type, title: labels[type], branchStrategy: getWorkflowGatewayBranchStrategy({ type }) };
+  const branches = [1, 2].map(index => ({ id: createNodeId('branch'), type: NodeType.APPROVAL, title: `分支${index}审批`, approverType: 'ROLE' }));
+  const nodes: WorkflowGraphNode[] = [split, ...branches];
+  const edges: WorkflowGraphEdge[] = branches.map((branch, index) => ({ id: `${split.id}->${branch.id}`, source: split.id, target: branch.id,
+    condition: paired ? (type === NodeType.INCLUSIVE ? 'true' : undefined) : (index === 0 ? 'true' : undefined),
+    isDefault: !paired && index === 1 ? true : undefined }));
+  if (paired) {
+    const join = { id: createNodeId('join'), type: NodeType.GATEWAY, title: '分支汇聚' };
+    split.joinNodeKey = join.id;
+    nodes.push(join);
+    branches.forEach(branch => edges.push({ id: `${branch.id}->${join.id}`, source: branch.id, target: join.id }));
+  }
+  if (parent.type === NodeType.END) {
+    const incoming = graph.edges.filter(edge => edge.target === parentId);
+    const exits = nodes.filter(node => !edges.some(edge => edge.source === node.id));
+    return { ...graph, nodes: [...graph.nodes, ...nodes], edges: [
+      ...graph.edges.filter(edge => edge.target !== parentId),
+      ...incoming.map(edge => ({ ...edge, target: split.id, id: generateUniqueEdgeId(graph.edges, edge.source, split.id) })),
+      ...edges,
+      ...exits.map(node => ({ id: `${node.id}->${parentId}`, source: node.id, target: parentId })),
+    ] };
+  }
+  return insertWorkflowGraphSubgraphAfter(graph, parentId, { nodes, edges }, split.id);
 };
 
 /**
@@ -1258,7 +1350,7 @@ export const replaceWorkflowGraphNextNode = (
   });
 
   // P2-5: 收尾归一 default 不变量
-  edges = ensureExactlyOneDefault(edges, parentId);
+  edges = ensureExactlyOneDefault(edges, parentId, graph.nodes);
 
   return {
     nodes: [...graph.nodes.filter((node) => !idsToRemove.has(node.id)), newNode],
@@ -1354,11 +1446,11 @@ export const moveWorkflowGraphNode = (
   }
 
   // P2-5: 收尾归一 default 不变量（同时覆盖源/目标父节点）
-  edges = ensureExactlyOneDefault(edges, targetParentId);
+  edges = ensureExactlyOneDefault(edges, targetParentId, graph.nodes);
   if (sourceMainEdge) {
     const sourceParent = incomingEdges[0]?.source;
     if (sourceParent && sourceParent !== targetParentId) {
-      edges = ensureExactlyOneDefault(edges, sourceParent);
+      edges = ensureExactlyOneDefault(edges, sourceParent, graph.nodes);
     }
   }
 
@@ -1376,6 +1468,25 @@ export const removeWorkflowGraphNode = (
 ): WorkflowGraphDefinition => {
   if (!graph.nodes.some((node) => node.id === nodeId)) {
     return graph;
+  }
+
+  const currentNode = graph.nodes.find(node => node.id === nodeId)!;
+  if (isWorkflowGatewayJoin(graph, nodeId)) throw new Error('请通过配对分流节点删除网关，保留完整的分流与汇聚关系');
+  const pairedJoin = getWorkflowGatewayJoinKey(graph, currentNode);
+  if (pairedJoin) {
+    const removed = new Set<string>([nodeId]);
+    getWorkflowGatewayBranches(graph, currentNode).forEach(branch =>
+      collectWorkflowGatewayBranch(graph, branch.target, pairedJoin).forEach(identifier => removed.add(identifier)));
+    const joinNode = graph.nodes.find(node => node.id === pairedJoin)!;
+    let target = pairedJoin;
+    if (joinNode.type === NodeType.GATEWAY && graph.edges.filter(edge => edge.source === pairedJoin).length === 1) {
+      target = graph.edges.find(edge => edge.source === pairedJoin)!.target;
+      removed.add(pairedJoin);
+    }
+    const edges = graph.edges.filter(edge => !removed.has(edge.source) && !removed.has(edge.target));
+    graph.edges.filter(edge => edge.target === nodeId && !removed.has(edge.source)).forEach(edge =>
+      edges.push({ ...edge, target, id: generateUniqueEdgeId(edges, edge.source, target) }));
+    return { ...graph, nodes: graph.nodes.filter(node => !removed.has(node.id)), edges };
   }
 
   const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
@@ -1461,7 +1572,7 @@ export const removeWorkflowGraphNode = (
   // P2-5: 删除节点后，原父节点出边数变化时归一 default
   incomingEdges.forEach((edge) => {
     if (!removableIds.has(edge.source)) {
-      edges = ensureExactlyOneDefault(edges, edge.source);
+      edges = ensureExactlyOneDefault(edges, edge.source, graph.nodes);
     }
   });
 
@@ -1479,6 +1590,21 @@ export const removeWorkflowGraphBranch = (
   const parentNode = graph.nodes.find((node) => node.id === parentId);
   if (!parentNode) {
     return graph;
+  }
+
+  if (isWorkflowGatewaySplit(parentNode) || parentNode.type === NodeType.ROUTE) {
+    const branches = getWorkflowGatewayBranches(graph, parentNode);
+    if (branches.length <= 1) throw new Error('网关至少保留一个出口；删除整个网关请选中分流节点');
+    const pairedJoin = getWorkflowGatewayJoinKey(graph, parentNode);
+    if (pairedJoin) {
+      const removed = collectWorkflowGatewayBranch(graph, branchId, pairedJoin);
+      return {
+        ...graph,
+        nodes: graph.nodes.filter(node => !removed.has(node.id)),
+        edges: graph.edges.filter(edge => !removed.has(edge.source) && !removed.has(edge.target)
+          && !(edge.source === parentId && edge.target === branchId)),
+      };
+    }
   }
 
   // branchId 是显式删除锚点：其入边来自 parentId 属于预期外部入边，必须强制保留在集合内；
@@ -1525,7 +1651,7 @@ export const removeWorkflowGraphBranch = (
   if (remainingParentEdges.length >= 2) {
     // P2-5: 删完分支后仍 ≥2 出边，统一通过 ensureExactlyOneDefault 维护 default 不变量
     // （取代原手写 "若无 default 则把首条提升" 逻辑，满足 R9 同时清理多 default 隐患）
-    edges = ensureExactlyOneDefault(edges, parentId);
+    edges = ensureExactlyOneDefault(edges, parentId, graph.nodes);
   } else if (isParentDecisionType) {
     // 父决策节点剩 0 或 1 条出边：级联删除父节点本身
     cascadeRemoveParent = true;

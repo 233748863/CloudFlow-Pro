@@ -7,6 +7,7 @@ import { getCachedOrFetch } from './selectorCache';
 import { SelectorShell, type SelectorShellOption } from './SelectorShell';
 
 interface CommonProps {
+  controlProps?: React.AriaAttributes & { id?: string };
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -34,12 +35,12 @@ interface MultipleProps extends CommonProps {
 
 export type UserSelectorProps = SingleProps | MultipleProps;
 
-const CACHE_KEY = 'sysUser:list';
+const CACHE_KEY = 'sysUser:options';
 
 const loadUsers = () => getCachedOrFetch(CACHE_KEY, () => getUsers());
 
 /**
- * 用户选择器（对接 /auth/system/user/list，id 为 sys_user.user_id）
+ * 用户选择器（对接 /auth/system/user/options，id 为 sys_user.user_id）
  * 注意：与 HR 员工 ID 不同，不可与 EmployeeSelector 混用
  *
  * 用法：
@@ -147,6 +148,7 @@ export const UserSelector: React.FC<UserSelectorProps> = (props) => {
 
   return (
     <SelectorShell
+      {...props.controlProps}
       options={options}
       loading={loading}
       value={valueArray}

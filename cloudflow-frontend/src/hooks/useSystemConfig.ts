@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getConfigByKey } from '../services/api/system';
+import { getClientConfigByKey } from '../services/api/system';
 
 /**
  * 系统配置缓存
@@ -25,7 +25,7 @@ export const getConfig = async (configKey: string, defaultValue: string = ''): P
 
   const request = (async () => {
     try {
-      const value = await getConfigByKey(configKey);
+      const value = await getClientConfigByKey(configKey);
       const result = (typeof value === 'string' && value) ? value : defaultValue;
       configCache.set(configKey, result);
       return result;

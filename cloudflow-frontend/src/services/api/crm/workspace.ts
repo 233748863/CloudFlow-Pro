@@ -44,5 +44,5 @@ export const voidWorkspaceInvoice = (
 ) =>
   request.post(`/crm/customer/${customerId}/workspace/invoice/${invoiceId}/void`, { remark });
 
-export const confirmWorkspaceReceivable = (customerId: number, receivableId: number) =>
-  request.post(`/crm/customer/${customerId}/workspace/receivable/${receivableId}/confirm`);
+export const confirmWorkspaceReceivable = (customerId: number, receivableId: number, version: number | undefined) =>
+  request.post(`/crm/customer/${customerId}/workspace/receivable/${receivableId}/confirm`, { version });

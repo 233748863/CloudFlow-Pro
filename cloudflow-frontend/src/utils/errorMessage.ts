@@ -1,6 +1,13 @@
 /**
  * 统一提取错误消息，避免页面层重复散落相同兜底逻辑。
  */
+export const getErrorStatus = (error: unknown): number | undefined => {
+  if (!error || typeof error !== 'object') return undefined;
+  const record = error as { status?: unknown; response?: { status?: unknown } };
+  const status = record.response?.status ?? record.status;
+  return typeof status === 'number' ? status : undefined;
+};
+
 export const getErrorMessage = (error: unknown, fallback = '操作失败') => {
   if (error && typeof error === 'object') {
     const record = error as Record<string, any>;

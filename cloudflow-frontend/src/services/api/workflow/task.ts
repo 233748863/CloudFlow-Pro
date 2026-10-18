@@ -1,6 +1,7 @@
 import request from "../request";
 import type { CompleteTaskRequest, PageResult, TasksCount, UrgeTaskRequest } from "@/types/workflow";
 import type { Task } from "@/types";
+import type { RejectStrategy } from "@/types/workflowSemantic";
 import { logApiCall } from "./internals";
 import type {
   AddSignRequest,
@@ -9,6 +10,11 @@ import type {
   RemoveSignRequest,
   SignatureChangeRequest,
 } from "./types";
+
+export async function getTodoTask(taskId: string, signal?: AbortSignal): Promise<unknown> {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(taskId)) throw new Error('待办链接无效。');
+  return request.get(`/workflow/wf/todo/${encodeURIComponent(taskId)}`, { signal });
+}
 
 /**
  * 获取待办任务列表（支持分页和条件查询）
@@ -69,6 +75,10 @@ export async function completeTask(data: CompleteTaskRequest): Promise<void> {
   return request.post("/workflow/wf/complete", data);
 }
 
+export async function withdrawApproval(historyId: string): Promise<void> {
+  return request.post('/workflow/enhance/task/withdraw', { historyId });
+}
+
 /**
  * 标记任务为已读
  */
@@ -91,11 +101,12 @@ export async function urgeTask(taskId: string, reason: string): Promise<void> {
  */
 export async function rejectTask(
   taskId: string,
-  targetNodeKey: string,
+  targetNodeKey: string | undefined,
   comment: string,
+  strategy?: RejectStrategy,
 ): Promise<void> {
-  logApiCall("POST", "/workflow/wf/reject", { taskId, targetNodeKey, comment });
-  const data: RejectTaskRequest = { taskId, targetNodeKey, comment };
+  logApiCall("POST", "/workflow/wf/reject", { taskId, targetNodeKey, strategy });
+  const data: RejectTaskRequest = { taskId, targetNodeKey, comment, strategy };
   return request.post("/workflow/wf/reject", data);
 }
 
@@ -174,6 +185,14 @@ export async function removeSign(data: RemoveSignRequest): Promise<number> {
   logApiCall("POST", "/workflow/enhance/task/removeSign", data);
   return request.post("/workflow/enhance/task/removeSign", data);
 }
+
+export const getTaskSignatures = (taskId: string) => request.get<import('./types').TaskSignatureContext>(
+  `/workflow/enhance/task/${encodeURIComponent(taskId)}/signatures`,
+);
+
+export const getPendingSignatures = (pageNum: number) => request.get<{
+  rows: import('./types').PendingSignature[]; total: number; pageNum: number; pageSize: number;
+}>('/workflow/enhance/task/signatures/pending', { params: { pageNum, pageSize: 20 } });
 
 /**
  * P1-5: 委派任务（支持直接转办和委派后回到委派人两种模式）

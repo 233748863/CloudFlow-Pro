@@ -1,4 +1,5 @@
 import request from '@/services/api/request';
+import { readHrAuthorizedFile } from './fileDownload';
 import type {
   HrPagedResult,
   HrPageQuery,
@@ -24,5 +25,7 @@ export const revokeTrainingCertificate = (id: number, reason?: string) =>
 export const regenerateTrainingCertificatePdf = (id: number) =>
   request.post<void>(`/hr/training/certificates/${id}/regenerate`, {});
 
-export const downloadTrainingCertificatePdf = (id: number) =>
-  request.get<Blob>(`/hr/training/certificates/${id}/pdf`, { responseType: 'blob' });
+export const downloadTrainingCertificatePdf = async (id: number) => {
+  const record = await getTrainingCertificate(id);
+  return readHrAuthorizedFile({ bizType: 'HR_TRAINING_CERTIFICATE', bizId: String(id), fileId: record.pdfFileId ?? undefined });
+};

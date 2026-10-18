@@ -2,9 +2,12 @@
 // workflow 模块本地补充类型（不在 @/types/workflow 全局类型中的请求/响应类型）
 // ============================================================================
 
+import type { RejectStrategy } from '@/types/workflowSemantic';
+
 export interface RejectTaskRequest {
   taskId: string;
-  targetNodeKey: string;
+  targetNodeKey?: string;
+  strategy?: RejectStrategy;
   comment: string;
 }
 
@@ -25,8 +28,28 @@ export interface AddSignRequest {
   taskId: string;
   signType: "BEFORE" | "AFTER" | "PARALLEL";
   userIds: number[];
-  userNames: string[];
+  userNames?: string[];
   reason?: string;
+}
+
+export interface TaskSignatureContext {
+  taskId: string;
+  kind: 'COUNTERSIGN' | 'ORDERED';
+  signType?: string;
+  assigneeId: string | number;
+  canAdd: boolean;
+  canReduce: boolean;
+  message: string;
+  members: { userId: string | number; userName: string; status: string }[];
+}
+
+export interface PendingSignature {
+  addSignId: string;
+  taskId: string;
+  nodeName: string;
+  instanceTitle: string;
+  signType: AddSignRequest['signType'];
+  createTime: string;
 }
 
 /**
@@ -75,6 +98,8 @@ export interface FlowchartNode {
   y: number;
   icon?: string;
   approverType?: string;
+  signType?: string;
+  joinNodeKey?: string;
   approverValue?: string;
   condition?: string;
 }
@@ -88,6 +113,7 @@ export interface FlowchartEdge {
   target: string;
   status?: "active" | "pending";
   label?: string;
+  isDefault?: boolean;
 }
 
 /**
@@ -196,6 +222,11 @@ export interface SimulationNodeDetail {
   conditionResult?: boolean;
   resolvedAssignees: string[];
   branchTaken?: string;
+  joinNodeKey?: string;
+  expectedCount?: number;
+  defaultBranch?: string;
+  branchOrder?: string[];
+  activatedBranches?: string[];
   warnings: string[];
 }
 

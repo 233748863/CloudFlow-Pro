@@ -74,7 +74,8 @@ export const DialogContent = ({
       >
         {children}
         <button
-          className="modal-close absolute right-3 top-3 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 text-cf-faint transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-cf-body focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:pointer-events-none dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
+          type="button"
+          className="modal-close cf-mobile-touch absolute right-3 top-3 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 text-cf-faint transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-cf-body focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:pointer-events-none dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
           onClick={() => onOpenChange(false)}
         >
           <span className="sr-only">关闭</span>

@@ -92,6 +92,7 @@ export const listBusinessRuleHitRecords = (params?: {
   ruleCode?: string;
   businessType?: string;
   hitResult?: string;
+  deduplicate?: boolean;
   pageNum?: number;
   pageSize?: number;
 }) => request.get('/auth/system/rules/hit-records', { params });

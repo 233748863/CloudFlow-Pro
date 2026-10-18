@@ -18,6 +18,8 @@ export * from "./workflow/batch";
 export * from "./workflow/simulation";
 export * from "./workflow/hot-update";
 
+export * from './workflow/draft';
+
 import {
   startProcess,
   getProcessInstance,

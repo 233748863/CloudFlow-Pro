@@ -86,6 +86,7 @@ export function useDict(dictType: string, options: UseDictOptions = {}): UseDict
   return {
     data: query.data,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     error: query.error,
     refetch: async () => {

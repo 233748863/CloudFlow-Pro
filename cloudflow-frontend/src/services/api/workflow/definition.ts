@@ -6,6 +6,36 @@ import type {
   SaveProcessDefinitionResponse,
 } from "@/types/workflow";
 import { extractList, logApiCall } from "./internals";
+import { prepareWorkflowModelForSave } from "@/utils/workflowGraph";
+import type { FieldPermission, NodeOption, StartAssigneeNode } from "@/types/workflowSemantic";
+
+export interface StartableProcessDefinition {
+  definitionId: string;
+  processKey: string;
+  processName: string;
+  version: number;
+  formId?: string;
+  category?: string;
+  tags?: string;
+  description?: string;
+  modelValid: boolean;
+}
+
+export async function getStartableProcessDefinitions(): Promise<StartableProcessDefinition[]> {
+  const definitions: StartableProcessDefinition[] = [];
+  let pageNum = 1;
+  let total = 0;
+  do {
+    const page = await request.get<{ rows: StartableProcessDefinition[]; total: number }>(
+      "/workflow/wf/startable-definitions", { params: { pageNum, pageSize: 100 } },
+    );
+    definitions.push(...page.rows);
+    total = page.total;
+    if (page.rows.length === 0) break;
+    pageNum += 1;
+  } while ((pageNum - 1) * 100 < total);
+  return definitions;
+}
 
 /**
  * 获取流程定义列表
@@ -36,9 +66,10 @@ export async function getProcessDefinitions(params?: {
  */
 export async function getProcessDefinition(
   definitionId: string,
+  context?: { instanceId?: string; taskId?: string },
 ): Promise<ProcessDefinitionDetail> {
   logApiCall("GET", `/workflow/wf/definition/${definitionId}`);
-  return request.get(`/workflow/wf/definition/${definitionId}`);
+  return request.get(`/workflow/wf/definition/${definitionId}`, { params: context });
 }
 
 /**
@@ -47,8 +78,8 @@ export async function getProcessDefinition(
 export async function saveProcessDefinition(
   data: SaveProcessDefinitionRequest,
 ): Promise<SaveProcessDefinitionResponse> {
-  logApiCall("POST", "/workflow/wf/definition/save", data);
-  return request.post("/workflow/wf/definition/save", data);
+  logApiCall("POST", "/workflow/wf/definition/save", { processKey: data.processKey });
+  return request.post("/workflow/wf/definition/save", { ...data, modelJson: prepareWorkflowModelForSave(data.modelJson) });
 }
 
 /**
@@ -70,3 +101,15 @@ export async function deleteProcessDefinition(
   logApiCall("DELETE", `/workflow/wf/definition/${definitionId}`);
   return request.delete(`/workflow/wf/definition/${definitionId}`);
 }
+
+export const getSelectableNodes = (definitionId: string, currentNodeKey: string) =>
+  request.get<NodeOption[]>(`/workflow/wf/definition/${encodeURIComponent(definitionId)}/selectable-nodes`, { params: { currentNodeKey } });
+
+export const getStartAssigneeNodes = (definitionId: string) =>
+  request.get<StartAssigneeNode[]>(`/workflow/wf/definition/${encodeURIComponent(definitionId)}/start-assignee-nodes`);
+
+export const getFieldPermissions = (definitionId: string) =>
+  request.get<FieldPermission[]>(`/workflow/wf/definition/${encodeURIComponent(definitionId)}/field-permissions`);
+
+export const saveFieldPermissions = (definitionId: string, fields: FieldPermission[]) =>
+  request.put<void>(`/workflow/wf/definition/${encodeURIComponent(definitionId)}/field-permissions`, fields);

@@ -63,13 +63,13 @@
   .dashboard-chart-heading h2,
     .dashboard-chart-heading h3 {
       margin: 0;
-      color: #0a0a0a;
+      color: var(--cf-fg-title);
       font-size: 0.9375rem;
       font-weight: 600;
     }
 
   .dashboard-chart-heading span {
-      color: #737373;
+      color: var(--cf-fg-subtle);
       font-size: 0.75rem;
     }
 }

@@ -1,5 +1,6 @@
 import request from '@/services/api/request';
 import { withList } from './internals';
+import { hrOvertimeApi } from './overtime';
 import type {
   AttendanceRuleAssignment,
   EffectiveAttendanceRule,
@@ -11,7 +12,6 @@ import type {
   HrLeaveQuotaInitResult,
   HrLeaveQuotaVO,
   HrLeaveTypeOption,
-  HrOvertimeApplicationVO,
   HrPagedResult,
   HrRecord,
   HrScheduleRule,
@@ -91,20 +91,13 @@ export const listHrLeaveApplications = (params?: HrRecord) =>
 export const listHrApprovedLeaveBoard = (params?: HrRecord) =>
   listHrLeaveApplications({ ...params, status: 'APPROVED' }).then((page) => withList(page));
 
-export const createHrOvertimeApplication = (data: HrRecord) =>
-  request.post<number>('/hr/attendance/time-requests', { ...data, requestType: 'OVERTIME', requestNo: `HRTM${Date.now()}` });
-export const updateHrOvertimeApplication = (id: number, data: HrRecord) =>
-  request.put<void>(`/hr/attendance/time-requests/${id}`, data);
-export const deleteHrOvertimeApplication = (id: number) =>
-  request.delete<void>(`/hr/attendance/time-requests/${id}`);
-export const submitHrOvertimeApplication = (id: number) => request.post<void>(`/hr/attendance/time-requests/${id}/submit`);
-export const approveHrOvertimeApplication = (id: number) => request.post<void>(`/hr/attendance/time-requests/${id}/approve`);
-export const rejectHrOvertimeApplication = (id: number) => request.post<void>(`/hr/attendance/time-requests/${id}/reject`);
-export const cancelHrOvertimeApplication = (id: number) => request.post<void>(`/hr/attendance/time-requests/${id}/cancel`);
-export const getHrOvertimeApplication = async (id: number) =>
-  (await listHrOvertimeApplications()).find((item) => item.id === id) as HrOvertimeApplicationVO;
-export const listHrOvertimeApplications = (params?: HrRecord) =>
-  request.get<HrOvertimeApplicationVO[]>('/hr/attendance/time-requests', { params: { ...params, requestType: 'OVERTIME' } });
+export const createHrOvertimeApplication = hrOvertimeApi.create;
+export const updateHrOvertimeApplication = hrOvertimeApi.update;
+export const deleteHrOvertimeApplication = hrOvertimeApi.remove;
+export const submitHrOvertimeApplication = hrOvertimeApi.submit;
+export const cancelHrOvertimeApplication = hrOvertimeApi.cancel;
+export const getHrOvertimeApplication = hrOvertimeApi.detail;
+export const listHrOvertimeApplications = hrOvertimeApi.list;
 
 export const hrCheckIn = (data: HrRecord) => request.post<void>('/hr/attendance/records', { ...data, checkType: 'CHECK_IN', attendanceDate: new Date().toISOString().slice(0, 10), checkTime: new Date().toISOString(), requestNo: `HRAT${Date.now()}` });
 export const hrCheckOut = (data: HrRecord) => request.post<void>('/hr/attendance/records', { ...data, checkType: 'CHECK_OUT', attendanceDate: new Date().toISOString().slice(0, 10), checkTime: new Date().toISOString(), requestNo: `HRAT${Date.now()}` });
@@ -144,8 +137,10 @@ export const updateHrLeaveQuota = (id: number, data: HrRecord) =>
   request.put<void>(`/hr/attendance/leave-quotas/${id}`, data);
 export const listHrTimeRequests = (params?: HrRecord) =>
   request.get<HrRecord[]>('/hr/attendance/time-requests', { params });
-export const createHrTimeRequest = (data: HrRecord) =>
-  request.post<number>('/hr/attendance/time-requests', { ...data, requestNo: data.requestNo || `HRTM${Date.now()}` });
+export const createHrTimeRequest = (data: HrRecord) => {
+  if (String(data.requestType).toUpperCase() === 'OVERTIME') return Promise.reject(new Error('加班请使用“我的加班”专用入口。'));
+  return request.post<number>('/hr/attendance/time-requests', { ...data, requestNo: data.requestNo || `HRTM${Date.now()}` });
+};
 export const changeHrTimeRequestStatus = (id: number, action: string) =>
   request.post<void>(`/hr/attendance/time-requests/${id}/${action}`);
 

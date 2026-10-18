@@ -74,6 +74,9 @@ export interface UseDictResult {
   /** 是否正在加载 */
   isLoading: boolean;
 
+  /** 是否正在读取当前选项（包含已有缓存时的刷新） */
+  isFetching: boolean;
+
   /** 是否加载失败 */
   isError: boolean;
 

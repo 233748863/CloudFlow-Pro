@@ -1,4 +1,5 @@
 import { formatDateTimeDisplay } from './dateFormat';
+import { getRefundApprovalFields } from './workflowRefundDisplay';
 
 const HIDDEN_WORKFLOW_KEYS = new Set([
   'formId',
@@ -429,6 +430,11 @@ export const getWorkflowSummaryParts = (
   formData: Record<string, unknown>,
   maxParts = 2,
 ) => {
+  if (formData.businessType === 'crm_refund') {
+    const fields = getRefundApprovalFields(formData.refundApproval);
+    return fields ? fields.filter(field => ['customerName', 'refundAmount', 'reason'].includes(field.key))
+      .slice(0, maxParts).map(field => field.value) : ['退款详情待核实'].slice(0, maxParts);
+  }
   const parts: string[] = [];
   const appendedKeys = new Set<string>();
 

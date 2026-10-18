@@ -1,6 +1,6 @@
 import request from '../request';
 import type { PageResult } from '@/types';
-import type { CrmPriceBook, CrmProduct, CrmSalesTarget } from './types';
+import type { CrmPriceBook, CrmProduct, CrmSalesTarget, CrmSalesTargetPreview, CrmSalesTargetWrite } from './types';
 
 // ===== 产品 =====
 
@@ -41,10 +41,15 @@ export const listSalesTargets = (params: {
   periodType?: string;
   targetYear?: number;
   targetPeriod?: number;
+  calculationBasis?: string;
+  currency?: string;
   status?: string;
 }) => request.get('/crm/sales-target/list', { params }) as Promise<PageResult<CrmSalesTarget>>;
 
-export const addSalesTarget = (data: CrmSalesTarget) => request.post('/crm/sales-target', data);
-export const editSalesTarget = (data: CrmSalesTarget) => request.put('/crm/sales-target', data);
-export const removeSalesTarget = (ids: number[]) =>
-  request.delete(`/crm/sales-target/${ids.join(',')}`);
+export const getSalesTarget = (id: number) => request.get<CrmSalesTarget>(`/crm/sales-target/${id}`);
+export const getSalesTargetCreation = (key: string) => request.get<CrmSalesTarget | null>(`/crm/sales-target/creation/${encodeURIComponent(key)}`);
+export const previewSalesTarget = (data: CrmSalesTargetWrite) => request.post<CrmSalesTargetPreview>('/crm/sales-target/preview', data);
+export const addSalesTarget = (data: CrmSalesTargetWrite) => request.post<CrmSalesTarget>('/crm/sales-target', data);
+export const editSalesTarget = (data: CrmSalesTargetWrite) => request.put<CrmSalesTarget>('/crm/sales-target', data);
+export const removeSalesTarget = (ids: number[], versions: number[]) =>
+  request.delete(`/crm/sales-target/${ids.join(',')}`, { params: { versions: versions.join(',') } });

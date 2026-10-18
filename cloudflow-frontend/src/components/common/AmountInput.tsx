@@ -1,27 +1,24 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/utils/cn';
+import { decimalAmount, formatDecimalAmount, groupAmountDigits } from '@/utils/amountValue';
 import './common-primitives.css';
 
-export interface AmountInputProps
+interface BaseAmountInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'defaultValue' | 'onChange' | 'type' | 'min' | 'max'> {
-  value: number | null | undefined;
-  onValueChange: (value: number | null) => void;
   precision?: number;
-  min?: number;
-  max?: number;
+  min?: number | string;
+  max?: number | string;
   currency?: React.ReactNode;
 }
 
-const formatAmount = (value: number | null | undefined, precision: number) => {
-  if (value === null || value === undefined || !Number.isFinite(value)) {
-    return '';
-  }
-  return value.toLocaleString('zh-CN', {
-    useGrouping: true,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: precision,
-  });
-};
+export type AmountInputProps = BaseAmountInputProps & (
+  | { stringMode: true; value: string | number | null | undefined; onValueChange: (value: string | null) => void }
+  | { stringMode?: false; value: number | null | undefined; onValueChange: (value: number | null) => void }
+);
+
+const stringAmountMode = (props: AmountInputProps): props is Extract<AmountInputProps, { stringMode: true }> => props.stringMode === true;
+
+const formatAmount = formatDecimalAmount;
 
 const normalizeEditableAmount = (input: string, precision: number, allowNegative: boolean) => {
   const normalizedPunctuation = input.replace(/，/g, ',').replace(/。/g, '.');
@@ -39,7 +36,7 @@ const normalizeEditableAmount = (input: string, precision: number, allowNegative
     return { raw: negative ? '-' : '', display: negative ? '-' : '' };
   }
 
-  const groupedInteger = Number(integerDigits).toLocaleString('zh-CN', { maximumFractionDigits: 0 });
+  const groupedInteger = groupAmountDigits(integerDigits);
   return {
     raw,
     display: `${negative ? '-' : ''}${groupedInteger}${hasDecimalPoint ? `.${fractionDigits}` : ''}`,
@@ -64,9 +61,13 @@ const cursorPositionForCount = (value: string, targetCount: number) => {
 
 export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
   (
-    {
+    properties,
+    forwardedRef,
+  ) => {
+    const {
       value,
       onValueChange,
+      stringMode,
       precision = 2,
       min,
       max,
@@ -75,16 +76,19 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
       onBlur,
       onFocus,
       ...props
-    },
-    forwardedRef,
-  ) => {
+    } = properties;
     const safePrecision = Math.min(20, Math.max(0, Math.floor(precision)));
     const [displayValue, setDisplayValue] = useState(() => formatAmount(value, safePrecision));
     const inputRef = useRef<HTMLInputElement | null>(null);
     const focusedRef = useRef(false);
     const pendingCursorRef = useRef<number | null>(null);
     const outOfRange = useMemo(
-      () => value !== null && value !== undefined && ((min !== undefined && value < min) || (max !== undefined && value > max)),
+      () => {
+        const amount = decimalAmount(value);
+        const minimum = decimalAmount(min);
+        const maximum = decimalAmount(max);
+        return amount !== null && ((minimum !== null && amount.lessThan(minimum)) || (maximum !== null && amount.greaterThan(maximum)));
+      },
       [max, min, value],
     );
 
@@ -140,17 +144,22 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             const normalized = normalizeEditableAmount(
               event.currentTarget.value,
               safePrecision,
-              min === undefined || min < 0,
+              min === undefined || decimalAmount(min)?.isNegative() === true,
             );
             pendingCursorRef.current = cursorPositionForCount(normalized.display, charactersBeforeCursor);
             setDisplayValue(normalized.display);
 
             if (!normalized.raw || normalized.raw === '-' || normalized.raw === '.') {
-              onValueChange(null);
+              if (stringAmountMode(properties)) properties.onValueChange(null);
+              else properties.onValueChange(null);
               return;
             }
-            const parsed = Number(normalized.raw);
-            onValueChange(Number.isFinite(parsed) ? parsed : null);
+            if (stringAmountMode(properties)) {
+              properties.onValueChange(decimalAmount(normalized.raw) ? normalized.raw : null);
+            } else {
+              const parsed = Number(normalized.raw);
+              properties.onValueChange(Number.isFinite(parsed) ? parsed : null);
+            }
           }}
           {...props}
         />
@@ -160,4 +169,3 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
 );
 
 AmountInput.displayName = 'AmountInput';
-

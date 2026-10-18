@@ -10,6 +10,7 @@ import {
   TaskStatus,
   Role 
 } from '../types';
+import type { FieldPermission, WorkflowTaskType } from './workflowSemantic';
 
 // ==================== API 响应类型 ====================
 
@@ -37,11 +38,20 @@ export interface ApiResponse<T = any> {
  * 流程实例状态
  */
 export enum ProcessInstanceStatus {
+  DRAFT = 'DRAFT',
   RUNNING = 'RUNNING',
-  COMPLETED = 'COMPLETED',
+  PASSED = 'PASSED',
+  AUTO_PASSED = 'AUTO_PASSED',
   REJECTED = 'REJECTED',
-  REVOKED = 'REVOKED',
-  SUSPENDED = 'SUSPENDED'
+  TERMINATED = 'TERMINATED',
+  INVALIDATED = 'INVALIDATED',
+  CANCELLED = 'CANCELLED',
+  WITHDRAWN = 'WITHDRAWN',
+  TASK_BACK = 'TASK_BACK',
+  PAUSED = 'PAUSED',
+  RESTARTED = 'RESTARTED',
+  PENDING = 'PENDING',
+  FAILED = 'FAILED',
 }
 
 /**
@@ -56,6 +66,9 @@ export interface ProcessInstance {
   applicantId: string;
   applicantName: string;
   formId?: string;
+  formDefinition?: FormDefinition;
+  fieldPermissions?: FieldPermission[];
+  formNodeKey?: string;
   formData?: Record<string, any>;
   currentNodeKey?: string;
   currentNodeName?: string;
@@ -76,6 +89,9 @@ export enum TraceNodeStatus {
 }
 
 export interface ProcessTraceHistoryDetail {
+  taskType?: WorkflowTaskType;
+  nodeType?: string;
+  completeTime?: string;
   historyId: string;
   taskId: string;
   nodeKey: string;
@@ -83,6 +99,8 @@ export interface ProcessTraceHistoryDetail {
   operatorId: string;
   operatorName: string;
   action: string;
+  onBehalfOfUserId?: string | number;
+  onBehalfOfUserName?: string;
   comment?: string;
   createTime: string;
 }
@@ -91,18 +109,35 @@ export interface ProcessTraceHistoryDetail {
  * 流程轨迹活动任务详情
  */
 export interface ProcessTraceActiveDetail {
-  taskId: string;
+  taskType?: WorkflowTaskType;
+  nodeType?: string;
+  allowUrge?: boolean;
+  taskId?: string;
   nodeKey: string;
   nodeName: string;
-  assignee: string;
+  assignee?: string | number;
+  assigneeId?: string | number;
   assigneeName?: string;
-  status: string;
-  createTime: string;
+  status?: string;
+  createTime?: string;
 }
 
 /**
  * 流程轨迹
  */
+export interface WorkflowGatewayRound {
+  roundId: string;
+  nodeKey: string;
+  nodeName?: string;
+  joinNodeKey: string;
+  joinType: 'PARALLEL' | 'INCLUSIVE';
+  arrivedCount: number;
+  expectedCount: number;
+  status: 'WAITING' | 'RELEASED' | 'CANCELLED';
+  createTime?: string;
+  releasedTime?: string;
+}
+
 export interface ProcessTrace {
   instanceId?: string;
   workflowName?: string;
@@ -117,6 +152,7 @@ export interface ProcessTrace {
   active: string[];
   historyDetails?: ProcessTraceHistoryDetail[];
   activeDetails?: ProcessTraceActiveDetail[];
+  gatewayRounds?: WorkflowGatewayRound[];
   parallelBranches?: Array<{
     branchId?: string;
     branchName?: string;
@@ -189,6 +225,8 @@ export interface ProcessDefinitionListItem {
  * 流程定义详情
  */
 export interface ProcessDefinitionDetail extends WorkflowDefinition {
+  processName?: string;
+  modelJson?: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   createTime: string;
   updateTime: string;
@@ -221,6 +259,7 @@ export interface StartProcessRequest {
   startUserId?: string;
   startUserName?: string;
   variables?: Record<string, any>;
+  nodeAssignees?: Record<string, Array<number | string>>;
 }
 
 /**
@@ -266,7 +305,10 @@ export interface SaveProcessDefinitionResponse {
  */
 export interface SaveFormDefinitionRequest {
   formId?: string;
+  formKey?: string;
   formName: string;
+  versionLock?: number;
+  changeLog?: string;
   fieldsJson: string; // JSON 字符串，而不是数组
 }
 

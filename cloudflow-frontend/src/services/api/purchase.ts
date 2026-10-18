@@ -1,21 +1,16 @@
 import request from './request';
+import type { SysSupplier } from './oaOperations';
 import { PageResult } from '@/types';
 import { toBackendDateString } from '@/utils/dateFormat';
+import { completeConsumableOperation, consumableOperationStorageKey, freezeConsumableOperation, newConsumableOperationKey, readConsumableOperation } from './consumableOperation';
+import type { ConsumablePageResult, ConsumablePosting, ConsumableReceiptView } from './consumableLedger';
 
-export interface Supplier {
-  supplierId?: number;
-  tenantId?: number;
+export interface Supplier extends SysSupplier {
   supplierName: string;
-  contactName?: string;
-  contactPhone?: string;
-  bankName?: string;
-  bankAccount?: string;
-  status?: string;
-  createTime?: string;
-  updateTime?: string;
 }
 
 export interface PurchaseItem {
+  rfqItemId?: number;
   id?: number;
   tenantId?: number;
   purchaseId?: number;
@@ -32,6 +27,8 @@ export interface PurchaseItem {
 }
 
 export interface PurchaseRequest {
+  rfqId?: number;
+  version?: number;
   id?: number;
   tenantId?: number;
   instanceId?: string;
@@ -65,12 +62,41 @@ export interface PurchaseRequest {
 }
 
 export interface PurchaseReceiptPayload {
+  operationKey?: string;
+  purchaseVersion?: number;
   remark?: string;
   items: Array<{
-    itemId: number;
+    itemId: number | string;
     quantity: number;
   }>;
 }
+
+type FrozenPurchaseReceipt = PurchaseReceiptPayload & { operationKey: string; purchaseVersion: number };
+const receiptScope = (id: number | string) => consumableOperationStorageKey(`purchase:receipt:${id}`);
+const receiptContent = (data: PurchaseReceiptPayload) => JSON.stringify({
+  remark: data.remark?.trim() || '',
+  items: data.items.map((item) => ({ itemId: String(item.itemId), quantity: item.quantity })).sort((first, second) => first.itemId.localeCompare(second.itemId)),
+});
+
+export const getPendingConsumableReceipt = (id: number | string) => readConsumableOperation<FrozenPurchaseReceipt>(receiptScope(id));
+export const clearConsumableReceiptAfterVerification = (id: number | string) => completeConsumableOperation(receiptScope(id));
+
+const receiveConsumables = async (id: number | string, data: PurchaseReceiptPayload): Promise<ConsumablePosting> => {
+  const key = receiptScope(id);
+  let command = readConsumableOperation<FrozenPurchaseReceipt>(key);
+  if (!command) {
+    const purchase = data.purchaseVersion == null ? await purchaseRequestApi.getInfo(id) : null;
+    const version = data.purchaseVersion ?? purchase?.version;
+    if (!Number.isInteger(version) || version! < 0) throw new Error('采购单缺少有效版本，未发送收货请求');
+    command = freezeConsumableOperation(key, { ...data, operationKey: data.operationKey ?? newConsumableOperationKey(), purchaseVersion: version! });
+  }
+  if (receiptContent(command) !== receiptContent(data) || data.operationKey && data.operationKey !== command.operationKey || data.purchaseVersion != null && data.purchaseVersion !== command.purchaseVersion) {
+    throw new Error(`上一笔收货尚未确认，请恢复原明细重试或先核对收货记录；原明细：${command.items.map((item) => `#${item.itemId} 数量${item.quantity}`).join('、')}`);
+  }
+  const result = await request.post(`/oa/purchase/request/${id}/receipt`, command) as ConsumablePosting;
+  completeConsumableOperation(key);
+  return result;
+};
 
 export interface PurchaseFromSuggestionPayload {
   supplierId?: number;
@@ -145,7 +171,7 @@ export const purchaseRequestApi = {
     return normalizePurchasePage(response);
   },
 
-  getInfo: async (id: number) => {
+  getInfo: async (id: number | string) => {
     const response = await request.get(`/oa/purchase/request/${id}`) as PurchaseRequest;
     return normalizePurchase(response);
   },
@@ -158,8 +184,10 @@ export const purchaseRequestApi = {
 
   submit: (id: number) => request.post(`/oa/purchase/request/submit/${id}`),
 
-  receipt: (id: number, data: PurchaseReceiptPayload) =>
-    request.post(`/oa/purchase/request/${id}/receipt`, data),
+  receipt: receiveConsumables,
+
+  receipts: (id: number | string, params: { pageNum?: number; pageSize?: number } = {}) =>
+    request.get(`/oa/purchase/request/${id}/receipts`, { params }) as Promise<ConsumablePageResult<ConsumableReceiptView>>,
 
   createPayment: (id: number) => request.post(`/oa/purchase/request/${id}/create-payment`),
 

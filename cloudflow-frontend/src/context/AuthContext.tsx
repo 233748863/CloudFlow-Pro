@@ -1,17 +1,23 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { CanceledError } from 'axios';
 import { toast } from 'sonner';
 import { ForcePasswordChangeDialog } from '@/components/auth/ForcePasswordChangeDialog';
 import { User } from '@/types';
 import { getInfo, logout as logoutApi, switchTenant as switchTenantApi, type UserInfo } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 import { clearAuthSession } from '@/utils/sessionCleanup';
-import { setAuthToken, setCurrentUserSnapshot } from '@/utils/authStorage';
-import { queryClient } from '@/lib/queryClient';
+import { getAuthSessionVersion, invalidateAuthRequests, setAuthToken, setCurrentUserSnapshot } from '@/utils/authStorage';
+import { Button } from '@/components/common/button';
+import { ResultPage } from '@/components/common/ResultPage';
+import { clearBackendMenuQueries, getBackendMenuQueryKey, queryClient } from '@/lib/queryClient';
 import { tenantStorage } from '@/utils/tenantStorage';
 import { resetWorkflowDesignCaches } from '@/pages/workflowDesignCache';
 import { resetWsTopicHandlers } from '@/hooks/useWebSocket';
 import { clearEmployeeResolverCache } from '@/services/api/hr/self-service';
 import { useAnnouncementStore } from '@/stores/announcementStore';
+import { clearMobileSnapshots, readLastMobileSnapshots } from '@/utils/mobileSnapshots';
+import { useNetworkStatus } from '@/hooks/useOffline';
+const MobileOfflineWorkspace = React.lazy(() => import('@/mobile/pages/MobileOfflineWorkspace'));
 
 interface AuthContextType {
   user: User | null;
@@ -46,8 +52,22 @@ const buildAuthUser = (userInfo: UserInfo): User => ({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const isOnline = useNetworkStatus();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializationFailed, setInitializationFailed] = useState(false);
+  const [initializationAttempt, setInitializationAttempt] = useState(0);
+  const operation = useRef(0);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (isOnline && initializationFailed) setInitializationAttempt(value => value + 1);
+  }, [isOnline]);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   const hasPermission = (permission: string | string[], requireAll = false) => {
     const permissionList = Array.isArray(permission) ? permission : [permission];
@@ -60,33 +80,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    let active = true;
+    const currentOperation = operation.current;
+    const version = getAuthSessionVersion();
+    const isCurrent = () => active && currentOperation === operation.current && version === getAuthSessionVersion();
     const initAuth = async () => {
       const currentPath = window.location.pathname;
-      const shouldSkipProbe = currentPath.endsWith('/login') || currentPath.endsWith('/register');
+      const shouldSkipProbe = currentPath.endsWith('/login') || currentPath.endsWith('/register')
+        || currentPath === '/portal' || currentPath.startsWith('/portal/');
       if (shouldSkipProbe) {
         setLoading(false);
         return;
       }
 
+      setLoading(true);
+      setInitializationFailed(false);
       try {
         const userInfo = await getInfo({ silent: true });
-        if (userInfo) {
+        if (isCurrent()) {
           const currentUser = buildAuthUser(userInfo);
           setUser(currentUser);
           setCurrentUserSnapshot(currentUser);
         }
       } catch {
-        clearAuthSession();
+        if (isCurrent()) setInitializationFailed(true);
+      } finally {
+        if (isCurrent()) setLoading(false);
       }
-
-      setLoading(false);
     };
 
     void initAuth();
-  }, []);
+    return () => { active = false; };
+  }, [initializationAttempt]);
 
   useEffect(() => {
     const handleAuthExpired = () => {
+      operation.current++;
+      useAnnouncementStore.getState().reset();
+      setInitializationFailed(false);
+      setLoading(false);
       setUser(null);
     };
 
@@ -95,18 +127,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const refreshUser = async () => {
+    const currentOperation = operation.current;
+    const version = getAuthSessionVersion();
+    const isCurrent = () => mounted.current && currentOperation === operation.current && version === getAuthSessionVersion();
     try {
       const userInfo = await getInfo();
+      if (!isCurrent()) throw new CanceledError('登录身份已变化，请重新读取');
       if (userInfo) {
         const currentUser = buildAuthUser(userInfo);
-        setUser(currentUser);
         setCurrentUserSnapshot(currentUser);
+        void queryClient.cancelQueries({ queryKey: getBackendMenuQueryKey(currentUser.tenantId, currentUser.id), exact: true });
+        void queryClient.invalidateQueries({ queryKey: getBackendMenuQueryKey(currentUser.tenantId, currentUser.id), exact: true });
+        setUser(currentUser);
+        setInitializationFailed(false);
+        setLoading(false);
         return currentUser;
       }
       return null;
     } catch (error) {
-      logger.error('获取用户信息失败:', error);
-      clearAuthSession();
+      if (isCurrent()) logger.error('获取用户信息失败:', error);
       throw error;
     }
   };
@@ -123,29 +162,58 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const login = async (token: string) => {
+    operation.current++;
+    useAnnouncementStore.getState().reset();
+    clearMobileSnapshots();
+    clearBackendMenuQueries();
     // Store token in memory for HTTP Authorization and WebSocket AUTH frame.
     setAuthToken(token);
+    setCurrentUserSnapshot(null);
+    setUser(null);
+    setInitializationFailed(false);
     await refreshUser();
   };
 
   const logout = async () => {
+    const currentOperation = ++operation.current;
+    const version = invalidateAuthRequests();
+    useAnnouncementStore.getState().reset();
+    clearMobileSnapshots();
+    setCurrentUserSnapshot(null);
+    setUser(null);
+    setInitializationFailed(false);
+    setLoading(false);
     try {
       await logoutApi();
     } catch (error) {
       logger.warn('调用登出接口失败，继续执行本地退出', error);
     }
 
-    clearAuthSession();
-    setUser(null);
+    if (currentOperation === operation.current && version === getAuthSessionVersion()) {
+      clearAuthSession();
+      if (mounted.current) setUser(null);
+    }
   };
 
   const switchTenant = async (tenantId: number) => {
+    const currentOperation = ++operation.current;
+    let version = invalidateAuthRequests();
+    const isCurrent = () => mounted.current && currentOperation === operation.current && version === getAuthSessionVersion();
+    setLoading(true);
+    setInitializationFailed(false);
+    let tenantChanged = false;
     // 切换前先记下当前租户，用于切换成功后清理其它租户的 localStorage 桶
     const previousTenantId = user?.tenantId ?? null;
     try {
       const response = await switchTenantApi(tenantId);
+      if (!isCurrent()) throw new CanceledError('登录身份已变化，请重新读取');
+      tenantChanged = true;
+      clearMobileSnapshots();
+      setUser(null);
+      setCurrentUserSnapshot(null);
       // Store new token in memory for WebSocket connections
       setAuthToken(response.token);
+      version = getAuthSessionVersion();
 
       // 切换租户=换"会话身份"，把上一个租户在 RQ 中缓存的所有数据清干净，避免串数据
       // queryKey 已带 tenantId 维度（lib/queryClient.ts 的 queryKeyHashFn），
@@ -162,6 +230,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       useAnnouncementStore.getState().reset();
 
       const userInfo = await getInfo();
+      if (!isCurrent()) throw new CanceledError('登录身份已变化，请重新读取');
       if (userInfo) {
         const updatedUser = buildAuthUser(userInfo);
         setUser(updatedUser);
@@ -178,27 +247,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // WebSocket 自动重连：useWebSocket 依赖 user 引用变化，setUser 后会自动 close 老连接 + 重发 AUTH 帧
         toast.success(`已切换到${updatedUser.tenantName || `租户 ${tenantId}`}`);
       } else {
-        // getInfo 失败兜底也要尽量清旧桶
-        try {
-          tenantStorage.purgeOther(tenantId);
-        } catch {
-          // ignore
-        }
-        toast.success(`已切换到租户 ${tenantId}`);
+        throw new Error('无法确认切换后的身份');
       }
       // P2-1：取消 window.location.reload() 全页刷新，React Context 已更新即可触发树重渲染
     } catch (error) {
+      if (!isCurrent()) throw error;
+      if (tenantChanged) {
+        clearAuthSession();
+        version = getAuthSessionVersion();
+        setUser(null);
+      } else {
+        setInitializationFailed(true);
+      }
       logger.error('租户切换失败:', error);
-      // 切换失败时不动 RQ 缓存与 localStorage（保持原状），仅提示
       void previousTenantId;
-      toast.error('租户切换失败，请重试');
+      toast.error('租户切换结果未确认，请重新验证当前身份');
       throw error;
+    } finally {
+      if (isCurrent()) setLoading(false);
     }
   };
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, clearForcePasswordChange, switchTenant, hasPermission }}>
-      {children}
+      {initializationFailed && !isOnline && readLastMobileSnapshots() ? <React.Suspense fallback={<p role="status">正在读取离线摘要…</p>}>
+        <MobileOfflineWorkspace onRetry={() => setInitializationAttempt(value => value + 1)} onLogout={() => { void logout(); }} />
+      </React.Suspense> : initializationFailed ? <ResultPage status="network" title="身份验证暂不可用"
+        subTitle="当前无法读取登录信息，业务页面暂不开放，请重试或退出登录。"
+        extra={<><Button className="min-h-11" onClick={() => setInitializationAttempt(value => value + 1)}>重新验证</Button>
+          <Button className="min-h-11" variant="outline" onClick={() => { void logout(); }}>退出登录</Button></>} /> : children}
       <ForcePasswordChangeDialog
         open={Boolean(user?.forcePasswordChange)}
         clearForcePasswordChange={clearForcePasswordChange}

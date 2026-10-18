@@ -1,4 +1,5 @@
 import request from './request';
+import type { OaProjectTask, OaProjectDependency } from './oaOperations';
 import { PageResult } from '@/types';
 
 export interface Project {
@@ -20,6 +21,17 @@ export interface Project {
   actualEndDate?: string;
   budgetAmount?: number;
   actualCostAmount?: number;
+  version?: number;
+  estimatedCost?: number;
+  laborCostAmount?: number;
+  purchaseCostAmount?: number;
+  otherCostAmount?: number;
+  billableAmount?: number;
+  billedAmount?: number;
+  grossMargin?: number;
+  grossMarginRate?: number;
+  actualHours?: number;
+  percentCompleteMode?: string;
   progress?: number;
   priority?: string;
   status?: string;
@@ -46,21 +58,7 @@ export interface ProjectMember {
   billableFlag?: number;
 }
 
-export interface ProjectMilestone {
-  milestoneId?: number;
-  projectId?: number;
-  milestoneName?: string;
-  milestoneCode?: string;
-  ownerId?: number;
-  ownerName?: string;
-  plannedDate?: string;
-  baselineDate?: string;
-  actualDate?: string;
-  progress?: number;
-  sortOrder?: number;
-  status?: string;
-  remark?: string;
-}
+export type ProjectMilestone = OaProjectTask;
 
 export interface ProjectRisk {
   riskId?: number;
@@ -77,46 +75,16 @@ export interface ProjectRisk {
   resolvedTime?: string;
 }
 
-export interface ProjectWbsTask {
-  taskId?: number;
-  title?: string;
-  description?: string;
-  assigneeId?: number;
-  ownerId?: number;
-  deptId?: number;
-  projectId?: number;
-  milestoneId?: number;
-  wbsCode?: string;
-  priority?: number;
-  status?: string;
-  dueDate?: string;
-  plannedStartTime?: string;
-  plannedEndTime?: string;
-  baselineStartTime?: string;
-  baselineEndTime?: string;
-  actualStartTime?: string;
-  actualEndTime?: string;
-  progress?: number;
-  estimatedHours?: number;
-  actualHours?: number;
-  parentId?: number;
-  sortOrder?: number;
-}
+export type ProjectWbsTask = OaProjectTask;
 
-export interface ProjectDependency {
-  dependencyId?: number;
-  projectId?: number;
-  predecessorType?: string;
-  predecessorId?: number;
-  successorType?: string;
-  successorId?: number;
-  dependencyType?: string;
-  lagDays?: number;
-  remark?: string;
-}
+export type ProjectDependency = OaProjectDependency;
 
 export interface ProjectCostSummary {
   projectId?: number;
+  laborAmount?: number;
+  otherAmount?: number;
+  billableAmount?: number;
+  billedAmount?: number;
   expenseAmount?: number;
   purchaseAmount?: number;
   paymentAmount?: number;
@@ -209,7 +177,7 @@ export const projectApi = {
 
   editWbs: (data: ProjectWbsTask) => request.put('/oa/project/wbs', data),
 
-  updateWbsTree: (projectId: number, data: Array<{ taskId?: number; parentId?: number; sortOrder?: number }>) => request.put(`/oa/project/wbs/tree?projectId=${projectId}`, data),
+  updateWbsTree: (projectId: number, data: Array<Pick<OaProjectTask, 'taskId' | 'parentTaskId' | 'sortNo' | 'version'>>) => request.put(`/oa/project/wbs/tree?projectId=${projectId}`, data),
 
   removeWbs: (ids: number[]) => request.delete(`/oa/project/wbs/${ids.join(',')}`),
 

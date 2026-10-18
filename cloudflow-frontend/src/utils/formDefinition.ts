@@ -1,12 +1,15 @@
 import { FormDefinition } from '@/types';
 
-type BackendFormDefinitionLike = Partial<FormDefinition> & {
+export type BackendFormDefinitionLike = Omit<Partial<FormDefinition>, 'id' | 'formKey' | 'isLatest' | 'isRollback'> & {
+  id?: unknown;
   formId?: unknown;
   formName?: unknown;
   formKey?: unknown;
   fieldsJson?: unknown;
   formSchema?: unknown;
   fields?: unknown;
+  isLatest?: number | boolean;
+  isRollback?: number | boolean;
 };
 
 const parseFormFields = (form: BackendFormDefinitionLike): FormDefinition['fields'] => {
@@ -27,12 +30,12 @@ const parseFormFields = (form: BackendFormDefinitionLike): FormDefinition['field
 
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed : Array.isArray(parsed?.fields) ? parsed.fields : [];
   } catch {
     try {
       const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
       const parsed = JSON.parse(sanitized);
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed) ? parsed : Array.isArray(parsed?.fields) ? parsed.fields : [];
     } catch {
       return [];
     }
@@ -46,7 +49,7 @@ export const mapBackendFormDefinition = (
     return null;
   }
 
-  const id = String(form.id ?? form.formId ?? form.formKey ?? '').trim();
+  const id = String(form.formId ?? form.id ?? form.formKey ?? '').trim();
   if (!id) {
     return null;
   }
@@ -55,8 +58,20 @@ export const mapBackendFormDefinition = (
 
   return {
     id,
+    formKey: typeof form.formKey === 'string' ? form.formKey : undefined,
     name,
     fields: parseFormFields(form),
+    version: form.version,
+    versionLock: form.versionLock,
+    isLatest: form.isLatest === undefined ? undefined : form.isLatest === true || form.isLatest === 1,
+    checksum: form.checksum,
+    changeLog: form.changeLog,
+    changeType: form.changeType,
+    isRollback: form.isRollback === true || form.isRollback === 1,
+    rollbackFromVersion: form.rollbackFromVersion,
+    createBy: form.createBy,
+    createTime: form.createTime,
+    versionUnknownFlag: form.versionUnknownFlag,
   };
 };
 
