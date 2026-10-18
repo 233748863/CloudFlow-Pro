@@ -4,7 +4,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.dto.DeptCreateDTO;
 import com.cloudflow.hr.client.dto.PostCreateDTO;
-import com.cloudflow.hr.client.dto.UserCreateDTO;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.cloudflow.hr.client.dto.UserUpdateDTO;
 import com.cloudflow.hr.client.vo.DeptTreeVO;
 import com.cloudflow.hr.client.vo.DeptVO;
@@ -70,8 +70,8 @@ public class AuthServiceFallback implements AuthServiceClient {
     // ==================== 用户管理接口降级 ====================
     
     @Override
-    public R<Long> createUser(UserCreateDTO dto) {
-        log.error("Auth服务调用失败：创建用户失败，用户名={}", dto.getUserName());
+    public R<Long> createUser(JsonNode dto) {
+        log.error("Auth服务调用失败：创建用户失败");
         return R.fail("Auth服务暂时不可用，无法创建用户账号，请稍后重试");
     }
     
@@ -101,7 +101,7 @@ public class AuthServiceFallback implements AuthServiceClient {
     
     @Override
     public R<Void> disableUser(Long id) {
-        log.error("Auth服务调用失败：禁用用户失败，用户ID={}", id);
-        return R.fail("Auth服务暂时不可用，无法禁用用户账号，请稍后重试");
+        log.error("Auth服务调用未确认账号停用结果，用户ID={}", id);
+        return R.fail("账号停用结果尚未确认，请核对账号状态后重试当前申请");
     }
 }

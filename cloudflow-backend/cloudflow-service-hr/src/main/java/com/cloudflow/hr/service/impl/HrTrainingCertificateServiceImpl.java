@@ -12,6 +12,7 @@ import com.cloudflow.hr.domain.entity.HrTrainingCertificateTemplate;
 import com.cloudflow.hr.domain.entity.HrTrainingCourse;
 import com.cloudflow.hr.domain.entity.HrTrainingSession;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.event.HrSkillEvidenceChangedEvent;
 import com.cloudflow.hr.mapper.HrEmployeeMapper;
 import com.cloudflow.hr.mapper.HrTrainingCertificateMapper;
 import com.cloudflow.hr.mapper.HrTrainingCertificateTemplateMapper;
@@ -26,6 +27,7 @@ import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -62,6 +64,7 @@ public class HrTrainingCertificateServiceImpl implements IHrTrainingCertificateS
     private final HrFileStorage fileStorage;
     private final IHrTrainingArchiveService archiveService;
     private final RuntimeSysConfigService runtimeSysConfigService;
+    private final ApplicationEventPublisher applicationEvents;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -109,6 +112,7 @@ public class HrTrainingCertificateServiceImpl implements IHrTrainingCertificateS
                 cert.getCertNo(), employeeId, courseId, fileId);
         // HR-P0-1 触发培训档案异步增量刷新(证书数量变更)
         archiveService.incrementOnCertificateChange(employeeId);
+        applicationEvents.publishEvent(new HrSkillEvidenceChangedEvent(tenantId, "CERTIFICATE", cert.getId()));
         return cert.getId();
     }
 
@@ -131,6 +135,7 @@ public class HrTrainingCertificateServiceImpl implements IHrTrainingCertificateS
         log.info("培训证书已撤销，certNo: {}, reason: {}", cert.getCertNo(), reason);
         // HR-P0-1 触发培训档案异步增量刷新(撤销影响有效证书数)
         archiveService.incrementOnCertificateChange(cert.getEmployeeId());
+        applicationEvents.publishEvent(new HrSkillEvidenceChangedEvent(currentTenantId(), "CERTIFICATE", id));
     }
 
     @Override

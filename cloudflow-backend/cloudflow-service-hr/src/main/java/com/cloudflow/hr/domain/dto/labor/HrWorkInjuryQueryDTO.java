@@ -15,13 +15,13 @@ import java.time.LocalDateTime;
 @Schema(name = "HrWorkInjuryQueryDTO", description = "工伤分页查询入参")
 public class HrWorkInjuryQueryDTO extends PageQuery {
 
-    @Schema(description = "工伤编号 模糊匹配")
+    @Schema(description = "工伤编号（精确匹配）")
     private String injuryNo;
 
     @Schema(description = "员工 ID")
     private Long employeeId;
 
-    @Schema(description = "状态：REPORTED/INVESTIGATING/DETERMINING/CLOSED")
+    @Schema(description = "状态：REPORTED/INVESTIGATING/DETERMINING/DETERMINED/COMPENSATING/REHABILITATING/CLOSED/REJECTED")
     private String status;
 
     @Schema(description = "受伤等级：MINOR/MODERATE/SEVERE")

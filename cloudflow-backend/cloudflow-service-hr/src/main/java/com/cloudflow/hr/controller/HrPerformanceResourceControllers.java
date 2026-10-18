@@ -129,6 +129,13 @@ class HrPerformanceResultController {
     private final IHrPerformanceService hrPerformanceService;
     private final ObjectMapper objectMapper;
 
+    @GetMapping("/results/{id}")
+    @SaCheckPermission("hr:performance:list")
+    public R<HrPerformanceResultVO> getPerformanceResult(@PathVariable Long id) {
+        return R.ok(MapConverters.toVO(crudService.get(HrPerformanceResult.class, id),
+                HrPerformanceResultVO.class, objectMapper));
+    }
+
     @GetMapping("/results")
     @SaCheckPermission("hr:performance:list")
     public R<List<HrPerformanceResultVO>> listPerformanceResults(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
@@ -260,6 +267,7 @@ class HrPerformance360Controller {
     private final IHrPerformance360Service hrPerformance360Service;
 
     @SysLog("发起HR绩效360评估邀请")
+    @RepeatSubmit
     @PostMapping("/invite")
     @SaCheckPermission("hr:performance:edit")
     public R<List<Long>> invite360(@RequestBody Hr360EvaluatorInvitePayload payload) {

@@ -12,20 +12,23 @@ import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrTrainingEnrollment;
 import com.cloudflow.hr.domain.entity.HrTrainingSession;
 import com.cloudflow.hr.event.HrTrainingEnrollmentSubmittedEvent;
+import com.cloudflow.hr.event.HrSkillEvidenceChangedEvent;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTrainingEnrollmentMapper;
+import com.cloudflow.hr.mapper.HrEmployeeMapper;
 import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.IHrTrainingArchiveService;
 import com.cloudflow.hr.service.IHrTrainingEnrollmentService;
-import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -34,6 +37,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Slf4j
@@ -47,12 +51,14 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
 
     private final HrTrainingEnrollmentMapper enrollmentMapper;
     private final HrTrainingSessionMapper sessionMapper;
+    private final HrEmployeeMapper employeeMapper;
     private final HrEssSupport essSupport;
     private final WorkflowServiceClient workflowServiceClient;
     private final IHrTrainingArchiveService archiveService;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
     private final RuntimeSysConfigService runtimeSysConfigService;
+    private final ApplicationEventPublisher applicationEvents;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -156,6 +162,7 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
                 .set("update_by", currentUserName());
         enrollmentMapper.update(null, wrapper);
         archiveService.incrementOnEnrollmentChange(enrollment.getEmployeeId());
+        applicationEvents.publishEvent(new HrSkillEvidenceChangedEvent(currentTenantId(), "TRAINING", enrollmentId));
     }
 
     @Override
@@ -196,6 +203,15 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
     }
 
     public void startTrainingEnrollmentWorkflow(HrTrainingEnrollment enrollment) {
+        HrEmployee employee = employeeMapper.selectById(enrollment.getEmployeeId());
+        if (employee == null || Integer.valueOf(1).equals(employee.getDeleted())
+                || !Objects.equals(employee.getTenantId(), enrollment.getTenantId())) {
+            throw new HrBusinessException("EMPLOYEE_NOT_FOUND", "报名员工档案不存在");
+        }
+        Long applicantUserId = employee.getUserId();
+        if (applicantUserId == null || applicantUserId <= 0) {
+            throw new HrBusinessException("EMPLOYEE_ACCOUNT_NOT_BOUND", "报名员工未绑定账号，无法发起培训审批");
+        }
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(enrollment.getTenantId());
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
@@ -205,7 +221,7 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
         dto.setBusinessId(enrollment.getId());
         dto.setBusinessNo(String.valueOf(enrollment.getSessionId()));
         dto.setProcessTitle("培训报名审批-班次 " + enrollment.getSessionId());
-        dto.setStartUserId(enrollment.getEmployeeId());
+        dto.setStartUserId(applicantUserId);
         Map<String, Object> vars = new LinkedHashMap<>();
         vars.put("sessionId", enrollment.getSessionId());
         vars.put("employeeId", enrollment.getEmployeeId());

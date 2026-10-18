@@ -202,6 +202,7 @@ class HrAttendanceAppealController {
     }
 
     @SysLog("HR考勤申诉主管审核")
+    @RepeatSubmit
     @PostMapping("/{id}/manager-review")
     @SaCheckPermission("hr:attendance:edit")
     public R<Void> managerReview(@PathVariable Long id,
@@ -212,6 +213,7 @@ class HrAttendanceAppealController {
     }
 
     @SysLog("HR考勤申诉HR复核")
+    @RepeatSubmit
     @PostMapping("/{id}/hr-review")
     @SaCheckPermission("hr:attendance:edit")
     public R<Void> hrReview(@PathVariable Long id,

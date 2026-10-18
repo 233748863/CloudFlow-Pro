@@ -22,6 +22,7 @@ public class HrScheduleAssignmentPayload {
     private String targetName;
     private Long ruleId;
     private Long shiftId;
+    private Long sourceShiftRequestId;
     private LocalDate scheduleDate;
     private LocalDate effectiveStart;
     private LocalDate effectiveEnd;

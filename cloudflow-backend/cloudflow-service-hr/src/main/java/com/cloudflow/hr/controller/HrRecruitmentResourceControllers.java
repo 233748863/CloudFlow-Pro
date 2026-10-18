@@ -168,6 +168,7 @@ class HrOfferController {
 
     private final HrTypedCrudService crudService;
     private final HrRecruitmentService recruitmentService;
+    private final com.cloudflow.hr.service.HrRecruitmentApprovalService approvals;
 
     @GetMapping("/offers")
     @SaCheckPermission("hr:recruitment:list")
@@ -201,10 +202,11 @@ class HrOfferController {
     }
 
     @SysLog("变更HR Offer状态")
+    @RepeatSubmit
     @PostMapping("/offers/{id}/{action}")
     @SaCheckPermission("hr:recruitment:edit")
     public R<Void> changeOfferStatus(@PathVariable Long id, @PathVariable String action) {
-        crudService.changeStatus(HrOffer.class, id, action);
+        approvals.changeStatus(id, action);
         return R.ok();
     }
 }

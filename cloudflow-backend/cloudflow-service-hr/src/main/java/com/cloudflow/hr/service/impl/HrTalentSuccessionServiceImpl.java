@@ -27,6 +27,7 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentSuccessionPlanMapper;
 import com.cloudflow.hr.mapper.HrTalentSuccessorMapper;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.hr.service.HrHSupport;
 import com.cloudflow.hr.service.IHrTalentSuccessionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,7 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
     private final WorkflowServiceClient workflowServiceClient;
     private final OutboxPublisher outboxPublisher;
     private final RuntimeSysConfigService runtimeSysConfigService;
+    private final HrHSupport hrSupport;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -147,9 +149,12 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
         }
 
         UpdateWrapper<HrTalentSuccessionPlan> uw = new UpdateWrapper<>();
-        uw.eq("id", planId).eq("tenant_id", currentTenantId())
+        uw.eq("id", planId).eq("tenant_id", currentTenantId()).eq("status", "DRAFT")
+                .set("status", "IN_PROGRESS")
                 .set("update_time", LocalDateTime.now());
-        planMapper.update(null, uw);
+        if (planMapper.update(null, uw) != 1) {
+            throw new HrBusinessException("PLAN_STATUS_INVALID", "继任计划已提交，请刷新后重试");
+        }
         HrTalentSuccessionSubmittedEvent event = new HrTalentSuccessionSubmittedEvent();
         event.setPlanId(planId);
         event.setPlanNo(plan.getPlanNo());
@@ -169,7 +174,7 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
         dto.setBusinessId(plan.getId());
         dto.setBusinessNo(plan.getPlanNo());
         dto.setProcessTitle("继任计划发布-" + plan.getPlanName());
-        dto.setStartUserId(plan.getOwnerId());
+        dto.setStartUserId(hrSupport.linkedUser(hrSupport.employee(plan.getOwnerId())));
         Map<String, Object> vars = new LinkedHashMap<>();
         vars.put("planId", plan.getId());
         vars.put("planName", plan.getPlanName());

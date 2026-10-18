@@ -14,13 +14,13 @@ public class HrCompensationSimulateRequest {
     /** 员工 ID（可选；提供时以员工现有薪酬为基础叠加 overrides）。 */
     private Long employeeId;
 
-    /** 假设的薪酬结构 ID（必填）。 */
+    /** 假设的薪酬结构 ID；未指定时使用基准员工当前生效结构。 */
     private Long structureId;
 
     /** 假设的薪酬等级 ID（可选）。 */
     private Long gradeId;
 
-    /** 城市（可选；用于个税专项扣除/社保基数地区差异计算）。 */
+    /** 地区自动计费尚不支持；非空值明确拒绝，不能只回显地区。 */
     private String city;
 
     /** 假设的薪酬项金额（key=componentCode，value=金额）。 */

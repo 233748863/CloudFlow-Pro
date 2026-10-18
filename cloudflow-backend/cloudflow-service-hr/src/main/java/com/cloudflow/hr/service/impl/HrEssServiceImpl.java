@@ -14,11 +14,13 @@ import com.cloudflow.hr.domain.entity.HrContractSignature;
 import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrEmployeeBenefit;
 import com.cloudflow.hr.domain.entity.HrEmployeeComp;
+import com.cloudflow.hr.domain.entity.HrCompComponent;
 import com.cloudflow.hr.domain.entity.HrEmployeeContract;
 import com.cloudflow.hr.domain.entity.HrLeaveQuota;
+import com.cloudflow.hr.domain.entity.HrLeavePeriod;
 import com.cloudflow.hr.domain.entity.HrLeaveType;
 import com.cloudflow.hr.domain.entity.HrSalarySlip;
-import com.cloudflow.hr.domain.entity.HrSelfServiceMessage;
+import com.cloudflow.hr.domain.entity.HrMessageRecord;
 import com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrBankCardMapper;
@@ -28,16 +30,25 @@ import com.cloudflow.hr.mapper.HrCertificateRequestMapper;
 import com.cloudflow.hr.mapper.HrContractSignatureMapper;
 import com.cloudflow.hr.mapper.HrEmployeeBenefitMapper;
 import com.cloudflow.hr.mapper.HrEmployeeCompMapper;
+import com.cloudflow.hr.mapper.HrCompComponentMapper;
 import com.cloudflow.hr.mapper.HrEmployeeContractMapper;
 import com.cloudflow.hr.mapper.HrEmployeeMapper;
 import com.cloudflow.hr.mapper.HrLeaveQuotaMapper;
+import com.cloudflow.hr.mapper.HrLeavePeriodMapper;
 import com.cloudflow.hr.mapper.HrLeaveTypeMapper;
 import com.cloudflow.hr.mapper.HrSalarySlipMapper;
-import com.cloudflow.hr.mapper.HrSelfServiceMessageMapper;
+import com.cloudflow.hr.mapper.HrMessageRecordMapper;
 import com.cloudflow.hr.service.IHrEssService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.IHrIntegrationQueryService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.hr.service.HrRuleSupport;
+import com.cloudflow.hr.service.HrPayrollCalculationService;
+import com.cloudflow.hr.service.HrPayrollComponentSnapshot;
+import com.cloudflow.hr.service.HrPayrollConfigurationService;
+import com.cloudflow.hr.domain.entity.HrPayrollPeriod;
+import com.cloudflow.hr.mapper.HrPayrollPeriodMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,6 +65,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -69,7 +81,6 @@ public class HrEssServiceImpl implements IHrEssService {
 
     private static final BigDecimal DEFAULT_PERSONAL_RATE = new BigDecimal("0.105");
     private static final BigDecimal DEFAULT_COMPANY_RATE = new BigDecimal("0.245");
-    private static final BigDecimal DEFAULT_TAX_RATE = new BigDecimal("0.10");
     private static final Pattern PERIOD_MONTH_PATTERN = Pattern.compile("^\\d{4}-(0[1-9]|1[0-2])$");
 
     private final HrEssSupport essSupport;
@@ -78,20 +89,26 @@ public class HrEssServiceImpl implements IHrEssService {
     private final HrSalarySlipMapper salarySlipMapper;
     private final HrEmployeeMapper employeeMapper;
     private final HrEmployeeCompMapper employeeCompMapper;
+    private final HrCompComponentMapper compComponentMapper;
     private final HrEmployeeBenefitMapper employeeBenefitMapper;
     private final HrBenefitSchemeMapper benefitSchemeMapper;
     private final HrBenefitPaymentMapper benefitPaymentMapper;
     private final HrBankCardMapper bankCardMapper;
     private final HrLeaveQuotaMapper leaveQuotaMapper;
+    private final HrLeavePeriodMapper leavePeriodMapper;
     private final HrLeaveTypeMapper leaveTypeMapper;
     private final HrEmployeeContractMapper employeeContractMapper;
     private final HrContractSignatureMapper contractSignatureMapper;
     private final HrCertificateRequestMapper certificateRequestMapper;
-    private final HrSelfServiceMessageMapper selfServiceMessageMapper;
+    private final HrMessageRecordMapper messageRecordMapper;
     private final ObjectMapper objectMapper;
+    private final HrRuleSupport ruleSupport;
+    private final HrPayrollCalculationService payrollCalculation;
+    private final HrPayrollConfigurationService payrollConfiguration;
+    private final HrPayrollPeriodMapper payrollPeriodMapper;
+    private final com.cloudflow.hr.service.HrAdvancePayrollService advancePayroll;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public int generateSalarySlips(String periodMonth, Long employeeId) {
         validatePeriodMonth(periodMonth);
         Long tenantId = currentTenantId();
@@ -101,24 +118,91 @@ public class HrEssServiceImpl implements IHrEssService {
         if (employeeId != null) {
             compWrapper.eq("employee_id", employeeId);
         }
-        List<HrEmployeeComp> comps = employeeCompMapper.selectList(compWrapper);
+        if (employeeId != null) ruleSupport.assertEmployeeScope(employeeId);
+        java.util.Set<Long> allowedEmployees = ruleSupport.employees(employeeId == null ? null : List.of(employeeId), null)
+                .stream().map(com.cloudflow.hr.domain.entity.HrEmployee::getId).collect(java.util.stream.Collectors.toSet());
+        List<HrEmployeeComp> comps = employeeCompMapper.selectList(compWrapper).stream()
+                .filter(comp -> allowedEmployees.contains(comp.getEmployeeId())).toList();
         if (comps.isEmpty()) {
             return 0;
         }
 
-        int created = 0;
-        for (HrEmployeeComp comp : comps) {
-            if (existsSlip(tenantId, comp.getEmployeeId(), periodMonth)) {
-                continue;
+        YearMonth month = YearMonth.parse(periodMonth);
+        List<HrPayrollPeriod> periods = payrollPeriodMapper.selectList(new LambdaQueryWrapper<HrPayrollPeriod>()
+                .eq(HrPayrollPeriod::getTenantId, tenantId).eq(HrPayrollPeriod::getDeleted, 0)
+                .le(HrPayrollPeriod::getStartDate, month.atEndOfMonth()).ge(HrPayrollPeriod::getEndDate, month.atDay(1)));
+        HrPayrollPeriod period = new HrPayrollPeriod();
+        period.setStartDate(month.atDay(1)); period.setEndDate(month.atEndOfMonth()); period.setStatus("OPEN"); period.setFrequency("MONTHLY");
+        if (!periods.isEmpty()) {
+            if (periods.size() != 1 || !periods.get(0).getStartDate().equals(period.getStartDate()) || !periods.get(0).getEndDate().equals(period.getEndDate())) {
+                throw new HrBusinessException("PAYROLL_PERIOD_MANAGED", "该月已划分薪资周期，请通过对应批次计算");
             }
-            HrSalarySlip slip = composeSlip(tenantId, comp, periodMonth);
-            salarySlipMapper.insert(slip);
-            created++;
+            period = periods.get(0);
+        }
+        HrPayrollPeriod selectedPeriod = period;
+        int created = 0;
+        for (Long selectedEmployee : comps.stream().map(HrEmployeeComp::getEmployeeId).distinct().toList()) {
+            ruleSupport.assertEmployeeScope(selectedEmployee);
+            created += payrollCalculation.withGenerationLocks(selectedEmployee, selectedPeriod, () -> {
+                payrollConfiguration.assertOpen(selectedPeriod.getPeriodId() == null ? selectedPeriod : payrollConfiguration.period(selectedPeriod.getPeriodId()));
+                if (existsSlip(tenantId, selectedEmployee, periodMonth)) return 0;
+                String error = payrollCalculation.preCheck(selectedEmployee, selectedPeriod, false);
+                if (error != null) throw new HrBusinessException("PAYROLL_PRECHECK_FAILED", error);
+                payrollCalculation.assertNoOverlappingSlip(selectedEmployee, selectedPeriod, null);
+                HrSalarySlip slip = previewSalarySlip(selectedEmployee, selectedPeriod, false);
+                salarySlipMapper.insert(slip);
+                slip = advancePayroll.reserveCalculated(slip.getId());
+                slip.setStatus("SUBMITTED");
+                sealSalarySlip(slip);
+                if (salarySlipMapper.updateById(slip) != 1) throw new HrBusinessException("SALARY_SLIP_CHANGED", "工资单已变化，请重新读取");
+                ruleSupport.audit("SALARY_SLIP", slip.getId(), "GENERATE", Map.of("periodMonth", periodMonth));
+                return 1;
+            });
         }
         log.info("月度工资条生成完成，periodMonth: {}, tenant: {}, employees: {}, created: {}",
                 periodMonth, tenantId, comps.size(), created);
         return created;
     }
+
+    @Override
+    public Long generateSalarySlipForBatch(Long employeeId, HrPayrollPeriod period, Long batchId, boolean deductUnverified) {
+        return payrollCalculation.withGenerationLocks(employeeId, period, () -> {
+            payrollConfiguration.assertOpen(payrollConfiguration.period(period.getPeriodId()));
+            payrollCalculation.assertNoOverlappingSlip(employeeId, period, batchId);
+            List<HrSalarySlip> existing = salarySlipMapper.selectList(new LambdaQueryWrapper<HrSalarySlip>()
+                    .eq(HrSalarySlip::getTenantId, currentTenantId()).eq(HrSalarySlip::getEmployeeId, employeeId)
+                    .eq(HrSalarySlip::getBatchId, batchId).eq(HrSalarySlip::getDeleted, 0));
+            if (!existing.isEmpty()) {
+                HrSalarySlip old = existing.get(0);
+                if (!"DRAFT".equals(old.getStatus()) || Boolean.TRUE.equals(old.getEmployeeConfirmed())) throw new HrBusinessException("SALARY_SLIP_FINAL", "已确定工资单只能补正");
+            }
+            HrSalarySlip slip = previewSalarySlip(employeeId, period, deductUnverified);
+            slip.setBatchId(batchId); slip.setDigestSha256(null);
+            if (existing.isEmpty()) salarySlipMapper.insert(slip);
+            else {
+                slip.setId(existing.get(0).getId()); slip.setVersion(existing.get(0).getVersion());
+                salarySlipMapper.updateById(slip);
+            }
+            return advancePayroll.reserveCalculated(slip.getId()).getId();
+        });
+    }
+
+    @Override
+    public HrSalarySlip previewSalarySlip(Long employeeId, HrPayrollPeriod period, boolean deductUnverified) {
+        ruleSupport.assertEmployeeScope(employeeId);
+        HrEmployeeComp comp = payrollCalculation.compensation(employeeId, period.getEndDate());
+        HrSalarySlip slip = composeSlip(currentTenantId(), comp, period);
+        payrollCalculation.apply(slip, period, deductUnverified);
+        slip.setPayDate(period.getPayDate() == null ? period.getEndDate() : period.getPayDate());
+        slip.setCreateTime(LocalDateTime.now()); slip.setUpdateTime(LocalDateTime.now()); slip.setVersion(0);
+        return slip;
+    }
+
+    @Override
+    public void sealSalarySlip(HrSalarySlip slip) { slip.setDigestSha256(computeDigest(slip)); }
+
+    @Override
+    public void verifySalarySlip(HrSalarySlip slip) { assertDigestValid(slip); }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -127,10 +211,11 @@ public class HrEssServiceImpl implements IHrEssService {
             throw new HrBusinessException("INVALID_PARAMETER", "工资条 ID 不能为空");
         }
         HrSalarySlip slip = salarySlipMapper.selectById(slipId);
-        if (slip == null) {
+        if (slip == null || !Objects.equals(slip.getTenantId(), currentTenantId())) {
             throw new HrBusinessException("SLIP_NOT_FOUND", "工资条不存在：" + slipId);
         }
         essSupport.assertOwner(slip.getEmployeeId());
+        if (!List.of("SUBMITTED", "PAID", "CONFIRMED").contains(slip.getStatus())) throw new HrBusinessException("SALARY_SLIP_NOT_PUBLISHED", "工资单尚未确定，暂不能确认");
         assertDigestValid(slip);
         UpdateWrapper<HrSalarySlip> wrapper = new UpdateWrapper<>();
         wrapper.eq("id", slipId)
@@ -139,6 +224,7 @@ public class HrEssServiceImpl implements IHrEssService {
                 .set("confirmed_time", LocalDateTime.now())
                 .set("update_time", LocalDateTime.now());
         salarySlipMapper.update(null, wrapper);
+        ruleSupport.audit("SALARY_SLIP", slipId, "EMPLOYEE_CONFIRM", Map.of());
     }
 
     @Override
@@ -147,6 +233,7 @@ public class HrEssServiceImpl implements IHrEssService {
         wrapper.eq("tenant_id", currentTenantId())
                 .eq("employee_id", essSupport.currentEmployeeId())
                 .eq("deleted", 0)
+                .in("status", List.of("SUBMITTED", "PAID", "CONFIRMED"))
                 .orderByDesc("period_month");
         if (StringUtils.hasText(periodMonth)) {
             wrapper.eq("period_month", periodMonth);
@@ -156,6 +243,7 @@ public class HrEssServiceImpl implements IHrEssService {
         }
         Page<HrSalarySlip> page = salarySlipMapper.selectPage(pageQuery.build(), wrapper);
         page.getRecords().forEach(this::assertDigestValid);
+        ruleSupport.audit("SALARY_SLIP", null, "READ_MINE", Map.of("employeeId", essSupport.currentEmployeeId()));
         return PageResult.build(page);
     }
 
@@ -165,11 +253,13 @@ public class HrEssServiceImpl implements IHrEssService {
             throw new HrBusinessException("INVALID_PARAMETER", "工资条 ID 不能为空");
         }
         HrSalarySlip slip = salarySlipMapper.selectById(slipId);
-        if (slip == null || !Objects.equals(slip.getDeleted(), 0)) {
+        if (slip == null || !Objects.equals(slip.getDeleted(), 0) || !Objects.equals(slip.getTenantId(), currentTenantId())
+                || !List.of("SUBMITTED", "PAID", "CONFIRMED").contains(slip.getStatus())) {
             throw new HrBusinessException("SLIP_NOT_FOUND", "工资条不存在：" + slipId);
         }
         essSupport.assertOwner(slip.getEmployeeId());
         assertDigestValid(slip);
+        ruleSupport.audit("SALARY_SLIP", slipId, "READ_MINE", Map.of());
         return slip;
     }
 
@@ -240,11 +330,13 @@ public class HrEssServiceImpl implements IHrEssService {
         wrapper.eq("tenant_id", currentTenantId())
                 .eq("employee_id", employeeId)
                 .eq("deleted", 0)
+                .in("status", List.of("SUBMITTED", "PAID", "CONFIRMED"))
                 .orderByDesc("period_month");
         List<HrSalarySlip> rows = salarySlipMapper
                 .selectPage(new Page<>(1, Math.max(1, Math.min(limit, 36)), false), wrapper)
                 .getRecords();
         rows.forEach(this::assertDigestValid);
+        ruleSupport.audit("SALARY_SLIP", null, "EMPLOYEE_READ_LIST", Map.of("employeeId", employeeId, "count", rows.size()));
         return rows;
     }
 
@@ -285,11 +377,23 @@ public class HrEssServiceImpl implements IHrEssService {
     }
 
     private List<Map<String, Object>> buildLeaveBalances(Long tenantId, Long employeeId) {
-        int year = LocalDate.now().getYear();
+        LocalDate today = LocalDate.now();
+        List<HrLeavePeriod> periods = leavePeriodMapper.selectList(new QueryWrapper<HrLeavePeriod>()
+                .eq("tenant_id", tenantId)
+                .eq("deleted", 0)
+                .eq("status", "OPEN")
+                .le("start_date", today)
+                .ge("end_date", today)
+                .orderByDesc("default_flag"));
+        if (periods.isEmpty()) {
+            return List.of();
+        }
+        if (periods.size() != 1) throw new HrBusinessException("LEAVE_PERIOD_CONFLICT", "当前日期存在重叠的开放假期周期，请先核对周期配置");
+        HrLeavePeriod period = periods.get(0);
         QueryWrapper<HrLeaveQuota> quotaWrapper = new QueryWrapper<>();
         quotaWrapper.eq("tenant_id", tenantId)
                 .eq("employee_id", employeeId)
-                .eq("year", year)
+                .eq("period_id", period.getPeriodId())
                 .eq("deleted", 0);
         List<HrLeaveQuota> quotas = leaveQuotaMapper.selectList(quotaWrapper);
         if (quotas.isEmpty()) {
@@ -305,6 +409,7 @@ public class HrEssServiceImpl implements IHrEssService {
         for (HrLeaveQuota quota : quotas) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("leaveTypeId", quota.getLeaveTypeId());
+            row.put("periodId", quota.getPeriodId());
             HrLeaveType type = typeMap.get(quota.getLeaveTypeId());
             row.put("leaveCode", type == null ? null : type.getLeaveCode());
             row.put("leaveName", type == null ? null : type.getLeaveName());
@@ -324,6 +429,7 @@ public class HrEssServiceImpl implements IHrEssService {
         wrapper.eq("tenant_id", tenantId)
                 .eq("employee_id", employeeId)
                 .eq("deleted", 0)
+                .in("status", List.of("SUBMITTED", "PAID", "CONFIRMED"))
                 .orderByDesc("period_month");
         List<HrSalarySlip> rows = salarySlipMapper.selectPage(new Page<>(1, 1, false), wrapper).getRecords();
         if (rows.isEmpty()) {
@@ -331,6 +437,7 @@ public class HrEssServiceImpl implements IHrEssService {
         }
         HrSalarySlip slip = rows.get(0);
         assertDigestValid(slip);
+        ruleSupport.audit("SALARY_SLIP", slip.getId(), "EMPLOYEE_READ_PORTAL", Map.of());
         return slip;
     }
 
@@ -390,21 +497,43 @@ public class HrEssServiceImpl implements IHrEssService {
     }
 
     private Map<String, Object> buildUnreadMessages(Long tenantId, Long employeeId) {
-        QueryWrapper<HrSelfServiceMessage> wrapper = new QueryWrapper<>();
+        HrEmployee employee = employeeMapper.selectById(employeeId);
+        if (employee == null || employee.getUserId() == null) {
+            return Map.of("items", List.of(), "count", 0L);
+        }
+        QueryWrapper<HrMessageRecord> wrapper = new QueryWrapper<>();
         wrapper.eq("tenant_id", tenantId)
-                .eq("employee_id", employeeId)
-                .eq("read_flag", false)
+                .eq("receiver_id", employee.getUserId())
+                .eq("read_flag", 0)
+                .eq("channel_type", "INTERNAL")
+                .eq("send_status", "SUCCESS")
                 .orderByDesc("create_time");
-        List<HrSelfServiceMessage> messages = selfServiceMessageMapper.selectPage(new Page<>(1, 10, false), wrapper).getRecords();
-        QueryWrapper<HrSelfServiceMessage> countWrapper = new QueryWrapper<>();
+        List<HrMessageRecord> messages = messageRecordMapper.selectPage(new Page<>(1, 10, false), wrapper).getRecords();
+        QueryWrapper<HrMessageRecord> countWrapper = new QueryWrapper<>();
         countWrapper.eq("tenant_id", tenantId)
-                .eq("employee_id", employeeId)
-                .eq("read_flag", false);
-        long total = selfServiceMessageMapper.selectCount(countWrapper);
+                .eq("receiver_id", employee.getUserId())
+                .eq("read_flag", 0)
+                .eq("channel_type", "INTERNAL")
+                .eq("send_status", "SUCCESS");
+        long total = messageRecordMapper.selectCount(countWrapper);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("items", messages);
+        result.put("items", messages.stream().map(this::messageView).toList());
         result.put("count", total);
         return result;
+    }
+
+    private Map<String, Object> messageView(HrMessageRecord message) {
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("recordId", message.getRecordId());
+        view.put("title", message.getTitle());
+        view.put("content", message.getContent());
+        view.put("messageCategory", message.getMessageCategory());
+        view.put("bizType", message.getBizType());
+        view.put("bizId", message.getBizId());
+        view.put("linkUrl", message.getLinkUrl());
+        view.put("readFlag", message.getReadFlag());
+        view.put("createTime", message.getCreateTime());
+        return view;
     }
 
     private boolean existsSlip(Long tenantId, Long employeeId, String periodMonth) {
@@ -426,11 +555,13 @@ public class HrEssServiceImpl implements IHrEssService {
         return benefitPaymentMapper.selectCount(wrapper) > 0;
     }
 
-    private HrSalarySlip composeSlip(Long tenantId, HrEmployeeComp comp, String periodMonth) {
-        BigDecimal gross = comp.getTotalSalary() == null ? BigDecimal.ZERO : comp.getTotalSalary();
-        BigDecimal personalBenefit = sumPersonalBenefit(tenantId, comp.getEmployeeId(), periodMonth);
-        BigDecimal taxBase = gross.subtract(personalBenefit).max(BigDecimal.ZERO);
-        BigDecimal tax = taxBase.multiply(DEFAULT_TAX_RATE).setScale(2, RoundingMode.HALF_UP);
+    private HrSalarySlip composeSlip(Long tenantId, HrEmployeeComp comp, HrPayrollPeriod period) {
+        String periodMonth = YearMonth.from(period.getEndDate()).toString();
+        HrPayrollCalculationService.PayrollBase base = payrollCalculation.baseCompensation(comp, period);
+        BigDecimal gross = base.gross();
+        Map<String, BigDecimal> benefits = personalBenefits(tenantId, comp, period);
+        BigDecimal personalBenefit = benefits.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal tax = BigDecimal.ZERO;
         BigDecimal deduction = personalBenefit.add(tax);
         BigDecimal net = gross.subtract(deduction).setScale(2, RoundingMode.HALF_UP);
 
@@ -443,14 +574,18 @@ public class HrEssServiceImpl implements IHrEssService {
         slip.setNetTotal(net);
         slip.setTaxAmount(tax);
         slip.setBenefitAmount(personalBenefit.setScale(2, RoundingMode.HALF_UP));
-        slip.setComponents(buildSlipComponents(comp, gross, tax, personalBenefit));
+        List<Map<String, Object>> components = buildSlipComponents(comp, comp.getTotalSalary(), tax, personalBenefit);
+        components.add(base.snapshot());
+        components.add(Map.of("name", "周期及入职分摊差额", "type", "EARNING", "amount", gross.subtract(comp.getTotalSalary()),
+                "sourceType", "PAYROLL_PRORATION_ADJUSTMENT"));
+        components.add(Map.of("name", "社保扣除月份快照", "type", "BENEFIT_SNAPSHOT", "amount", BigDecimal.ZERO, "months", benefits));
+        slip.setComponents(components);
         slip.setPayDate(LocalDate.now());
         slip.setStatus("DRAFT");
         slip.setEmployeeConfirmed(false);
         slip.setDeleted(0);
         slip.setCreateBy(currentUserName());
         slip.setUpdateBy(currentUserName());
-        slip.setDigestSha256(computeDigest(slip));
         return slip;
     }
 
@@ -460,6 +595,10 @@ public class HrEssServiceImpl implements IHrEssService {
         }
         String actual = computeDigest(slip);
         if (!StringUtils.hasText(slip.getDigestSha256())) {
+            if (structuredTax(slip)) {
+                if ("DRAFT".equals(slip.getStatus()) || "PENDING".equals(slip.getStatus())) return;
+                throw new HrBusinessException("SLIP_DIGEST_MISSING", "已确定工资单缺少防篡改摘要");
+            }
             UpdateWrapper<HrSalarySlip> wrapper = new UpdateWrapper<>();
             wrapper.eq("id", slip.getId())
                     .eq("tenant_id", slip.getTenantId())
@@ -486,12 +625,21 @@ public class HrEssServiceImpl implements IHrEssService {
             payload.put("netTotal", slip.getNetTotal());
             payload.put("taxAmount", slip.getTaxAmount());
             payload.put("benefitAmount", slip.getBenefitAmount());
-            payload.put("components", slip.getComponents());
+            payload.put("components", com.cloudflow.hr.config.HrSalaryJsonTypeHandler.storageValue(slip.getComponents()));
             payload.put("payDate", slip.getPayDate());
-            byte[] hash = digest.digest(objectMapper.writeValueAsString(payload).getBytes(StandardCharsets.UTF_8));
+            if (structuredTax(slip)) {
+                payload.put("batchId", slip.getBatchId());
+                payload.put("cumulativeTaxableIncome", slip.getCumulativeTaxableIncome());
+                payload.put("cumulativeDeduction", slip.getCumulativeDeduction());
+                payload.put("cumulativeTaxPayable", slip.getCumulativeTaxPayable());
+                payload.put("cumulativeTaxPaid", slip.getCumulativeTaxPaid());
+                payload.put("currentTax", slip.getCurrentTax());
+            }
+            Object canonical = structuredTax(slip) ? canonicalize(objectMapper.valueToTree(payload)) : payload;
+            byte[] hash = digest.digest(objectMapper.writeValueAsString(canonical).getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                builder.append(String.format("%02x", b));
+            for (byte value : hash) {
+                builder.append(String.format("%02x", value));
             }
             return builder.toString();
         } catch (NoSuchAlgorithmException | com.fasterxml.jackson.core.JsonProcessingException e) {
@@ -499,40 +647,70 @@ public class HrEssServiceImpl implements IHrEssService {
         }
     }
 
-    private BigDecimal sumPersonalBenefit(Long tenantId, Long employeeId, String periodMonth) {
+    private boolean structuredTax(HrSalarySlip slip) {
+        return slip.getComponents() != null && slip.getComponents().stream().anyMatch(row -> "TAX_SNAPSHOT".equals(row.get("type")));
+    }
+
+    private Object canonicalize(JsonNode node) {
+        if (node.isObject()) {
+            Map<String, Object> values = new java.util.TreeMap<>();
+            node.fields().forEachRemaining(entry -> values.put(entry.getKey(), canonicalize(entry.getValue())));
+            return values;
+        }
+        if (node.isArray()) {
+            List<Object> values = new ArrayList<>();
+            node.forEach(value -> values.add(canonicalize(value)));
+            return values;
+        }
+        if (node.isNumber()) return node.decimalValue().stripTrailingZeros().toPlainString();
+        if (node.isNull()) return null;
+        if (node.isBoolean()) return node.booleanValue();
+        return node.textValue();
+    }
+
+    private Map<String, BigDecimal> personalBenefits(Long tenantId, HrEmployeeComp comp, HrPayrollPeriod period) {
+        String timing = payrollCalculation.basis(comp).path("benefitTiming").asText("FIRST_PAYROLL");
+        if (!List.of("FIRST_PAYROLL", "LAST_PAYROLL").contains(timing)) throw new HrBusinessException("PAYROLL_BASIS_INVALID", "社保扣除时点无效");
         QueryWrapper<HrBenefitPayment> wrapper = new QueryWrapper<>();
         wrapper.eq("tenant_id", tenantId)
-                .eq("employee_id", employeeId)
-                .eq("period_month", periodMonth)
+                .eq("employee_id", comp.getEmployeeId())
+                .between("period_month", YearMonth.from(period.getStartDate()).toString(), YearMonth.from(period.getEndDate()).toString())
                 .eq("deleted", 0);
         List<HrBenefitPayment> payments = benefitPaymentMapper.selectList(wrapper);
-        return payments.stream()
-                .map(HrBenefitPayment::getPersonalAmount)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Map<String, BigDecimal> result = new LinkedHashMap<>();
+        for (HrBenefitPayment payment : payments) {
+            if ("LAST_PAYROLL".equals(timing) && YearMonth.parse(payment.getPeriodMonth()).atEndOfMonth().isAfter(period.getEndDate())) continue;
+            result.merge(payment.getPeriodMonth(), HrRuleSupport.amount(payment.getPersonalAmount()), BigDecimal::add);
+        }
+        Map<String, BigDecimal> used = new HashMap<>();
+        for (HrSalarySlip prior : payrollCalculation.employeeSlips(comp.getEmployeeId())) {
+            if (!List.of("SUBMITTED", "PAID", "CONFIRMED").contains(String.valueOf(prior.getStatus()))) continue;
+            Map<String, Object> snapshot = prior.getComponents() == null ? Map.of() : prior.getComponents().stream()
+                    .filter(row -> "BENEFIT_SNAPSHOT".equals(row.get("type"))).findFirst().orElse(Map.of());
+            if (snapshot.get("months") instanceof Map<?, ?> months) {
+                months.forEach((month, value) -> used.merge(month.toString(), HrPayrollCalculationService.decimal(value), BigDecimal::add));
+            } else used.merge(prior.getPeriodMonth(), HrRuleSupport.amount(prior.getBenefitAmount()), BigDecimal::add);
+        }
+        result.replaceAll((month, value) -> HrRuleSupport.amount(value.subtract(used.getOrDefault(month, BigDecimal.ZERO)).max(BigDecimal.ZERO)));
+        return result;
     }
 
     private List<Map<String, Object>> buildSlipComponents(HrEmployeeComp comp,
                                                           BigDecimal gross,
                                                           BigDecimal tax,
                                                           BigDecimal personalBenefit) {
-        List<Map<String, Object>> rows = new ArrayList<>();
         Map<String, Object> componentValues = comp.getComponentValues();
-        if (componentValues != null) {
-            for (Map.Entry<String, Object> entry : componentValues.entrySet()) {
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("name", entry.getKey());
-                row.put("type", "EARNING");
-                row.put("amount", entry.getValue());
-                rows.add(row);
-            }
-        } else {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("name", "基本工资");
-            row.put("type", "EARNING");
-            row.put("amount", gross);
-            rows.add(row);
+        List<HrCompComponent> candidates = List.of();
+        if (componentValues != null && !componentValues.isEmpty()) {
+            List<Long> componentIds = HrPayrollComponentSnapshot.numericKeys(componentValues);
+            candidates = compComponentMapper.selectList(new LambdaQueryWrapper<HrCompComponent>()
+                    .eq(HrCompComponent::getTenantId, comp.getTenantId())
+                    .and(selection -> {
+                        selection.in(HrCompComponent::getComponentCode, componentValues.keySet());
+                        if (!componentIds.isEmpty()) selection.or().in(HrCompComponent::getId, componentIds);
+                    }));
         }
+        List<Map<String, Object>> rows = HrPayrollComponentSnapshot.earnings(comp, gross, candidates);
         Map<String, Object> taxRow = new LinkedHashMap<>();
         taxRow.put("name", "个人所得税");
         taxRow.put("type", "DEDUCTION");

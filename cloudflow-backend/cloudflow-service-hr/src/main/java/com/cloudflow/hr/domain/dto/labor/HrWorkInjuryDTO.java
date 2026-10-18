@@ -44,7 +44,7 @@ public class HrWorkInjuryDTO {
     @Size(max = 16)
     private String injuryLevel;
 
-    @Schema(description = "状态：REPORTED/INVESTIGATING/DETERMINING/CLOSED；不传默认 REPORTED")
+    @Schema(description = "状态：REPORTED/INVESTIGATING/DETERMINING/DETERMINED/COMPENSATING/REHABILITATING/CLOSED/REJECTED；不传默认 REPORTED")
     @Size(max = 32)
     private String status;
 

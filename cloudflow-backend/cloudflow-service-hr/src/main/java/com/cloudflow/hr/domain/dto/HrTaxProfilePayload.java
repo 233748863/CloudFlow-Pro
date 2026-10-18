@@ -23,6 +23,7 @@ public class HrTaxProfilePayload {
     private Long tenantId;
     private Long employeeId;
     private String taxResidenceCity;
+    private Long taxSlabId;
 
     @JsonIgnore
     @EncryptField
@@ -36,7 +37,7 @@ public class HrTaxProfilePayload {
     private Map<String, Object> taxConfig;
 
     @JsonIgnore
-    @EncryptField
+    @EncryptField(jsonStorage = true)
     @TableField("tax_config")
     private String taxConfigText;
 

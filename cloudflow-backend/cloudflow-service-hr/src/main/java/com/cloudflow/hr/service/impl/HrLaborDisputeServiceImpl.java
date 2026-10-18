@@ -55,6 +55,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
     private final ObjectMapper objectMapper;
     private final OutboxPublisher outboxPublisher;
     private final RuntimeSysConfigService runtimeSysConfigService;
+    private final com.cloudflow.hr.service.HrGrievanceAccessService grievanceAccess;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -81,6 +82,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "更新劳动争议", diff = true, highRisk = true)
     public void updateDispute(Long disputeId, HrLaborDisputeDTO dto) {
+        grievanceAccess.assertDisputeAccess(disputeId);
         crudService.updateProperties(HrLaborDispute.class, disputeId,
                 MapConverters.toMap(dto, objectMapper));
     }
@@ -89,11 +91,18 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
     public PageResult<HrLaborDisputeVO> page(HrLaborDisputeQueryDTO query) {
         Map<String, Object> raw = crudService.page(HrLaborDispute.class,
                 MapConverters.toServiceQuery(query, objectMapper));
+        Object rows = raw.get("rows");
+        if (rows instanceof List<?> entries) {
+            for (Object entry : entries) {
+                if (entry instanceof Map<?, ?> row && row.get("id") instanceof Number id) grievanceAccess.assertDisputeAccess(id.longValue());
+            }
+        }
         return MapConverters.toPageResult(raw, HrLaborDisputeVO.class, objectMapper);
     }
 
     @Override
     public HrLaborDisputeVO get(Long disputeId) {
+        grievanceAccess.assertDisputeAccess(disputeId);
         Map<String, Object> row = crudService.get(HrLaborDispute.class, disputeId);
         if (row.isEmpty()) {
             return null;
@@ -104,6 +113,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String submitWorkflow(Long disputeId) {
+        grievanceAccess.assertDisputeAccess(disputeId);
         HrLaborDispute dispute = disputeMapper.selectById(disputeId);
         if (dispute == null) {
             throw new HrBusinessException("LABOR_DISPUTE_NOT_FOUND", "争议不存在：" + disputeId);
@@ -129,6 +139,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void close(Long disputeId, String reason) {
+        grievanceAccess.assertDisputeAccess(disputeId);
         HrLaborDispute dispute = disputeMapper.selectById(disputeId);
         if (dispute == null) {
             throw new HrBusinessException("LABOR_DISPUTE_NOT_FOUND", "争议不存在：" + disputeId);
@@ -146,6 +157,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long attachEvidence(Long disputeId, HrDisputeEvidenceDTO dto) {
+        grievanceAccess.assertDisputeAccess(disputeId);
         if (disputeMapper.selectById(disputeId) == null) {
             throw new HrBusinessException("LABOR_DISPUTE_NOT_FOUND", "争议不存在：" + disputeId);
         }
@@ -167,6 +179,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
 
     @Override
     public PageResult<HrDisputeEvidenceVO> listEvidence(Long disputeId) {
+        grievanceAccess.assertDisputeAccess(disputeId);
         QueryWrapper<HrDisputeEvidence> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("dispute_id", disputeId).eq("deleted", 0)
                 .orderByDesc("create_time");

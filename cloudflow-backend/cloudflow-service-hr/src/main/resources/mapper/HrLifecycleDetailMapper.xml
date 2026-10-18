@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrLifecycleDetailMapper">
+    <resultMap id="onboardingDetailResult" type="com.cloudflow.hr.domain.entity.HrLifecycleDetail" autoMapping="true">
+        <id property="id" column="id" />
+        <result property="detailJson" column="detail_json"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler" />
+    </resultMap>
+
+    <select id="selectOnboardingDetail" resultMap="onboardingDetailResult">
+        SELECT id, tenant_id, application_id, detail_type, detail_json, create_time, update_time
+        FROM hr_lifecycle_detail
+        WHERE tenant_id = #{tenantId}
+          AND application_id = #{applicationId}
+          AND detail_type = 'ONBOARDING'
+        ORDER BY id ASC
+        LIMIT 1
+    </select>
+</mapper>

@@ -3,6 +3,9 @@ package com.cloudflow.hr.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.event.workflow.WorkflowFallbackRetryContext;
 import com.cloudflow.common.redis.config.RuntimeSysConfigService;
 import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.TenantContext;
@@ -18,23 +21,33 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrEmployeeMapper;
 import com.cloudflow.hr.mapper.HrLifecycleApplicationMapper;
 import com.cloudflow.hr.mapper.HrLifecycleDetailMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class HrEmployeeOnboardingService {
+
+    public static final String SUBMITTED_EVENT = "HR_EMPLOYEE_ONBOARDING_SUBMITTED";
 
     private static final long DEFAULT_TENANT_ID = 100000L;
     private static final String DEFAULT_PROCESS_KEY = "onboarding_approval";
@@ -51,10 +64,34 @@ public class HrEmployeeOnboardingService {
     private final HrLifecycleApplicationMapper lifecycleApplicationMapper;
     private final HrLifecycleDetailMapper lifecycleDetailMapper;
     private final ObjectMapper objectMapper;
+    private final PlatformTransactionManager transactionManager;
+    private final OutboxPublisher outboxPublisher;
 
-    @Transactional(rollbackFor = Exception.class)
     public HrEmployeeOnboardingResultVO submit(HrEmployeePayload payload) {
         normalizeAndValidate(payload);
+        ProcessStartDTO request = Objects.requireNonNull(localTransaction().execute(status -> prepareApplication(payload)));
+        String processInstanceId;
+        try {
+            processInstanceId = startPersistedWorkflow(request);
+        } catch (RuntimeException failure) {
+            log.warn("入职审批启动或回填未完成，保留已保存申请等待重试，applicationId={}, failureType={}",
+                    request.getBusinessId(), failure.getClass().getSimpleName());
+            throw new HrBusinessException("WORKFLOW_START_FAILED",
+                    "入职申请 [" + request.getBusinessNo() + "] 已保存，审批启动暂未完成，系统已登记重试，请勿重复提交", failure);
+        }
+        if (!StringUtils.hasText(processInstanceId)) {
+            throw new HrBusinessException("ONBOARDING_NOT_PENDING", "入职申请已结束或撤销，无法启动审批");
+        }
+        return new HrEmployeeOnboardingResultVO(request.getBusinessId(), request.getBusinessNo(), processInstanceId);
+    }
+
+    public String startPersistedWorkflow(ProcessStartDTO request) {
+        TransactionTemplate withoutTransaction = new TransactionTemplate(transactionManager);
+        withoutTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
+        return withoutTransaction.execute(status -> performWorkflowStart(request));
+    }
+
+    private ProcessStartDTO prepareApplication(HrEmployeePayload payload) {
         assertEmployeeNoAvailable(payload.getEmployeeNo(), null);
 
         HrLifecycleApplicationPayload application = new HrLifecycleApplicationPayload();
@@ -67,17 +104,26 @@ public class HrEmployeeOnboardingService {
         application.setEffectiveDate(payload.getHireDate());
         application.setStatus("APPROVING");
 
-        Map<String, Object> employeeDetail = new LinkedHashMap<>(crudService.toMap(payload));
+        Map<String, Object> employeeDetail = new LinkedHashMap<>(crudService.toInternalMap(payload));
         employeeDetail.put(EMPLOYEE_CREATION_SOURCE_FIELD, EMPLOYEE_CREATION_SOURCE_VALUE);
         viewSupport.putDeptName(employeeDetail);
         viewSupport.putPostName(employeeDetail);
         viewSupport.putPositionSnapshot(employeeDetail);
         Long applicationId = lifecycleService.createApplication(application, employeeDetail);
-        String processInstanceId = startWorkflow(applicationId, application, payload, employeeDetail);
-        crudService.updateProperties(HrLifecycleApplication.class, applicationId,
-                Map.of("processInstanceId", processInstanceId));
-        return new HrEmployeeOnboardingResultVO(
-                applicationId, application.getApplicationNo(), processInstanceId);
+        ProcessStartDTO request = createWorkflowRequest(applicationId, application, payload, employeeDetail);
+        validateWorkflowRequest(request);
+        try {
+            outboxPublisher.publish(BusinessEventEnvelope.builder()
+                    .eventType(SUBMITTED_EVENT)
+                    .sourceModule("cloudflow-hr")
+                    .sourceId(applicationId)
+                    .tenantId(request.getTenantId())
+                    .payload(objectMapper.writeValueAsString(request))
+                    .build());
+        } catch (JsonProcessingException failure) {
+            throw new HrBusinessException("WORKFLOW_EVENT_PUBLISH_FAILED", "入职审批启动记录保存失败", failure);
+        }
+        return request;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -112,10 +158,10 @@ public class HrEmployeeOnboardingService {
                         detail.getDetailJson().path(EMPLOYEE_CREATION_SOURCE_FIELD).asText());
     }
 
-    private String startWorkflow(Long applicationId,
-                                 HrLifecycleApplicationPayload application,
-                                 HrEmployeePayload employee,
-                                 Map<String, Object> employeeDetail) {
+    private ProcessStartDTO createWorkflowRequest(Long applicationId,
+                                                  HrLifecycleApplicationPayload application,
+                                                  HrEmployeePayload employee,
+                                                  Map<String, Object> employeeDetail) {
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(currentTenantId());
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
@@ -141,13 +187,76 @@ public class HrEmployeeOnboardingService {
         variables.put("onboardDate", employee.getHireDate());
         variables.put("remark", application.getRemark());
         dto.setVariables(variables);
+        return dto;
+    }
 
-        R<String> response = workflowServiceClient.startProcess(dto);
+    private String performWorkflowStart(ProcessStartDTO request) {
+        validateWorkflowRequest(request);
+        HrLifecycleApplication application = loadWorkflowApplication(request);
+        if (application == null) {
+            return null;
+        }
+        if (StringUtils.hasText(application.getProcessInstanceId())) {
+            return application.getProcessInstanceId();
+        }
+        if (!"APPROVING".equals(application.getStatus())) {
+            return null;
+        }
+        AtomicReference<R<String>> result = new AtomicReference<>();
+        WorkflowFallbackRetryContext.runRetrying(() -> result.set(workflowServiceClient.startProcess(request)));
+        R<String> response = result.get();
         if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
             String message = response == null ? "Workflow 服务无响应" : response.getMsg();
             throw new HrBusinessException("WORKFLOW_START_FAILED", "员工入职审批启动失败：" + message);
         }
-        return response.getData();
+        String processInstanceId = response.getData();
+        localTransaction().executeWithoutResult(status -> {
+            HrLifecycleApplication current = loadWorkflowApplication(request);
+            if (current == null) {
+                throw new HrBusinessException("ONBOARDING_NOT_FOUND", "入职申请不存在：" + request.getBusinessId());
+            }
+            if (StringUtils.hasText(current.getProcessInstanceId())) {
+                if (!processInstanceId.equals(current.getProcessInstanceId())) {
+                    throw new HrBusinessException("ONBOARDING_PROCESS_CONFLICT", "入职申请已关联其他审批流程");
+                }
+                return;
+            }
+            crudService.updateProperties(HrLifecycleApplication.class, request.getBusinessId(),
+                    Map.of("processInstanceId", processInstanceId));
+        });
+        return processInstanceId;
+    }
+
+    private HrLifecycleApplication loadWorkflowApplication(ProcessStartDTO request) {
+        HrLifecycleApplication application = lifecycleApplicationMapper.selectById(request.getBusinessId());
+        if (application == null || Integer.valueOf(1).equals(application.getDeleted())) {
+            return null;
+        }
+        if (!Objects.equals(request.getTenantId(), application.getTenantId())
+                || !"ONBOARDING".equals(application.getType())
+                || !Objects.equals(request.getBusinessNo(), application.getApplicationNo())
+                || !isEmployeeCreationRequest(request.getBusinessId())) {
+            throw new HrBusinessException("ONBOARDING_REQUEST_MISMATCH", "入职申请与审批启动记录不匹配");
+        }
+        return application;
+    }
+
+    private void validateWorkflowRequest(ProcessStartDTO request) {
+        Long tenantId = TenantContext.getTenantId() != null ? TenantContext.getTenantId() : UserContext.getTenantId();
+        if (request == null || request.getBusinessId() == null || request.getStartUserId() == null
+                || !"ONBOARDING".equals(request.getBusinessType())
+                || !StringUtils.hasText(request.getBusinessNo())
+                || !StringUtils.hasText(request.getProcessDefinitionKey())
+                || tenantId == null || !tenantId.equals(request.getTenantId())
+                || (UserContext.getTenantId() != null && !tenantId.equals(UserContext.getTenantId()))) {
+            throw new HrBusinessException("ONBOARDING_REQUEST_INVALID", "入职审批启动参数或租户上下文无效");
+        }
+    }
+
+    private TransactionTemplate localTransaction() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return transaction;
     }
 
     private HrEmployeePayload readEmployeePayload(Long applicationId) {
@@ -162,12 +271,7 @@ public class HrEmployeeOnboardingService {
     }
 
     private HrLifecycleDetail findOnboardingDetail(Long applicationId) {
-        return lifecycleDetailMapper.selectOne(
-                new QueryWrapper<HrLifecycleDetail>()
-                        .eq("tenant_id", currentTenantId())
-                        .eq("application_id", applicationId)
-                        .eq("detail_type", "ONBOARDING")
-                        .last("LIMIT 1"));
+        return lifecycleDetailMapper.selectOnboardingDetail(currentTenantId(), applicationId);
     }
 
     private void assertEmployeeNoAvailable(String employeeNo, Long currentApplicationId) {
@@ -190,12 +294,7 @@ public class HrEmployeeOnboardingService {
             if (currentApplicationId != null && currentApplicationId.equals(application.getId())) {
                 continue;
             }
-            HrLifecycleDetail detail = lifecycleDetailMapper.selectOne(
-                    new QueryWrapper<HrLifecycleDetail>()
-                            .eq("tenant_id", tenantId)
-                            .eq("application_id", application.getId())
-                            .eq("detail_type", "ONBOARDING")
-                            .last("LIMIT 1"));
+            HrLifecycleDetail detail = findOnboardingDetail(application.getId());
             if (detail == null || detail.getDetailJson() == null) {
                 continue;
             }

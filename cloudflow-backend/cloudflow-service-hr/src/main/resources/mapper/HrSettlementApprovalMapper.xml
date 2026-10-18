@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrSettlementApprovalMapper">
+    <select id="pendingSettlement" resultType="long" flushCache="true" useCache="false">
+        SELECT settlement.settlement_id FROM hr_final_settlement settlement
+        JOIN wf_task task ON task.tenant_id = settlement.tenant_id AND task.instance_id = settlement.instance_id
+        WHERE settlement.tenant_id = #{tenantId} AND settlement.approval_status = 'SUBMITTED' AND settlement.status = 'DRAFT'
+          AND task.task_id = #{taskId} AND task.assignee = #{actor} AND task.status = 'TODO'
+          AND task.node_key = JSON_UNQUOTE(JSON_EXTRACT(settlement.calculation_snapshot, '$.workflow.approval.financeNodeId'))
+    </select>
+    <select id="employeeUser" resultType="long" flushCache="true" useCache="false">
+        SELECT user_row.user_id FROM hr_employee employee
+        JOIN sys_user user_row ON user_row.tenant_id = employee.tenant_id AND user_row.user_id = employee.user_id
+          AND user_row.deleted = 0
+        WHERE employee.tenant_id = #{tenantId} AND employee.id = #{employeeId} AND employee.deleted = 0
+          AND (SELECT COUNT(*) FROM hr_employee linked WHERE linked.tenant_id = employee.tenant_id
+            AND linked.user_id = employee.user_id AND linked.deleted = 0) = 1
+    </select>
+    <select id="instanceStatus" resultType="string" flushCache="true" useCache="false">
+        SELECT status FROM wf_process_instance
+        WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND deleted = 0
+          AND start_user_id = #{submitter} AND definition_id = #{definitionId}
+          AND business_key = CONCAT('HR_SETTLEMENT:', #{settlementId}, ':R', #{revision})
+          AND JSON_UNQUOTE(JSON_EXTRACT(variables, '$.businessType')) = 'HR_SETTLEMENT'
+          AND JSON_UNQUOTE(JSON_EXTRACT(variables, '$.businessId')) = CAST(#{settlementId} AS CHAR)
+          AND JSON_UNQUOTE(JSON_EXTRACT(variables, '$.settlementId')) = CAST(#{settlementId} AS CHAR)
+          AND JSON_UNQUOTE(JSON_EXTRACT(variables, '$.settlementRevision')) = CAST(#{revision} AS CHAR)
+        FOR UPDATE
+    </select>
+    <select id="decisionMatches" resultType="int" flushCache="true" useCache="false">
+        SELECT COUNT(*) FROM wf_process_instance instance
+        WHERE instance.tenant_id = #{tenantId} AND instance.instance_id = #{instanceId}
+          AND instance.status = #{status} AND instance.deleted = 0
+          AND EXISTS (SELECT 1 FROM wf_task_history history WHERE history.tenant_id = instance.tenant_id
+            AND history.instance_id = instance.instance_id AND history.node_key = #{nodeId}
+            AND history.operator_id = #{actor} AND history.operator_id != instance.start_user_id
+            AND history.on_behalf_of_user_id IS NULL AND history.create_time IS NOT NULL
+            AND history.task_id IS NOT NULL AND history.task_id != '' AND history.task_type = 'OR_SIGN'
+            AND ((#{status} = 'PASSED' AND history.action = 'COUNTERSIGN_APPROVE')
+              OR (#{status} = 'REJECTED' AND history.action = 'COUNTERSIGN_REJECT')))
+    </select>
+</mapper>

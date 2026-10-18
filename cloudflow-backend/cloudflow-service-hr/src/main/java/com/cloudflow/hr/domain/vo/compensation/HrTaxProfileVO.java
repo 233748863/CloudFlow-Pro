@@ -16,6 +16,7 @@ import java.util.Map;
 public class HrTaxProfileVO {
     @Schema(description = "档案 ID") private Long id;
     @Schema(description = "员工 ID") private Long employeeId;
+    private Long taxSlabId;
     @Schema(description = "纳税居住城市") private String taxResidenceCity;
     @Schema(description = "起征点（按权限掩码）") private BigDecimal threshold;
     @Schema(description = "税务配置（按权限掩码）") private Map<String, Object> taxConfig;

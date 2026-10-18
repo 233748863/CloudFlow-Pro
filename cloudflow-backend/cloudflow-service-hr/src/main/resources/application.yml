@@ -7,7 +7,16 @@ server:
       enabled: true
       force: true
 
+resilience4j:
+  timelimiter:
+    instances:
+      AuthServiceClientdisableUserLong:
+        timeout-duration: 15s
+
 spring:
+  mvc:
+    servlet:
+      load-on-startup: 1
   autoconfigure:
     exclude:
       - io.github.resilience4j.springboot3.ratelimiter.autoconfigure.RateLimiterAutoConfiguration
@@ -166,14 +175,21 @@ logging:
     com.cloudflow.hr.mapper: ${LOG_LEVEL_MAPPER:WARN}
     com.baomidou.mybatisplus: ${LOG_LEVEL_MAPPER:WARN}
   pattern:
-    console: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n'
-    file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n'
+    console: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [traceId=%X{traceId}] %logger{50} - %msg%n'
+    file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [traceId=%X{traceId}] %logger{50} - %msg%n'
   file:
     name: logs/hr-service.log
     max-size: 100MB
     max-history: 30
 
 cloudflow:
+  job:
+    internal-auth:
+      keys:
+        cloudflow-auth: ${CLOUDFLOW_JOB_AUTH_KEY:}
+        cloudflow-service-hr: ${CLOUDFLOW_JOB_HR_KEY:}
+  import:
+    enabled: true
   encrypt:
     enabled: ${CLOUDFLOW_ENCRYPT_ENABLED:false}
     aes-key: ${CLOUDFLOW_ENCRYPT_AES_KEY:}

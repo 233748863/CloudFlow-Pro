@@ -13,6 +13,8 @@ import java.util.Optional;
  */
 public interface IHrIntegrationQueryService {
 
+    List<java.util.Map<String, Object>> listApprovalJobLevels(Collection<Long> userIds);
+
     Optional<HrEmployeeSummaryVO> findEmployee(Long employeeId);
 
     Optional<HrEmployeeSummaryVO> findEmployeeByUserId(Long userId);

@@ -28,6 +28,12 @@ public class HrInnerController {
 
     private final IHrIntegrationQueryService hrIntegrationQueryService;
 
+    @Inner(allowedServices = {"cloudflow-service-workflow"})
+    @GetMapping("/employees/approval-job-levels")
+    public R<List<java.util.Map<String, Object>>> listApprovalJobLevels(@RequestParam("userIds") List<Long> userIds) {
+        return R.ok(hrIntegrationQueryService.listApprovalJobLevels(userIds));
+    }
+
     @Inner(allowedServices = {INTERNAL_CALLERS})
     @GetMapping("/employees/{employeeId}")
     public R<HrEmployeeSummaryVO> getEmployee(@PathVariable("employeeId") Long employeeId) {

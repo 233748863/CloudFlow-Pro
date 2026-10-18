@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrExitInterviewMapper">
+    <select id="lock" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT interview_id FROM hr_exit_interview
+        WHERE tenant_id = #{tenantId} AND interview_id = #{identifier}
+        FOR UPDATE
+    </select>
+    <select id="lockApplication" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT id FROM hr_lifecycle_application
+        WHERE tenant_id = #{tenantId} AND id = #{identifier} AND deleted = 0
+        FOR UPDATE
+    </select>
+    <update id="updateDraft">
+        UPDATE hr_exit_interview
+        SET settlement_id = #{record.settlementId}, interviewer_id = #{record.interviewerId},
+            interview_time = #{record.interviewTime}, location = #{record.location},
+            leaving_reason = #{record.leavingReason}, employee_feedback = #{record.employeeFeedback},
+            manager_comment = #{record.managerComment},
+            improvement_items = #{record.improvementItems,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            attachment_file_ids = #{record.attachmentFileIds,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            status = #{record.status}, version = version + 1,
+            update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND interview_id = #{record.interviewId}
+          AND employee_id = #{record.employeeId} AND lifecycle_application_id = #{record.lifecycleApplicationId}
+          AND status = 'DRAFT' AND version = #{expectedVersion}
+    </update>
+    <update id="bindAttachment">
+        UPDATE sys_file SET biz_type = 'HR_EXIT_INTERVIEW', biz_id = #{interviewId}, file_hash = #{hash}
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_EXIT_INTERVIEW'
+          AND deleted = 0 AND biz_type IS NULL AND biz_id IS NULL AND url = ''
+    </update>
+    <select id="attachment" resultType="com.cloudflow.hr.mapper.HrExitInterviewMapper$AttachmentFile" useCache="false" flushCache="true">
+        SELECT file_id, file_name, file_size, file_hash FROM sys_file
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_EXIT_INTERVIEW'
+          AND biz_type = 'HR_EXIT_INTERVIEW' AND biz_id = #{interviewId} AND deleted = 0 AND url = ''
+        FOR UPDATE
+    </select>
+    <select id="userOptions" resultType="com.cloudflow.hr.domain.vo.settlement.HrExitInterviewView$Option">
+        SELECT user_id AS value, COALESCE(NULLIF(nick_name, ''), user_name) AS label
+        FROM sys_user WHERE tenant_id = #{tenantId} AND user_id IN
+        <foreach collection="identifiers" item="identifier" open="(" separator="," close=")">#{identifier}</foreach>
+        ORDER BY nick_name, user_id
+    </select>
+    <select id="fileOptions" resultType="com.cloudflow.hr.domain.vo.settlement.HrExitInterviewView$Option">
+        SELECT file_id AS value, file_name AS label FROM sys_file
+        WHERE tenant_id = #{tenantId} AND file_type = 'HR_EXIT_INTERVIEW' AND biz_type = 'HR_EXIT_INTERVIEW'
+          AND biz_id = #{interviewId} AND deleted = 0 AND url = ''
+        ORDER BY file_id
+    </select>
+</mapper>

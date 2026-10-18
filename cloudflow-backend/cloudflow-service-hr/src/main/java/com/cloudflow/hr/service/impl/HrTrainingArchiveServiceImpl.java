@@ -170,6 +170,7 @@ public class HrTrainingArchiveServiceImpl implements IHrTrainingArchiveService {
                 .select(HrEmployee::getId);
         List<HrEmployee> employees = employeeMapper.selectList(wrapper);
         int count = 0;
+        List<RuntimeException> failures = new ArrayList<>();
         for (HrEmployee e : employees) {
             if (e.getId() == null) {
                 continue;
@@ -177,11 +178,18 @@ public class HrTrainingArchiveServiceImpl implements IHrTrainingArchiveService {
             try {
                 rebuildOne(e.getId());
                 count++;
-            } catch (Exception ex) {
+            } catch (RuntimeException ex) {
                 log.warn("培训档案全量重建失败, employeeId={}", e.getId(), ex);
+                failures.add(new IllegalStateException("培训档案重建失败，员工：" + e.getId(), ex));
             }
         }
         log.info("HR-P0-1 hr_training_archive 全量重建完成, tenantId={}, 处理={}/{} ", tenantId, count, employees.size());
+        if (!failures.isEmpty()) {
+            IllegalStateException failure = new IllegalStateException("培训档案重建存在失败员工："
+                    + failures.size() + "名");
+            failures.forEach(failure::addSuppressed);
+            throw failure;
+        }
         return count;
     }
 

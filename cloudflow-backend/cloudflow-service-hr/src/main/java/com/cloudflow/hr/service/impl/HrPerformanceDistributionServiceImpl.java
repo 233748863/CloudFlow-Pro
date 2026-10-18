@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import static com.cloudflow.hr.service.HrRuleSupport.tenantId;
+
 /**
  * HR-P0-2 强制分布实现。
  * - listRules：返回 objective_id IS NULL(全局默认) + objective_id=? 的并集。
@@ -37,16 +39,17 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistributionService {
 
-    private static final long TENANT_ID = 100000L;
 
     private final HrPerfDistributionRuleMapper distributionRuleMapper;
     private final ObjectMapper objectMapper;
+    private final com.cloudflow.hr.service.HrAppraisalGuard appraisalGuard;
 
     @Override
     public List<HrPerfDistributionRuleVO> listRules(Long objectiveId) {
+        appraisalGuard.legacyObjective(objectiveId);
         LambdaQueryWrapper<HrPerfDistributionRule> qw = new LambdaQueryWrapper<HrPerfDistributionRule>()
-                .eq(HrPerfDistributionRule::getTenantId, TENANT_ID)
-                .eq(HrPerfDistributionRule::getDeleted, 0);
+                .eq(HrPerfDistributionRule::getTenantId, tenantId())
+                .eq(HrPerfDistributionRule::getDeleted, 0).isNull(HrPerfDistributionRule::getCycleId);
         if (objectiveId != null) {
             qw.and(w -> w.isNull(HrPerfDistributionRule::getObjectiveId)
                     .or().eq(HrPerfDistributionRule::getObjectiveId, objectiveId));
@@ -75,6 +78,7 @@ public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistr
         if (payload.getDistribution() == null || payload.getDistribution().isEmpty()) {
             throw new IllegalArgumentException("distribution 不能为空");
         }
+        appraisalGuard.legacyObjective(payload.getObjectiveId());
         String enforceMode = StringUtils.hasText(payload.getEnforceMode())
                 ? payload.getEnforceMode().toUpperCase(Locale.ROOT) : "BLOCK";
         String status = StringUtils.hasText(payload.getStatus())
@@ -82,7 +86,7 @@ public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistr
 
         if (payload.getId() == null) {
             HrPerfDistributionRule entity = new HrPerfDistributionRule();
-            entity.setTenantId(TENANT_ID);
+            entity.setTenantId(tenantId());
             entity.setObjectiveId(payload.getObjectiveId());
             entity.setRuleName(payload.getRuleName());
             entity.setDistribution(payload.getDistribution());
@@ -99,10 +103,11 @@ public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistr
         HrPerfDistributionRule entity = distributionRuleMapper.selectOne(
                 new LambdaQueryWrapper<HrPerfDistributionRule>()
                         .eq(HrPerfDistributionRule::getId, payload.getId())
-                        .eq(HrPerfDistributionRule::getTenantId, TENANT_ID));
+                        .eq(HrPerfDistributionRule::getTenantId, tenantId()));
         if (entity == null) {
             throw new IllegalArgumentException("规则不存在：" + payload.getId());
         }
+        appraisalGuard.legacyEntity(entity);
         entity.setObjectiveId(payload.getObjectiveId());
         entity.setRuleName(payload.getRuleName());
         entity.setDistribution(payload.getDistribution());
@@ -122,10 +127,11 @@ public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistr
         HrPerfDistributionRule entity = distributionRuleMapper.selectOne(
                 new LambdaQueryWrapper<HrPerfDistributionRule>()
                         .eq(HrPerfDistributionRule::getId, id)
-                        .eq(HrPerfDistributionRule::getTenantId, TENANT_ID));
+                        .eq(HrPerfDistributionRule::getTenantId, tenantId()));
         if (entity == null) {
             return;
         }
+        appraisalGuard.legacyEntity(entity);
         entity.setDeleted(1);
         entity.setUpdateBy(defaultOperator());
         distributionRuleMapper.updateById(entity);
@@ -136,6 +142,7 @@ public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistr
         if (payload == null || payload.getObjectiveId() == null) {
             throw new IllegalArgumentException("objectiveId 不能为空");
         }
+        appraisalGuard.legacyObjective(payload.getObjectiveId());
         List<Map<String, Object>> grades = payload.getGrades() == null ? List.of() : payload.getGrades();
         int total = grades.size();
 
@@ -148,18 +155,20 @@ public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistr
         // 选规则：优先目标专属规则，其次全局规则(objective_id IS NULL)
         HrPerfDistributionRule rule = distributionRuleMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrPerfDistributionRule>()
-                        .eq(HrPerfDistributionRule::getTenantId, TENANT_ID)
+                        .eq(HrPerfDistributionRule::getTenantId, tenantId())
                         .eq(HrPerfDistributionRule::getDeleted, 0)
                         .eq(HrPerfDistributionRule::getStatus, "ACTIVE")
+                        .isNull(HrPerfDistributionRule::getCycleId)
                         .eq(HrPerfDistributionRule::getObjectiveId, payload.getObjectiveId())
                         .orderByDesc(HrPerfDistributionRule::getId))
                 .getRecords().stream().findFirst().orElse(null);
         if (rule == null) {
             rule = distributionRuleMapper.selectPage(new Page<>(1, 1, false),
                     new LambdaQueryWrapper<HrPerfDistributionRule>()
-                            .eq(HrPerfDistributionRule::getTenantId, TENANT_ID)
+                            .eq(HrPerfDistributionRule::getTenantId, tenantId())
                             .eq(HrPerfDistributionRule::getDeleted, 0)
                             .eq(HrPerfDistributionRule::getStatus, "ACTIVE")
+                            .isNull(HrPerfDistributionRule::getCycleId)
                             .isNull(HrPerfDistributionRule::getObjectiveId)
                             .orderByDesc(HrPerfDistributionRule::getId))
                     .getRecords().stream().findFirst().orElse(null);

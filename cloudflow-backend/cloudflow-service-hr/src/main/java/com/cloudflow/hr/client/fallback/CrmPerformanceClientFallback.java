@@ -13,26 +13,26 @@ import java.util.List;
 public class CrmPerformanceClientFallback implements CrmPerformanceClient {
 
     @Override
-    public R<List<CrmPerformanceSummaryVO>> summarizeByOwner(List<Long> ownerIds, String startDate, String endDate) {
-        log.warn("CRM 业绩接口不可用，summarizeByOwner 降级空列表");
-        return R.ok(List.of());
+    public R<List<CrmPerformanceSummaryVO>> summarizeByOwner(List<Long> ownerIds, String startDate, String endDate, String calculationBasis, String currency) {
+        log.warn("CRM 业绩接口不可用，summarizeByOwner 查询失败");
+        return R.fail(503, "销售业绩暂不可用，请稍后重试");
     }
 
     @Override
-    public R<List<CrmPerformanceSummaryVO>> summarizeByDept(List<Long> deptIds, String startDate, String endDate) {
-        log.warn("CRM 业绩接口不可用，summarizeByDept 降级空列表");
-        return R.ok(List.of());
+    public R<List<CrmPerformanceSummaryVO>> summarizeByDept(List<Long> deptIds, String startDate, String endDate, String calculationBasis, String currency) {
+        log.warn("CRM 业绩接口不可用，summarizeByDept 查询失败");
+        return R.fail(503, "销售业绩暂不可用，请稍后重试");
     }
 
     @Override
-    public R<List<CrmPerformanceSummaryVO>> topOwners(int limit, String startDate, String endDate) {
-        log.warn("CRM 业绩接口不可用，topOwners 降级空列表");
-        return R.ok(List.of());
+    public R<List<CrmPerformanceSummaryVO>> topOwners(int limit, String startDate, String endDate, String calculationBasis, String currency) {
+        log.warn("CRM 业绩接口不可用，topOwners 查询失败");
+        return R.fail(503, "销售业绩暂不可用，请稍后重试");
     }
 
     @Override
-    public R<List<CrmPerformanceSummaryVO>> topDepartments(int limit, String startDate, String endDate) {
-        log.warn("CRM 业绩接口不可用，topDepartments 降级空列表");
-        return R.ok(List.of());
+    public R<List<CrmPerformanceSummaryVO>> topDepartments(int limit, String startDate, String endDate, String calculationBasis, String currency) {
+        log.warn("CRM 业绩接口不可用，topDepartments 查询失败");
+        return R.fail(503, "销售业绩暂不可用，请稍后重试");
     }
 }

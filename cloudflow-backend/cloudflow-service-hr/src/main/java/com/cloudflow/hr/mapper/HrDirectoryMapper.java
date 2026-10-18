@@ -11,6 +11,9 @@ import java.util.List;
 @Mapper
 public interface HrDirectoryMapper {
 
+    List<java.util.Map<String, Object>> listApprovalJobLevels(@Param("tenantId") long tenantId,
+                                                            @Param("userIds") Collection<Long> userIds);
+
     HrEmployeeSummaryVO findEmployee(@Param("tenantId") long tenantId, @Param("employeeId") Long employeeId);
 
     HrEmployeeSummaryVO findEmployeeByUserId(@Param("tenantId") long tenantId, @Param("userId") Long userId);

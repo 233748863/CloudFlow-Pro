@@ -18,6 +18,12 @@ import java.util.Map;
 public class HrSalarySlipVO {
     @Schema(description = "工资条 ID") private Long id;
     @Schema(description = "员工 ID") private Long employeeId;
+    private Long batchId;
+    private BigDecimal cumulativeTaxableIncome;
+    private BigDecimal cumulativeDeduction;
+    private BigDecimal cumulativeTaxPayable;
+    private BigDecimal cumulativeTaxPaid;
+    private BigDecimal currentTax;
     @Schema(description = "工资月份 yyyy-MM") private String periodMonth;
     @Schema(description = "应发合计（按权限脱敏）") private Object grossTotal;
     @Schema(description = "扣除合计（按权限脱敏）") private Object deductionTotal;

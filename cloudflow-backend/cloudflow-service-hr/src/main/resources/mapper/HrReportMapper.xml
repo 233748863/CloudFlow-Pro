@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrReportMapper">
+    <sql id="employeeScope">
+        <if test="!scope.all">
+            AND (1 = 2
+                <if test="scope.userId != null">OR employee.user_id = #{scope.userId}</if>
+                <if test="!scope.departmentIds.isEmpty()">
+                    OR employee.dept_id IN <foreach collection="scope.departmentIds" item="departmentId" open="(" separator="," close=")">#{departmentId}</foreach>
+                </if>
+            )
+        </if>
+    </sql>
+    <select id="attendance" resultType="com.cloudflow.common.core.report.ReportRow" timeout="5">
+        SELECT <include refid="com.cloudflow.common.report.ReportSqlMapper.projection"/>
+        FROM (
+            SELECT record.attendance_date AS business_date, employee.dept_id AS department,
+                department.dept_name AS department_name, employee.id AS employee, employee.name AS employee_name,
+                record.status, record.id AS record_count, record.late_minutes, record.early_exit_minutes AS early_minutes,
+                record.overtime_minutes, 0 AS integrity_error
+            FROM hr_attendance_record record
+            INNER JOIN hr_employee employee ON employee.id = record.employee_id
+                AND employee.tenant_id = record.tenant_id AND employee.deleted = 0
+            LEFT JOIN sys_dept department ON department.dept_id = employee.dept_id AND department.tenant_id = employee.tenant_id
+            WHERE record.tenant_id = #{tenantId} AND record.deleted = 0
+                AND record.attendance_date BETWEEN #{query.startDate} AND #{query.endDate}
+            <include refid="employeeScope"/>
+        ) fact
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.filters"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.grouping"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.ordering"/>
+    </select>
+    <select id="leave" resultType="com.cloudflow.common.core.report.ReportRow" timeout="5">
+        WITH RECURSIVE authorized_ledger AS (
+            SELECT ledger.*, employee.name AS employee_name, leave_type.leave_name AS leave_type_name,
+                period.period_name
+            FROM hr_leave_ledger ledger
+            INNER JOIN hr_employee employee ON employee.id = ledger.employee_id
+                AND employee.tenant_id = ledger.tenant_id AND employee.deleted = 0
+            LEFT JOIN hr_leave_type leave_type ON leave_type.id = ledger.leave_type_id AND leave_type.tenant_id = ledger.tenant_id
+            LEFT JOIN hr_leave_period period ON period.period_id = ledger.leave_period_id AND period.tenant_id = ledger.tenant_id
+            WHERE ledger.tenant_id = #{tenantId}
+            <include refid="employeeScope"/>
+        ), ledger_chain AS (
+            SELECT ledger.tenant_id, ledger.ledger_id AS origin_id, ledger.ledger_id AS current_id,
+                ledger.employee_id, ledger.leave_type_id, ledger.leave_period_id, ledger.quantity_unit,
+                ledger.reversal_of_id, ledger.transaction_type, JSON_ARRAY(ledger.ledger_id) AS visited, 0 AS cycle
+            FROM authorized_ledger ledger
+            UNION ALL
+            SELECT parent.tenant_id, chain.origin_id, parent.ledger_id, parent.employee_id, parent.leave_type_id,
+                parent.leave_period_id, parent.quantity_unit, parent.reversal_of_id, parent.transaction_type,
+                JSON_ARRAY_APPEND(chain.visited, '$', parent.ledger_id), JSON_CONTAINS(chain.visited, JSON_ARRAY(parent.ledger_id))
+            FROM ledger_chain chain
+            INNER JOIN authorized_ledger parent ON parent.ledger_id = chain.reversal_of_id
+                AND parent.tenant_id = chain.tenant_id AND parent.employee_id = chain.employee_id
+                AND parent.leave_type_id = chain.leave_type_id
+                AND (parent.leave_period_id = chain.leave_period_id OR parent.leave_period_id IS NULL AND chain.leave_period_id IS NULL)
+                AND parent.quantity_unit = chain.quantity_unit
+            WHERE chain.reversal_of_id IS NOT NULL AND chain.cycle = 0
+        )
+        SELECT <include refid="com.cloudflow.common.report.ReportSqlMapper.projection"/>
+        FROM (
+            SELECT origin.employee_id AS employee, origin.employee_name, origin.leave_type_id AS leave_type,
+                origin.leave_type_name, origin.quantity_unit AS unit, origin.leave_period_id AS period, origin.period_name,
+                CASE WHEN terminal.transaction_type IN ('ALLOCATION', 'CARRY_FORWARD', 'COMPENSATORY', 'ADJUSTMENT')
+                    THEN origin.leave_days ELSE 0 END AS total_quota,
+                CASE WHEN terminal.transaction_type IN ('APPLICATION', 'EXPIRY', 'ENCASHMENT')
+                    THEN -origin.leave_days ELSE 0 END AS used_quota,
+                CASE WHEN terminal.transaction_type IN ('FREEZE', 'UNFREEZE') THEN -origin.leave_days ELSE 0 END AS frozen_quota,
+                origin.leave_days AS available_quota,
+                (terminal.cycle &lt;&gt; 0 OR terminal.reversal_of_id IS NOT NULL
+                    OR terminal.transaction_type NOT IN ('ALLOCATION', 'CARRY_FORWARD', 'COMPENSATORY', 'ADJUSTMENT', 'APPLICATION', 'EXPIRY', 'ENCASHMENT', 'FREEZE', 'UNFREEZE')
+                    OR origin.quantity_unit NOT IN ('DAY', 'HOUR')) AS integrity_error
+            FROM authorized_ledger origin
+            INNER JOIN ledger_chain terminal ON terminal.origin_id = origin.ledger_id AND terminal.tenant_id = origin.tenant_id
+            WHERE terminal.reversal_of_id IS NULL OR terminal.cycle &lt;&gt; 0 OR NOT EXISTS (
+                SELECT 1 FROM authorized_ledger parent WHERE parent.ledger_id = terminal.reversal_of_id
+                    AND parent.tenant_id = terminal.tenant_id AND parent.employee_id = terminal.employee_id
+                    AND parent.leave_type_id = terminal.leave_type_id
+                    AND (parent.leave_period_id = terminal.leave_period_id OR parent.leave_period_id IS NULL AND terminal.leave_period_id IS NULL)
+                    AND parent.quantity_unit = terminal.quantity_unit
+            )
+        ) fact
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.filters"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.grouping"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.ordering"/>
+    </select>
+</mapper>

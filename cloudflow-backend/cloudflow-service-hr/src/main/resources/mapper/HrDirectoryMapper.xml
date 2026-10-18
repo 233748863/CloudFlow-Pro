@@ -4,8 +4,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.hr.mapper.HrDirectoryMapper">
 
+    <select id="listApprovalJobLevels" resultType="java.util.HashMap">
+        SELECT e.tenant_id AS tenantId, e.user_id AS userId, e.id AS employeeId, level.id AS jobLevelId
+        FROM hr_employee e
+        LEFT JOIN hr_position position ON position.id = e.position_id AND position.tenant_id = e.tenant_id AND position.status = 1
+        LEFT JOIN hr_job_level level ON level.id = position.level_id AND level.tenant_id = e.tenant_id AND level.status = 1
+        WHERE e.deleted = 0 AND e.tenant_id = #{tenantId}
+          AND e.user_id IN
+          <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+          </foreach>
+    </select>
+
     <select id="findEmployee" resultType="com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO">
         SELECT e.id AS employeeId,
+               e.tenant_id AS tenantId,
+               CASE WHEN account.user_id IS NOT NULL THEN 1 ELSE 0 END AS userEnabled,
+               CASE WHEN d.deleted = 0 AND d.status = '0' THEN 1 ELSE 0 END AS departmentEnabled,
                e.employee_no AS employeeNo,
                e.name AS employeeName,
                e.birth_date AS birthDate,
@@ -16,8 +31,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                d.dept_name AS deptName,
                p.position_name AS positionName
         FROM hr_employee e
-        LEFT JOIN sys_dept d ON d.dept_id = e.dept_id
-        LEFT JOIN hr_position p ON p.id = e.position_id
+        LEFT JOIN sys_user account ON account.user_id = e.user_id AND account.tenant_id = e.tenant_id AND account.deleted = 0 AND account.status = '0'
+        LEFT JOIN sys_dept d ON d.dept_id = e.dept_id AND d.tenant_id = e.tenant_id
+        LEFT JOIN hr_position p ON p.id = e.position_id AND p.tenant_id = e.tenant_id
         WHERE e.deleted = 0
           AND e.tenant_id = #{tenantId}
           AND e.id = #{employeeId}
@@ -26,6 +42,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="findEmployeeByUserId" resultType="com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO">
         SELECT e.id AS employeeId,
+               e.tenant_id AS tenantId,
+               CASE WHEN account.user_id IS NOT NULL THEN 1 ELSE 0 END AS userEnabled,
+               CASE WHEN d.deleted = 0 AND d.status = '0' THEN 1 ELSE 0 END AS departmentEnabled,
                e.employee_no AS employeeNo,
                e.name AS employeeName,
                e.birth_date AS birthDate,
@@ -36,8 +55,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                d.dept_name AS deptName,
                p.position_name AS positionName
         FROM hr_employee e
-        LEFT JOIN sys_dept d ON d.dept_id = e.dept_id
-        LEFT JOIN hr_position p ON p.id = e.position_id
+        LEFT JOIN sys_user account ON account.user_id = e.user_id AND account.tenant_id = e.tenant_id AND account.deleted = 0 AND account.status = '0'
+        LEFT JOIN sys_dept d ON d.dept_id = e.dept_id AND d.tenant_id = e.tenant_id
+        LEFT JOIN hr_position p ON p.id = e.position_id AND p.tenant_id = e.tenant_id
         WHERE e.deleted = 0
           AND e.tenant_id = #{tenantId}
           AND e.user_id = #{userId}
@@ -46,6 +66,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="listEmployees" resultType="com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO">
         SELECT e.id AS employeeId,
+               e.tenant_id AS tenantId,
+               CASE WHEN account.user_id IS NOT NULL THEN 1 ELSE 0 END AS userEnabled,
+               CASE WHEN d.deleted = 0 AND d.status = '0' THEN 1 ELSE 0 END AS departmentEnabled,
                e.employee_no AS employeeNo,
                e.name AS employeeName,
                e.birth_date AS birthDate,
@@ -56,8 +79,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                d.dept_name AS deptName,
                p.position_name AS positionName
         FROM hr_employee e
-        LEFT JOIN sys_dept d ON d.dept_id = e.dept_id
-        LEFT JOIN hr_position p ON p.id = e.position_id
+        LEFT JOIN sys_user account ON account.user_id = e.user_id AND account.tenant_id = e.tenant_id AND account.deleted = 0 AND account.status = '0'
+        LEFT JOIN sys_dept d ON d.dept_id = e.dept_id AND d.tenant_id = e.tenant_id
+        LEFT JOIN hr_position p ON p.id = e.position_id AND p.tenant_id = e.tenant_id
         WHERE e.deleted = 0
           AND e.tenant_id = #{tenantId}
           AND e.id IN
@@ -68,6 +92,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="listEmployeesByUserIds" resultType="com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO">
         SELECT e.id AS employeeId,
+               e.tenant_id AS tenantId,
+               CASE WHEN account.user_id IS NOT NULL THEN 1 ELSE 0 END AS userEnabled,
+               CASE WHEN d.deleted = 0 AND d.status = '0' THEN 1 ELSE 0 END AS departmentEnabled,
                e.employee_no AS employeeNo,
                e.name AS employeeName,
                e.birth_date AS birthDate,
@@ -78,8 +105,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                d.dept_name AS deptName,
                p.position_name AS positionName
         FROM hr_employee e
-        LEFT JOIN sys_dept d ON d.dept_id = e.dept_id
-        LEFT JOIN hr_position p ON p.id = e.position_id
+        LEFT JOIN sys_user account ON account.user_id = e.user_id AND account.tenant_id = e.tenant_id AND account.deleted = 0 AND account.status = '0'
+        LEFT JOIN sys_dept d ON d.dept_id = e.dept_id AND d.tenant_id = e.tenant_id
+        LEFT JOIN hr_position p ON p.id = e.position_id AND p.tenant_id = e.tenant_id
         WHERE e.deleted = 0
           AND e.tenant_id = #{tenantId}
           AND e.user_id IN

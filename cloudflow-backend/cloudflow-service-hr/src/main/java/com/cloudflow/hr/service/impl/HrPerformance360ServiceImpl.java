@@ -10,6 +10,12 @@ import com.cloudflow.hr.domain.dto.Hr360EvaluatorResponsePayload;
 import com.cloudflow.hr.domain.entity.HrPerfEvaluator;
 import com.cloudflow.hr.domain.entity.HrPerfEvaluatorResponse;
 import com.cloudflow.hr.domain.entity.HrPerformanceResult;
+import com.cloudflow.hr.domain.entity.HrAppraisalCycle;
+import com.cloudflow.hr.domain.entity.HrEmployee;
+import com.cloudflow.hr.domain.entity.HrPerformanceObjective;
+import com.cloudflow.hr.service.HrAppraisalGuard;
+import com.cloudflow.hr.service.HrAppraisalRules;
+import com.cloudflow.hr.service.HrHSupport;
 import com.cloudflow.hr.domain.vo.performance.Hr360AggregateVO;
 import com.cloudflow.hr.domain.vo.performance.Hr360EvaluatorRowVO;
 import com.cloudflow.hr.mapper.HrAuditLogMapper;
@@ -20,9 +26,9 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.hr.service.IHrPerformance360Service;
-import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -34,6 +40,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+
+import static com.cloudflow.hr.service.HrRuleSupport.tenantId;
 import java.util.Set;
 
 /**
@@ -47,7 +56,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
 
-    private static final long TENANT_ID = 100000L;
     private static final Set<String> ALLOWED_SOURCES = Set.of(
             "SELF", "MANAGER", "PEER", "SUBORDINATE", "CUSTOMER");
 
@@ -56,9 +64,12 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
     private final HrPerformanceResultMapper performanceResultMapper;
     private final HrAuditLogMapper auditLogMapper;
     private final ObjectMapper objectMapper;
+    private final HrAppraisalGuard appraisalGuard;
+    private final HrHSupport appraisalAccess;
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
+    @Audit(name = "邀请绩效评价人")
     public List<Long> inviteEvaluators(Hr360EvaluatorInvitePayload payload) {
         if (payload == null || payload.getObjectiveId() == null || payload.getEvaluateeId() == null) {
             throw new IllegalArgumentException("objectiveId 与 evaluateeId 不能为空");
@@ -66,17 +77,32 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
         if (payload.getEvaluators() == null || payload.getEvaluators().isEmpty()) {
             throw new IllegalArgumentException("至少需要一位评估人");
         }
+        HrAppraisalCycle cycle = appraisalGuard.scoring(payload.getObjectiveId(), payload.getEvaluateeId());
+        if (cycle != null) {
+            appraisalAccess.permission("hr:appraisal:score");
+            appraisalAccess.scope(payload.getEvaluateeId());
+            appraisalGuard.evaluationTarget(payload.getObjectiveId(), payload.getAssignmentId(), payload.getEvaluateeId());
+        }
         List<Long> ids = new ArrayList<>();
         for (Hr360EvaluatorInvitePayload.Item item : payload.getEvaluators()) {
+            if (item == null) throw com.cloudflow.hr.service.HrHException.invalid("评估人不能为空");
+            String source = normalizeSource(item.getEvaluatorSource());
+            if ("CUSTOMER".equals(source)) throw com.cloudflow.hr.service.HrHException.invalid(HrAppraisalRules.CUSTOMER_DISABLED);
             if (item.getEvaluatorId() == null) {
                 continue;
             }
-            String source = normalizeSource(item.getEvaluatorSource());
             BigDecimal weight = item.getWeight() == null ? BigDecimal.valueOf(20) : item.getWeight();
+            if (cycle != null) {
+                if ("SELF".equals(source) != Objects.equals(payload.getEvaluateeId(), item.getEvaluatorId())) throw com.cloudflow.hr.service.HrHException.invalid("自评必须由被评员工本人提交，其他来源不能由本人代评");
+                HrEmployee evaluatorEmployee = appraisalAccess.activeEmployee(item.getEvaluatorId(), HrHSupport.today());
+                appraisalAccess.linkedUser(evaluatorEmployee);
+                item.setEvaluatorName(evaluatorEmployee.getName());
+                if (weight.signum() < 0 || weight.compareTo(new BigDecimal("100")) > 0 || weight.stripTrailingZeros().scale() > 2) throw com.cloudflow.hr.service.HrHException.invalid("评价来源权重须为0至100且至多两位小数");
+            }
 
             HrPerfEvaluator existing = evaluatorMapper.selectOne(
                     new LambdaQueryWrapper<HrPerfEvaluator>()
-                            .eq(HrPerfEvaluator::getTenantId, TENANT_ID)
+                            .eq(HrPerfEvaluator::getTenantId, tenantId())
                             .eq(HrPerfEvaluator::getObjectiveId, payload.getObjectiveId())
                             .eq(HrPerfEvaluator::getEvaluateeId, payload.getEvaluateeId())
                             .eq(HrPerfEvaluator::getEvaluatorId, item.getEvaluatorId())
@@ -93,11 +119,11 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
             }
 
             HrPerfEvaluator entity = new HrPerfEvaluator();
-            entity.setTenantId(TENANT_ID);
+            entity.setTenantId(tenantId());
             entity.setObjectiveId(payload.getObjectiveId());
             entity.setAssignmentId(payload.getAssignmentId());
             entity.setEvaluateeId(payload.getEvaluateeId());
-            entity.setEvaluateeName(payload.getEvaluateeName());
+            entity.setEvaluateeName(cycle == null ? payload.getEvaluateeName() : appraisalAccess.employee(payload.getEvaluateeId()).getName());
             entity.setEvaluatorId(item.getEvaluatorId());
             entity.setEvaluatorName(item.getEvaluatorName());
             entity.setEvaluatorSource(source);
@@ -118,7 +144,8 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
+    @Audit(name = "提交绩效评价评分")
     public void submitResponse(Hr360EvaluatorResponsePayload payload) {
         if (payload == null || payload.getEvaluatorId() == null || payload.getScore() == null) {
             throw new IllegalArgumentException("evaluatorId 与 score 不能为空");
@@ -126,10 +153,22 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
         HrPerfEvaluator evaluator = evaluatorMapper.selectOne(
                 new LambdaQueryWrapper<HrPerfEvaluator>()
                         .eq(HrPerfEvaluator::getId, payload.getEvaluatorId())
-                        .eq(HrPerfEvaluator::getTenantId, TENANT_ID)
+                        .eq(HrPerfEvaluator::getTenantId, tenantId())
                         .eq(HrPerfEvaluator::getDeleted, 0));
         if (evaluator == null) {
             throw new IllegalArgumentException("评估邀请不存在");
+        }
+        if ("CUSTOMER".equals(evaluator.getEvaluatorSource())) throw com.cloudflow.hr.service.HrHException.invalid(HrAppraisalRules.CUSTOMER_DISABLED);
+        HrAppraisalCycle cycle = appraisalGuard.scoring(evaluator.getObjectiveId(), evaluator.getEvaluateeId());
+        if (cycle != null) {
+            evaluator = evaluatorMapper.selectOne(new LambdaQueryWrapper<HrPerfEvaluator>().eq(HrPerfEvaluator::getId, payload.getEvaluatorId())
+                    .eq(HrPerfEvaluator::getTenantId, tenantId()).eq(HrPerfEvaluator::getDeleted, 0));
+            if (evaluator == null || !"PENDING".equals(evaluator.getStatus())) throw com.cloudflow.hr.service.HrHException.conflict("APPRAISAL_INVITATION_CHANGED", "评估邀请已提交或取消，请重新读取");
+            if (!Objects.equals(appraisalAccess.mine().getId(), evaluator.getEvaluatorId())) throw com.cloudflow.hr.service.HrHException.forbidden();
+            if ("CUSTOMER".equals(evaluator.getEvaluatorSource())) throw com.cloudflow.hr.service.HrHException.invalid(HrAppraisalRules.CUSTOMER_DISABLED);
+            if ("SELF".equals(evaluator.getEvaluatorSource()) != Objects.equals(evaluator.getEvaluateeId(), evaluator.getEvaluatorId())) throw com.cloudflow.hr.service.HrHException.invalid("评价来源与受邀身份不一致");
+            if (payload.getScore().stripTrailingZeros().scale() > 2 || payload.getScore().abs().compareTo(new BigDecimal("999999.99")) > 0) throw com.cloudflow.hr.service.HrHException.invalid("评分超出既有存储精度");
+            HrAppraisalRules.score(payload.getScore(), appraisalAccess.convert(cycle.getScoreConfig(), HrAppraisalRules.Configuration.class));
         }
         if (!"PENDING".equalsIgnoreCase(evaluator.getStatus())) {
             throw new IllegalStateException("评估邀请状态非 PENDING，不可再提交");
@@ -139,12 +178,12 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
 
         HrPerfEvaluatorResponse existingResp = responseMapper.selectOne(
                 new LambdaQueryWrapper<HrPerfEvaluatorResponse>()
-                        .eq(HrPerfEvaluatorResponse::getTenantId, TENANT_ID)
+                        .eq(HrPerfEvaluatorResponse::getTenantId, tenantId())
                         .eq(HrPerfEvaluatorResponse::getEvaluatorId, payload.getEvaluatorId())
                         .eq(HrPerfEvaluatorResponse::getDeleted, 0));
         if (existingResp == null) {
             HrPerfEvaluatorResponse resp = new HrPerfEvaluatorResponse();
-            resp.setTenantId(TENANT_ID);
+            resp.setTenantId(tenantId());
             resp.setEvaluatorId(payload.getEvaluatorId());
             resp.setObjectiveId(evaluator.getObjectiveId());
             resp.setEvaluateeId(evaluator.getEvaluateeId());
@@ -168,7 +207,7 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
 
         evaluator.setStatus("SUBMITTED");
         evaluator.setUpdateBy(defaultOperator());
-        evaluatorMapper.updateById(evaluator);
+        if (evaluatorMapper.updateById(evaluator) != 1) throw new IllegalStateException("评估邀请已变化，请重新读取");
 
         writeAuditLog("hr_perf_evaluator_response", payload.getEvaluatorId(), "SUBMIT",
                 Map.of(),
@@ -176,32 +215,50 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     @Audit(name = "取消360评估人", highRisk = true)
     public void cancelEvaluator(Long evaluatorId) {
+        HrPerfEvaluator existing = evaluatorMapper.selectOne(new LambdaQueryWrapper<HrPerfEvaluator>()
+                .eq(HrPerfEvaluator::getTenantId, tenantId()).eq(HrPerfEvaluator::getId, evaluatorId).eq(HrPerfEvaluator::getDeleted, 0));
+        if (existing == null) throw new IllegalArgumentException("评估邀请不存在");
+        if (appraisalGuard.scoring(existing.getObjectiveId(), existing.getEvaluateeId()) != null) {
+            appraisalAccess.permission("hr:appraisal:score");
+            appraisalAccess.scope(existing.getEvaluateeId());
+        }
         evaluatorMapper.update(null, new LambdaUpdateWrapper<HrPerfEvaluator>()
                 .eq(HrPerfEvaluator::getId, evaluatorId)
-                .eq(HrPerfEvaluator::getTenantId, TENANT_ID)
+                .eq(HrPerfEvaluator::getTenantId, tenantId())
                 .set(HrPerfEvaluator::getStatus, "CANCELLED")
                 .set(HrPerfEvaluator::getUpdateBy, defaultOperator()));
     }
 
     @Override
     public List<Hr360EvaluatorRowVO> listEvaluators(Long objectiveId, Long evaluateeId) {
-        List<Map<String, Object>> rows = evaluatorMapper.selectEvaluatorsWithResponse(TENANT_ID, objectiveId, evaluateeId);
+        HrPerformanceObjective objective = appraisalGuard.objective(objectiveId);
+        if (objective != null && objective.getCycleId() != null) {
+            appraisalAccess.permission("hr:appraisal:list");
+            if (evaluateeId == null) appraisalGuard.fullScope(appraisalGuard.cycle(objective.getCycleId()));
+            else {
+                appraisalGuard.member(objective.getCycleId(), evaluateeId);
+                appraisalAccess.scope(evaluateeId);
+            }
+        }
+        List<Map<String, Object>> rows = evaluatorMapper.selectEvaluatorsWithResponse(tenantId(), objectiveId, evaluateeId);
         return MapConverters.toVOList(rows, Hr360EvaluatorRowVO.class, objectMapper);
     }
 
     @Override
     public List<Hr360EvaluatorRowVO> listPendingForEvaluator(Long evaluatorId) {
-        List<Map<String, Object>> rows = evaluatorMapper.selectPendingForEvaluator(TENANT_ID, evaluatorId);
+        if (!Objects.equals(appraisalAccess.mine().getId(), evaluatorId)) throw new IllegalArgumentException("待评价列表仅限本人");
+        List<Map<String, Object>> rows = evaluatorMapper.selectPendingForEvaluator(tenantId(), evaluatorId);
         return MapConverters.toVOList(rows, Hr360EvaluatorRowVO.class, objectMapper);
     }
 
     @Override
     @Transactional
     public Hr360AggregateVO aggregate(Long objectiveId, Long evaluateeId) {
-        List<Map<String, Object>> rows = evaluatorMapper.selectAggregationRows(TENANT_ID, objectiveId, evaluateeId);
+        appraisalGuard.legacyObjective(objectiveId);
+        List<Map<String, Object>> rows = evaluatorMapper.selectAggregationRows(tenantId(), objectiveId, evaluateeId);
         if (rows.isEmpty()) {
             throw new IllegalStateException("尚无任何评估人提交打分，无法聚合");
         }
@@ -210,6 +267,7 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
         Map<String, BigDecimal> weightBySource = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
             String source = String.valueOf(row.get("evaluatorSource")).toUpperCase(Locale.ROOT);
+            if ("CUSTOMER".equals(source)) throw com.cloudflow.hr.service.HrHException.invalid(HrAppraisalRules.CUSTOMER_DISABLED);
             BigDecimal score = new BigDecimal(String.valueOf(row.get("score")));
             BigDecimal weight = new BigDecimal(String.valueOf(row.get("weight")));
             bySource.computeIfAbsent(source, k -> new ArrayList<>()).add(score);
@@ -237,7 +295,7 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
 
         HrPerformanceResult existingResult = performanceResultMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrPerformanceResult>()
-                        .eq(HrPerformanceResult::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceResult::getTenantId, tenantId())
                         .eq(HrPerformanceResult::getObjectiveId, objectiveId)
                         .eq(HrPerformanceResult::getEmployeeId, evaluateeId)
                         .orderByDesc(HrPerformanceResult::getId))
@@ -245,7 +303,7 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
         Long resultId;
         if (existingResult == null) {
             HrPerformanceResult entity = new HrPerformanceResult();
-            entity.setTenantId(TENANT_ID);
+            entity.setTenantId(tenantId());
             entity.setObjectiveId(objectiveId);
             entity.setEmployeeId(evaluateeId);
             entity.setScore(aggregated);
@@ -260,7 +318,7 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
             resultId = existingResult.getId();
         }
         evaluatorMapper.update(null, new LambdaUpdateWrapper<HrPerfEvaluator>()
-                .eq(HrPerfEvaluator::getTenantId, TENANT_ID)
+                .eq(HrPerfEvaluator::getTenantId, tenantId())
                 .eq(HrPerfEvaluator::getObjectiveId, objectiveId)
                 .eq(HrPerfEvaluator::getEvaluateeId, evaluateeId)
                 .set(HrPerfEvaluator::getResultId, resultId));
@@ -314,7 +372,7 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
                                Map<String, Object> before, Map<String, Object> after) {
         try {
             auditLogMapper.insertLog(
-                    TENANT_ID, tableName, businessId, operationType,
+                    tenantId(), tableName, businessId, operationType,
                     UserContext.getUserId(), UserContext.getUserName(),
                     writeJson(before == null ? Map.of() : before),
                     writeJson(after == null ? Map.of() : after));

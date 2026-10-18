@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrEmployeeMapper">
+    <sql id="attendanceColumns">
+        id, tenant_id, deleted, user_id, dept_id, position_id, employee_type, hire_date, resign_date
+    </sql>
+    <select id="selectAttendanceById" resultType="com.cloudflow.hr.domain.entity.HrEmployee">
+        SELECT <include refid="attendanceColumns"/> FROM hr_employee
+        WHERE tenant_id = #{tenantId} AND id = #{employeeId} AND deleted = 0
+    </select>
+    <select id="selectAttendanceCandidates" resultType="com.cloudflow.hr.domain.entity.HrEmployee">
+        SELECT <include refid="attendanceColumns"/> FROM hr_employee
+        WHERE tenant_id = #{tenantId} AND deleted = 0
+        <if test="employeeIds != null and !employeeIds.isEmpty()">
+            AND id IN <foreach collection="employeeIds" item="employeeId" open="(" separator="," close=")">#{employeeId}</foreach>
+        </if>
+        <if test="deptIds != null and !deptIds.isEmpty()">
+            AND dept_id IN <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+        ORDER BY id
+    </select>
+</mapper>

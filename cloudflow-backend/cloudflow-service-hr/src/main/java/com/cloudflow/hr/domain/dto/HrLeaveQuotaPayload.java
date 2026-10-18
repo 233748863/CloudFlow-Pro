@@ -19,12 +19,13 @@ public class HrLeaveQuotaPayload {
     private Long tenantId;
     private Long employeeId;
     private Long leaveTypeId;
-    private Integer year;
+    private Long periodId;
     private BigDecimal totalQuota;
     private BigDecimal usedQuota;
     private BigDecimal frozenQuota;
     private BigDecimal availableQuota;
     private LocalDate expiryDate;
+    private LocalDateTime lastCalcTime;
     private String createBy;
     private String updateBy;
     private Integer deleted;

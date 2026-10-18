@@ -3,6 +3,9 @@
 PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.hr.mapper.HrCandidateMapper">
+    <select id="lockCandidate" resultType="com.cloudflow.hr.domain.entity.HrCandidate">
+        SELECT * FROM hr_candidate WHERE tenant_id = #{tenantId} AND id = #{candidateId} AND deleted = 0 FOR UPDATE
+    </select>
 
     <select id="selectChannelHireStats" resultType="java.util.LinkedHashMap">
         SELECT

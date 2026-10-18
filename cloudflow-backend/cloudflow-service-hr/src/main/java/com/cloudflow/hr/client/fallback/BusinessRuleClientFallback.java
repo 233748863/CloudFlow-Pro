@@ -36,6 +36,6 @@ public class BusinessRuleClientFallback implements BusinessRuleClient {
     @Override
     public R<Void> recordHit(BusinessRuleHitRecordDTO record) {
         log.warn("业务规则命中记录服务不可用，ruleCode={}", record == null ? null : record.getRuleCode());
-        return R.ok();
+        return R.fail("业务规则命中记录服务暂时不可用，记录未保存");
     }
 }

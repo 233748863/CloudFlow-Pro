@@ -4,6 +4,106 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.hr.mapper.HrAttendanceRecordMapper">
 
+    <sql id="accessibleRecords">
+        SELECT record.*
+        FROM hr_attendance_record record
+        WHERE record.tenant_id = #{tenantId} AND record.deleted = 0
+        <if test="query.employeeId != null">AND record.employee_id = #{query.employeeId}</if>
+        <if test="query.shiftId != null">AND record.shift_id = #{query.shiftId}</if>
+        <if test="query.status != null and query.status != ''">AND record.status = #{query.status}</if>
+        <if test="query.startDate != null">AND record.attendance_date &gt;= #{query.startDate}</if>
+        <if test="query.endDate != null">AND record.attendance_date &lt;= #{query.endDate}</if>
+        <if test="!scope.all or query.deptId != null">
+            AND EXISTS (
+                SELECT 1 FROM hr_employee employee
+                WHERE employee.id = record.employee_id AND employee.tenant_id = #{tenantId} AND employee.deleted = 0
+                <if test="query.deptId != null">AND employee.dept_id = #{query.deptId}</if>
+                <if test="!scope.all">
+                    <choose>
+                        <when test="scope.userId != null">AND employee.user_id = #{scope.userId}</when>
+                        <when test="scope.departmentIds != null and !scope.departmentIds.isEmpty()">
+                            AND employee.dept_id IN
+                            <foreach collection="scope.departmentIds" item="departmentId" open="(" close=")" separator=",">#{departmentId}</foreach>
+                        </when>
+                        <otherwise>AND 1 = 0</otherwise>
+                    </choose>
+                </if>
+            )
+        </if>
+        ORDER BY record.update_time DESC, record.id DESC
+    </sql>
+
+    <select id="selectAccessiblePage" resultType="com.cloudflow.hr.domain.vo.attendance.HrAttendanceRecordVO">
+        <include refid="accessibleRecords"/>
+    </select>
+
+    <select id="selectAccessibleList" resultType="com.cloudflow.hr.domain.vo.attendance.HrAttendanceRecordVO">
+        <include refid="accessibleRecords"/>
+    </select>
+
+    <select id="selectEmployeeDates" resultType="com.cloudflow.hr.domain.entity.HrAttendanceRecord">
+        SELECT * FROM hr_attendance_record
+        WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId} AND deleted = 0
+          AND attendance_date BETWEEN #{from} AND #{to}
+    </select>
+
+    <insert id="insertCalculatedBatch">
+        INSERT INTO hr_attendance_record (tenant_id, employee_id, attendance_date, shift_id,
+            work_minutes, expected_minutes, late_minutes, early_exit_minutes, overtime_minutes,
+            first_checkin_time, last_checkout_time, checkin_count, half_day_flag, absent_flag,
+            date_type, status, recalc_time, manual_adjusted_flag, remark, deleted, version,
+            create_by, update_by, create_time, update_time)
+        VALUES
+        <foreach collection="records" item="record" separator=",">
+            (#{record.tenantId}, #{record.employeeId}, #{record.attendanceDate}, #{record.shiftId},
+             #{record.workMinutes}, #{record.expectedMinutes}, #{record.lateMinutes}, #{record.earlyExitMinutes}, #{record.overtimeMinutes},
+             #{record.firstCheckinTime}, #{record.lastCheckoutTime}, #{record.checkinCount}, #{record.halfDayFlag}, #{record.absentFlag},
+             #{record.dateType}, #{record.status}, #{record.recalcTime}, #{record.manualAdjustedFlag}, #{record.remark}, 0, 0,
+             #{record.createBy}, #{record.updateBy}, #{record.createTime}, #{record.updateTime})
+        </foreach>
+    </insert>
+
+    <update id="updateCalculatedBatch">
+        UPDATE hr_attendance_record original
+        JOIN (
+            VALUES
+            <foreach collection="records" item="record" separator=",">
+                ROW(#{record.id}, #{record.version}, #{record.shiftId}, #{record.workMinutes},
+                    #{record.expectedMinutes}, #{record.lateMinutes}, #{record.earlyExitMinutes},
+                    #{record.overtimeMinutes}, #{record.firstCheckinTime}, #{record.lastCheckoutTime},
+                    #{record.checkinCount}, #{record.halfDayFlag}, #{record.absentFlag},
+                    #{record.dateType}, #{record.status}, #{record.recalcTime},
+                    #{record.remark}, #{record.updateBy}, #{record.updateTime})
+            </foreach>
+        ) fresh(id, expected_version, shift_id, work_minutes, expected_minutes, late_minutes,
+            early_exit_minutes, overtime_minutes, first_checkin_time, last_checkout_time, checkin_count,
+            half_day_flag, absent_flag, date_type, status, recalc_time, remark, update_by, update_time)
+            ON fresh.id = original.id AND fresh.expected_version = original.version
+        SET original.shift_id = fresh.shift_id, original.work_minutes = fresh.work_minutes,
+            original.expected_minutes = fresh.expected_minutes, original.late_minutes = fresh.late_minutes,
+            original.early_exit_minutes = fresh.early_exit_minutes, original.overtime_minutes = fresh.overtime_minutes,
+            original.first_checkin_time = fresh.first_checkin_time, original.last_checkout_time = fresh.last_checkout_time,
+            original.checkin_count = fresh.checkin_count, original.half_day_flag = fresh.half_day_flag,
+            original.absent_flag = fresh.absent_flag, original.date_type = fresh.date_type,
+            original.status = fresh.status, original.recalc_time = fresh.recalc_time, original.remark = fresh.remark,
+            original.manual_adjusted_flag = 0, original.version = original.version + 1,
+            original.update_by = fresh.update_by, original.update_time = fresh.update_time
+        WHERE original.tenant_id = #{tenantId} AND original.employee_id = #{employeeId} AND original.deleted = 0
+    </update>
+
+    <update id="linkCalculatedCheckins">
+        UPDATE hr_attendance_checkin checkin
+        JOIN hr_attendance_record record ON record.tenant_id = checkin.tenant_id
+            AND record.employee_id = checkin.employee_id AND record.attendance_date = checkin.attendance_date
+            AND record.deleted = 0
+        SET checkin.attendance_record_id = record.id
+        WHERE checkin.tenant_id = #{tenantId} AND record.tenant_id = #{tenantId}
+            AND checkin.employee_id = #{employeeId}
+            AND checkin.attendance_date IN
+            <foreach collection="dates" item="date" open="(" close=")" separator=",">#{date}</foreach>
+            AND (checkin.attendance_record_id IS NULL OR checkin.attendance_record_id != record.id)
+    </update>
+
     <select id="selectRowAsMap" resultType="java.util.LinkedHashMap">
         SELECT *
         FROM hr_attendance_record
@@ -11,16 +111,5 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           AND tenant_id = #{tenantId}
         LIMIT 1
     </select>
-
-    <update id="rewriteForAppeal">
-        UPDATE hr_attendance_record
-        SET check_in       = COALESCE(#{checkIn}, check_in),
-            check_out      = COALESCE(#{checkOut}, check_out),
-            exception_type = NULL,
-            remark         = CONCAT(IFNULL(remark, ''), #{remarkSuffix}),
-            update_by      = #{updateBy}
-        WHERE id        = #{id}
-          AND tenant_id = #{tenantId}
-    </update>
 
 </mapper>

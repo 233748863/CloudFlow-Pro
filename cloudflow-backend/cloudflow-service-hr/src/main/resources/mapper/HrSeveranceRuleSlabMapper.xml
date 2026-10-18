@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrSeveranceRuleSlabMapper">
+    <select id="lock" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT slab_id FROM hr_severance_rule_slab
+        WHERE tenant_id = #{tenantId} AND slab_id = #{identifier}
+        FOR UPDATE
+    </select>
+</mapper>

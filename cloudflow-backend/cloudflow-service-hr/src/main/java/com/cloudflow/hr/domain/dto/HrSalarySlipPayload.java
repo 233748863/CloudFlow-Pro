@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.cloudflow.hr.config.HrSalaryJsonTypeHandler;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -23,14 +23,20 @@ public class HrSalarySlipPayload {
 
     private Long tenantId;
     private Long employeeId;
+    private Long batchId;
     private String periodMonth;
     private BigDecimal grossTotal;
     private BigDecimal deductionTotal;
     private BigDecimal netTotal;
     private BigDecimal taxAmount;
     private BigDecimal benefitAmount;
+    private BigDecimal cumulativeTaxableIncome;
+    private BigDecimal cumulativeDeduction;
+    private BigDecimal cumulativeTaxPayable;
+    private BigDecimal cumulativeTaxPaid;
+    private BigDecimal currentTax;
 
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = HrSalaryJsonTypeHandler.class)
     private List<Map<String, Object>> components;
 
     private LocalDate payDate;

@@ -17,6 +17,17 @@ import com.cloudflow.hr.domain.vo.dispute.HrLaborDisputeVO;
 import com.cloudflow.hr.service.IHrDisputeArbitrationService;
 import com.cloudflow.hr.service.IHrDisputeMediationService;
 import com.cloudflow.hr.service.IHrLaborDisputeService;
+import com.cloudflow.hr.service.HrGrievanceService;
+import com.cloudflow.hr.domain.dto.HrGrievanceAction;
+import com.cloudflow.hr.domain.dto.HrGrievanceQuery;
+import com.cloudflow.hr.domain.dto.HrGrievanceRequest;
+import com.cloudflow.hr.domain.entity.HrGrievance;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +52,13 @@ import org.springframework.web.bind.annotation.RestController;
 class HrLaborDisputeController {
 
     private final IHrLaborDisputeService hrLaborDisputeService;
+    private final HrGrievanceService grievanceService;
+
+    @GetMapping("/{id}/grievance-files/{fileId}")
+    @SaCheckPermission("hr:dispute:list")
+    public ResponseEntity<byte[]> downloadGrievanceFile(@PathVariable Long id, @PathVariable Long fileId) {
+        return grievanceService.downloadDisputeFile(id, fileId);
+    }
 
     @GetMapping
     @SaCheckPermission("hr:dispute:list")
@@ -158,5 +176,95 @@ class HrDisputeArbitrationController {
     public R<Void> update(@PathVariable Long arbitrationId, @Validated @RequestBody HrDisputeArbitrationDTO dto) {
         hrDisputeArbitrationService.updateArbitration(arbitrationId, dto);
         return R.ok();
+    }
+}
+
+@RestController
+@RequestMapping("/grievances")
+@RequiredArgsConstructor
+class HrGrievanceController {
+    private final HrGrievanceService service;
+
+    @GetMapping
+    @SaCheckPermission("hr:grievance:manage:list")
+    public R<PageResult<HrGrievance>> page(@ModelAttribute HrGrievanceQuery query) {
+        return R.ok(service.page(query, false));
+    }
+
+    @GetMapping("/statistics")
+    @SaCheckPermission("hr:grievance:manage:list")
+    public R<Map<String, Object>> statistics(@ModelAttribute HrGrievanceQuery query) {
+        return R.ok(service.statistics(query));
+    }
+
+    @GetMapping("/{id}")
+    @SaCheckPermission("hr:grievance:manage:list")
+    public R<Map<String, Object>> get(@PathVariable Long id) { return R.ok(service.detail(id, false)); }
+
+    @GetMapping("/{id}/handlers")
+    @SaCheckPermission("hr:grievance:manage:handle")
+    public R<List<Map<String, Object>>> handlers(@PathVariable Long id) { return R.ok(service.handlers(id)); }
+
+    @SysLog(value = "处理员工申诉", logParams = false)
+    @RepeatSubmit
+    @PostMapping("/{id}/{action}")
+    @SaCheckPermission("hr:grievance:manage:handle")
+    public R<Void> update(@PathVariable Long id, @PathVariable String action, @Validated @RequestBody HrGrievanceAction request) {
+        service.action(id, action, request, false);
+        return R.ok();
+    }
+
+    @SysLog(value = "上传申诉附件", logParams = false)
+    @RepeatSubmit
+    @PostMapping("/files")
+    @SaCheckPermission("hr:grievance:manage:handle")
+    public R<Map<String, Object>> upload(@RequestParam("file") MultipartFile file) { return R.ok(service.upload(file, false)); }
+
+    @GetMapping("/{id}/files/{fileId}")
+    @SaCheckPermission("hr:grievance:manage:list")
+    public ResponseEntity<byte[]> download(@PathVariable Long id, @PathVariable Long fileId) {
+        return service.download(id, fileId, false);
+    }
+}
+
+@RestController
+@RequestMapping("/ess/grievances")
+@RequiredArgsConstructor
+class HrEssGrievanceController {
+    private final HrGrievanceService service;
+
+    @GetMapping
+    @SaCheckPermission("hr:grievance:mine:list")
+    public R<PageResult<HrGrievance>> page(@ModelAttribute HrGrievanceQuery query) { return R.ok(service.page(query, true)); }
+
+    @GetMapping("/{id}")
+    @SaCheckPermission("hr:grievance:mine:list")
+    public R<Map<String, Object>> get(@PathVariable Long id) { return R.ok(service.detail(id, true)); }
+
+    @SysLog(value = "提交本人申诉", logParams = false)
+    @RepeatSubmit
+    @PostMapping
+    @SaCheckPermission("hr:grievance:mine:create")
+    public R<Long> submit(@Validated @RequestBody HrGrievanceRequest request) { return R.ok(service.submit(request)); }
+
+    @SysLog(value = "更新本人申诉", logParams = false)
+    @RepeatSubmit
+    @PostMapping("/{id}/{action}")
+    @SaCheckPermission("hr:grievance:mine:update")
+    public R<Void> update(@PathVariable Long id, @PathVariable String action, @Validated @RequestBody HrGrievanceAction request) {
+        service.action(id, action, request, true);
+        return R.ok();
+    }
+
+    @SysLog(value = "上传本人申诉附件", logParams = false)
+    @RepeatSubmit
+    @PostMapping("/files")
+    @SaCheckPermission("hr:grievance:mine:create")
+    public R<Map<String, Object>> upload(@RequestParam("file") MultipartFile file) { return R.ok(service.upload(file, true)); }
+
+    @GetMapping("/{id}/files/{fileId}")
+    @SaCheckPermission("hr:grievance:mine:list")
+    public ResponseEntity<byte[]> download(@PathVariable Long id, @PathVariable Long fileId) {
+        return service.download(id, fileId, true);
     }
 }

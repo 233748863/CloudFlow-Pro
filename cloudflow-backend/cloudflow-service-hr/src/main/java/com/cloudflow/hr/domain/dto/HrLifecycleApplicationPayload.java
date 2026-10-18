@@ -41,4 +41,7 @@ public class HrLifecycleApplicationPayload {
 
     @TableField(exist = false)
     private JsonNode detailJson;
+
+    @TableField(exist = false)
+    private Long successorUserId;
 }

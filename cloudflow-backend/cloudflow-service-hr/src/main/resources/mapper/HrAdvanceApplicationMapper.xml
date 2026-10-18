@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrAdvanceApplicationMapper">
+    <select id="approvalTaskAdvance" resultType="long" flushCache="true" useCache="false">
+        SELECT advance.advance_id FROM hr_employee_advance advance
+        JOIN wf_process_instance instance ON instance.tenant_id = advance.tenant_id
+          AND instance.instance_id = advance.instance_id AND instance.deleted = 0
+        WHERE advance.tenant_id = #{tenantId}
+          AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessType')) = 'HR_ADVANCE'
+          AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessId')) = CAST(advance.advance_id AS CHAR)
+          AND (EXISTS (SELECT 1 FROM wf_task task WHERE task.tenant_id = instance.tenant_id
+            AND task.instance_id = instance.instance_id AND task.task_id = #{taskId}
+            AND task.assignee = #{userId} AND task.proxy_user_id IS NULL AND task.status = 'TODO'
+            AND instance.status = 'RUNNING' AND advance.approval_status = 'SUBMITTED')
+          OR EXISTS (SELECT 1 FROM wf_task_history history WHERE history.tenant_id = instance.tenant_id
+            AND history.instance_id = instance.instance_id AND history.task_id = #{taskId}
+            AND history.operator_id = #{userId} AND history.on_behalf_of_user_id IS NULL
+            AND ((history.action = 'APPROVE' AND history.task_type = 'APPROVAL')
+              OR (history.action = 'REJECT' AND history.task_type = 'REJECT')
+              OR (history.action IN ('COUNTERSIGN_APPROVE', 'COUNTERSIGN_REJECT') AND history.task_type = 'OR_SIGN'))))
+    </select>
+    <select id="lockWorkflowStatus" resultType="string" flushCache="true" useCache="false">
+        SELECT status FROM wf_process_instance WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId}
+          AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="activeSettlement" resultType="int" flushCache="true" useCache="false">
+        SELECT COUNT(*) FROM hr_final_settlement settlement
+        JOIN hr_employee employee ON employee.tenant_id = settlement.tenant_id AND employee.id = settlement.employee_id
+        WHERE settlement.tenant_id = #{tenantId} AND settlement.employee_id = #{employeeId}
+          AND settlement.settlement_kind = 'NORMAL' AND settlement.superseded_flag = 0
+          AND settlement.relieving_date &gt;= employee.hire_date
+          AND (settlement.status IN ('CONFIRMED', 'PAID', 'CLOSED') OR settlement.approval_status = 'SUBMITTED')
+    </select>
+    <select id="departmentLeaders" resultType="long" flushCache="true" useCache="false">
+        SELECT user_row.user_id FROM sys_dept department
+        JOIN sys_user user_row ON user_row.tenant_id = department.tenant_id
+          AND (CAST(user_row.user_id AS CHAR) = TRIM(department.leader)
+            OR user_row.user_name = TRIM(department.leader) OR user_row.nick_name = TRIM(department.leader))
+        WHERE department.tenant_id = #{tenantId} AND department.dept_id = #{departmentId}
+          AND department.deleted = 0 AND department.status = '0' AND department.leader IS NOT NULL
+          AND TRIM(department.leader) != '' AND user_row.deleted = 0 AND user_row.status = '0'
+        ORDER BY user_row.user_id
+    </select>
+    <select id="occupiedAmount" resultType="java.math.BigDecimal" flushCache="true" useCache="false">
+        SELECT COALESCE(SUM(CASE WHEN paid_time IS NOT NULL THEN outstanding_amount
+                   WHEN approval_status IN ('SUBMITTED', 'APPROVED') THEN advance_amount ELSE 0 END), 0)
+        FROM hr_employee_advance
+        WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId} AND advance_id != #{excludedId}
+    </select>
+    <select id="decisionMatches" resultType="int" flushCache="true" useCache="false">
+        SELECT COUNT(*) FROM hr_employee_advance advance
+        JOIN wf_process_instance instance ON instance.tenant_id = advance.tenant_id
+          AND instance.instance_id = advance.instance_id AND instance.deleted = 0
+        WHERE advance.tenant_id = #{tenantId} AND advance.advance_id = #{advanceId}
+          AND instance.instance_id = #{instanceId} AND instance.status = #{status}
+          AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessType')) = 'HR_ADVANCE'
+          AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessId')) = CAST(#{advanceId} AS CHAR)
+          AND EXISTS (SELECT 1 FROM wf_task_history history WHERE history.tenant_id = instance.tenant_id
+            AND history.instance_id = instance.instance_id AND history.operator_id = #{actor}
+            AND history.operator_id != instance.start_user_id AND history.on_behalf_of_user_id IS NULL
+            AND ((#{status} = 'PASSED' AND history.action = 'COUNTERSIGN_APPROVE' AND history.task_type = 'OR_SIGN')
+              OR (#{status} = 'REJECTED' AND ((history.action = 'REJECT' AND history.task_type = 'REJECT')
+                OR (history.action = 'COUNTERSIGN_REJECT' AND history.task_type = 'OR_SIGN')))))
+    </select>
+    <select id="paymentSource" resultType="com.cloudflow.hr.mapper.HrAdvanceApplicationMapper$PaymentSource" flushCache="true" useCache="false">
+        SELECT id AS payment_id, user_id, source_biz_type, source_biz_id, amount, status, deleted FROM biz_payment_request
+        WHERE tenant_id = #{tenantId} AND id = #{paymentId}
+    </select>
+    <select id="paymentEvent" resultType="string" flushCache="true" useCache="false">
+        SELECT payload_json FROM outbox_event WHERE tenant_id = #{tenantId} AND event_id = #{eventId}
+          AND aggregate_type = 'cloudflow-oa' AND aggregate_id = #{paymentId} AND event_type = 'HR_ADVANCE_PAYMENT_PAID'
+    </select>
+</mapper>

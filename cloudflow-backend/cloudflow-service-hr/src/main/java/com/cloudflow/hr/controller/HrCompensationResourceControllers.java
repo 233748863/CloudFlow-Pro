@@ -50,6 +50,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -66,6 +67,7 @@ class HrCompComponentController {
 
     private final HrTypedCrudService crudService;
     private final ObjectMapper objectMapper;
+    private final com.cloudflow.hr.service.HrRuleSupport support;
 
     @GetMapping("/components")
     @SaCheckPermission("hr:compensation:list")
@@ -80,14 +82,14 @@ class HrCompComponentController {
     @PostMapping("/components")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createComponent(@RequestBody HrCompComponentPayload payload) {
-        return R.ok(crudService.create(HrCompComponent.class, payload));
+        return R.ok(crudService.create(HrCompComponent.class, support.configurationPayload(payload, "id")));
     }
 
     @SysLog("修改HR薪酬项")
     @PutMapping("/components/{id}")
     @SaCheckPermission("hr:compensation:edit")
     public R<Void> updateComponent(@PathVariable Long id, @RequestBody HrCompComponentPayload payload) {
-        crudService.update(HrCompComponent.class, id, payload);
+        crudService.update(HrCompComponent.class, id, support.configurationPayload(payload, "id"));
         return R.ok();
     }
 
@@ -443,6 +445,7 @@ class HrEmployeeBenefitController {
 class HrTaxProfileController {
 
     private final HrTypedCrudService crudService;
+    private final com.cloudflow.hr.service.HrPayrollConfigurationService configuration;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/tax-profiles")
@@ -458,14 +461,15 @@ class HrTaxProfileController {
     @PostMapping("/tax-profiles")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createTaxProfile(@RequestBody HrTaxProfilePayload payload) {
-        return R.ok(crudService.create(HrTaxProfile.class, payload));
+        return R.ok(configuration.saveProfile(null, payload));
     }
 
     @SysLog("修改HR个税档案")
+    @RepeatSubmit
     @PutMapping("/tax-profiles/{id}")
     @SaCheckPermission("hr:compensation:edit")
     public R<Void> updateTaxProfile(@PathVariable Long id, @RequestBody HrTaxProfilePayload payload) {
-        crudService.update(HrTaxProfile.class, id, payload);
+        configuration.saveProfile(id, payload);
         return R.ok();
     }
 }
@@ -476,6 +480,7 @@ class HrTaxProfileController {
 class HrTaxDeductionController {
 
     private final HrTypedCrudService crudService;
+    private final com.cloudflow.hr.service.HrPayrollConfigurationService configuration;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/tax-deductions")
@@ -491,22 +496,251 @@ class HrTaxDeductionController {
     @PostMapping("/tax-deductions")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createTaxDeduction(@RequestBody HrTaxDeductionPayload payload) {
-        return R.ok(crudService.create(HrTaxDeduction.class, payload));
+        return R.ok(configuration.saveDeduction(null, payload));
     }
 
     @SysLog("修改HR个税扣除")
+    @RepeatSubmit
     @PutMapping("/tax-deductions/{id}")
     @SaCheckPermission("hr:compensation:edit")
     public R<Void> updateTaxDeduction(@PathVariable Long id, @RequestBody HrTaxDeductionPayload payload) {
-        crudService.update(HrTaxDeduction.class, id, payload);
+        configuration.saveDeduction(id, payload);
         return R.ok();
     }
 
     @SysLog("删除HR个税扣除")
+    @RepeatSubmit
     @DeleteMapping("/tax-deductions/{id}")
     @SaCheckPermission("hr:compensation:remove")
     public R<Void> deleteTaxDeduction(@PathVariable Long id) {
-        crudService.delete(HrTaxDeduction.class, id);
+        configuration.deleteDeduction(id);
         return R.ok();
+    }
+
+    @SysLog("审核专项扣除证明")
+    @RepeatSubmit
+    @PostMapping("/tax-deductions/{id}/verify")
+    @SaCheckPermission("hr:payroll:verify")
+    public R<Void> verify(@PathVariable Long id, @RequestParam boolean approved, @RequestParam(required = false) String reason) {
+        configuration.verifyDeduction(id, approved, reason);
+        return R.ok();
+    }
+}
+
+@RestController
+@RequestMapping("/compensation/payroll")
+@RequiredArgsConstructor
+class HrPayrollController {
+    private final com.cloudflow.hr.service.HrPayrollBatchService batches;
+    private final com.cloudflow.hr.service.HrPayrollConfigurationService configuration;
+    private final com.cloudflow.hr.service.HrPayrollCorrectionService corrections;
+    private final com.cloudflow.hr.service.HrRuleAsyncExecutor executor;
+    private final com.cloudflow.hr.service.HrSalarySlipPrintService printService;
+    private final com.cloudflow.hr.service.HrRuleProofService proofService;
+
+    @GetMapping("/deductions/{id}/proof")
+    @SaCheckPermission("hr:payroll:verify")
+    public org.springframework.http.ResponseEntity<byte[]> proof(@PathVariable Long id) {
+        return proofService.download(configuration.deduction(id).getProofFileUrl(), "HR_TAX_PROOF");
+    }
+
+    @GetMapping("/config/{resource:periods|tax-slabs|tax-slab-details|structures}")
+    @SaCheckPermission("hr:payroll:list")
+    public R<List<Map<String, Object>>> configurations(@PathVariable String resource, @RequestParam Map<String, Object> query) {
+        return R.ok(configuration.list(resource, query));
+    }
+
+    @SysLog("核定薪资结构计薪口径")
+    @RepeatSubmit
+    @PutMapping("/structures/{id}")
+    @SaCheckPermission("hr:payroll:configure")
+    public R<Void> saveBasis(@PathVariable Long id, @RequestBody com.cloudflow.hr.domain.dto.HrPayrollBasisRequest payload) {
+        configuration.saveBasis(id, payload);
+        return R.ok();
+    }
+
+    @SysLog("创建薪资周期")
+    @RepeatSubmit
+    @PostMapping("/periods")
+    @SaCheckPermission("hr:payroll:configure")
+    public R<Long> createPeriod(@RequestBody com.cloudflow.hr.domain.entity.HrPayrollPeriod payload) {
+        return R.ok(configuration.savePeriod(null, payload));
+    }
+
+    @SysLog("修改薪资周期")
+    @RepeatSubmit
+    @PutMapping("/periods/{id}")
+    @SaCheckPermission("hr:payroll:configure")
+    public R<Long> updatePeriod(@PathVariable Long id, @RequestBody com.cloudflow.hr.domain.entity.HrPayrollPeriod payload) {
+        return R.ok(configuration.savePeriod(id, payload));
+    }
+
+    @SysLog("关闭薪资周期")
+    @RepeatSubmit
+    @PostMapping("/periods/{id}/close")
+    @SaCheckPermission("hr:payroll:configure")
+    public R<Void> closePeriod(@PathVariable Long id) { configuration.closePeriod(id); return R.ok(); }
+
+    @SysLog("创建个税税率表")
+    @RepeatSubmit
+    @PostMapping("/tax-slabs")
+    @SaCheckPermission("hr:payroll:configure")
+    public R<Long> createSlab(@RequestBody com.cloudflow.hr.domain.entity.HrTaxSlab payload) { return R.ok(configuration.saveSlab(null, payload)); }
+
+    @SysLog("修改个税税率表")
+    @RepeatSubmit
+    @PutMapping("/tax-slabs/{id}")
+    @SaCheckPermission("hr:payroll:configure")
+    public R<Long> updateSlab(@PathVariable Long id, @RequestBody com.cloudflow.hr.domain.entity.HrTaxSlab payload) { return R.ok(configuration.saveSlab(id, payload)); }
+
+    @SysLog("配置个税档位")
+    @RepeatSubmit
+    @PutMapping("/tax-slabs/{id}/details")
+    @SaCheckPermission("hr:payroll:configure")
+    public R<Void> saveDetails(@PathVariable Long id, @RequestBody List<com.cloudflow.hr.domain.entity.HrTaxSlabDetail> payload) { configuration.saveDetails(id, payload); return R.ok(); }
+
+    @GetMapping("/batches")
+    @SaCheckPermission("hr:payroll:list")
+    public R<List<com.cloudflow.hr.domain.entity.HrPayrollBatch>> list() { return R.ok(batches.list()); }
+
+    @GetMapping("/batches/{id}")
+    @SaCheckPermission("hr:payroll:list")
+    public R<Map<String, Object>> detail(@PathVariable Long id) { return R.ok(batches.detail(id)); }
+
+    @SysLog("预览算薪员工与前置校验")
+    @RepeatSubmit
+    @PostMapping("/batches/preview")
+    @SaCheckPermission("hr:payroll:create")
+    public R<List<com.cloudflow.hr.domain.entity.HrPayrollBatchEmployee>> preview(@RequestBody com.cloudflow.hr.domain.dto.HrPayrollBatchCreateRequest payload) { return R.ok(batches.preview(payload)); }
+
+    @SysLog("创建薪资批次")
+    @RepeatSubmit
+    @PostMapping("/batches")
+    @SaCheckPermission("hr:payroll:create")
+    public R<Long> create(@RequestBody com.cloudflow.hr.domain.dto.HrPayrollBatchCreateRequest payload) { return R.ok(batches.create(payload)); }
+
+    @SysLog("调整批次员工清单")
+    @RepeatSubmit
+    @PutMapping("/batches/{id}/employees")
+    @SaCheckPermission("hr:payroll:create")
+    public R<Void> employees(@PathVariable Long id, @RequestBody com.cloudflow.hr.domain.dto.HrPayrollBatchCreateRequest payload) { batches.replaceEmployees(id, payload); return R.ok(); }
+
+    @SysLog("计算薪资批次")
+    @RepeatSubmit
+    @PostMapping("/batches/{id}/calculate")
+    @SaCheckPermission("hr:payroll:calculate")
+    public R<String> calculate(@PathVariable Long id) { return R.ok(batches.start(id, false)); }
+
+    @SysLog("重跑算薪失败员工")
+    @RepeatSubmit
+    @PostMapping("/batches/{id}/retry")
+    @SaCheckPermission("hr:payroll:calculate")
+    public R<String> retry(@PathVariable Long id) { return R.ok(batches.start(id, true)); }
+
+    @SysLog("提交薪资批次")
+    @RepeatSubmit
+    @PostMapping("/batches/{id}/submit")
+    @SaCheckPermission("hr:payroll:submit")
+    public R<Void> submit(@PathVariable Long id) { batches.submit(id); return R.ok(); }
+
+    @SysLog("登记批次工资发放")
+    @RepeatSubmit
+    @PostMapping("/batches/{id}/pay")
+    @SaCheckPermission("hr:payroll:pay")
+    public R<Void> pay(@PathVariable Long id) { batches.pay(id); return R.ok(); }
+
+    @SysLog("取消薪资批次")
+    @RepeatSubmit
+    @PostMapping("/batches/{id}/cancel")
+    @SaCheckPermission("hr:payroll:cancel")
+    public R<Void> cancel(@PathVariable Long id) { batches.cancel(id); return R.ok(); }
+
+    @GetMapping("/tasks/{executeNo}")
+    @SaCheckPermission("hr:payroll:calculate")
+    public R<com.cloudflow.common.job.model.JobResult> task(@PathVariable String executeNo) { return R.ok(executor.status(executeNo)); }
+
+    @GetMapping("/slips/preview")
+    @SaCheckPermission("hr:payroll:list")
+    public R<com.cloudflow.hr.domain.entity.HrSalarySlip> previewSalary(@RequestParam Long employeeId, @RequestParam Long periodId, @RequestParam(defaultValue = "false") boolean deductUnverified) {
+        return R.ok(batches.previewSalary(employeeId, periodId, deductUnverified));
+    }
+
+    @GetMapping("/slips/paid-options")
+    @SaCheckPermission("hr:payroll:list")
+    public R<List<Map<String, String>>> paidSalaryOptions(@RequestParam Long employeeId, @RequestParam Long periodId) {
+        return R.ok(batches.paidSalaryOptions(employeeId, periodId));
+    }
+
+    @GetMapping("/slips/{id}")
+    @SaCheckPermission("hr:payroll:list")
+    public R<com.cloudflow.hr.domain.entity.HrSalarySlip> slip(@PathVariable Long id) { return R.ok(batches.salarySlip(id)); }
+
+    @GetMapping("/slips/{id}/pdf")
+    @SaCheckPermission("hr:payroll:list")
+    public org.springframework.http.ResponseEntity<byte[]> print(@PathVariable Long id) { return printService.response(batches.salarySlip(id)); }
+
+    @GetMapping("/corrections")
+    @SaCheckPermission("hr:payroll:list")
+    public R<List<com.cloudflow.hr.domain.entity.HrPayrollCorrection>> corrections() { return R.ok(corrections.list()); }
+
+    @SysLog(value = "发起工资补正审批", logParams = false)
+    @RepeatSubmit
+    @PostMapping("/corrections")
+    @SaCheckPermission("hr:payroll:correct")
+    public R<Long> correct(@RequestBody com.cloudflow.hr.domain.dto.HrPayrollCorrectionRequest payload) { return R.ok(corrections.create(payload)); }
+
+    @SysLog("登记补正工资发放")
+    @RepeatSubmit
+    @PostMapping("/corrections/{id}/pay")
+    @SaCheckPermission("hr:payroll:pay")
+    public R<Void> payCorrection(@PathVariable Long id) { corrections.pay(id); return R.ok(); }
+}
+
+@RestController
+@RequestMapping("/ess/tax-deductions")
+@RequiredArgsConstructor
+class HrEssTaxDeductionController {
+    private final com.cloudflow.hr.service.HrEssSupport essSupport;
+    private final com.cloudflow.hr.service.HrRuleProofService proofService;
+
+    @SysLog(value = "上传本人专项扣除证明", logParams = false)
+    @RepeatSubmit
+    @PostMapping("/proof")
+    @SaCheckPermission("hr:payroll:mine")
+    public R<Map<String, Object>> uploadProof(@RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        essSupport.currentEmployeeId();
+        return R.ok(proofService.upload(file, "HR_TAX_PROOF"));
+    }
+
+    @GetMapping("/{id}/proof")
+    @SaCheckPermission("hr:payroll:mine")
+    public org.springframework.http.ResponseEntity<byte[]> proof(@PathVariable Long id) {
+        HrTaxDeduction deduction = configuration.deduction(id);
+        essSupport.assertOwner(deduction.getEmployeeId());
+        return proofService.download(deduction.getProofFileUrl(), "HR_TAX_PROOF");
+    }
+    private final com.cloudflow.hr.service.HrPayrollConfigurationService configuration;
+
+    @GetMapping
+    @SaCheckPermission("hr:payroll:mine")
+    public R<List<HrTaxDeduction>> list() { return R.ok(configuration.employeeDeductions(essSupport.currentEmployeeId())); }
+
+    @SysLog("员工申报专项扣除")
+    @RepeatSubmit
+    @PostMapping
+    @SaCheckPermission("hr:payroll:mine")
+    public R<Long> declare(@RequestBody HrTaxDeductionPayload payload) {
+        payload.setEmployeeId(essSupport.currentEmployeeId());
+        return R.ok(configuration.saveMyDeduction(null, payload));
+    }
+
+    @SysLog("员工补充专项扣除证明")
+    @RepeatSubmit
+    @PutMapping("/{id}")
+    @SaCheckPermission("hr:payroll:mine")
+    public R<Long> update(@PathVariable Long id, @RequestBody HrTaxDeductionPayload payload) {
+        essSupport.assertOwner(configuration.deduction(id).getEmployeeId());
+        payload.setEmployeeId(essSupport.currentEmployeeId());
+        return R.ok(configuration.saveMyDeduction(id, payload));
     }
 }

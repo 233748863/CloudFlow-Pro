@@ -12,10 +12,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.encrypt.annotation.EncryptField;
+import com.cloudflow.common.message.security.MessagePayloadCodec;
+import com.cloudflow.common.holiday.api.HolidayCalendarService;
 import com.cloudflow.common.sensitive.utils.SensitiveUtils;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.dto.HrAuditSnapshot;
 import com.cloudflow.hr.domain.entity.HrCompGrade;
+import com.cloudflow.hr.domain.entity.HrCandidate;
 import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrPosition;
 import com.cloudflow.hr.exception.HrBusinessException;
@@ -29,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.beans.Introspector;
@@ -52,7 +56,8 @@ public class HrTypedCrudService {
     private static final int DEFAULT_MAX_PAGE_SIZE = 500;
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {};
     private static final Set<String> IGNORED_QUERY_KEYS = Set.of("pageNum", "pageSize", "current", "size", "keyword");
-    private static final Set<String> AUTO_PROPERTIES = Set.of("id", "tenantId", "createTime", "updateTime", "deleted");
+    // DTOs include nullable audit fields: clients must never erase the creator or override the updater.
+    private static final Set<String> AUTO_PROPERTIES = Set.of("id", "tenantId", "createBy", "updateBy", "createTime", "updateTime", "deleted");
     private static final Set<String> HIGH_SENSITIVE_WRITE_TABLES = Set.of(
             "hr_payroll",
             "hr_employee_salary",
@@ -92,7 +97,11 @@ public class HrTypedCrudService {
     private final HrPositionMapper positionMapper;
     private final HrCompGradeMapper compGradeMapper;
     private final HrAuditLogMapper auditLogMapper;
+    private final HrAppraisalGuard appraisalGuard;
+    private final HrRecruitmentIdentityService recruitmentIdentities;
+    private final HrReferralProgressService referralProgress;
     private final com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
+    private final HrGrievanceAccessService grievanceAccess;
 
     private int maxPageSize() {
         return sysConfigHelper.getConfigInt("sys.hr.maxPageSize", DEFAULT_MAX_PAGE_SIZE);
@@ -109,8 +118,14 @@ public class HrTypedCrudService {
     }
 
     public <T> Map<String, Object> page(Class<T> entityClass, Map<String, ?> query) {
+        return page(entityClass, query, wrapper -> { });
+    }
+
+    public <T> Map<String, Object> page(Class<T> entityClass, Map<String, ?> query,
+                                       java.util.function.Consumer<QueryWrapper<T>> restriction) {
         BaseMapper<T> mapper = mapper(entityClass);
         QueryWrapper<T> wrapper = buildQueryWrapper(entityClass, query, false);
+        restriction.accept(wrapper);
         int pageNum = Math.max(1, toInt(query.get("pageNum"), toInt(query.get("current"), 1)));
         int pageSize = Math.min(maxPageSize(), Math.max(1, toInt(query.get("pageSize"), toInt(query.get("size"), 50))));
         IPage<T> page = mapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
@@ -145,22 +160,33 @@ public class HrTypedCrudService {
     @Audit(name = "HR记录创建",
             oldVal = "@hrTypedCrudService.emptySnapshot(#entityClass)",
             newVal = "@hrTypedCrudService.payloadSnapshot(#entityClass, #payload)")
+    @Transactional(rollbackFor = Exception.class)
     public <T> Long create(Class<T> entityClass, Object payload) {
+        assertHWrite(entityClass, null, payload);
         BaseMapper<T> mapper = mapper(entityClass);
         TableInfo tableInfo = tableInfo(entityClass);
         assertWriteAllowed(tableInfo.getTableName());
-        T entity = objectMapper.convertValue(payload, entityClass);
+        T entity = objectMapper.convertValue(MessagePayloadCodec.internalTree(payload, objectMapper), entityClass);
         applyCompGradeAutoFill(entity, tableInfo);
         applyCreateDefaults(entity, tableInfo);
+        verifyRecruitmentWrite(entity, null, null);
+        if (entity instanceof HrCandidate candidate) {
+            recruitmentIdentities.prepareCandidate(candidate, null);
+            referralProgress.verifyCandidateWrite(candidate, null);
+        }
         mapper.insert(entity);
+        if (entity instanceof HrCandidate candidate) recruitmentIdentities.occupyCandidate(candidate);
+        if (isRecruitmentProgress(entity)) referralProgress.recruitmentChanged(entity);
         Long createdId = extractId(entity, tableInfo);
         writeAuditLog(tableInfo.getTableName(), createdId, "CREATE", Map.of(), getAuditRow(entityClass, createdId));
+        invalidateCalendarAssignments(entityClass);
         return createdId;
     }
 
     @Audit(name = "HR记录更新",
             oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
             newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    @Transactional(rollbackFor = Exception.class)
     public <T> void update(Class<T> entityClass, Long id, Object payload) {
         updateInternal(entityClass, id, payload, "UPDATE");
     }
@@ -168,6 +194,7 @@ public class HrTypedCrudService {
     @Audit(name = "HR记录更新",
             oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
             newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    @Transactional(rollbackFor = Exception.class)
     public <T> void updateProperties(Class<T> entityClass, Long id, Map<String, Object> payload) {
         updateInternal(entityClass, id, payload, "UPDATE");
     }
@@ -175,6 +202,7 @@ public class HrTypedCrudService {
     @Audit(name = "HR工作流回调状态变更",
             oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
             newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    @Transactional(rollbackFor = Exception.class)
     public <T> boolean updatePropertiesIfWorkflowInstanceMatches(Class<T> entityClass,
                                                                  Long id,
                                                                  String workflowInstanceId,
@@ -186,6 +214,7 @@ public class HrTypedCrudService {
     @Audit(name = "HR工作流回调状态变更",
             oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
             newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    @Transactional(rollbackFor = Exception.class)
     public <T> boolean updatePropertiesIfWorkflowInstanceMatchesAndCurrentStatusIn(
             Class<T> entityClass,
             Long id,
@@ -202,10 +231,13 @@ public class HrTypedCrudService {
             oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
             newVal = "@hrTypedCrudService.emptySnapshot(#entityClass)",
             highRisk = true)
+    @Transactional(rollbackFor = Exception.class)
     public <T> void delete(Class<T> entityClass, Long id) {
+        assertHWrite(entityClass, id, Map.of());
         BaseMapper<T> mapper = mapper(entityClass);
         TableInfo tableInfo = tableInfo(entityClass);
         assertWriteAllowed(tableInfo.getTableName());
+        if (entityClass == HrCandidate.class) recruitmentIdentities.requireCandidate(id);
         T entity = mapper.selectById(id);
         if (entity == null) {
             return;
@@ -215,21 +247,43 @@ public class HrTypedCrudService {
             throw new HrBusinessException("SALARY_SLIP_IMMUTABLE",
                     "已归档或已发布工资条禁止删除，记录ID：" + id);
         }
+        int affected;
         if (hasProperty(tableInfo, "deleted")) {
-            setProperty(entity, "deleted", 1);
             setProperty(entity, "updateBy", currentUserName());
-            mapper.updateById(entity);
+            if (tableInfo.isWithLogicDelete()) {
+                UpdateWrapper<T> wrapper = new UpdateWrapper<>();
+                wrapper.eq(tableInfo.getKeyColumn(), id);
+                if (hasProperty(tableInfo, "tenantId")) {
+                    wrapper.eq(columnOf(tableInfo, "tenantId"), currentTenantId());
+                }
+                wrapper.set(tableInfo.getLogicDeleteFieldInfo().getColumn(), tableInfo.getLogicDeleteFieldInfo().getLogicDeleteValue());
+                affected = mapper.update(entity, wrapper);
+            } else {
+                setProperty(entity, "deleted", 1);
+                affected = mapper.updateById(entity);
+            }
         } else {
-            mapper.deleteById(id);
+            affected = mapper.deleteById(id);
+        }
+        if (affected != 1) {
+            throw HrHException.conflict("DELETE_CONFLICT", "记录已变化，删除未成功，请刷新后重试");
         }
         writeAuditLog(tableInfo.getTableName(), id, "DELETE", before, Map.of());
+        invalidateCalendarAssignments(entityClass);
     }
 
     @Audit(name = "HR记录状态变更",
             oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
             newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    @Transactional(rollbackFor = Exception.class)
     public <T> void changeStatus(Class<T> entityClass, Long id, String action) {
         updateInternal(entityClass, id, Map.of("status", statusFromAction(action)), "STATUS");
+    }
+
+    private void invalidateCalendarAssignments(Class<?> entityClass) {
+        if (List.of("hr_employee", "hr_shift", "hr_schedule_assignment").contains(tableInfo(entityClass).getTableName())) {
+            applicationContext.getBean(HolidayCalendarService.class).invalidateAssignments();
+        }
     }
 
     public <T> HrAuditSnapshot snapshot(Class<T> entityClass, Long id) {
@@ -237,7 +291,7 @@ public class HrTypedCrudService {
     }
 
     public <T> HrAuditSnapshot payloadSnapshot(Class<T> entityClass, Object payload) {
-        return new HrAuditSnapshot(tableInfo(entityClass).getTableName(), null, toMap(payload));
+        return new HrAuditSnapshot(tableInfo(entityClass).getTableName(), null, hAuditValues(tableInfo(entityClass).getTableName(), toMap(payload)));
     }
 
     public <T> HrAuditSnapshot emptySnapshot(Class<T> entityClass) {
@@ -270,6 +324,11 @@ public class HrTypedCrudService {
         return objectMapper.convertValue(payload, MAP_TYPE);
     }
 
+    public Map<String, Object> toInternalMap(Object payload) {
+        if (payload == null) return Map.of();
+        return objectMapper.convertValue(MessagePayloadCodec.internalTree(payload, objectMapper), MAP_TYPE);
+    }
+
     private <T> void updateInternal(Class<T> entityClass, Long id, Object payload, String operationType) {
         updateInternal(entityClass, id, payload, operationType, null);
     }
@@ -292,9 +351,12 @@ public class HrTypedCrudService {
                                        String currentStatusProperty,
                                        Collection<String> allowedCurrentStatuses,
                                        String... instanceProperties) {
+        assertHWrite(entityClass, id, payload);
         BaseMapper<T> mapper = mapper(entityClass);
         TableInfo tableInfo = tableInfo(entityClass);
         assertWriteAllowed(tableInfo.getTableName());
+        HrCandidate previousCandidate = entityClass == HrCandidate.class ? objectMapper.convertValue(
+                MessagePayloadCodec.internalTree(recruitmentIdentities.requireCandidate(id), objectMapper), HrCandidate.class) : null;
         T entity = mapper.selectById(id);
         if (entity == null) {
             return false;
@@ -304,7 +366,7 @@ public class HrTypedCrudService {
             throw new HrBusinessException("SALARY_SLIP_IMMUTABLE",
                     "已归档或已发布工资条禁止修改，记录ID：" + id);
         }
-        Map<String, Object> payloadMap = toMap(payload);
+        Map<String, Object> payloadMap = toInternalMap(payload);
         if (payloadMap.isEmpty()) {
             return false;
         }
@@ -313,6 +375,14 @@ public class HrTypedCrudService {
         Set<String> normalizedAllowedStatuses = normalizeStatuses(allowedCurrentStatuses);
         Set<String> nullColumns = new LinkedHashSet<>();
         applyPayload(entityClass, entity, payloadMap, tableInfo, nullColumns);
+        verifyRecruitmentWrite(entity, before, workflowInstanceId);
+        if (entity instanceof HrCandidate candidate) {
+            referralProgress.verifyCandidateWrite(candidate, previousCandidate);
+            recruitmentIdentities.prepareCandidate(candidate, previousCandidate);
+            recruitmentIdentities.occupyCandidateHistory(candidate, previousCandidate);
+            if (candidate.getPhone() == null) nullColumns.add("phone");
+            if (candidate.getEmail() == null) nullColumns.add("email");
+        }
         setProperty(entity, "updateBy", currentUserName());
         UpdateWrapper<T> wrapper = new UpdateWrapper<>();
         wrapper.eq(tableInfo.getKeyColumn(), id);
@@ -352,8 +422,25 @@ public class HrTypedCrudService {
             }
             throw new IllegalStateException("HR记录更新失败：" + tableInfo.getTableName() + "#" + id);
         }
+        if (isRecruitmentProgress(entity)) referralProgress.recruitmentChanged(entity);
         writeAuditLog(tableInfo.getTableName(), id, operationType, before, getAuditRow(entityClass, id));
+        invalidateCalendarAssignments(entityClass);
         return true;
+    }
+
+    private boolean isRecruitmentProgress(Object entity) {
+        return entity instanceof HrCandidate || entity instanceof com.cloudflow.hr.domain.entity.HrInterview
+                || entity instanceof com.cloudflow.hr.domain.entity.HrOffer;
+    }
+
+    private void verifyRecruitmentWrite(Object entity, Map<String, Object> previous, String workflowInstanceId) {
+        if (entity instanceof com.cloudflow.hr.domain.entity.HrOffer offer) {
+            if (previous == null && offer.getStatus() == null) offer.setStatus("DRAFT");
+            if (!StringUtils.hasText(workflowInstanceId) && (offer.getProcessInstanceId() != null || !"DRAFT".equals(offer.getStatus())
+                    || previous != null && !"DRAFT".equals(previous.get("status")))) throw HrHException.conflict("OFFER_WORKFLOW_REQUIRED", "录用仅允许编辑未提交的草稿，审批结果由真实流程回写");
+            if (!StringUtils.hasText(workflowInstanceId)) recruitmentIdentities.requireCandidate(offer.getCandidateId());
+        }
+        if (entity instanceof com.cloudflow.hr.domain.entity.HrInterview interview) recruitmentIdentities.requireCandidate(interview.getCandidateId());
     }
 
     private String resolveCurrentStatusProperty(TableInfo tableInfo,
@@ -490,7 +577,37 @@ public class HrTypedCrudService {
         }
     }
 
+    public HrEmployeeReadScope employeeReadScope() {
+        return HrEmployeeReadScope.from(isPrivilegedUser(), UserContext.getDsType(), UserContext.getUserId(),
+                currentUserName(), UserContext.getDsDeptIds());
+    }
+
     private <T> void appendDataScope(QueryWrapper<T> wrapper, TableInfo tableInfo) {
+        appraisalGuard.legacyRead(wrapper, tableInfo.getTableName());
+        if ("hr_employee".equals(tableInfo.getTableName())) {
+            employeeReadScope().restrict(wrapper);
+            return;
+        }
+        if ("hr_labor_dispute".equals(tableInfo.getTableName())) {
+            HrGrievanceAccessService.DisputeReadScope scope = grievanceAccess.disputeReadScope();
+            // Keep tenant/deletion/filter predicates outside the additional per-case read grant.
+            wrapper.eq("tenant_id", currentTenantId())
+                    .notIn(!scope.excluded().isEmpty(), tableInfo.getKeyColumn(), scope.excluded());
+            if (scope.allowed().isEmpty()) {
+                appendStandardDataScope(wrapper, tableInfo);
+            } else {
+                wrapper.and(read -> read.nested(standard -> {
+                    // An unrestricted role still needs a nonempty original-scope branch.
+                    standard.eq("tenant_id", currentTenantId());
+                    appendStandardDataScope(standard, tableInfo);
+                }).or().in(tableInfo.getKeyColumn(), scope.allowed()));
+            }
+            return;
+        }
+        appendStandardDataScope(wrapper, tableInfo);
+    }
+
+    private <T> void appendStandardDataScope(QueryWrapper<T> wrapper, TableInfo tableInfo) {
         if (isPrivilegedUser()) {
             return;
         }
@@ -721,7 +838,46 @@ public class HrTypedCrudService {
         }
         BaseMapper<?> mapper = mapper(entityClass);
         Object entity = mapper.selectById(id);
-        return entity == null ? Map.of() : toResponseMap(entity);
+        return entity == null ? Map.of() : hAuditValues(tableInfo(entityClass).getTableName(), toResponseMap(entity));
+    }
+
+    private <T> void assertHWrite(Class<T> type, Long id, Object payload) {
+        String table = tableInfo(type).getTableName(); Map<String, Object> values = toMap(payload);
+        if (Set.of("hr_appraisal_cycle", "hr_appraisal_kra", "hr_appraisal_result").contains(table)) {
+            throw new HrHException("APPRAISAL_DEDICATED_ENTRY_REQUIRED", "绩效周期须使用独立业务入口", 403);
+        }
+        if (Set.of("hr_performance_objective", "hr_performance_assignment", "hr_performance_result", "hr_perf_distribution_rule", "hr_talent_calibration_session").contains(table)) {
+            if (id != null) appraisalGuard.legacyEntity(mapper(type).selectById(id));
+            appraisalGuard.legacyEntity(objectMapper.convertValue(values, type));
+        }
+        if (List.of("hr_skill", "hr_position_skill", "hr_employee_skill").contains(table)) {
+            throw new HrHException("SKILL_BUSINESS_ENTRY_REQUIRED", "技能数据须使用独立的核定或本人自报入口", 403);
+        }
+        if ("hr_training_course".equals(table) && (values.containsKey("skillId") || values.containsKey("targetLevel")
+                || values.containsKey("skill_id") || values.containsKey("target_level")
+                || payload instanceof com.cloudflow.hr.domain.dto.HrTrainingCoursePayload coursePayload && coursePayload.isSkillTargetSupplied())) {
+            throw new HrHException("SKILL_TARGET_ENTRY_REQUIRED", "课程技能目标须由授权HR在技能管理中配置", 403);
+        }
+        if (List.of("hr_overtime_request", "hr_shift_request", "hr_overtime_type", "hr_employee_referral").contains(table)) throw new HrBusinessException("H_BUSINESS_ENTRY_REQUIRED", "该记录须使用独立业务入口");
+        if (!List.of("hr_time_request", "hr_comp_change", "hr_schedule_assignment").contains(table)) return;
+        Object existing = id == null ? null : mapper(type).selectById(id);
+        Map<String, Object> previous = existing == null ? Map.of() : toResponseMap(existing);
+        if ("hr_time_request".equals(table) && ("OVERTIME".equalsIgnoreCase(String.valueOf(values.get("requestType"))) || "OVERTIME".equalsIgnoreCase(String.valueOf(previous.get("requestType"))))) throw new HrBusinessException("OVERTIME_LEGACY_DISABLED", "加班须使用独立申请入口");
+        if ("hr_comp_change".equals(table) && (List.of("HR_OVERTIME", "HR_REFERRAL", "CRM_COMMISSION").contains(Objects.toString(previous.get("sourceBizType"), ""))
+                || values.get("sourceBizType") != null || values.get("sourceBizId") != null)) {
+            String code = "HR_OVERTIME".equals(previous.get("sourceBizType")) || "HR_OVERTIME".equals(values.get("sourceBizType"))
+                    ? "OVERTIME_SOURCE_IMMUTABLE" : "AUTOMATIC_SOURCE_IMMUTABLE";
+            throw new HrBusinessException(code, "自动工资变动不能被普通新增、修改、删除或改状态入口改写");
+        }
+        if ("hr_schedule_assignment".equals(table) && (previous.get("sourceShiftRequestId") != null || values.get("sourceShiftRequestId") != null)) throw new HrBusinessException("H_SCHEDULE_IMMUTABLE", "审批调班来源仅允许内部应用写入");
+    }
+
+    private Map<String, Object> hAuditValues(String table, Map<String, Object> values) {
+        if (!List.of("hr_overtime_request", "hr_shift_request").contains(table) && !("hr_comp_change".equals(table)
+                && List.of("HR_OVERTIME", "CRM_COMMISSION").contains(Objects.toString(values.get("sourceBizType"), "")))) return values;
+        Map<String, Object> safe = new LinkedHashMap<>();
+        for (String field : List.of("tenantId", "id", "requestId", "employeeId", "status", "version", "sourceBizType", "sourceBizId", "payrollPeriodId", "settlementStatus", "applicationStatus")) if (values.containsKey(field)) safe.put(field, values.get(field));
+        return safe;
     }
 
     private Map<String, Object> toResponseMap(Object entity) {
@@ -744,8 +900,8 @@ public class HrTypedCrudService {
                     operationType,
                     UserContext.getUserId(),
                     currentUserName(),
-                    writeJsonSafely(before),
-                    writeJsonSafely(after)
+                    writeJsonSafely(hAuditValues(tableName, before)),
+                    writeJsonSafely(hAuditValues(tableName, after))
             );
         } catch (Exception ignored) {
         }

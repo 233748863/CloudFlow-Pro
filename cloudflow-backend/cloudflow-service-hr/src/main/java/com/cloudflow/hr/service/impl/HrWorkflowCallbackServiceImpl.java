@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.message.security.MessagePayloadCodec;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
@@ -40,7 +41,6 @@ import com.cloudflow.hr.mapper.HrMallOrderMapper;
 import com.cloudflow.hr.mapper.HrOfferMapper;
 import com.cloudflow.hr.mapper.HrPositionMapper;
 import com.cloudflow.hr.mapper.HrRecruitmentRequisitionMapper;
-import com.cloudflow.hr.mapper.HrSelfServiceMessageMapper;
 import com.cloudflow.hr.mapper.HrTalentReviewParticipantMapper;
 import com.cloudflow.hr.mapper.HrTalentSuccessorMapper;
 import com.cloudflow.hr.mapper.HrTrainingEnrollmentMapper;
@@ -52,7 +52,9 @@ import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.hr.service.IHrMallOrderService;
 import com.cloudflow.hr.service.IHrTalentPoolService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.hr.service.HrLeaveBusinessService;
 import com.cloudflow.hr.service.HrEmployeeOnboardingService;
+import com.cloudflow.hr.service.HrMessageService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -104,14 +106,26 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
     private final HrTalentReviewParticipantMapper talentReviewParticipantMapper;
     private final HrTalentSuccessorMapper talentSuccessorMapper;
     private final IHrTalentPoolService talentPoolService;
-    private final HrSelfServiceMessageMapper selfServiceMessageMapper;
+    private final HrMessageService messageService;
     private final HrMallOrderMapper mallOrderMapper;
     private final IHrMallOrderService mallOrderService;
     private final HrWorkInjuryMapper workInjuryMapper;
     private final WfCallbackSideEffectMapper callbackSideEffectMapper;
+    private final HrLeaveBusinessService leaveBusinessService;
+    private final com.cloudflow.hr.service.HrPayrollCorrectionService payrollCorrectionService;
+    private final com.cloudflow.hr.service.HrAttendanceBusinessService attendanceBusinessService;
+    private final com.cloudflow.hr.service.HrRuleSupport ruleSupport;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final com.cloudflow.hr.service.HrOvertimeService overtimeService;
+    private final com.cloudflow.hr.service.HrShiftRequestService shiftRequestService;
+    private final com.cloudflow.hr.service.HrReferralProgressService referralProgress;
+    private final com.cloudflow.hr.service.HrReferralBonusService referralBonus;
+    private final com.cloudflow.hr.service.HrRecruitmentApprovalService recruitmentApproval;
+    private final com.cloudflow.hr.service.HrAdvanceApplicationService advanceApplications;
+    private final com.cloudflow.hr.service.HrSettlementWorkflowService settlementWorkflow;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void handleApprovalResult(ApprovalResultDTO dto) {
         log.info("收到审批结果回调，businessType: {}, businessId: {}, result: {}, processInstanceId: {}",
                 dto.getBusinessType(), dto.getBusinessId(), dto.getApprovalResult(), dto.getProcessInstanceId());
@@ -124,25 +138,28 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             Long previousTenantId = UserContext.getTenantId();
             UserContext.setTenantId(tid);
             try {
-                CallbackTarget target = resolveTarget(dto.getBusinessType());
-                String status = resolveStatus(dto.getBusinessType(), dto.getApprovalResult());
-                boolean updated = crudService.updatePropertiesIfWorkflowInstanceMatchesAndCurrentStatusIn(
-                        target.entityClass(),
-                        dto.getBusinessId(),
-                        dto.getProcessInstanceId(),
-                        target.statusField(),
-                        allowedCurrentStatuses(target),
-                        Map.of(target.statusField(), status),
-                        target.instanceField());
-                if (!updated) {
-                    log.warn("HR审批回调未命中当前流程实例、当前状态已非审批中或已处理，跳过副作用: businessType={}, businessId={}, instanceId={}",
-                            dto.getBusinessType(), dto.getBusinessId(), dto.getProcessInstanceId());
-                    return;
+                if ("HR_OVERTIME".equals(dto.getBusinessType())) { com.cloudflow.hr.service.HrHSupport.runAsTenant(tid, () -> overtimeService.onApproval(dto)); return; }
+                if ("HR_SHIFT_REQUEST".equals(dto.getBusinessType())) { com.cloudflow.hr.service.HrHSupport.runAsTenant(tid, () -> shiftRequestService.onApproval(dto)); return; }
+                if ("HR_REFERRAL".equals(dto.getBusinessType())) { com.cloudflow.hr.service.HrHSupport.runAsTenant(tid, () -> referralBonus.onApproval(dto)); return; }
+                if ("HR_ADVANCE".equals(dto.getBusinessType())) { com.cloudflow.hr.service.HrHSupport.runAsTenant(tid, () -> advanceApplications.onApproval(dto)); return; }
+                if ("HR_SETTLEMENT".equals(dto.getBusinessType())) { com.cloudflow.hr.service.HrHSupport.runAsTenant(tid, () -> settlementWorkflow.onApproval(dto)); return; }
+                if ("HR_PAYROLL_CORRECTION".equals(dto.getBusinessType())) {
+                    java.util.concurrent.atomic.AtomicBoolean handled = new java.util.concurrent.atomic.AtomicBoolean();
+                    com.cloudflow.hr.service.HrHSupport.runAsTenant(tid, () -> handled.set(payrollCorrectionService.handleOvertimeApproval(dto)
+                            || payrollCorrectionService.handleAdvanceApproval(dto)));
+                    if (handled.get()) return;
                 }
-                applySideEffects(dto, target, status);
-                log.info("审批回调已写入 HR 表，businessType: {}, businessId: {}, entity: {}, statusField: {}, status: {}",
-                        dto.getBusinessType(), dto.getBusinessId(),
-                        target.entityClass().getSimpleName(), target.statusField(), status);
+                CallbackTarget target = resolveTarget(dto.getBusinessType());
+                if ("OFFER".equals(dto.getBusinessType())) recruitmentApproval.verifyResult(dto);
+                String status = resolveStatus(dto.getBusinessType(), dto.getApprovalResult());
+                Runnable action = () -> applyCallbackResult(dto, target, status);
+                if (target.entityClass() == HrTimeRequest.class) leaveBusinessService.withRequestLock(dto.getBusinessId(), action);
+                else if (target.entityClass() == com.cloudflow.hr.domain.entity.HrPayrollCorrection.class) payrollCorrectionService.withCorrectionLock(dto.getBusinessId(), action);
+                else if (target.entityClass() == com.cloudflow.hr.domain.entity.HrAttendanceAppeal.class) {
+                    Map<String, Object> appeal = crudService.get(target.entityClass(), dto.getBusinessId());
+                    String month = java.time.YearMonth.from(java.time.LocalDate.parse(String.valueOf(appeal.get("attendanceDate")))).toString();
+                    ruleSupport.locked("attendance:" + appeal.get("employeeId") + ":" + month, () -> { action.run(); return null; });
+                } else action.run();
             } catch (Exception e) {
                 log.error("处理审批结果失败，businessType: {}, businessId: {}",
                         dto.getBusinessType(), dto.getBusinessId(), e);
@@ -153,7 +170,26 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
         });
     }
 
+    private void applyCallbackResult(ApprovalResultDTO dto, CallbackTarget target, String status) {
+        boolean updated = crudService.updatePropertiesIfWorkflowInstanceMatchesAndCurrentStatusIn(
+                target.entityClass(), dto.getBusinessId(), dto.getProcessInstanceId(), target.statusField(),
+                allowedCurrentStatuses(target), Map.of(target.statusField(), status), target.instanceField());
+        if (!updated) {
+            log.warn("HR审批回调未命中当前流程实例或已处理，跳过副作用: businessType={}, businessId={}, instanceId={}",
+                    dto.getBusinessType(), dto.getBusinessId(), dto.getProcessInstanceId());
+            return;
+        }
+        applySideEffects(dto, target, status);
+        log.info("审批回调已写入HR，businessType={}, businessId={}, status={}", dto.getBusinessType(), dto.getBusinessId(), status);
+    }
+
     private Set<String> allowedCurrentStatuses(CallbackTarget target) {
+        if (target != null && target.entityClass() == HrTalentSuccessionPlan.class) {
+            return Set.of("IN_PROGRESS");
+        }
+        if (target != null && target.entityClass() == HrWorkInjury.class) {
+            return Set.of("DETERMINING");
+        }
         if (target != null && target.entityClass() == HrContractSignature.class) {
             return CONTRACT_SIGN_APPROVING_STATUSES;
         }
@@ -167,7 +203,7 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             case "OFFER" -> new CallbackTarget(HrOffer.class, "status", null);
             case "ONBOARDING", "PROBATION", "PROBATION_CONFIRMATION", "TRANSFER", "RESIGNATION" ->
                     new CallbackTarget(HrLifecycleApplication.class, "status", null);
-            case "LEAVE", "OVERTIME", "ATTENDANCE_SUPPLEMENT" ->
+            case "LEAVE", "TIME_REQUEST", "ATTENDANCE_SUPPLEMENT" ->
                     new CallbackTarget(HrTimeRequest.class, "status", null);
             case "SALARY_ADJUSTMENT" -> new CallbackTarget(HrCompChange.class, "status", null);
             case "PERFORMANCE_PLAN" ->
@@ -185,6 +221,7 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             case "LABOR_DISPUTE" -> new CallbackTarget(HrLaborDispute.class, "status", null);
             case "ATTENDANCE_APPEAL" -> new CallbackTarget(
                     com.cloudflow.hr.domain.entity.HrAttendanceAppeal.class, "status", "instanceId");
+            case "PAYROLL_CORRECTION" -> new CallbackTarget(com.cloudflow.hr.domain.entity.HrPayrollCorrection.class, "status", "instanceId");
             default -> throw new HrBusinessException("UNSUPPORTED_BUSINESS_TYPE",
                     "不支持的业务类型：" + businessType);
         };
@@ -229,6 +266,21 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
     }
 
     private void applySideEffects(ApprovalResultDTO dto, CallbackTarget target, String status) {
+        if (target.entityClass() == com.cloudflow.hr.domain.entity.HrPayrollCorrection.class) {
+            runSideEffectOnce(dto, "PAYROLL_CORRECTION_" + status, () -> payrollCorrectionService.onApproval(dto.getBusinessId(), status));
+            return;
+        }
+        if (target.entityClass() == com.cloudflow.hr.domain.entity.HrAttendanceAppeal.class && "APPROVED".equals(status)) {
+            runSideEffectOnce(dto, "ATTENDANCE_APPEAL_ADJUST", () -> attendanceBusinessService.applyAppeal(objectMapper.convertValue(
+                    crudService.get(target.entityClass(), dto.getBusinessId()), com.cloudflow.hr.domain.entity.HrAttendanceAppeal.class)));
+            return;
+        }
+        if (target.entityClass() == HrTimeRequest.class
+                && ("APPROVED".equals(status) || "REJECTED".equals(status))) {
+            runSideEffectOnce(dto, "LEAVE_QUOTA_" + status,
+                    () -> leaveBusinessService.onApproval(dto.getBusinessId(), status));
+            return;
+        }
         if (target.entityClass() == HrLifecycleApplication.class && "APPROVED".equals(status)) {
             Map<String, Object> application = crudService.get(HrLifecycleApplication.class, dto.getBusinessId());
             if ("ONBOARDING".equalsIgnoreCase(String.valueOf(application.get("type")))
@@ -304,17 +356,10 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
                                 .eq("status", "ACTIVE")
                                 .eq("deleted", 0));
                 for (HrTalentSuccessor s : successors) {
-                    com.cloudflow.hr.domain.entity.HrSelfServiceMessage msg =
-                            new com.cloudflow.hr.domain.entity.HrSelfServiceMessage();
-                    msg.setTenantId(tenantId);
-                    msg.setEmployeeId(s.getEmployeeId());
-                    msg.setCategory("TALENT_SUCCESSION");
-                    msg.setTitle("您已被提名为关键岗位继任人");
-                    msg.setSummary("继任计划已发布，请关注后续发展路径与培养计划。");
-                    msg.setRelatedId(planId);
-                    msg.setLinkUrl("/hr/talent/archive");
-                    msg.setReadFlag(false);
-                    selfServiceMessageMapper.insert(msg);
+                    messageService.sendToEmployee(tenantId, s.getEmployeeId(), "BIZ_REMINDER",
+                            "您已被提名为关键岗位继任人",
+                            "继任计划已发布，请关注后续发展路径与培养计划。",
+                            "/hr/talent/archive", "HR_TALENT_SUCCESSION", planId);
                 }
                 log.info("继任计划发布回调完成，planId={}, 通知继任人数={}", planId, successors.size());
             });
@@ -341,18 +386,11 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
                         Map.of("determinedAt", LocalDateTime.now()));
                 HrWorkInjury injury = workInjuryMapper.selectById(injuryId);
                 if (injury != null && injury.getEmployeeId() != null) {
-                    com.cloudflow.hr.domain.entity.HrSelfServiceMessage msg =
-                            new com.cloudflow.hr.domain.entity.HrSelfServiceMessage();
-                    msg.setTenantId(tenantId);
-                    msg.setEmployeeId(injury.getEmployeeId());
-                    msg.setCategory("WORK_INJURY");
-                    msg.setTitle("工伤认定结果通知");
-                    msg.setSummary("您的工伤认定已审批通过，伤残等级："
-                            + (injury.getDeterminedGrade() == null ? "待定" : injury.getDeterminedGrade()));
-                    msg.setRelatedId(injuryId);
-                    msg.setLinkUrl("/hr/work-injury-list");
-                    msg.setReadFlag(false);
-                    selfServiceMessageMapper.insert(msg);
+                    messageService.sendToEmployee(tenantId, injury.getEmployeeId(), "BIZ_REMINDER",
+                            "工伤认定结果通知",
+                            "您的工伤认定已审批通过，伤残等级："
+                                    + (injury.getDeterminedGrade() == null ? "待定" : injury.getDeterminedGrade()),
+                            "/hr/work-injury-list", "HR_WORK_INJURY", injuryId);
                 }
                 log.info("工伤认定回调完成，injuryId={}", injuryId);
             });
@@ -401,6 +439,8 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
 
         Long userId = ensureUserAccount(tenantId, offer, candidate, requisition, position);
         HrEmployee employee = ensureEmployeeProfile(tenantId, offer, candidate, requisition, position, userId);
+
+        if (referralProgress.offerEmployment(offer, employee)) return;
 
         boolean candidateWasHired = "HIRED".equalsIgnoreCase(candidate.getStatus());
         UpdateWrapper<HrCandidate> candidateUpdate = new UpdateWrapper<>();
@@ -451,7 +491,7 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             createDTO.setPostIds(postIds);
         }
 
-        R<Long> createResp = authServiceClient.createUser(createDTO);
+        R<Long> createResp = authServiceClient.createUser(MessagePayloadCodec.internalTree(createDTO, objectMapper));
         if (createResp == null || !createResp.isSuccess() || createResp.getData() == null) {
             String msg = createResp == null ? "Auth 服务无响应" : createResp.getMsg();
             throw new HrBusinessException("AUTO_CREATE_USER_FAILED", "Offer 自动建号失败：" + msg);

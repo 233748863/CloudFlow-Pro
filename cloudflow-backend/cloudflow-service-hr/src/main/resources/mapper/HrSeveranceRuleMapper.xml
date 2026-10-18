@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrSeveranceRuleMapper">
+    <select id="lock" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT rule_id FROM hr_severance_rule
+        WHERE tenant_id = #{tenantId} AND rule_id = #{identifier}
+        FOR UPDATE
+    </select>
+    <select id="referenced" resultType="int" flushCache="true" useCache="false">
+        SELECT COUNT(*) FROM hr_final_settlement WHERE tenant_id = #{tenantId} AND rule_id = #{identifier}
+    </select>
+    <update id="updateDraft">
+        UPDATE hr_severance_rule SET rule_name = #{record.ruleName}, effective_from = #{record.effectiveFrom},
+            effective_to = #{record.effectiveTo}, salary_component_ids = #{record.salaryComponentIds,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            averaging_months = #{record.averagingMonths}, service_rounding = #{record.serviceRounding},
+            social_monthly_salary = #{record.socialMonthlySalary}, base_cap_multiplier = #{record.baseCapMultiplier},
+            max_compensation_months = #{record.maxCompensationMonths}, notice_months = #{record.noticeMonths},
+            leave_daily_divisor = #{record.leaveDailyDivisor}, leave_hours_per_day = #{record.leaveHoursPerDay},
+            leave_cash_multiplier = #{record.leaveCashMultiplier}, policy_file_id = #{record.policyFileId},
+            status = #{record.status}, confirmed_by = #{record.confirmedBy}, confirmed_time = #{record.confirmedTime},
+            remark = #{record.remark}, version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND rule_id = #{record.ruleId} AND version = #{expectedVersion}
+          AND deleted = 0 AND status = 'DRAFT'
+          AND NOT EXISTS (SELECT 1 FROM hr_final_settlement WHERE tenant_id = #{record.tenantId} AND rule_id = #{record.ruleId})
+    </update>
+    <select id="components" resultType="com.cloudflow.hr.domain.vo.settlement.HrSeveranceRuleView$Component">
+        SELECT id AS value, component_name AS label, component_type, version FROM hr_comp_component
+        WHERE tenant_id = #{tenantId} AND status = 1 AND component_type IN ('FIXED','VARIABLE','EARNING')
+        ORDER BY sort_order, id
+    </select>
+    <select id="lockComponent" resultType="com.cloudflow.hr.domain.vo.settlement.HrSeveranceRuleView$Component" flushCache="true" useCache="false">
+        SELECT id AS value, component_name AS label, component_type, version FROM hr_comp_component
+        WHERE tenant_id = #{tenantId} AND id = #{identifier} AND status = 1 AND component_type IN ('FIXED','VARIABLE','EARNING')
+        FOR UPDATE
+    </select>
+    <select id="policyFile" resultType="com.cloudflow.hr.mapper.HrSeveranceRuleMapper$PolicyFile" flushCache="true" useCache="false">
+        SELECT file_id, file_name, file_size, file_hash FROM sys_file
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_SEVERANCE_POLICY'
+          AND biz_type = 'HR_SEVERANCE_POLICY' AND biz_id = #{identifier} AND deleted = 0 AND url = ''
+    </select>
+    <update id="bindPolicyFile">
+        UPDATE sys_file SET biz_type = 'HR_SEVERANCE_POLICY', biz_id = #{identifier}, file_hash = #{hash}
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_SEVERANCE_POLICY'
+          AND deleted = 0 AND biz_type IS NULL AND biz_id IS NULL AND url = '' AND create_by = #{uploader}
+    </update>
+    <update id="retirePolicyFile">
+        UPDATE sys_file SET deleted = 1 WHERE tenant_id = #{tenantId} AND file_id = #{fileId}
+          AND file_type = 'HR_SEVERANCE_POLICY' AND biz_type = 'HR_SEVERANCE_POLICY' AND biz_id = #{identifier}
+          AND deleted = 0 AND url = ''
+    </update>
+</mapper>

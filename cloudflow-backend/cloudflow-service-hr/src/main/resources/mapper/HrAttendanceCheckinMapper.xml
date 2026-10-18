@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrAttendanceCheckinMapper">
+    <select id="selectEmployeeDates" resultType="com.cloudflow.hr.domain.entity.HrAttendanceCheckin">
+        SELECT * FROM hr_attendance_checkin
+        WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND attendance_date BETWEEN #{from} AND #{to}
+    </select>
+</mapper>

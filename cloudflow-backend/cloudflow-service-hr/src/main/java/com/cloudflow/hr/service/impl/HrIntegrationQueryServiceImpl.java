@@ -5,6 +5,8 @@ import com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.hr.mapper.HrDirectoryMapper;
 import com.cloudflow.hr.service.IHrIntegrationQueryService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,16 +26,29 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class HrIntegrationQueryServiceImpl implements IHrIntegrationQueryService {
 
-    private static final long DEFAULT_TENANT_ID = 100000L;
-
     private final HrDirectoryMapper directoryMapper;
+
+    @Override
+    public List<java.util.Map<String, Object>> listApprovalJobLevels(Collection<Long> userIds) {
+        Long tenantId = com.cloudflow.common.tenant.TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new IllegalStateException("职级查询缺少租户上下文");
+        }
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        if (userIds.stream().anyMatch(userId -> userId == null || userId <= 0)) {
+            throw new IllegalArgumentException("职级查询的用户编号无效");
+        }
+        return directoryMapper.listApprovalJobLevels(tenantId, userIds.stream().distinct().toList());
+    }
 
     @Override
     public Optional<HrEmployeeSummaryVO> findEmployee(Long employeeId) {
         if (employeeId == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(withActive(directoryMapper.findEmployee(DEFAULT_TENANT_ID, employeeId)));
+        return Optional.ofNullable(withActive(directoryMapper.findEmployee(tenantId(), employeeId)));
     }
 
     @Override
@@ -41,7 +56,7 @@ public class HrIntegrationQueryServiceImpl implements IHrIntegrationQueryService
         if (userId == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(withActive(directoryMapper.findEmployeeByUserId(DEFAULT_TENANT_ID, userId)));
+        return Optional.ofNullable(withActive(directoryMapper.findEmployeeByUserId(tenantId(), userId)));
     }
 
     @Override
@@ -49,7 +64,7 @@ public class HrIntegrationQueryServiceImpl implements IHrIntegrationQueryService
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
-        return directoryMapper.listEmployees(DEFAULT_TENANT_ID, ids).stream().map(this::withActive).toList();
+        return directoryMapper.listEmployees(tenantId(), ids).stream().map(this::withActive).toList();
     }
 
     @Override
@@ -57,12 +72,19 @@ public class HrIntegrationQueryServiceImpl implements IHrIntegrationQueryService
         if (userIds == null || userIds.isEmpty()) {
             return List.of();
         }
-        return directoryMapper.listEmployeesByUserIds(DEFAULT_TENANT_ID, userIds).stream().map(this::withActive).toList();
+        return directoryMapper.listEmployeesByUserIds(tenantId(), userIds).stream().map(this::withActive).toList();
     }
 
     @Override
     public List<HrDeptSummaryVO> listDepartments(Collection<Long> deptIds) {
-        return directoryMapper.listDepartments(DEFAULT_TENANT_ID, deptIds);
+        return directoryMapper.listDepartments(tenantId(), deptIds);
+    }
+
+    private long tenantId() {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) tenantId = UserContext.getTenantId();
+        if (tenantId == null || tenantId <= 0) throw new IllegalStateException("员工及部门查询缺少租户上下文");
+        return tenantId;
     }
 
     private HrEmployeeSummaryVO withActive(HrEmployeeSummaryVO vo) {

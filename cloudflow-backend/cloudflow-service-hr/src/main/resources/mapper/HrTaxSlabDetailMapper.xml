@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrTaxSlabDetailMapper">
+    <!-- Current configuration is replaced atomically; historical wages retain their own tax snapshots. -->
+    <delete id="deleteForReplacement">
+        DELETE FROM hr_tax_slab_detail
+        WHERE tenant_id = #{tenantId} AND slab_id = #{slabId}
+    </delete>
+</mapper>

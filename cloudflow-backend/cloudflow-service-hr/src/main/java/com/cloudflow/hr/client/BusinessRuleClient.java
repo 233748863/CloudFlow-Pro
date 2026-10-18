@@ -20,9 +20,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 )
 public interface BusinessRuleClient {
 
-    @GetMapping("/system/rules/effective/{ruleCode}")
+    @GetMapping("/inner/auth/hr-leave-rules/effective/{ruleCode}")
     R<BusinessRuleDTO> getEffectiveRule(@PathVariable("ruleCode") String ruleCode);
 
-    @PostMapping("/system/rules/hit-records")
+    @PostMapping("/inner/auth/hr-leave-rules/hit-records")
     R<Void> recordHit(@RequestBody BusinessRuleHitRecordDTO record);
 }

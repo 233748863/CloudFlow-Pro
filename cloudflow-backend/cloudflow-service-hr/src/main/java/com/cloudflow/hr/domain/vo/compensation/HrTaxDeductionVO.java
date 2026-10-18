@@ -21,6 +21,11 @@ public class HrTaxDeductionVO {
     @Schema(description = "开始日期") private LocalDate startDate;
     @Schema(description = "结束日期") private LocalDate endDate;
     @Schema(description = "状态") private String status;
+    private String declareStatus;
+    private String proofFileUrl;
+    private Long verifyBy;
+    private LocalDateTime verifyTime;
+    private String rejectReason;
     @Schema(description = "备注") private String remark;
     @Schema(description = "创建人") private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") private LocalDateTime createTime;

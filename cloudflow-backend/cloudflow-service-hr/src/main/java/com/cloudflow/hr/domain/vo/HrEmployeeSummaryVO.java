@@ -10,6 +10,12 @@ import java.time.LocalDate;
 @Data
 public class HrEmployeeSummaryVO {
 
+    private Long tenantId;
+
+    private boolean userEnabled;
+
+    private boolean departmentEnabled;
+
     private Long employeeId;
 
     /** sys_user 的 userId，部分 CRM 业务以 userId 作为 ownerId。 */

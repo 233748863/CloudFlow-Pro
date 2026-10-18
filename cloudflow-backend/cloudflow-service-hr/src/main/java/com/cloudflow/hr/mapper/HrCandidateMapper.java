@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface HrCandidateMapper extends BaseMapper<HrCandidate> {
+    HrCandidate lockCandidate(@Param("tenantId") Long tenantId, @Param("candidateId") Long candidateId);
 
     /**
      * 按招聘渠道聚合候选人总数与已录用数，供渠道统计页计算入职率/单位成本。

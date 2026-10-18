@@ -38,6 +38,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -140,12 +141,32 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
 
     @Override
     public HrFileDownload downloadPdf(Long id) {
+        return downloadPdf(id, null);
+    }
+
+    @Override
+    public String authorizePdfDownload(Long id, Long fileId) {
+        HrCertificateRequest request = requireDownload(id, fileId);
+        fileStorage.fileName(request.getPdfFileId(), "application/pdf");
+        return "application/pdf";
+    }
+
+    private HrCertificateRequest requireDownload(Long id, Long fileId) {
         HrCertificateRequest request = loadRequest(id);
         essSupport.assertOwner(request.getEmployeeId());
         if (!"ISSUED".equalsIgnoreCase(request.getStatus()) || request.getPdfFileId() == null) {
             throw new HrBusinessException("CERTIFICATE_NOT_ISSUED", "证明尚未生成 PDF，当前状态：" + request.getStatus());
         }
-        byte[] bytes = fileStorage.load(request.getPdfFileId());
+        if (fileId != null && !Objects.equals(request.getPdfFileId(), fileId)) {
+            throw new HrBusinessException("FILE_ACCESS_DENIED", "证明文件已变化，请重新下载");
+        }
+        return request;
+    }
+
+    @Override
+    public HrFileDownload downloadPdf(Long id, Long fileId) {
+        HrCertificateRequest request = requireDownload(id, fileId);
+        byte[] bytes = fileStorage.loadPrivate(request.getPdfFileId(), "application/pdf");
         HrFileDownload result = new HrFileDownload();
         result.setFileName("certificate-" + request.getRequestNo() + ".pdf");
         result.setContentType("application/pdf");
@@ -155,6 +176,15 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
     }
 
     public void startCertificateWorkflow(HrCertificateRequest request) {
+        HrEmployee employee = employeeMapper.selectById(request.getEmployeeId());
+        if (employee == null || Integer.valueOf(1).equals(employee.getDeleted())
+                || !Objects.equals(employee.getTenantId(), request.getTenantId())) {
+            throw new HrBusinessException("EMPLOYEE_NOT_FOUND", "申请员工档案不存在");
+        }
+        Long applicantUserId = employee.getUserId();
+        if (applicantUserId == null || applicantUserId <= 0) {
+            throw new HrBusinessException("EMPLOYEE_ACCOUNT_NOT_BOUND", "申请员工未绑定账号，无法发起证明审批");
+        }
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(request.getTenantId());
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
@@ -164,7 +194,7 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         dto.setBusinessId(request.getId());
         dto.setBusinessNo(request.getRequestNo());
         dto.setProcessTitle("证明开具申请-" + request.getRequestNo());
-        dto.setStartUserId(request.getEmployeeId());
+        dto.setStartUserId(applicantUserId);
         Map<String, Object> vars = new LinkedHashMap<>();
         vars.put("certificateType", request.getCertificateType());
         vars.put("recipientOrg", request.getRecipientOrg());
@@ -215,7 +245,7 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
             throw new HrBusinessException("INVALID_PARAMETER", "证明申请 ID 不能为空");
         }
         HrCertificateRequest request = certificateRequestMapper.selectById(id);
-        if (request == null || Integer.valueOf(1).equals(request.getDeleted())) {
+        if (request == null || !Objects.equals(currentTenantId(), request.getTenantId()) || !Integer.valueOf(0).equals(request.getDeleted())) {
             throw new HrBusinessException("CERTIFICATE_NOT_FOUND", "证明申请不存在：" + id);
         }
         return request;
@@ -238,6 +268,26 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         vars.put("deptName", summary == null ? "" : nullSafe(summary.getDeptName()));
         vars.put("positionName", summary == null ? "" : nullSafe(summary.getPositionName()));
         return vars;
+    }
+
+    /** 本人已开具证明；流程字段由统一打印管线继续过滤。 */
+    public com.cloudflow.common.core.printing.PrintData printData(Long id) {
+        if (UserContext.getTenantId() == null || UserContext.getUserId() == null) {
+            throw new HrBusinessException("NO_PERMISSION", "缺少当前用户或租户");
+        }
+        HrCertificateRequest request = loadRequest(id);
+        if (!Objects.equals(UserContext.getTenantId(), request.getTenantId())) {
+            throw new HrBusinessException("NO_PERMISSION", "证明不存在或无权访问");
+        }
+        essSupport.assertOwner(request.getEmployeeId());
+        if (!"ISSUED".equals(request.getStatus())) throw new HrBusinessException("CERTIFICATE_NOT_ISSUED", "证明尚未开具");
+        Map<String, Object> values = buildCertificateVariables(request);
+        values.put("id", id); values.put("employeeId", request.getEmployeeId());
+        values.put("certificateType", request.getCertificateType()); values.put("recipientOrg", request.getRecipientOrg());
+        values.put("purpose", request.getPurpose()); values.put("copies", request.getCopies());
+        if (request.getIssuedAt() != null) values.put("issueDate", request.getIssuedAt().toLocalDate().format(ISSUE_DATE));
+        return new com.cloudflow.common.core.printing.PrintData(request.getTenantId(), "CERTIFICATE", id.toString(),
+                request.getProcessInstanceId(), "HR_CERTIFICATE_REQUEST:" + id, values);
     }
 
     private String titleOf(String certificateType) {

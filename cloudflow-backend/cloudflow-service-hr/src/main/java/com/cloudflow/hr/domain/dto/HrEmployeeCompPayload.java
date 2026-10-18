@@ -27,7 +27,7 @@ public class HrEmployeeCompPayload {
     private Long gradeId;
 
     @JsonIgnore
-    @EncryptField
+    @EncryptField(jsonStorage = true)
     @TableField("component_values")
     private String componentValuesText;
 

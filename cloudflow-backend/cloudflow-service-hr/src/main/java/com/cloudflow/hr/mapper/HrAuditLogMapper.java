@@ -11,6 +11,11 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface HrAuditLogMapper {
 
+    String selectLatestAfterData(@Param("tenantId") Long tenantId,
+                                 @Param("businessDomain") String businessDomain,
+                                 @Param("businessId") Long businessId,
+                                 @Param("operationType") String operationType);
+
     /**
      * 写一条 HR 审计日志。before/after 调用方序列化为 JSON 字符串。
      */

@@ -11,6 +11,7 @@ import com.cloudflow.hr.domain.entity.HrExamPaper;
 import com.cloudflow.hr.domain.entity.HrExamQuestionBank;
 import com.cloudflow.hr.domain.vo.training.HrExamAttemptSubmitVO;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.event.HrSkillEvidenceChangedEvent;
 import com.cloudflow.hr.mapper.HrExamAttemptMapper;
 import com.cloudflow.hr.mapper.HrExamPaperMapper;
 import com.cloudflow.hr.mapper.HrExamQuestionBankMapper;
@@ -21,6 +22,7 @@ import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -46,6 +48,7 @@ public class HrExamServiceImpl implements IHrExamService {
     private final HrExamAttemptMapper attemptMapper;
     private final HrEssSupport essSupport;
     private final HrTypedCrudService crudService;
+    private final ApplicationEventPublisher applicationEvents;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -126,6 +129,7 @@ public class HrExamServiceImpl implements IHrExamService {
                 .set("update_time", LocalDateTime.now());
         attempt.setAnswers(result.gradedAnswers());
         attemptMapper.update(attempt, wrapper);
+        applicationEvents.publishEvent(new HrSkillEvidenceChangedEvent(currentTenantId(), "EXAM", attemptId));
 
         return new HrExamAttemptSubmitVO(attemptId, finalStatus, result.totalScore(), passFlag, result.hasSubjective());
     }
@@ -145,6 +149,7 @@ public class HrExamServiceImpl implements IHrExamService {
                 .set("status", "GRADED")
                 .set("update_time", LocalDateTime.now());
         attemptMapper.update(null, wrapper);
+        applicationEvents.publishEvent(new HrSkillEvidenceChangedEvent(currentTenantId(), "EXAM", attemptId));
         log.info("考试批改完成，attemptId: {}, score: {}, passFlag: {}", attemptId, score, passFlag);
     }
 

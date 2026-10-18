@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrSkillMapper">
+  <select id="lockEmployee" resultType="com.cloudflow.hr.domain.entity.HrEmployee">
+    SELECT id, tenant_id, name, employee_no, dept_id, position_id, user_id, employee_status, hire_date, resign_date, deleted
+    FROM hr_employee WHERE tenant_id = #{tenantId} AND id = #{employeeId} AND deleted = 0 FOR UPDATE
+  </select>
+  <select id="lockPosition" resultType="com.cloudflow.hr.domain.entity.HrPosition">
+    SELECT id, tenant_id, position_name, status, version
+    FROM hr_position WHERE tenant_id = #{tenantId} AND id = #{positionId} FOR UPDATE
+  </select>
+  <select id="lockCourse" resultType="com.cloudflow.hr.domain.entity.HrTrainingCourse">
+    SELECT id, tenant_id, course_name, status, skill_id, target_level, version, deleted
+    FROM hr_training_course WHERE tenant_id = #{tenantId} AND id = #{courseId} AND deleted = 0 FOR UPDATE
+  </select>
+  <update id="updateCourseTarget">
+    UPDATE hr_training_course SET skill_id = #{input.skillId}, target_level = #{input.targetLevel},
+      version = version + 1, update_by = #{operator}, update_time = NOW()
+    WHERE tenant_id = #{tenantId} AND id = #{courseId} AND version = #{input.version} AND deleted = 0
+  </update>
+  <update id="advancePositionVersion">
+    UPDATE hr_position SET version = version + 1, update_time = NOW()
+    WHERE tenant_id = #{tenantId} AND id = #{positionId} AND version = #{version}
+  </update>
+  <sql id="employeeScope">
+    <choose>
+      <when test="scope.type == 0" />
+      <when test="(scope.type == 1 or scope.type == 2) and scope.deptIds != null and !scope.deptIds.isEmpty()">
+        AND employee.dept_id IN
+        <foreach collection="scope.deptIds" item="departmentId" open="(" close=")" separator=",">#{departmentId}</foreach>
+      </when>
+      <when test="scope.type == 3 and scope.deptId != null">AND employee.dept_id = #{scope.deptId}</when>
+      <when test="scope.type == 4">AND employee.user_id = #{scope.userId}</when>
+      <otherwise>AND 1 = 0</otherwise>
+    </choose>
+  </sql>
+  <select id="assessments" resultType="com.cloudflow.hr.domain.entity.HrEmployeeSkill">
+    SELECT assessment.* FROM hr_employee_skill assessment
+    JOIN hr_employee employee ON employee.tenant_id = assessment.tenant_id AND employee.id = assessment.employee_id AND employee.deleted = 0
+    WHERE assessment.tenant_id = #{tenantId}
+    <include refid="employeeScope" />
+    <if test="query.employeeId != null">AND assessment.employee_id = #{query.employeeId}</if>
+    <if test="query.skillId != null">AND assessment.skill_id = #{query.skillId}</if>
+    <if test="evidenceKey != null">AND assessment.evidence_key = #{evidenceKey}</if>
+    <if test="query.status != null and query.status != ''">AND assessment.assessment_status = #{query.status}</if>
+    ORDER BY assessment.employee_skill_id DESC
+  </select>
+  <select id="employees" resultType="com.cloudflow.hr.domain.entity.HrEmployee">
+    SELECT employee.id, employee.tenant_id, employee.name, employee.employee_no, employee.dept_id,
+      employee.position_id, employee.user_id, employee.employee_status, employee.hire_date, employee.resign_date, employee.deleted
+    FROM hr_employee employee WHERE employee.tenant_id = #{tenantId} AND employee.deleted = 0
+      AND employee.employee_status IN ('ACTIVE','REGULAR','PROBATION','INTERN','ON_LEAVE','TRANSFERRED')
+      AND employee.hire_date &lt;= #{today} AND (employee.resign_date IS NULL OR employee.resign_date &gt; #{today})
+    <include refid="employeeScope" />
+    <if test="query.employeeId != null">AND employee.id = #{query.employeeId}</if>
+    <if test="query.positionId != null">AND employee.position_id = #{query.positionId}</if>
+    <if test="query.keyword != null and query.keyword != ''">
+      AND (employee.name LIKE CONCAT('%', #{query.keyword}, '%') OR employee.employee_no LIKE CONCAT('%', #{query.keyword}, '%'))
+    </if>
+    ORDER BY employee.id
+  </select>
+  <select id="recommendations" resultType="com.cloudflow.hr.domain.vo.skill.HrSkillViews$Recommendation">
+    SELECT course.id AS courseId, course.course_name AS courseName, course.target_level AS targetLevel,
+      session.id AS sessionId, session.session_no AS sessionNo
+    FROM hr_training_course course
+    JOIN hr_training_session session ON session.tenant_id = course.tenant_id AND session.course_id = course.id
+    WHERE course.tenant_id = #{tenantId} AND course.deleted = 0 AND course.status = 'PUBLISHED'
+      AND course.skill_id = #{skillId} AND course.target_level &gt;= #{requiredLevel}
+      AND session.deleted = 0 AND session.status IN ('PLANNED','REGISTERING','ONGOING')
+      AND session.end_time &gt;= #{now} AND session.capacity &gt; session.enrolled_count
+      AND NOT EXISTS (SELECT 1 FROM hr_training_enrollment enrollment
+        WHERE enrollment.tenant_id = course.tenant_id AND enrollment.session_id = session.id
+          AND enrollment.employee_id = #{employeeId} AND enrollment.deleted = 0)
+      AND EXISTS (SELECT 1 FROM hr_employee employee
+        JOIN sys_user account ON account.tenant_id = employee.tenant_id AND account.user_id = employee.user_id AND account.status = '0' AND account.deleted = 0
+        JOIN sys_user_role user_role ON user_role.tenant_id = account.tenant_id AND user_role.user_id = account.user_id
+        JOIN sys_role role ON role.tenant_id = user_role.tenant_id AND role.role_id = user_role.role_id AND role.status = '0' AND role.deleted = 0
+        JOIN sys_role_menu role_menu ON role_menu.tenant_id = role.tenant_id AND role_menu.role_id = role.role_id
+        JOIN sys_menu menu ON menu.menu_id = role_menu.menu_id AND menu.status = '0'
+        WHERE employee.tenant_id = course.tenant_id AND employee.id = #{employeeId} AND employee.deleted = 0
+          AND menu.perms = 'hr:training:enroll:add')
+    ORDER BY course.target_level, course.id, session.start_time, session.id
+    LIMIT 100
+  </select>
+</mapper>

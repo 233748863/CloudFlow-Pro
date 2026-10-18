@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrGrievanceMapper">
+    <!-- Retain deleted source associations so they cannot become independent disputes. -->
+    <select id="selectDisputeSources" resultType="com.cloudflow.hr.domain.entity.HrGrievance">
+        SELECT grievance_id, tenant_id, employee_id, against_type, against_id, handler_id,
+               escalated_dispute_id, deleted
+        FROM hr_grievance
+        WHERE tenant_id = #{tenantId} AND escalated_dispute_id IS NOT NULL
+        <if test="disputeId != null">AND escalated_dispute_id = #{disputeId}</if>
+    </select>
+    <select id="selectHrUsers" resultType="map">
+        SELECT DISTINCT account.user_id AS userId, account.nick_name AS userName
+        FROM sys_user account
+        JOIN sys_user_role membership ON membership.user_id = account.user_id AND membership.tenant_id = account.tenant_id
+        JOIN sys_role role_config ON role_config.role_id = membership.role_id AND role_config.tenant_id = account.tenant_id
+        WHERE account.tenant_id = #{tenantId} AND account.deleted = 0 AND account.status = '0'
+          AND role_config.deleted = 0 AND role_config.status = '0' AND role_config.role_key = 'hr'
+        ORDER BY account.user_id
+    </select>
+    <select id="selectHandlers" resultType="map">
+        SELECT DISTINCT account.user_id AS userId, account.nick_name AS userName
+        FROM sys_user account
+        JOIN sys_user_role membership ON membership.user_id = account.user_id AND membership.tenant_id = account.tenant_id
+        JOIN sys_role role_config ON role_config.role_id = membership.role_id AND role_config.tenant_id = account.tenant_id
+        LEFT JOIN sys_role_menu role_menu ON role_menu.role_id = role_config.role_id
+        LEFT JOIN sys_menu menu ON menu.menu_id = role_menu.menu_id
+        WHERE account.tenant_id = #{tenantId} AND account.deleted = 0 AND account.status = '0'
+          AND role_config.deleted = 0 AND role_config.status = '0'
+          AND (role_config.role_key = 'admin' OR menu.perms = 'hr:grievance:manage:handle')
+        ORDER BY account.user_id
+    </select>
+    <select id="selectActiveUser" resultType="map">
+        SELECT user_id AS userId, nick_name AS userName FROM sys_user
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND deleted = 0 AND status = '0'
+    </select>
+    <select id="selectDeptName" resultType="string">
+        SELECT dept_name FROM sys_dept WHERE tenant_id = #{tenantId} AND dept_id = #{deptId} AND deleted = 0
+    </select>
+</mapper>

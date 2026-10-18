@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrTrainingRecoveryMapper">
+    <select id="lock" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT recovery_id FROM hr_training_recovery
+        WHERE tenant_id = #{tenantId} AND recovery_id = #{identifier}
+        FOR UPDATE
+    </select>
+    <select id="lockEnrollment" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT id FROM hr_training_enrollment WHERE tenant_id = #{tenantId} AND id = #{identifier} AND deleted = 0 FOR UPDATE
+    </select>
+    <sql id="sourceColumns">
+        SELECT enrollment.id AS enrollment_id, enrollment.employee_id, employee.name AS employee_name,
+            session.id AS session_id, session.session_no, course.course_name, enrollment.status, enrollment.version
+        FROM hr_training_enrollment enrollment
+        JOIN hr_employee employee ON employee.tenant_id = enrollment.tenant_id AND employee.id = enrollment.employee_id AND employee.deleted = 0
+        JOIN hr_training_session session ON session.tenant_id = enrollment.tenant_id AND session.id = enrollment.session_id AND session.deleted = 0
+        JOIN hr_training_course course ON course.tenant_id = session.tenant_id AND course.id = session.course_id AND course.deleted = 0
+        WHERE enrollment.tenant_id = #{tenantId} AND enrollment.deleted = 0
+    </sql>
+    <select id="source" resultType="com.cloudflow.hr.mapper.HrTrainingRecoveryMapper$Source" flushCache="true" useCache="false">
+        <include refid="sourceColumns"/> AND enrollment.id = #{identifier}
+    </select>
+    <select id="sources" resultType="com.cloudflow.hr.mapper.HrTrainingRecoveryMapper$Source">
+        <include refid="sourceColumns"/> AND enrollment.status = 'APPROVED' AND enrollment.employee_id IN
+        <foreach collection="employeeIds" item="employeeId" open="(" separator="," close=")">#{employeeId}</foreach>
+        ORDER BY enrollment.id DESC
+    </select>
+    <update id="stageAgreement">
+        UPDATE sys_file SET biz_type = 'HR_TRAINING_AGREEMENT', biz_id = #{enrollmentId}, file_hash = #{hash}
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_TRAINING_AGREEMENT'
+          AND deleted = 0 AND biz_type IS NULL AND biz_id IS NULL AND url = '' AND create_by = #{uploader}
+    </update>
+    <sql id="agreementColumns">
+        SELECT file_id, file_name, file_size, file_hash, biz_type, biz_id, create_by FROM sys_file
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_TRAINING_AGREEMENT' AND deleted = 0 AND url = ''
+    </sql>
+    <select id="agreement" resultType="com.cloudflow.hr.mapper.HrTrainingRecoveryMapper$AgreementFile" flushCache="true" useCache="false">
+        <include refid="agreementColumns"/> FOR UPDATE
+    </select>
+    <select id="readAgreement" resultType="com.cloudflow.hr.mapper.HrTrainingRecoveryMapper$AgreementFile" flushCache="true" useCache="false">
+        <include refid="agreementColumns"/>
+    </select>
+    <update id="bindAgreement">
+        UPDATE sys_file SET biz_type = 'HR_TRAINING_RECOVERY', biz_id = #{recoveryId}
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_TRAINING_AGREEMENT'
+          AND biz_type = 'HR_TRAINING_AGREEMENT' AND biz_id = #{enrollmentId} AND create_by = #{uploader}
+          AND deleted = 0 AND url = ''
+    </update>
+    <select id="stagedAgreement" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT file_id FROM sys_file WHERE tenant_id = #{tenantId} AND file_type = 'HR_TRAINING_AGREEMENT'
+          AND biz_type = 'HR_TRAINING_AGREEMENT' AND biz_id = #{enrollmentId} AND file_hash = #{hash}
+          AND create_by = #{uploader} AND deleted = 0 AND url = '' ORDER BY file_id LIMIT 1
+    </select>
+    <select id="assessedAgreement" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT recovery.recovery_id FROM hr_training_recovery recovery
+        JOIN sys_file file ON file.tenant_id = recovery.tenant_id AND file.file_id = recovery.agreement_file_id
+        WHERE recovery.tenant_id = #{tenantId} AND recovery.enrollment_id = #{enrollmentId}
+          AND file.file_type = 'HR_TRAINING_AGREEMENT' AND file.file_hash = #{hash}
+        ORDER BY recovery.recovery_id LIMIT 1
+    </select>
+    <update id="updateDraft">
+        UPDATE hr_training_recovery SET assessed_amount = #{record.assessedAmount}, assessment_reason = #{record.assessmentReason},
+            status = #{record.status}, confirmed_by = #{record.confirmedBy}, confirmed_time = #{record.confirmedTime},
+            version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND recovery_id = #{record.recoveryId} AND employee_id = #{record.employeeId}
+          AND enrollment_id = #{record.enrollmentId} AND agreement_file_id = #{record.agreementFileId}
+          AND status = 'DRAFT' AND collected_amount = 0 AND settlement_id IS NULL AND version = #{expectedVersion}
+    </update>
+</mapper>

@@ -22,8 +22,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class HrEventPublisherImpl implements HrEventPublisher {
 
-    private static final long DEFAULT_TENANT_ID = 100000L;
-
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
 
@@ -31,13 +29,11 @@ public class HrEventPublisherImpl implements HrEventPublisher {
     public void publishEmployeeLeft(Long employeeId, Long userId, String employeeName, Long deptId, String deptName,
                                     Long successorUserId) {
         if (employeeId == null) {
-            log.warn("publishEmployeeLeft 跳过: employeeId 为空");
-            return;
+            throw new IllegalArgumentException("离职事件缺少员工编号");
         }
         Long tenantId = UserContext.getTenantId();
-        if (tenantId == null) {
-            tenantId = DEFAULT_TENANT_ID;
-        }
+        if (tenantId == null) tenantId = com.cloudflow.common.tenant.TenantContext.getTenantId();
+        if (tenantId == null || tenantId <= 0) throw new IllegalStateException("离职事件缺少租户上下文");
         try {
             EmployeeOffboardEvent event = new EmployeeOffboardEvent();
             event.setEmployeeId(employeeId);
@@ -61,6 +57,7 @@ public class HrEventPublisherImpl implements HrEventPublisher {
             log.info("已发布员工离职事件: employeeId={}, userId={}", employeeId, userId);
         } catch (Exception ex) {
             log.error("发布员工离职事件失败: employeeId={}", employeeId, ex);
+            throw new IllegalStateException("离职事件保存失败，请重试；申请未确认完成", ex);
         }
     }
 }

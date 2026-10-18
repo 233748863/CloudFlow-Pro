@@ -7,10 +7,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <insert id="insertSysFile" useGeneratedKeys="true" keyProperty="r.fileId">
         INSERT INTO sys_file (
             tenant_id, file_name, file_path, url, storage_type,
-            file_size, file_type, create_by, create_time, deleted, remark
+            file_size, file_type, file_hash, access_type, create_by, create_time, deleted, remark
         ) VALUES (
             #{r.tenantId}, #{r.fileName}, #{r.filePath}, #{r.url}, 'LOCAL',
-            #{r.fileSize}, #{r.fileType}, #{r.createBy}, NOW(), 0, 'hr-pdf'
+            #{r.fileSize}, #{r.fileType}, #{r.fileHash}, 'PRIVATE', #{r.createBy}, NOW(), 0, 'hr-pdf'
         )
     </insert>
 
@@ -18,8 +18,36 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         SELECT file_path
         FROM sys_file
         WHERE file_id = #{fileId}
+          AND tenant_id = #{tenantId}
           AND deleted = 0
         LIMIT 1
     </select>
 
+    <select id="selectFileMetadata" resultType="java.util.LinkedHashMap">
+        SELECT file_id AS fileId, file_name AS fileName, file_type AS fileType
+        FROM sys_file WHERE file_id = #{fileId} AND tenant_id = #{tenantId} AND deleted = 0
+    </select>
+
+    <select id="countOwnedFiles" resultType="int">
+        SELECT COUNT(*) FROM sys_file
+        WHERE tenant_id = #{tenantId} AND create_by = #{owner} AND deleted = 0
+          AND file_id IN
+        <foreach collection="fileIds" item="fileId" open="(" separator="," close=")">#{fileId}</foreach>
+    </select>
+    <select id="countOwnedLeaveFiles" resultType="int">
+        SELECT COUNT(*) FROM sys_file
+        WHERE tenant_id = #{tenantId} AND create_by = #{owner} AND deleted = 0 AND file_type = 'HR_LEAVE_PROOF'
+          AND file_id IN
+        <foreach collection="fileIds" item="fileId" open="(" separator="," close=")">#{fileId}</foreach>
+    </select>
+    <select id="countOwnedGrievanceFiles" resultType="int">
+        SELECT COUNT(*) FROM sys_file
+        WHERE tenant_id = #{tenantId} AND create_by = #{owner} AND deleted = 0 AND file_type = 'HR_GRIEVANCE'
+          AND file_id IN
+        <foreach collection="fileIds" item="fileId" open="(" separator="," close=")">#{fileId}</foreach>
+    </select>
+    <select id="countOwnedProof" resultType="int">
+        SELECT COUNT(*) FROM sys_file WHERE tenant_id = #{tenantId} AND create_by = #{owner}
+          AND file_id = #{fileId} AND file_type = #{purpose} AND deleted = 0
+    </select>
 </mapper>

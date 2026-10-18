@@ -18,6 +18,8 @@ public class HrLifecycleApplicationVO {
     @Schema(description = "申请编号") private String applicationNo;
     @Schema(description = "申请类型") private String type;
     @Schema(description = "员工 ID") private Long employeeId;
+    @Schema(description = "客户业务接任人用户 ID") private Long successorUserId;
+    @Schema(description = "客户业务接任人姓名快照") private String successorName;
     @Schema(description = "候选人 ID") private Long candidateId;
     @Schema(description = "姓名") private String name;
     @Schema(description = "部门 ID") private Long deptId;
@@ -25,6 +27,7 @@ public class HrLifecycleApplicationVO {
     @Schema(description = "职位 ID") private Long positionId;
     @Schema(description = "生效日期") private LocalDate effectiveDate;
     @Schema(description = "状态") private String status;
+    @Schema(description = "记录版本") private Integer version;
     @Schema(description = "审批流程实例 ID") private String processInstanceId;
     @Schema(description = "备注") private String remark;
     @Schema(description = "申请明细 JSON") private JsonNode detailJson;

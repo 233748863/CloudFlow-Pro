@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrCommissionMapper">
+    <select id="source" resultType="com.cloudflow.common.event.commission.CommissionEvents$Fact">
+        SELECT allocation.tenant_id, allocation.allocation_id, allocation.event_id,
+            allocation.reversal_of_id AS original_allocation_id, event.reversal_of_id AS original_event_id,
+            allocation.employee_id, allocation.sales_user_id, allocation.dept_id, event.event_type, event.biz_type,
+            event.biz_id, event.currency, event.occurred_time, allocation.allocated_amount, allocation.commission_rate,
+            allocation.commission_amount, event.baseline_flag, allocation.commission_status, allocation.comp_change_id
+        FROM crm_deal_allocation allocation JOIN crm_deal_event event
+            ON event.tenant_id = allocation.tenant_id AND event.event_id = allocation.event_id
+        WHERE allocation.tenant_id = #{tenantId} AND allocation.allocation_id = #{allocationId}
+    </select>
+    <select id="refunds" resultType="java.lang.Long">
+        SELECT allocation_id FROM crm_deal_allocation
+        WHERE tenant_id = #{tenantId} AND reversal_of_id = #{allocationId}
+        ORDER BY allocation_id
+    </select>
+    <select id="lockPeriod" resultType="com.cloudflow.hr.domain.entity.HrPayrollPeriod">
+        SELECT * FROM hr_payroll_period WHERE tenant_id = #{tenantId} AND period_id = #{periodId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="requests" resultType="com.cloudflow.common.event.outbox.OutboxEvent">
+        SELECT source.* FROM outbox_event source JOIN crm_deal_allocation allocation
+            ON allocation.tenant_id = source.tenant_id AND allocation.allocation_id = source.aggregate_id
+        WHERE source.tenant_id = #{tenantId} AND source.aggregate_type = 'cloudflow-service-crm'
+            AND source.event_type = 'CRM_COMMISSION_REQUEST' AND allocation.employee_id = #{employeeId}
+        ORDER BY source.id
+    </select>
+</mapper>

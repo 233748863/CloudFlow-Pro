@@ -57,7 +57,6 @@ import java.util.TreeMap;
 @RequiredArgsConstructor
 public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
 
-    private static final long DEFAULT_TENANT_ID = 100000L;
 
     private final HrTalentReviewMapper reviewMapper;
     private final HrTalentReviewParticipantMapper participantMapper;
@@ -419,12 +418,7 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
     }
 
     private long currentTenantId() {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null) {
-            return tenantId;
-        }
-        tenantId = UserContext.getTenantId();
-        return tenantId == null ? DEFAULT_TENANT_ID : tenantId;
+        return com.cloudflow.hr.service.HrRuleSupport.tenantId();
     }
 
     private String currentUserName() {

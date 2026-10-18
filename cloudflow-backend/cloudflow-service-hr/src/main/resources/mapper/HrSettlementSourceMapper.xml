@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrSettlementSourceMapper">
+    <select id="salaryIds" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT id FROM hr_salary_slip WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND deleted = 0 ORDER BY id
+    </select>
+    <select id="advanceIds" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT advance_id FROM hr_employee_advance WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+        ORDER BY advance_id
+    </select>
+    <select id="leaveTypes" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT id FROM hr_leave_type WHERE tenant_id = #{tenantId} AND encashment_flag = 1
+        UNION SELECT leave_type_id FROM hr_leave_ledger WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+        ORDER BY 1
+    </select>
+    <select id="lockLeaveType" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT id FROM hr_leave_type WHERE tenant_id = #{tenantId} AND id = #{identifier} FOR UPDATE
+    </select>
+    <select id="leavePeriodIds" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT period_id FROM hr_leave_period WHERE tenant_id = #{tenantId} AND period_id IN
+          (SELECT leave_period_id FROM hr_leave_ledger WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId})
+        ORDER BY period_id
+    </select>
+    <select id="lockLeavePeriod" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT period_id FROM hr_leave_period WHERE tenant_id = #{tenantId} AND period_id = #{identifier} FOR UPDATE
+    </select>
+    <select id="trainingIds" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT recovery_id FROM hr_training_recovery WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+        ORDER BY recovery_id
+    </select>
+    <select id="lockTraining" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT recovery_id FROM hr_training_recovery WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND recovery_id = #{identifier} FOR UPDATE
+    </select>
+    <update id="reserveSalary">
+        UPDATE hr_salary_slip SET reserved_settlement_id = #{settlementId}, version = version + 1
+        WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId} AND id = #{sourceId} AND deleted = 0
+          AND reserved_settlement_id IS NULL AND status IN ('SUBMITTED','CONFIRMED') AND version = #{version}
+    </update>
+    <update id="releaseSalary">
+        UPDATE hr_salary_slip SET reserved_settlement_id = NULL, version = version + 1
+        WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId} AND id = #{sourceId} AND deleted = 0
+          AND reserved_settlement_id = #{settlementId} AND status IN ('SUBMITTED','CONFIRMED')
+    </update>
+    <update id="reserveTraining">
+        UPDATE hr_training_recovery SET settlement_id = #{settlementId}, version = version + 1
+        WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId} AND recovery_id = #{sourceId}
+          AND settlement_id IS NULL AND status = 'CONFIRMED' AND version = #{version}
+    </update>
+    <update id="releaseTraining">
+        UPDATE hr_training_recovery SET settlement_id = NULL, version = version + 1
+        WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId} AND recovery_id = #{sourceId}
+          AND settlement_id = #{settlementId} AND status = 'CONFIRMED'
+    </update>
+</mapper>

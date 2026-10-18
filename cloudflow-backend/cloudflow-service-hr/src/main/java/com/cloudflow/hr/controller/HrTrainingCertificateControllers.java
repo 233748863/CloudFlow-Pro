@@ -65,6 +65,7 @@ class HrTrainingCertificateController {
     private final HrFileStorage fileStorage;
     private final ObjectMapper objectMapper;
     private final HrTrainingCourseMapper courseMapper;
+    private final com.cloudflow.hr.service.HrDocumentDownloadService documentDownloads;
 
     @GetMapping
     @SaCheckPermission("hr:training:cert:list")
@@ -167,22 +168,7 @@ class HrTrainingCertificateController {
     @GetMapping("/{id}/pdf")
     @SaCheckPermission("hr:training:cert:list")
     public ResponseEntity<byte[]> download(@PathVariable Long id) {
-        HrTrainingCertificate cert = certificateMapper.selectById(id);
-        if (cert == null || Integer.valueOf(1).equals(cert.getDeleted())) {
-            throw new HrBusinessException("CERTIFICATE_NOT_FOUND", "培训证书不存在：" + id);
-        }
-        if (cert.getPdfFileId() == null) {
-            throw new HrBusinessException("CERTIFICATE_PDF_MISSING", "证书 PDF 尚未生成");
-        }
-        essSupport.assertOwner(cert.getEmployeeId());
-        byte[] bytes = fileStorage.load(cert.getPdfFileId());
-        String fileName = "training-certificate-" + cert.getCertNo() + ".pdf";
-        String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.set(HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + encoded);
-        return new ResponseEntity<>(bytes, headers, 200);
+        return documentDownloads.trainingContent(id, null);
     }
 }
 

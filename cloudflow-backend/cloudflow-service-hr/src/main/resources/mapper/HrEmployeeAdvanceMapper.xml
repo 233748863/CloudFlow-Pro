@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrEmployeeAdvanceMapper">
+    <select id="pageAdvances" resultMap="mybatis-plus_HrEmployeeAdvance">
+        SELECT advance.* FROM hr_employee_advance advance
+        JOIN hr_employee employee ON employee.id = advance.employee_id
+            AND employee.tenant_id = advance.tenant_id AND employee.deleted = 0
+        WHERE advance.tenant_id = #{tenantId}
+        <choose>
+            <when test="scope.type == 0" />
+            <when test="(scope.type == 1 or scope.type == 2) and scope.deptIds != null and !scope.deptIds.isEmpty()">
+                AND employee.dept_id IN
+                <foreach collection="scope.deptIds" item="departmentId" open="(" close=")" separator=",">#{departmentId}</foreach>
+            </when>
+            <when test="scope.type == 3 and scope.deptId != null">AND employee.dept_id = #{scope.deptId}</when>
+            <when test="scope.type == 4">AND employee.user_id = #{scope.userId}</when>
+            <otherwise>AND 1 = 0</otherwise>
+        </choose>
+        <if test="query.employeeId != null">AND advance.employee_id = #{query.employeeId}</if>
+        <if test="query.status != null">AND advance.status = #{query.status}</if>
+        <if test="query.approvalStatus != null">AND advance.approval_status = #{query.approvalStatus}</if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND (advance.advance_no LIKE CONCAT('%', #{query.keyword}, '%') OR employee.name LIKE CONCAT('%', #{query.keyword}, '%'))
+        </if>
+        ORDER BY advance.advance_id DESC
+    </select>
+    <update id="updateDraft">
+        UPDATE hr_employee_advance SET advance_amount = #{plan.amount}, purpose = #{plan.purpose},
+            repay_mode = #{plan.repayMode}, repay_start_month = #{plan.repayStartMonth}, repay_months = #{plan.repayMonths},
+            monthly_deduct_amount = #{plan.monthlyDeductAmount}, version = version + 1,
+            update_by = #{operator}, update_time = NOW()
+        WHERE tenant_id = #{tenantId} AND advance_id = #{advanceId} AND version = #{version}
+            AND status = 'APPLYING' AND approval_status = 'DRAFT'
+            AND instance_id IS NULL AND payment_request_id IS NULL AND paid_time IS NULL
+    </update>
+    <update id="bindProof">
+        UPDATE sys_file SET biz_type = 'HR_ADVANCE_PROOF', biz_id = #{advanceId}, file_hash = #{fileHash}
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_ADVANCE_PROOF'
+            AND create_by = #{owner} AND deleted = 0 AND access_type = 'PRIVATE' AND url = ''
+            AND biz_type IS NULL AND biz_id IS NULL AND portal_owner_id IS NULL
+    </update>
+    <select id="lockProof" resultType="com.cloudflow.hr.mapper.HrEmployeeAdvanceMapper$ProofFile">
+        SELECT file_id, file_name, file_hash, file_size FROM sys_file
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_ADVANCE_PROOF'
+            AND biz_type = 'HR_ADVANCE_PROOF' AND biz_id = #{advanceId} AND deleted = 0
+            AND access_type = 'PRIVATE' AND url = '' AND portal_owner_id IS NULL FOR UPDATE
+    </select>
+    <select id="proofRepayment" resultType="com.cloudflow.hr.domain.entity.HrAdvanceRepayment">
+        SELECT * FROM hr_advance_repayment WHERE tenant_id = #{tenantId} AND proof_file_id = #{fileId}
+        ORDER BY repayment_id LIMIT 1
+    </select>
+    <select id="lockEmployee" resultType="java.lang.Long">
+        SELECT id FROM hr_employee
+        WHERE tenant_id = #{tenantId} AND id = #{employeeId} AND deleted = 0
+        FOR UPDATE
+    </select>
+    <select id="lockAdvance" resultMap="com.cloudflow.hr.mapper.HrEmployeeAdvanceMapper.mybatis-plus_HrEmployeeAdvance" flushCache="true" useCache="false">
+        SELECT * FROM hr_employee_advance
+        WHERE tenant_id = #{tenantId} AND advance_id = #{advanceId}
+        FOR UPDATE
+    </select>
+    <select id="lockSalary" resultType="com.cloudflow.hr.mapper.HrEmployeeAdvanceMapper$SalarySource" flushCache="true" useCache="false">
+        SELECT id AS salary_slip_id, employee_id, period_month, status, reserved_settlement_id FROM hr_salary_slip
+        WHERE tenant_id = #{tenantId} AND id = #{salarySlipId} AND deleted = 0
+        FOR UPDATE
+    </select>
+    <select id="pendingCorrectionSlips" resultMap="com.cloudflow.hr.mapper.HrSalarySlipMapper.mybatis-plus_HrSalarySlip">
+        SELECT salary.* FROM hr_salary_slip salary
+        INNER JOIN hr_payroll_correction correction ON correction.correction_slip_id = salary.id
+            AND correction.tenant_id = salary.tenant_id AND correction.deleted = 0
+        WHERE salary.tenant_id = #{tenantId} AND salary.employee_id = #{employeeId} AND salary.deleted = 0
+            AND salary.status IN ('PENDING', 'SUBMITTED')
+        ORDER BY salary.id
+    </select>
+</mapper>

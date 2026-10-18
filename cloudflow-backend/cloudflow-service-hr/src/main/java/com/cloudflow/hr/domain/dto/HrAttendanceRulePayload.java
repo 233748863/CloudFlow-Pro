@@ -6,10 +6,14 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -30,12 +34,36 @@ public class HrAttendanceRulePayload {
     private Integer version;
     private LocalDateTime updateTime;
 
-    @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<Integer> workDays;
-
-    @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<String> checkMethods;
+    @JsonIgnore
+    @TableField(value = "check_methods", typeHandler = JacksonTypeHandler.class)
+    private JsonNode checkMethodsJson;
 
     @TableField(typeHandler = JacksonTypeHandler.class)
     private JsonNode configJson;
+
+    public List<String> getCheckMethods() {
+        if (checkMethodsJson == null || !checkMethodsJson.isArray()) return null;
+        List<String> methods = new ArrayList<>();
+        for (JsonNode method : checkMethodsJson) {
+            if (!method.isTextual()) return null;
+            methods.add(method.textValue());
+        }
+        return methods;
+    }
+
+    public void setCheckMethods(List<String> methods) {
+        if (methods == null) { checkMethodsJson = null; return; }
+        ArrayNode values = JsonNodeFactory.instance.arrayNode();
+        methods.forEach(values::add);
+        checkMethodsJson = values;
+    }
+
+    public boolean hasValidCheckMethods() {
+        if (checkMethodsJson == null || checkMethodsJson.isNull()) return true;
+        if (!checkMethodsJson.isArray()) return false;
+        for (JsonNode method : checkMethodsJson) {
+            if (!method.isTextual() || !List.of("APP", "FACE", "CARD", "WIFI", "GPS").contains(method.textValue())) return false;
+        }
+        return true;
+    }
 }

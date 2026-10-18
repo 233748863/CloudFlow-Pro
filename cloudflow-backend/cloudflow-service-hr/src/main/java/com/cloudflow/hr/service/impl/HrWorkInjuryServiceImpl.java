@@ -21,6 +21,8 @@ import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.hr.service.HrHSupport;
+import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.IHrWorkInjuryService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +49,8 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
     private final ObjectMapper objectMapper;
     private final OutboxPublisher outboxPublisher;
     private final RuntimeSysConfigService runtimeSysConfigService;
+    private final HrHSupport hrSupport;
+    private final HrEssSupport essSupport;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -84,10 +88,7 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
     @Override
     public PageResult<HrWorkInjuryListVO> listMine(HrWorkInjuryQueryDTO query) {
         Map<String, Object> q = new LinkedHashMap<>(MapConverters.toServiceQuery(query, objectMapper));
-        Long userId = UserContext.getUserId();
-        if (userId != null) {
-            q.put("employeeId", userId);
-        }
+        q.put("employeeId", essSupport.currentEmployeeId());
         Map<String, Object> raw = crudService.page(HrWorkInjury.class, q);
         return MapConverters.toPageResult(raw, HrWorkInjuryListVO.class, objectMapper);
     }
@@ -127,7 +128,7 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
 
     public void startWorkInjuryWorkflow(HrWorkInjury injury) {
         ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(currentTenantId());
+        dto.setTenantId(injury.getTenantId());
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_INJURY_DETERMINATION_PROCESS_KEY,
                 "wf_hr_work_injury"));
@@ -135,7 +136,7 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
         dto.setBusinessId(injury.getId());
         dto.setBusinessNo(injury.getInjuryNo());
         dto.setProcessTitle("工伤认定-" + injury.getInjuryNo());
-        dto.setStartUserId(injury.getEmployeeId());
+        dto.setStartUserId(hrSupport.linkedUser(hrSupport.employee(injury.getEmployeeId())));
         Map<String, Object> vars = new LinkedHashMap<>();
         vars.put("injuryId", injury.getId());
         vars.put("employeeId", injury.getEmployeeId());

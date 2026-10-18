@@ -4,6 +4,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.hr.mapper.HrAuditLogMapper">
 
+    <select id="selectLatestAfterData" resultType="java.lang.String">
+        SELECT after_data FROM hr_audit_log
+        WHERE tenant_id = #{tenantId} AND business_domain = #{businessDomain}
+          AND business_id = #{businessId} AND operation_type = #{operationType}
+        ORDER BY id DESC LIMIT 1
+    </select>
+
     <insert id="insertLog">
         INSERT INTO hr_audit_log (
             tenant_id, business_domain, business_id, operation_type,

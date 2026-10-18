@@ -38,6 +38,12 @@ class HrLifecycleApplicationController {
         return R.ok(lifecycleService.listApplications(query));
     }
 
+    @GetMapping("/applications/{id}")
+    @SaCheckPermission("hr:lifecycle:view")
+    public R<HrLifecycleApplicationVO> getLifecycleApplication(@PathVariable Long id) {
+        return R.ok(lifecycleService.getApplication(id));
+    }
+
     @SysLog("新增HR生命周期申请")
     @RepeatSubmit
     @PostMapping("/applications")
@@ -55,6 +61,7 @@ class HrLifecycleApplicationController {
     }
 
     @SysLog("变更HR生命周期申请状态")
+    @RepeatSubmit
     @PostMapping("/applications/{id}/{action}")
     @SaCheckPermission("hr:lifecycle:edit")
     public R<Void> changeLifecycleStatus(@PathVariable Long id,
@@ -85,6 +92,7 @@ class HrLifecycleTaskController {
     private final HrLifecycleService lifecycleService;
 
     @SysLog("完成HR生命周期任务")
+    @RepeatSubmit
     @PostMapping("/tasks/{id}/complete")
     @SaCheckPermission("hr:lifecycle:edit")
     public R<Void> completeLifecycleTask(@PathVariable Long id, @RequestBody(required = false) HrLifecycleTaskPayload payload) {

@@ -4,6 +4,46 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.hr.mapper.HrPerfEvaluatorMapper">
 
+    <sql id="ownInvitationSelect">
+        SELECT invited.id AS invitationId, invited.version, cycle.cycle_id AS cycleId,
+               cycle.cycle_name AS cycleName, cycle.status AS cycleStatus, objective.objective_name AS objectiveName,
+               employee.name AS evaluateeName, invited.evaluator_source AS evaluatorSource, invited.status,
+               response.score, response.comment_text AS commentText, response.submit_time AS submitTime,
+               JSON_UNQUOTE(JSON_EXTRACT(cycle.score_config, '$.minScore')) AS minScore,
+               JSON_UNQUOTE(JSON_EXTRACT(cycle.score_config, '$.maxScore')) AS maxScore
+          FROM hr_perf_evaluator invited
+          JOIN hr_performance_objective objective ON objective.id = invited.objective_id
+            AND objective.tenant_id = invited.tenant_id AND objective.deleted = 0
+          JOIN hr_appraisal_cycle cycle ON cycle.cycle_id = objective.cycle_id
+            AND cycle.tenant_id = invited.tenant_id AND cycle.deleted = 0
+          JOIN hr_appraisal_result participant ON participant.cycle_id = cycle.cycle_id
+            AND participant.tenant_id = cycle.tenant_id AND participant.employee_id = invited.evaluatee_id
+          JOIN hr_employee employee ON employee.id = invited.evaluatee_id
+            AND employee.tenant_id = invited.tenant_id AND employee.deleted = 0
+          LEFT JOIN hr_perf_evaluator_response response ON response.evaluator_id = invited.id
+            AND response.tenant_id = invited.tenant_id AND response.deleted = 0 AND invited.status = 'SUBMITTED'
+         WHERE invited.tenant_id = #{tenantId} AND invited.evaluator_id = #{employeeId} AND invited.deleted = 0
+           AND ((invited.evaluator_source = 'SELF' AND invited.evaluatee_id = invited.evaluator_id)
+             OR (invited.evaluator_source IN ('MANAGER','PEER','SUBORDINATE') AND invited.evaluatee_id != invited.evaluator_id))
+    </sql>
+
+    <select id="selectOwnInvitations" resultType="com.cloudflow.hr.domain.vo.performance.HrAppraisalViews$Invitation">
+        <include refid="ownInvitationSelect"/>
+        <if test="query.status != null">
+            AND invited.status = #{query.status}
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND (LOCATE(#{query.keyword}, cycle.cycle_name) > 0 OR LOCATE(#{query.keyword}, objective.objective_name) > 0
+              OR LOCATE(#{query.keyword}, employee.name) > 0)
+        </if>
+        ORDER BY invited.invite_time DESC, invited.id DESC
+    </select>
+
+    <select id="selectOwnInvitation" resultType="com.cloudflow.hr.domain.vo.performance.HrAppraisalViews$Invitation">
+        <include refid="ownInvitationSelect"/>
+        AND invited.id = #{invitationId}
+    </select>
+
     <select id="selectEvaluatorsWithResponse" resultType="java.util.LinkedHashMap">
         SELECT e.id              AS id,
                e.tenant_id       AS tenantId,
@@ -13,6 +53,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                e.evaluatee_id    AS evaluateeId,
                e.evaluatee_name  AS evaluateeName,
                e.evaluator_id    AS evaluatorId,
+               evaluator_employee.user_id AS evaluatorUserId,
                e.evaluator_name  AS evaluatorName,
                e.evaluator_source AS evaluatorSource,
                e.weight          AS weight,
@@ -24,8 +65,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                r.comment_text    AS commentText,
                r.submit_time     AS submitTime
         FROM hr_perf_evaluator e
+        LEFT JOIN hr_employee evaluator_employee ON evaluator_employee.tenant_id = e.tenant_id AND evaluator_employee.id = e.evaluator_id
+          AND evaluator_employee.deleted = 0 AND e.evaluator_source != 'CUSTOMER'
         LEFT JOIN hr_perf_evaluator_response r
-               ON r.evaluator_id = e.id AND r.deleted = 0
+               ON r.evaluator_id = e.id AND r.tenant_id = e.tenant_id AND r.deleted = 0
         WHERE e.tenant_id    = #{tenantId}
           AND e.deleted      = 0
           AND e.objective_id = #{objectiveId}
@@ -44,6 +87,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                e.evaluatee_id    AS evaluateeId,
                e.evaluatee_name  AS evaluateeName,
                e.evaluator_id    AS evaluatorId,
+               evaluator_employee.user_id AS evaluatorUserId,
                e.evaluator_name  AS evaluatorName,
                e.evaluator_source AS evaluatorSource,
                e.weight          AS weight,
@@ -53,8 +97,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                o.objective_name  AS objectiveName,
                o.cycle_name      AS cycleName
         FROM hr_perf_evaluator e
+        LEFT JOIN hr_employee evaluator_employee ON evaluator_employee.tenant_id = e.tenant_id AND evaluator_employee.id = e.evaluator_id
+          AND evaluator_employee.deleted = 0 AND e.evaluator_source != 'CUSTOMER'
         LEFT JOIN hr_performance_objective o
-               ON o.id = e.objective_id
+               ON o.id = e.objective_id AND o.tenant_id = e.tenant_id
         WHERE e.tenant_id    = #{tenantId}
           AND e.deleted      = 0
           AND e.evaluator_id = #{evaluatorId}
@@ -68,7 +114,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                r.score            AS score
         FROM hr_perf_evaluator e
         INNER JOIN hr_perf_evaluator_response r
-                ON r.evaluator_id = e.id AND r.deleted = 0
+                ON r.evaluator_id = e.id AND r.tenant_id = e.tenant_id AND r.deleted = 0
         WHERE e.tenant_id    = #{tenantId}
           AND e.deleted      = 0
           AND e.objective_id = #{objectiveId}

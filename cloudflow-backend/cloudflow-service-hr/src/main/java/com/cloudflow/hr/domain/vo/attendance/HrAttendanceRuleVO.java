@@ -20,7 +20,6 @@ public class HrAttendanceRuleVO {
     @Schema(description = "规则类型") private String ruleType;
     @Schema(description = "班次 ID") private Long shiftId;
     @Schema(description = "状态") private Integer status;
-    @Schema(description = "工作日（数字 1-7）") private List<Integer> workDays;
     @Schema(description = "打卡方式") private List<String> checkMethods;
     @Schema(description = "高级配置 JSON") private JsonNode configJson;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") private LocalDateTime createTime;

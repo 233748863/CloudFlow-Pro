@@ -33,6 +33,11 @@
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-spring-boot3-starter</artifactId>
         </dependency>
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-jackson</artifactId>
+            <version>${sa-token.version}</version>
+        </dependency>
 
         <!-- 远程调用 -->
         <dependency>
@@ -66,6 +71,10 @@
             <artifactId>cloudflow-common-redis</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-data</artifactId>
         </dependency>
@@ -88,6 +97,10 @@
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-excel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.idev.excel</groupId>
+            <artifactId>fastexcel-core</artifactId>
         </dependency>
         <dependency>
             <groupId>com.cloudflow</groupId>
@@ -122,6 +135,14 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-event</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-message</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-holiday</artifactId>
+        </dependency>
         <!-- 配置敏感信息密文化（yaml 中 ENC(...) 占位的启动期解密） -->
         <dependency>
             <groupId>com.cloudflow</groupId>
@@ -136,6 +157,14 @@
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- ESS 证明开具 / 培训证书 PDF 渲染：HTML 模板 → PDF -->

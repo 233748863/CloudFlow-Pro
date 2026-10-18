@@ -24,6 +24,9 @@ public class HrAttendanceMonthlyVO {
     @Schema(description = "旷工天数") private BigDecimal absentDays;
     @Schema(description = "请假天数") private BigDecimal leaveDays;
     @Schema(description = "加班小时数") private BigDecimal overtimeHours;
+    @Schema(description = "已正式批准的核定加班分钟，按考勤归属月聚合") private Integer approvedOvertimeMinutes;
+    @com.fasterxml.jackson.databind.annotation.JsonSerialize(using = com.fasterxml.jackson.databind.ser.std.ToStringSerializer.class)
+    @Schema(description = "核定加班展示小时，禁止回算结算金额或额度") private BigDecimal approvedOvertimeHours;
     @Schema(description = "出勤率") private BigDecimal attendanceRate;
     @Schema(description = "状态") private String status;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") private LocalDateTime createTime;

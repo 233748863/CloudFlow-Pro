@@ -24,6 +24,7 @@ public class HrPerfDistributionRule {
 
     private Long tenantId;
     private Long objectiveId;
+    private Long cycleId;
     private String ruleName;
 
     @TableField(typeHandler = JacksonTypeHandler.class)

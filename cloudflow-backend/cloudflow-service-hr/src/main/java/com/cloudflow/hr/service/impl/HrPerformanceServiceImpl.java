@@ -73,6 +73,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     private final HrEmployeeMapper employeeMapper;
     private final HrPerformanceSalaryAdjustmentMapper performanceSalaryAdjustmentMapper;
     private final HrAuditLogMapper auditLogMapper;
+    private final com.cloudflow.hr.service.HrAppraisalGuard appraisalGuard;
 
     @Override
     public PageResult<HrPerformanceObjectiveVO> listObjectives(HrPerformanceCommonQueryDTO queryDTO) {
@@ -83,6 +84,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         int pageSize = Math.min(500, Math.max(1, toInt(query.get("pageSize"), toInt(query.get("size"), 50))));
 
         LambdaQueryWrapper<HrPerformanceObjective> wrapper = new LambdaQueryWrapper<HrPerformanceObjective>()
+                .isNull(HrPerformanceObjective::getCycleId)
                 .eq(HrPerformanceObjective::getTenantId, tenantId())
                 .eq(HrPerformanceObjective::getDeleted, 0);
         if (StringUtils.hasText(keyword)) {
@@ -126,6 +128,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
 
     @Override
     public HrPerformanceObjectiveTreeVO getObjectiveTree(Long id) {
+        appraisalGuard.legacyObjective(id);
         Map<String, Object> objective = getObjective(id);
         if (objective.isEmpty()) {
             return new HrPerformanceObjectiveTreeVO();
@@ -293,6 +296,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
             throw new IllegalArgumentException("绩效分解节点不存在");
         }
         Long objectiveId = toLong(parent.get("objectiveId"));
+        appraisalGuard.legacyObjective(objectiveId);
         List<Map<String, Object>> beforeAssignments = loadAssignmentsByParent(parentId);
         List<Map<String, Object>> children = payload == null || payload.getChildren() == null
                 ? List.of()
@@ -378,6 +382,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
             throw new IllegalArgumentException("绩效分解节点不存在");
         }
         Map<String, Object> before = new LinkedHashMap<>(assignment);
+        appraisalGuard.legacyObjective(toLong(assignment.get("objectiveId")));
         assignmentMapper.update(null,
                 new LambdaUpdateWrapper<HrPerformanceAssignment>()
                         .eq(HrPerformanceAssignment::getTenantId, tenantId())
@@ -401,6 +406,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     // M1-5: 防并发冲突
     @DistributedLock(key = "'performance:objective:' + #objectiveId + ':submit:plan'")
     public void submitPlan(Long objectiveId) {
+        appraisalGuard.legacyObjective(objectiveId);
         Map<String, Object> before = loadObjective(objectiveId);
         objectiveMapper.update(null,
                 new LambdaUpdateWrapper<HrPerformanceObjective>()
@@ -415,6 +421,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     // M1-5: 防并发冲突
     @DistributedLock(key = "'performance:objective:' + #objectiveId + ':submit:result'")
     public void submitResult(Long objectiveId) {
+        appraisalGuard.legacyObjective(objectiveId);
         Map<String, Object> before = loadObjective(objectiveId);
         objectiveMapper.update(null,
                 new LambdaUpdateWrapper<HrPerformanceObjective>()
@@ -428,6 +435,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createSalaryAdjustment(Long objectiveId, HrPerformanceSalaryAdjustmentRequest payload) {
+        appraisalGuard.legacyObjective(objectiveId);
         Long employeeId = payload == null ? null : payload.getEmployeeId();
         if (employeeId == null) {
             throw new IllegalArgumentException("employeeId不能为空");

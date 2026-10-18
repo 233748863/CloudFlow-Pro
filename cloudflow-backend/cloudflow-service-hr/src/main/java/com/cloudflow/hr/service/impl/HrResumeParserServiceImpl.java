@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.HrResumeParsedFieldsPayload;
@@ -10,6 +11,10 @@ import com.cloudflow.hr.domain.vo.recruitment.HrResumeParsedFieldVO;
 import com.cloudflow.hr.mapper.HrCandidateMapper;
 import com.cloudflow.hr.mapper.HrResumeParsedFieldsMapper;
 import com.cloudflow.hr.service.IHrResumeParserService;
+import com.cloudflow.hr.service.HrRecruitmentContacts;
+import com.cloudflow.hr.service.HrRecruitmentIdentityService;
+import static com.cloudflow.hr.service.HrRuleSupport.tenantId;
+import static com.cloudflow.hr.service.HrHException.forbidden;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -43,12 +48,6 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class HrResumeParserServiceImpl implements IHrResumeParserService {
 
-    private static final long TENANT_ID = 100000L;
-
-    // 11 位中国手机号
-    private static final Pattern PHONE_PATTERN = Pattern.compile("(?<![\\d])(1[3-9]\\d{9})(?![\\d])");
-    // 邮箱
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
     // 学历
     private static final Set<String> EDUCATION_KEYWORDS = Set.of(
             "博士", "硕士", "研究生", "本科", "学士", "大专", "专科", "高中", "中专", "MBA", "EMBA");
@@ -72,6 +71,7 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
     private final HrResumeParsedFieldsMapper parsedFieldsMapper;
     private final HrCandidateMapper candidateMapper;
     private final ObjectMapper objectMapper;
+    private final HrRecruitmentIdentityService identities;
 
     @Override
     @Transactional
@@ -79,10 +79,12 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
         if (candidateId == null) {
             throw new IllegalArgumentException("candidateId 不能为空");
         }
+        identities.requireCandidate(candidateId);
+        if (candidateMapper.lockCandidate(tenantId(), candidateId) == null) throw forbidden();
         String text = rawText == null ? "" : rawText;
 
-        String phone = firstMatch(PHONE_PATTERN, text);
-        String email = firstMatch(EMAIL_PATTERN, text);
+        String phone = HrRecruitmentContacts.phoneFromText(text);
+        String email = HrRecruitmentContacts.emailFromText(text);
         String education = pickEducation(text);
         String school = firstGroup(SCHOOL_PATTERN, text);
         String name = inferName(text);
@@ -102,7 +104,7 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
         String operator = defaultOperator();
         HrResumeParsedFields existing = parsedFieldsMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrResumeParsedFields>()
-                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
+                        .eq(HrResumeParsedFields::getTenantId, tenantId())
                         .eq(HrResumeParsedFields::getCandidateId, candidateId)
                         .eq(HrResumeParsedFields::getDeleted, 0)
                         .orderByDesc(HrResumeParsedFields::getId))
@@ -121,11 +123,11 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
             existing.setReviewStatus("PENDING");
             existing.setParseError(null);
             existing.setUpdateBy(operator);
-            parsedFieldsMapper.updateById(existing);
+            saveParsedContacts(existing);
             return existing.getId();
         }
         HrResumeParsedFields row = new HrResumeParsedFields();
-        row.setTenantId(TENANT_ID);
+        row.setTenantId(tenantId());
         row.setCandidateId(candidateId);
         row.setResumeUrl(resumeUrl);
         row.setParsedName(name);
@@ -147,9 +149,10 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
 
     @Override
     public List<HrResumeParsedFieldVO> listParsed(Long candidateId) {
+        identities.requireCandidate(candidateId);
         List<HrResumeParsedFields> rows = parsedFieldsMapper.selectList(
                 new LambdaQueryWrapper<HrResumeParsedFields>()
-                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
+                        .eq(HrResumeParsedFields::getTenantId, tenantId())
                         .eq(HrResumeParsedFields::getCandidateId, candidateId)
                         .eq(HrResumeParsedFields::getDeleted, 0)
                         .orderByDesc(HrResumeParsedFields::getId));
@@ -163,21 +166,12 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
     @Override
     @Transactional
     public void confirmParsed(Long parsedId) {
-        HrResumeParsedFields row = parsedFieldsMapper.selectOne(
-                new LambdaQueryWrapper<HrResumeParsedFields>()
-                        .eq(HrResumeParsedFields::getId, parsedId)
-                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
-                        .eq(HrResumeParsedFields::getDeleted, 0));
-        if (row == null) {
-            return;
-        }
+        HrResumeParsedFields row = parsedForWrite(parsedId);
+        if ("CONFIRMED".equals(row.getReviewStatus())) return;
+        if (!"PENDING".equals(row.getReviewStatus())) throw new IllegalArgumentException("仅待核对的简历可以确认");
 
         // 仅回填空字段，避免覆盖 HR 手动填的更准确值。
-        HrCandidate candidate = candidateMapper.selectOne(
-                new LambdaQueryWrapper<HrCandidate>()
-                        .eq(HrCandidate::getId, row.getCandidateId())
-                        .eq(HrCandidate::getTenantId, TENANT_ID)
-                        .eq(HrCandidate::getDeleted, 0));
+        HrCandidate candidate = candidateMapper.lockCandidate(tenantId(), row.getCandidateId());
         if (candidate != null) {
             boolean dirty = false;
             if (!StringUtils.hasText(candidate.getName()) && StringUtils.hasText(row.getParsedName())) {
@@ -194,7 +188,8 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
             }
             if (dirty) {
                 candidate.setUpdateBy(defaultOperator());
-                candidateMapper.updateById(candidate);
+                identities.occupyCandidate(candidate);
+                if (candidateMapper.updateById(candidate) != 1) throw new IllegalStateException("候选人已变化，请刷新后重试");
             }
         }
 
@@ -207,14 +202,9 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void rejectParsed(Long parsedId, String reason) {
-        HrResumeParsedFields row = parsedFieldsMapper.selectOne(
-                new LambdaQueryWrapper<HrResumeParsedFields>()
-                        .eq(HrResumeParsedFields::getId, parsedId)
-                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID));
-        if (row == null) {
-            return;
-        }
+        HrResumeParsedFields row = parsedForWrite(parsedId);
         row.setReviewStatus("REJECTED");
         row.setReviewerId(UserContext.getUserId());
         row.setReviewerName(defaultOperator());
@@ -226,34 +216,47 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
 
     @Override
     @Audit(name = "更新简历解析")
+    @Transactional(rollbackFor = Exception.class)
     public void updateParsed(Long parsedId, HrResumeParsedFieldsPayload payload) {
         if (payload == null) {
-            return;
+            throw new IllegalArgumentException("简历修订内容不能为空");
         }
-        HrResumeParsedFields row = parsedFieldsMapper.selectOne(
-                new LambdaQueryWrapper<HrResumeParsedFields>()
-                        .eq(HrResumeParsedFields::getId, parsedId)
-                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID));
-        if (row == null) {
-            return;
-        }
+        HrResumeParsedFields row = parsedForWrite(parsedId);
+        row.setReviewStatus("PENDING");
         row.setParsedName(payload.getParsedName());
-        row.setParsedPhone(payload.getParsedPhone());
-        row.setParsedEmail(payload.getParsedEmail());
+        row.setParsedPhone(HrRecruitmentContacts.phone(payload.getParsedPhone()));
+        row.setParsedEmail(HrRecruitmentContacts.email(payload.getParsedEmail()));
         row.setParsedEducation(payload.getParsedEducation());
         row.setParsedSchool(payload.getParsedSchool());
         row.setParsedSkills(payload.getParsedSkills());
         row.setParsedExperiences(payload.getParsedExperiences());
         row.setUpdateBy(defaultOperator());
-        parsedFieldsMapper.updateById(row);
+        saveParsedContacts(row);
+    }
+
+    private HrResumeParsedFields parsedForWrite(Long parsedId) {
+        HrResumeParsedFields row = parsedFieldsMapper.selectOne(new LambdaQueryWrapper<HrResumeParsedFields>()
+                .eq(HrResumeParsedFields::getId, parsedId).eq(HrResumeParsedFields::getTenantId, tenantId())
+                .eq(HrResumeParsedFields::getDeleted, 0));
+        if (row == null) throw forbidden();
+        identities.requireCandidate(row.getCandidateId());
+        if (candidateMapper.lockCandidate(tenantId(), row.getCandidateId()) == null) throw forbidden();
+        return parsedFieldsMapper.selectOne(new LambdaQueryWrapper<HrResumeParsedFields>()
+                .eq(HrResumeParsedFields::getId, parsedId).eq(HrResumeParsedFields::getTenantId, tenantId())
+                .eq(HrResumeParsedFields::getDeleted, 0));
+    }
+
+    private void saveParsedContacts(HrResumeParsedFields row) {
+        LambdaUpdateWrapper<HrResumeParsedFields> update = new LambdaUpdateWrapper<HrResumeParsedFields>()
+                .eq(HrResumeParsedFields::getId, row.getId())
+                .eq(HrResumeParsedFields::getTenantId, row.getTenantId())
+                .eq(HrResumeParsedFields::getDeleted, 0)
+                .set(row.getParsedPhone() == null, HrResumeParsedFields::getParsedPhone, null)
+                .set(row.getParsedEmail() == null, HrResumeParsedFields::getParsedEmail, null);
+        if (parsedFieldsMapper.update(row, update) != 1) throw new IllegalStateException("简历解析记录已变化，请刷新后重试");
     }
 
     // ============== helpers ==============
-
-    private String firstMatch(Pattern p, String text) {
-        Matcher m = p.matcher(text);
-        return m.find() ? m.group() : null;
-    }
 
     private String firstGroup(Pattern p, String text) {
         Matcher m = p.matcher(text);

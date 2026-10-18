@@ -23,23 +23,31 @@ public interface CrmPerformanceClient {
     R<List<CrmPerformanceSummaryVO>> summarizeByOwner(
             @RequestParam(value = "ownerIds", required = false) List<Long> ownerIds,
             @RequestParam(value = "startDate", required = false) String startDate,
-            @RequestParam(value = "endDate", required = false) String endDate);
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "calculationBasis", defaultValue = "OWNER_V1") String calculationBasis,
+            @RequestParam(value = "currency", defaultValue = "CNY") String currency);
 
     @GetMapping("/inner/crm/performance/depts")
     R<List<CrmPerformanceSummaryVO>> summarizeByDept(
             @RequestParam(value = "deptIds", required = false) List<Long> deptIds,
             @RequestParam(value = "startDate", required = false) String startDate,
-            @RequestParam(value = "endDate", required = false) String endDate);
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "calculationBasis", defaultValue = "OWNER_V1") String calculationBasis,
+            @RequestParam(value = "currency", defaultValue = "CNY") String currency);
 
     @GetMapping("/inner/crm/performance/top-owners")
     R<List<CrmPerformanceSummaryVO>> topOwners(
             @RequestParam(value = "limit", defaultValue = "10") int limit,
             @RequestParam(value = "startDate", required = false) String startDate,
-            @RequestParam(value = "endDate", required = false) String endDate);
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "calculationBasis", defaultValue = "OWNER_V1") String calculationBasis,
+            @RequestParam(value = "currency", defaultValue = "CNY") String currency);
 
     @GetMapping("/inner/crm/performance/top-depts")
     R<List<CrmPerformanceSummaryVO>> topDepartments(
             @RequestParam(value = "limit", defaultValue = "10") int limit,
             @RequestParam(value = "startDate", required = false) String startDate,
-            @RequestParam(value = "endDate", required = false) String endDate);
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "calculationBasis", defaultValue = "OWNER_V1") String calculationBasis,
+            @RequestParam(value = "currency", defaultValue = "CNY") String currency);
 }

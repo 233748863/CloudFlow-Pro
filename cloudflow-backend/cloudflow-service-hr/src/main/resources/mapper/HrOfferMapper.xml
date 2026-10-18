@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrOfferMapper">
+    <select id="lockOffer" resultMap="mybatis-plus_HrOffer">
+        SELECT * FROM hr_offer WHERE tenant_id = #{tenantId} AND id = #{offerId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="decisionMatches" resultType="int" flushCache="true" useCache="false">
+        SELECT COUNT(*) FROM hr_offer offer
+        JOIN wf_process_instance instance ON instance.tenant_id = offer.tenant_id
+          AND instance.instance_id = offer.process_instance_id AND instance.deleted = 0
+        WHERE offer.tenant_id = #{tenantId} AND offer.id = #{offerId} AND offer.deleted = 0
+          AND instance.instance_id = #{instanceId} AND instance.status = #{status}
+          AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessType')) = 'OFFER'
+          AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessId')) = CAST(#{offerId} AS CHAR)
+          AND EXISTS (SELECT 1 FROM wf_task_history history WHERE history.tenant_id = instance.tenant_id
+            AND history.instance_id = instance.instance_id AND history.operator_id = #{actor}
+            AND history.operator_id &lt;&gt; instance.start_user_id
+            AND ((history.action = CASE WHEN #{status} = 'PASSED' THEN 'APPROVE' ELSE 'REJECT' END
+                AND COALESCE(history.task_type, '') NOT LIKE 'AUTO_%')
+              OR (history.action = CASE WHEN #{status} = 'PASSED' THEN 'COUNTERSIGN_APPROVE' ELSE 'COUNTERSIGN_REJECT' END
+                AND history.task_type IN ('OR_SIGN', 'COUNTERSIGN'))))
+    </select>
+</mapper>

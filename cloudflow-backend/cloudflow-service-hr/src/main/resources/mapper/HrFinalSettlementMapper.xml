@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrFinalSettlementMapper">
+    <select id="lock" resultType="java.lang.Long" flushCache="true" useCache="false">
+        SELECT settlement_id FROM hr_final_settlement
+        WHERE tenant_id = #{tenantId} AND settlement_id = #{identifier}
+        FOR UPDATE
+</select>
+    <update id="updateDraft">
+        UPDATE hr_final_settlement SET rule_id = #{record.ruleId}, join_date = #{record.joinDate}, relieving_date = #{record.relievingDate},
+            calculation_snapshot = #{record.calculationSnapshot,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            work_years = #{record.workYears}, total_payable = #{record.totalPayable},
+            total_receivable = #{record.totalReceivable}, asset_recovery_cost = #{record.assetRecoveryCost},
+            severance_amount = #{record.severanceAmount}, net_amount = #{record.netAmount},
+            remark = #{record.remark}, version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND settlement_id = #{record.settlementId}
+          AND employee_id = #{record.employeeId} AND lifecycle_application_id = #{record.lifecycleApplicationId}
+          AND status = 'DRAFT' AND approval_status IN ('DRAFT','REJECTED','CANCELLED')
+          AND settlement_kind = 'NORMAL' AND superseded_flag = 0 AND version = #{expectedVersion}
+    </update>
+    <update id="updateApproval">
+        UPDATE hr_final_settlement SET approval_status = #{record.approvalStatus}, instance_id = #{record.instanceId},
+            calculation_snapshot = #{record.calculationSnapshot,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND settlement_id = #{record.settlementId}
+          AND employee_id = #{record.employeeId} AND lifecycle_application_id = #{record.lifecycleApplicationId}
+          AND status = 'DRAFT' AND superseded_flag = 0
+          AND ((settlement_kind = 'NORMAL' AND reversal_of_id IS NULL) OR (settlement_kind = 'REVERSAL' AND reversal_of_id IS NOT NULL))
+          AND confirmed_time IS NULL AND payment_request_id IS NULL AND version = #{expectedVersion}
+    </update>
+    <update id="confirm">
+        UPDATE hr_final_settlement SET status = 'CONFIRMED', confirmed_by = #{record.confirmedBy}, confirmed_time = #{record.confirmedTime},
+            calculation_snapshot = #{record.calculationSnapshot,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND settlement_id = #{record.settlementId} AND employee_id = #{record.employeeId}
+          AND status = 'DRAFT' AND approval_status = 'APPROVED' AND superseded_flag = 0
+          AND ((settlement_kind = 'NORMAL' AND reversal_of_id IS NULL) OR (settlement_kind = 'REVERSAL' AND reversal_of_id IS NOT NULL))
+          AND confirmed_time IS NULL AND payment_request_id IS NULL AND version = #{expectedVersion}
+    </update>
+</mapper>

@@ -3,9 +3,9 @@ package com.cloudflow.hr.client;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.client.dto.DeptCreateDTO;
 import com.cloudflow.hr.client.dto.PostCreateDTO;
-import com.cloudflow.hr.client.dto.UserCreateDTO;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.cloudflow.hr.client.dto.UserUpdateDTO;
-import com.cloudflow.hr.client.fallback.AuthServiceFallback;
+import com.cloudflow.hr.client.fallback.AuthServiceFallbackFactory;
 import com.cloudflow.hr.client.vo.DeptTreeVO;
 import com.cloudflow.hr.client.vo.DeptVO;
 import com.cloudflow.hr.client.vo.PostVO;
@@ -26,7 +26,7 @@ import java.util.List;
     name = "cloudflow-auth",
     path = "/inner/auth",
     contextId = "hrAuthServiceClient",
-    fallback = AuthServiceFallback.class
+    fallbackFactory = AuthServiceFallbackFactory.class
 )
 public interface AuthServiceClient {
     
@@ -97,7 +97,7 @@ public interface AuthServiceClient {
      * @return 用户ID
      */
     @PostMapping("/user")
-    R<Long> createUser(@RequestBody UserCreateDTO dto);
+    R<Long> createUser(@RequestBody JsonNode dto);
 
     @GetMapping("/user/{id}")
     R<UserVO> getUserById(@PathVariable("id") Long id);

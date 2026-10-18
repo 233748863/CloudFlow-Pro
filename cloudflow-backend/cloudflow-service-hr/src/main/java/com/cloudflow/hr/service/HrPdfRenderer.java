@@ -21,16 +21,14 @@ import java.util.Map;
 /**
  * HR PDF 渲染器：基于 openhtmltopdf，把内嵌的 HTML 模板填好变量后渲染成 PDF byte[]。
  *
- * <p>中文支持：优先加载 classpath 下 fonts/NotoSansCJKsc-Regular.otf（如部署时随包发布），
- * 找不到时回退到 jdk 自带 sans-serif 渲染（生产环境若 Linux 无安装中文字体，需补充字体文件，
- * 字体文件挂在 {@code cloudflow-service-hr/src/main/resources/fonts/} 即可）。
+ * <p>中文字体随服务打包，生成的 PDF 内嵌所需字形，不依赖宿主机字体。
  */
 @Slf4j
 @Service
 public class HrPdfRenderer {
 
-    private static final String FONT_CLASSPATH = "fonts/NotoSansCJKsc-Regular.otf";
-    private static final String FONT_FAMILY = "Noto Sans CJK SC";
+    private static final String FONT_CLASSPATH = "fonts/NotoSansSC-Regular.ttf";
+    private static final String FONT_FAMILY = "Noto Sans SC";
 
     /**
      * 把一段 HTML（可能不严格 XHTML）渲染为 PDF。
@@ -83,8 +81,7 @@ public class HrPdfRenderer {
     private void registerFonts(PdfRendererBuilder builder) {
         ClassPathResource resource = new ClassPathResource(FONT_CLASSPATH);
         if (!resource.exists()) {
-            log.warn("HR PDF 字体文件不存在（路径 {}），将依赖 JVM/OS 默认字体；中文可能乱码。", FONT_CLASSPATH);
-            return;
+            throw new HrBusinessException("PDF_FONT_LOAD_FAILED", "PDF 中文字体缺失，请联系管理员检查服务文件");
         }
         builder.useFont(() -> {
             try {
@@ -120,7 +117,7 @@ public class HrPdfRenderer {
               <meta charset="UTF-8"/>
               <style>
                 @page { size: A4; margin: 24mm 22mm; }
-                body { font-family: "Noto Sans CJK SC", "SimSun", sans-serif; font-size: 12pt; color: #222; }
+                body { font-family: "Noto Sans SC", sans-serif; font-size: 12pt; color: #222; }
                 h1 { text-align: center; font-size: 22pt; letter-spacing: 4pt; margin: 12pt 0 24pt; }
                 .meta { text-align: right; color: #555; font-size: 10pt; margin-bottom: 18pt; }
                 .body p { line-height: 1.85; text-indent: 2em; margin: 0 0 6pt; }
@@ -151,7 +148,7 @@ public class HrPdfRenderer {
               <meta charset="UTF-8"/>
               <style>
                 @page { size: A4 landscape; margin: 18mm 22mm; }
-                body { font-family: "Noto Sans CJK SC", "SimSun", sans-serif; color: #1f2a3a; }
+                body { font-family: "Noto Sans SC", sans-serif; color: #1f2a3a; }
                 .frame { border: 6pt double #b08d57; padding: 28pt 28pt 36pt; min-height: 165mm; text-align: center; }
                 .frame h1 { font-size: 30pt; letter-spacing: 8pt; margin: 18pt 0 0; }
                 .frame .sub { font-size: 14pt; color: #6c5530; letter-spacing: 4pt; margin-bottom: 28pt; }

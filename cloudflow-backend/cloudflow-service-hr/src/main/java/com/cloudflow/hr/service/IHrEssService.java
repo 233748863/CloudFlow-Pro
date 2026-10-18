@@ -25,6 +25,14 @@ public interface IHrEssService {
      */
     int generateSalarySlips(String periodMonth, Long employeeId);
 
+    Long generateSalarySlipForBatch(Long employeeId, com.cloudflow.hr.domain.entity.HrPayrollPeriod period, Long batchId, boolean deductUnverified);
+
+    HrSalarySlip previewSalarySlip(Long employeeId, com.cloudflow.hr.domain.entity.HrPayrollPeriod period, boolean deductUnverified);
+
+    void sealSalarySlip(HrSalarySlip slip);
+
+    void verifySalarySlip(HrSalarySlip slip);
+
     /**
      * 员工确认工资条。仅允许工资条 owner 本人切换 employeeConfirmed → true。
      */
@@ -67,7 +75,7 @@ public interface IHrEssService {
      *   <li>latestSlip：最近一份 hr_salary_slip</li>
      *   <li>pendingContracts：hr_employee_contract 中 sign_status 不为 SIGNED 的合同 + 关联签署记录</li>
      *   <li>recentCertificates：最近 5 条 hr_certificate_request</li>
-     *   <li>unreadMessages：hr_self_service_message read_flag=0 的明细 + 计数</li>
+     *   <li>unreadMessages：sys_message_record 中当前用户的未读站内消息 + 计数</li>
      * </ul>
      */
     Map<String, Object> portalSummary();

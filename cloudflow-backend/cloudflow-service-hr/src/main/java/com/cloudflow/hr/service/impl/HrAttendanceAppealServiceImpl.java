@@ -1,192 +1,177 @@
 package com.cloudflow.hr.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.HrAttendanceAppealPayload;
 import com.cloudflow.hr.domain.entity.HrAttendanceAppeal;
+import com.cloudflow.hr.domain.entity.HrAttendanceRecord;
+import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.vo.attendance.HrAttendanceAppealVO;
+import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrAttendanceAppealMapper;
 import com.cloudflow.hr.mapper.HrAttendanceRecordMapper;
-import com.cloudflow.hr.mapper.HrAuditLogMapper;
+import com.cloudflow.hr.service.HrAttendanceBusinessService;
+import com.cloudflow.hr.service.HrEssSupport;
+import com.cloudflow.hr.service.HrRuleSupport;
 import com.cloudflow.hr.service.IHrAttendanceAppealService;
-import com.cloudflow.common.audit.annotation.Audit;
-import com.cloudflow.hr.service.HrTypedCrudService;
-import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 
-/**
- * HR-P1-4 考勤异常申诉实现。
- */
-@Slf4j
+import static com.cloudflow.hr.service.HrRuleSupport.*;
+
 @Service
 @RequiredArgsConstructor
 public class HrAttendanceAppealServiceImpl implements IHrAttendanceAppealService {
-
-    private static final long TENANT_ID = 100000L;
-
     private final HrAttendanceAppealMapper appealMapper;
     private final HrAttendanceRecordMapper attendanceRecordMapper;
-    private final HrAuditLogMapper auditLogMapper;
-    private final HrTypedCrudService crudService;
+    private final HrAttendanceBusinessService attendanceService;
+    private final HrRuleSupport support;
+    private final HrEssSupport essSupport;
     private final ObjectMapper objectMapper;
 
     @Override
-    @Transactional
+    public List<HrAttendanceAppealVO> ownAppeals() {
+        Long employeeId = essSupport.currentEmployeeId();
+        return appealMapper.selectList(new LambdaQueryWrapper<HrAttendanceAppeal>()
+                .eq(HrAttendanceAppeal::getTenantId, tenantId())
+                .eq(HrAttendanceAppeal::getEmployeeId, employeeId)
+                .eq(HrAttendanceAppeal::getDeleted, 0)
+                .orderByDesc(HrAttendanceAppeal::getId)).stream()
+                .map(appeal -> objectMapper.convertValue(appeal, HrAttendanceAppealVO.class)).toList();
+    }
+
+    @Override
     public Long submit(HrAttendanceAppealPayload payload) {
-        if (payload == null || payload.getEmployeeId() == null
-                || payload.getAttendanceDate() == null || !StringUtils.hasText(payload.getExceptionType())) {
-            throw new IllegalArgumentException("员工/考勤日期/异常类型不能为空");
+        if (payload == null || payload.getAttendanceDate() == null || payload.getAttendanceRecordId() == null
+                || !StringUtils.hasText(payload.getExceptionType()) || !StringUtils.hasText(payload.getReason())) {
+            throw new HrBusinessException("INVALID_APPEAL", "考勤日期、日结论、异常类型及申诉原因不能为空");
         }
-        if (!StringUtils.hasText(payload.getAppealNo())) {
-            payload.setAppealNo(generateAppealNo());
-        }
-        if (!StringUtils.hasText(payload.getStatus())) {
-            payload.setStatus("PENDING");
-        }
-        return crudService.create(HrAttendanceAppeal.class, payload);
+        support.assertEmployeeScope(payload.getEmployeeId());
+        return support.locked("attendance-appeal-submit:" + payload.getAttendanceRecordId(), () -> {
+            HrAttendanceRecord record = attendanceRecordMapper.selectById(payload.getAttendanceRecordId());
+            if (record == null || flag(record.getDeleted()) || !Objects.equals(record.getTenantId(), tenantId())
+                    || !Objects.equals(record.getEmployeeId(), payload.getEmployeeId())
+                    || !Objects.equals(record.getAttendanceDate(), payload.getAttendanceDate())) {
+                throw new HrBusinessException("INVALID_APPEAL_RECORD", "申诉员工、日期与日考勤结论不匹配");
+            }
+            if (appealMapper.selectCount(new LambdaQueryWrapper<HrAttendanceAppeal>()
+                    .eq(HrAttendanceAppeal::getTenantId, tenantId()).eq(HrAttendanceAppeal::getDeleted, 0)
+                    .eq(HrAttendanceAppeal::getAttendanceRecordId, record.getId()).eq(HrAttendanceAppeal::getStatus, "PENDING")) > 0) {
+                throw new HrBusinessException("APPEAL_PENDING", "该日考勤已有待处理申诉");
+            }
+            if (payload.getExpectedCheckIn() != null && payload.getExpectedCheckOut() != null
+                    && !payload.getExpectedCheckOut().isAfter(payload.getExpectedCheckIn())) {
+                throw new HrBusinessException("INVALID_APPEAL_TIME", "补卡下班时间须晚于上班时间");
+            }
+            HrEmployee employee = support.employee(payload.getEmployeeId());
+            HrAttendanceAppeal appeal = new HrAttendanceAppeal();
+            appeal.setTenantId(tenantId());
+            appeal.setAppealNo("ATA" + UUID.randomUUID().toString().replace("-", ""));
+            appeal.setEmployeeId(employee.getId());
+            appeal.setEmployeeName(employee.getName());
+            appeal.setDeptId(employee.getDeptId());
+            appeal.setAttendanceRecordId(record.getId());
+            appeal.setAttendanceDate(record.getAttendanceDate());
+            appeal.setExceptionType(payload.getExceptionType());
+            appeal.setReason(payload.getReason());
+            appeal.setEvidenceUrls(payload.getEvidenceUrls());
+            appeal.setExpectedCheckIn(payload.getExpectedCheckIn());
+            appeal.setExpectedCheckOut(payload.getExpectedCheckOut());
+            appeal.setStatus("PENDING");
+            appeal.setDeleted(0); appeal.setVersion(0);
+            appeal.setCreateBy(userName()); appeal.setUpdateBy(userName());
+            appeal.setCreateTime(LocalDateTime.now()); appeal.setUpdateTime(LocalDateTime.now());
+            appealMapper.insert(appeal);
+            support.audit("ATTENDANCE_APPEAL", appeal.getId(), "SUBMIT", Map.of("recordId", record.getId()));
+            return appeal.getId();
+        });
     }
 
     @Override
-    @Transactional
     public void managerReview(Long id, boolean pass, String remark) {
-        HrAttendanceAppeal appeal = appealMapper.selectById(id);
-        if (appeal == null || appeal.getDeleted() != null && appeal.getDeleted() == 1) {
-            throw new IllegalArgumentException("申诉不存在");
-        }
-        if (!"PENDING".equalsIgnoreCase(appeal.getStatus())) {
-            throw new IllegalStateException("仅 PENDING 状态可主管审核");
-        }
-        Map<String, Object> patch = new LinkedHashMap<>();
-        patch.put("managerId", UserContext.getUserId());
-        patch.put("managerRemark", remark);
-        // 主管通过 → 待 HR 复核；驳回 → 直接 REJECTED
-        patch.put("status", pass ? "PENDING" : "REJECTED");
-        crudService.updateProperties(HrAttendanceAppeal.class, id, patch);
+        support.locked("attendance-appeal:" + id, () -> {
+            HrAttendanceAppeal appeal = get(id);
+            if (!"PENDING".equals(appeal.getStatus()) || appeal.getManagerId() != null) {
+                throw new HrBusinessException("INVALID_APPEAL_STATE", "仅未审核的待处理申诉可主管审核");
+            }
+            appeal.setManagerId(UserContext.getUserId());
+            appeal.setManagerRemark(remark);
+            appeal.setStatus(pass ? "PENDING" : "REJECTED");
+            update(appeal);
+            support.audit("ATTENDANCE_APPEAL", id, "MANAGER_REVIEW", Map.of("pass", pass));
+            return null;
+        });
     }
 
     @Override
-    @Transactional
     public void hrReview(Long id, String finalDecision, String remark) {
-        HrAttendanceAppeal appeal = appealMapper.selectById(id);
-        if (appeal == null || appeal.getDeleted() != null && appeal.getDeleted() == 1) {
-            throw new IllegalArgumentException("申诉不存在");
-        }
-        if ("CANCELLED".equalsIgnoreCase(appeal.getStatus())) {
-            throw new IllegalStateException("已撤回的申诉不可处理");
-        }
         String decision = finalDecision == null ? "" : finalDecision.trim().toUpperCase(Locale.ROOT);
-        if (!"REWRITE".equals(decision) && !"REJECT".equals(decision) && !"IGNORE".equals(decision)) {
-            throw new IllegalArgumentException("finalDecision 仅允许 REWRITE/REJECT/IGNORE");
+        if (!List.of("REWRITE", "REJECT", "IGNORE").contains(decision)) {
+            throw new HrBusinessException("INVALID_APPEAL_DECISION", "最终决定须为REWRITE/REJECT/IGNORE");
         }
-
-        Map<String, Object> patch = new LinkedHashMap<>();
-        patch.put("hrReviewerId", UserContext.getUserId());
-        patch.put("hrRemark", remark);
-        patch.put("finalDecision", decision);
-        patch.put("decidedTime", LocalDateTime.now());
-        if ("REWRITE".equals(decision)) {
-            patch.put("status", "APPROVED");
-            patch.put("approvedCheckIn", appeal.getExpectedCheckIn());
-            patch.put("approvedCheckOut", appeal.getExpectedCheckOut());
-            rewriteAttendanceRecord(appeal);
-        } else if ("REJECT".equals(decision)) {
-            patch.put("status", "REJECTED");
-        } else {
-            patch.put("status", "APPROVED");
-        }
-        crudService.updateProperties(HrAttendanceAppeal.class, id, patch);
+        support.locked("attendance-appeal:" + id, () -> {
+            HrAttendanceAppeal appeal = get(id);
+            if (decision.equals(appeal.getFinalDecision()) && List.of("APPROVED", "REJECTED").contains(appeal.getStatus())) return null;
+            if (!"PENDING".equals(appeal.getStatus()) || appeal.getManagerId() == null) {
+                throw new HrBusinessException("INVALID_APPEAL_STATE", "仅主管通过的待处理申诉可由HR复核");
+            }
+            if ("REWRITE".equals(decision)) {
+                attendanceService.applyAppeal(appeal);
+                appeal.setApprovedCheckIn(appeal.getExpectedCheckIn());
+                appeal.setApprovedCheckOut(appeal.getExpectedCheckOut());
+            }
+            appeal.setHrReviewerId(UserContext.getUserId());
+            appeal.setHrRemark(remark);
+            appeal.setFinalDecision(decision);
+            appeal.setDecidedTime(LocalDateTime.now());
+            appeal.setStatus("REJECT".equals(decision) ? "REJECTED" : "APPROVED");
+            update(appeal);
+            support.audit("ATTENDANCE_APPEAL", id, "HR_REVIEW", Map.of("decision", decision));
+            return null;
+        });
     }
 
     @Override
     @Audit(name = "取消考勤申诉", highRisk = true)
     public void cancel(Long id) {
-        HrAttendanceAppeal appeal = appealMapper.selectById(id);
-        if (appeal == null) {
-            return;
-        }
-        // M1-4: 所有权校验
-        if (appeal.getEmployeeId() != null) {
-            Long currentEmployeeId = UserContext.getUserId();
-            if (currentEmployeeId == null || !currentEmployeeId.equals(appeal.getEmployeeId())) {
-                throw new IllegalArgumentException("无权撤回他人的考勤申诉");
-            }
-        }
-        String s = appeal.getStatus();
-        if (!"DRAFT".equalsIgnoreCase(s) && !"PENDING".equalsIgnoreCase(s)) {
-            throw new IllegalStateException("当前状态不可撤回：" + s);
-        }
-        crudService.updateProperties(HrAttendanceAppeal.class, id, Map.of("status", "CANCELLED"));
+        support.locked("attendance-appeal:" + id, () -> {
+            HrAttendanceAppeal appeal = get(id);
+            essSupport.assertOwner(appeal.getEmployeeId());
+            if ("CANCELLED".equals(appeal.getStatus())) return null;
+            if (!List.of("DRAFT", "PENDING").contains(appeal.getStatus())) throw new HrBusinessException("INVALID_APPEAL_STATE", "当前状态不可撤回");
+            appeal.setStatus("CANCELLED");
+            update(appeal);
+            support.audit("ATTENDANCE_APPEAL", id, "CANCEL", Map.of());
+            return null;
+        });
     }
 
     @Override
     public HrAttendanceAppealVO getDetail(Long id) {
-        Map<String, Object> row = crudService.get(HrAttendanceAppeal.class, id);
-        if (row == null || row.isEmpty()) {
-            return null;
-        }
-        return objectMapper.convertValue(row, HrAttendanceAppealVO.class);
+        return objectMapper.convertValue(get(id), HrAttendanceAppealVO.class);
     }
 
-    private void rewriteAttendanceRecord(HrAttendanceAppeal appeal) {
-        if (appeal.getAttendanceRecordId() == null) {
-            log.warn("申诉 {} 无关联考勤记录，跳过改写", appeal.getId());
-            return;
+    private HrAttendanceAppeal get(Long id) {
+        HrAttendanceAppeal appeal = id == null ? null : appealMapper.selectById(id);
+        if (appeal == null || flag(appeal.getDeleted()) || !Objects.equals(tenantId(), appeal.getTenantId())) {
+            throw new HrBusinessException("APPEAL_NOT_FOUND", "考勤申诉不存在");
         }
-        Map<String, Object> beforeRow = attendanceRecordMapper.selectRowAsMap(
-                appeal.getAttendanceRecordId(), TENANT_ID);
-        if (beforeRow == null || beforeRow.isEmpty()) {
-            log.warn("申诉 {} 关联考勤记录 {} 不存在，跳过改写", appeal.getId(), appeal.getAttendanceRecordId());
-            return;
-        }
-        int rows = attendanceRecordMapper.rewriteForAppeal(
-                appeal.getAttendanceRecordId(),
-                TENANT_ID,
-                appeal.getExpectedCheckIn(),
-                appeal.getExpectedCheckOut(),
-                " [APPEAL_REWRITE id=" + appeal.getId() + "]",
-                defaultOperator());
-        if (rows == 0) {
-            log.warn("申诉 {} 改写未命中记录 {}", appeal.getId(), appeal.getAttendanceRecordId());
-            return;
-        }
-        writeAuditLog("hr_attendance_record", appeal.getAttendanceRecordId(), "APPEAL_REWRITE",
-                beforeRow,
-                Map.of("appealId", appeal.getId(),
-                        "approvedCheckIn", String.valueOf(appeal.getExpectedCheckIn()),
-                        "approvedCheckOut", String.valueOf(appeal.getExpectedCheckOut())));
+        support.assertEmployeeScope(appeal.getEmployeeId());
+        return appeal;
     }
 
-    private String generateAppealNo() {
-        return "ATA" + System.currentTimeMillis();
-    }
-
-    private String defaultOperator() {
-        String name = UserContext.getUserName();
-        return StringUtils.hasText(name) ? name : "system";
-    }
-
-    private void writeAuditLog(String tableName, Long businessId, String operationType,
-                               Map<String, Object> before, Map<String, Object> after) {
-        try {
-            auditLogMapper.insertLog(
-                    TENANT_ID,
-                    tableName,
-                    businessId,
-                    operationType,
-                    UserContext.getUserId(),
-                    defaultOperator(),
-                    objectMapper.writeValueAsString(before == null ? Map.of() : before),
-                    objectMapper.writeValueAsString(after == null ? Map.of() : after));
-        } catch (Exception ignored) {
-        }
+    private void update(HrAttendanceAppeal appeal) {
+        appeal.setUpdateBy(userName()); appeal.setUpdateTime(LocalDateTime.now());
+        if (appealMapper.updateById(appeal) != 1) throw new HrBusinessException("APPEAL_CONFLICT", "申诉状态已变更，请刷新");
     }
 }

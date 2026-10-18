@@ -24,6 +24,10 @@ public class HrCompChangePayload {
     private String changeNo;
     private Long employeeId;
     private String changeType;
+    private Long salaryComponentId;
+    private Long payrollPeriodId;
+    private String sourceBizType;
+    private String sourceBizId;
 
     @JsonIgnore
     @EncryptField

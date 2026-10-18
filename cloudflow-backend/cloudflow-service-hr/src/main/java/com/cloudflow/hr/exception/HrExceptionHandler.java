@@ -28,12 +28,29 @@ public class HrExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(HrExceptionHandler.class);
 
+    @ExceptionHandler(com.cloudflow.hr.service.HrHException.class)
+    public ResponseEntity<Map<String, Object>> handleHException(com.cloudflow.hr.service.HrHException exception, HttpServletRequest request) {
+        log.warn("HR09业务操作未完成 code={}", exception.getCode());
+        return ResponseEntity.status(exception.getStatus()).body(buildBody(exception.getCode(), exception.getMessage(), null, request));
+    }
+
+    @ExceptionHandler(com.cloudflow.hr.service.HrAppraisalRules.ValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleAppraisalValidation(com.cloudflow.hr.service.HrAppraisalRules.ValidationException exception, HttpServletRequest request) {
+        log.warn("绩效周期校验未通过");
+        return ResponseEntity.badRequest().body(buildBody("APPRAISAL_INVALID_PARAMETER", exception.getMessage(), null, request));
+    }
+
     /**
      * HR业务异常
      * 处理所有业务逻辑错误，如假期额度不足、编制超额、工号重复等
      */
     @ExceptionHandler(HrBusinessException.class)
     public ResponseEntity<Map<String, Object>> handleHrBusinessException(HrBusinessException e, HttpServletRequest request) {
+        if (request.getRequestURI().contains("/attendance/overtime-") || request.getRequestURI().contains("/attendance/shift-requests")) {
+            log.warn("HR09依赖业务操作未完成 code={}", e.getCode());
+            HttpStatus status = "FORBIDDEN".equals(e.getCode()) ? HttpStatus.FORBIDDEN : "HR_RESOURCE_BUSY".equals(e.getCode()) ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.CONFLICT;
+            return ResponseEntity.status(status).body(buildBody(e.getCode(), "业务依据或依赖尚未满足，请核查对应错误码", null, request));
+        }
         log.warn("HR业务异常 - 请求地址: {}, 错误代码: {}, 错误信息: {}, 附加数据: {}",
                 request.getRequestURI(), e.getCode(), e.getMessage(), e.getData());
         HttpStatus status = resolveHrBusinessStatus(e.getCode());
@@ -63,7 +80,7 @@ public class HrExceptionHandler {
         }
         return switch (code) {
             case "UNAUTHORIZED" -> HttpStatus.UNAUTHORIZED;
-            case "FORBIDDEN_CROSS_EMPLOYEE" -> HttpStatus.FORBIDDEN;
+            case "FORBIDDEN", "FORBIDDEN_CROSS_EMPLOYEE" -> HttpStatus.FORBIDDEN;
             default -> code.endsWith("_NOT_FOUND") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
         };
     }

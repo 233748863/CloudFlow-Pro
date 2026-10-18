@@ -1,13 +1,23 @@
 package com.cloudflow.hr.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.hr.domain.dto.HrAppraisalRequests;
 import com.cloudflow.hr.domain.entity.HrPerfEvaluator;
+import com.cloudflow.hr.domain.vo.performance.HrAppraisalViews;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 import java.util.Map;
 
 public interface HrPerfEvaluatorMapper extends BaseMapper<HrPerfEvaluator> {
+
+    Page<HrAppraisalViews.Invitation> selectOwnInvitations(Page<HrAppraisalViews.Invitation> page,
+            @Param("tenantId") Long tenantId, @Param("employeeId") Long employeeId,
+            @Param("query") HrAppraisalRequests.InvitationQuery query);
+
+    HrAppraisalViews.Invitation selectOwnInvitation(@Param("tenantId") Long tenantId,
+            @Param("employeeId") Long employeeId, @Param("invitationId") Long invitationId);
 
     /**
      * 评估人列表（含 response 评分快照），按 objectiveId+可选 evaluateeId 过滤。

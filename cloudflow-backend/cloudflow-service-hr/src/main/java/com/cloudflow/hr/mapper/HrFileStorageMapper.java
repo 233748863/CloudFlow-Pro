@@ -4,6 +4,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.Map;
+import java.util.List;
 
 /**
  * HR 模块对 sys_file 公共文件表的读写。
@@ -21,5 +22,16 @@ public interface HrFileStorageMapper {
     /**
      * 按 fileId 查询本地文件物理路径。
      */
-    String selectFilePathById(@Param("fileId") Long fileId);
+    String selectFilePathById(@Param("fileId") Long fileId, @Param("tenantId") Long tenantId);
+
+    Map<String, Object> selectFileMetadata(@Param("fileId") Long fileId, @Param("tenantId") Long tenantId);
+
+    int countOwnedFiles(@Param("tenantId") Long tenantId, @Param("owner") String owner,
+                        @Param("fileIds") List<Long> fileIds);
+    int countOwnedLeaveFiles(@Param("tenantId") Long tenantId, @Param("owner") String owner,
+                             @Param("fileIds") List<Long> fileIds);
+    int countOwnedGrievanceFiles(@Param("tenantId") Long tenantId, @Param("owner") String owner,
+                                 @Param("fileIds") List<Long> fileIds);
+    int countOwnedProof(@Param("tenantId") Long tenantId, @Param("owner") String owner,
+                        @Param("fileId") Long fileId, @Param("purpose") String purpose);
 }

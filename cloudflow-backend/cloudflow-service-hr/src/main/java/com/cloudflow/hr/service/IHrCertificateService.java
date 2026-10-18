@@ -22,4 +22,8 @@ public interface IHrCertificateService {
      * 读取证明 PDF 字节流，包含权限校验：仅可下载本人的 ISSUED 证明（HR 管理员视角通过其它端点）。
      */
     HrFileDownload downloadPdf(Long id);
+
+    String authorizePdfDownload(Long id, Long fileId);
+
+    HrFileDownload downloadPdf(Long id, Long fileId);
 }

@@ -2,6 +2,7 @@ package com.cloudflow.hr.service;
 
 import com.cloudflow.hr.domain.dto.HrAttendanceAppealPayload;
 import com.cloudflow.hr.domain.vo.attendance.HrAttendanceAppealVO;
+import java.util.List;
 
 /**
  * HR-P1-4 考勤异常申诉服务。
@@ -10,6 +11,9 @@ import com.cloudflow.hr.domain.vo.attendance.HrAttendanceAppealVO;
  * 工作流通过 businessType=HR_ATTENDANCE_APPEAL 走通用回调，本服务负责本地状态机与考勤记录改写。
  */
 public interface IHrAttendanceAppealService {
+
+    /** 本人申诉，包含管理人员代录的本人申诉。 */
+    List<HrAttendanceAppealVO> ownAppeals();
 
     /** 提交申诉，自动生成 appeal_no。 */
     Long submit(HrAttendanceAppealPayload payload);

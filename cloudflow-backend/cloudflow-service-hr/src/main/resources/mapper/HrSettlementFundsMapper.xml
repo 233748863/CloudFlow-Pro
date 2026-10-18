@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrSettlementFundsMapper">
+    <update id="close">
+        UPDATE hr_final_settlement SET status = 'CLOSED',
+          calculation_snapshot = #{record.calculationSnapshot,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+          version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND settlement_id = #{record.settlementId} AND employee_id = #{record.employeeId}
+          AND status = 'PAID' AND approval_status = 'APPROVED' AND superseded_flag = 0
+          AND ((settlement_kind = 'NORMAL' AND reversal_of_id IS NULL) OR (settlement_kind = 'REVERSAL' AND reversal_of_id IS NOT NULL))
+          AND confirmed_time IS NOT NULL AND paid_time IS NOT NULL AND version = #{expectedVersion}
+    </update>
+    <update id="saveFunds">
+        UPDATE hr_final_settlement SET status = #{record.status}, payment_request_id = #{record.paymentRequestId},
+            settlement_proof_file_id = #{record.settlementProofFileId}, paid_time = #{record.paidTime},
+            calculation_snapshot = #{record.calculationSnapshot,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND settlement_id = #{record.settlementId} AND employee_id = #{record.employeeId}
+          AND status = 'CONFIRMED' AND approval_status = 'APPROVED' AND superseded_flag = 0
+          AND ((settlement_kind = 'NORMAL' AND reversal_of_id IS NULL) OR (settlement_kind = 'REVERSAL' AND reversal_of_id IS NOT NULL))
+          AND confirmed_time IS NOT NULL AND confirmed_by IS NOT NULL AND paid_time IS NULL AND version = #{expectedVersion}
+    </update>
+    <select id="payment" resultType="com.cloudflow.hr.mapper.HrSettlementFundsMapper$Payment" flushCache="true" useCache="false">
+        SELECT id, user_id, payee_name, amount, status, deleted, source_biz_type, source_biz_id FROM biz_payment_request
+        WHERE tenant_id = #{tenantId} AND id = #{paymentId}
+    </select>
+    <select id="paymentEvent" resultType="string" flushCache="true" useCache="false">
+        SELECT payload_json FROM outbox_event WHERE tenant_id = #{tenantId} AND event_id = #{eventId}
+          AND event_type = 'HR_SETTLEMENT_PAYMENT_PAID' AND aggregate_id = #{paymentId} AND aggregate_type = 'cloudflow-oa'
+    </select>
+    <update id="bindProof">
+        UPDATE sys_file SET biz_type = 'HR_SETTLEMENT_PROOF', biz_id = #{settlementId}, file_hash = #{fileHash}
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_SETTLEMENT_PROOF'
+          AND create_by = #{owner} AND deleted = 0 AND access_type = 'PRIVATE' AND url = ''
+          AND biz_type IS NULL AND biz_id IS NULL AND portal_owner_id IS NULL
+    </update>
+    <select id="lockProof" resultType="com.cloudflow.hr.mapper.HrSettlementFundsMapper$ProofFile" flushCache="true" useCache="false">
+        SELECT file_id, file_name, file_hash, file_size FROM sys_file
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_SETTLEMENT_PROOF'
+          AND biz_type = 'HR_SETTLEMENT_PROOF' AND biz_id = #{settlementId} AND deleted = 0
+          AND access_type = 'PRIVATE' AND url = '' AND portal_owner_id IS NULL FOR UPDATE
+    </select>
+</mapper>

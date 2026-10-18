@@ -47,7 +47,7 @@ public class HrTalentSuccessionPlanDTO {
     @Schema(description = "计划责任人员工 ID")
     private Long ownerId;
 
-    @Schema(description = "计划状态：DRAFT/IN_PROGRESS/PUBLISHED/CLOSED；不传默认 DRAFT")
+    @Schema(description = "计划状态：DRAFT/IN_PROGRESS/PUBLISHED/ARCHIVED/REJECTED；不传默认 DRAFT")
     @Size(max = 32)
     private String status;
 }

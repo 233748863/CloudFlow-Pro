@@ -56,7 +56,15 @@ public interface WorkflowServiceClient {
         WorkflowStartRequest request = new WorkflowStartRequest();
         request.setTenantId(dto.getTenantId());
         request.setProcessDefKey(dto.getProcessDefinitionKey());
-        request.setBusinessKey(dto.getBusinessType() + ":" + dto.getBusinessId());
+        String businessKey = dto.getBusinessType() + ":" + dto.getBusinessId();
+        if ("HR_SETTLEMENT".equals(dto.getBusinessType())) {
+            Object revision = variables.get("settlementRevision");
+            if (!(revision instanceof String value) || !value.matches("[1-9][0-9]{0,9}")) return R.fail("结算审批轮次无效");
+            try { if (Integer.parseInt(value) < 1) return R.fail("结算审批轮次无效"); }
+            catch (NumberFormatException failure) { return R.fail("结算审批轮次无效"); }
+            businessKey += ":R" + value;
+        }
+        request.setBusinessKey(businessKey);
         request.setStartUserId(dto.getStartUserId());
         request.setStartUserName(null);
         request.setVariables(variables);

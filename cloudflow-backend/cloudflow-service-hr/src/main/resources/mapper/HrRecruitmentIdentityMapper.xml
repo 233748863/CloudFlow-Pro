@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrRecruitmentIdentityMapper">
+    <insert id="occupy">
+        INSERT INTO hr_recruitment_identity
+            (tenant_id, identity_type, identity_hash, referral_id, candidate_id, create_by, update_by)
+        VALUES (#{tenantId}, #{type}, #{hash}, #{referralId}, #{candidateId}, #{operator}, #{operator})
+        ON DUPLICATE KEY UPDATE identity_id = identity_id
+    </insert>
+    <select id="lockOwner" resultType="com.cloudflow.hr.mapper.HrRecruitmentIdentityMapper$Owner">
+        SELECT referral_id, candidate_id FROM hr_recruitment_identity
+        WHERE tenant_id = #{tenantId} AND identity_type = #{type} AND identity_hash = #{hash}
+        FOR UPDATE
+    </select>
+    <update id="attachCandidate">
+        UPDATE hr_recruitment_identity SET candidate_id = #{candidateId}, update_by = #{operator}
+        WHERE tenant_id = #{tenantId} AND referral_id = #{referralId} AND candidate_id IS NULL
+    </update>
+    <select id="candidateDepartment" resultType="java.lang.Long">
+        SELECT requisition.dept_id FROM hr_candidate candidate
+        JOIN hr_recruitment_requisition requisition
+          ON requisition.id = candidate.requisition_id AND requisition.tenant_id = candidate.tenant_id AND requisition.deleted = 0
+        WHERE candidate.id = #{candidateId} AND candidate.tenant_id = #{tenantId} AND candidate.deleted = 0
+    </select>
+</mapper>

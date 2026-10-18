@@ -37,10 +37,12 @@ public class HrDisputeArbitrationServiceImpl implements IHrDisputeArbitrationSer
     private final HrLaborDisputeMapper disputeMapper;
     private final HrTypedCrudService crudService;
     private final ObjectMapper objectMapper;
+    private final com.cloudflow.hr.service.HrGrievanceAccessService grievanceAccess;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createArbitration(Long disputeId, HrDisputeArbitrationDTO dto) {
+        grievanceAccess.assertDisputeAccess(disputeId);
         if (disputeMapper.selectById(disputeId) == null) {
             throw new HrBusinessException("LABOR_DISPUTE_NOT_FOUND", "争议不存在：" + disputeId);
         }
@@ -58,12 +60,16 @@ public class HrDisputeArbitrationServiceImpl implements IHrDisputeArbitrationSer
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "更新争议仲裁", diff = true, highRisk = true)
     public void updateArbitration(Long arbitrationId, HrDisputeArbitrationDTO dto) {
+        HrDisputeArbitration existing = arbitrationMapper.selectById(arbitrationId);
+        if (existing == null) throw new HrBusinessException("ARBITRATION_NOT_FOUND", "仲裁记录不存在");
+        grievanceAccess.assertDisputeAccess(existing.getDisputeId());
         crudService.updateProperties(HrDisputeArbitration.class, arbitrationId,
                 MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
     public PageResult<HrDisputeArbitrationVO> listByDispute(Long disputeId) {
+        grievanceAccess.assertDisputeAccess(disputeId);
         QueryWrapper<HrDisputeArbitration> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("dispute_id", disputeId).eq("deleted", 0)
                 .orderByDesc("create_time");

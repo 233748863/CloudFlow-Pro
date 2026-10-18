@@ -23,7 +23,7 @@ public class HrCompensationSimulateBreakdownItemVO {
     @Schema(description = "薪酬项名称")
     private String componentName;
 
-    @Schema(description = "薪酬项类型 BASE/ALLOWANCE/BONUS/DEDUCTION")
+    @Schema(description = "薪酬项类型 FIXED/VARIABLE/EARNING/DEDUCTION/COMPANY")
     private String componentType;
 
     @Schema(description = "金额（DEDUCTION 视作减项）")

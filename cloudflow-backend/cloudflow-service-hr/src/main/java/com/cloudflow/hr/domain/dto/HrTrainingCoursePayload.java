@@ -6,11 +6,14 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @TableName(value = "hr_training_course", autoResultMap = true)
@@ -41,4 +44,15 @@ public class HrTrainingCoursePayload {
     private Integer deleted;
     @Version
     private Integer version;
+
+    @JsonIgnore
+    @TableField(exist = false)
+    private boolean skillTargetSupplied;
+
+    @JsonAnySetter
+    public void captureAdditionalField(String name, Object value) {
+        if (Set.of("skillId", "targetLevel", "skill_id", "target_level").contains(name)) {
+            skillTargetSupplied = true;
+        }
+    }
 }

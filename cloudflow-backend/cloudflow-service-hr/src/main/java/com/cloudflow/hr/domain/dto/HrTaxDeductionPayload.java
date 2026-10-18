@@ -34,6 +34,11 @@ public class HrTaxDeductionPayload {
     private LocalDate startDate;
     private LocalDate endDate;
     private String status;
+    private String declareStatus;
+    private String proofFileUrl;
+    private Long verifyBy;
+    private LocalDateTime verifyTime;
+    private String rejectReason;
     private String remark;
     private String createBy;
     private String updateBy;

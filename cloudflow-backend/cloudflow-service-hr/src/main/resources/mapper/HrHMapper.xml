@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrHMapper">
+    <select id="assignment" resultType="map">
+        SELECT assignment.id AS assignmentId, assignment.version AS assignmentVersion,
+               COALESCE(assignment.shift_id, rule.shift_id) AS shiftId, assignment.rule_id AS ruleId,
+               assignment.effective_start AS effectiveStart, assignment.source_shift_request_id AS sourceShiftRequestId
+        FROM hr_schedule_assignment assignment
+        LEFT JOIN hr_attendance_rule rule ON rule.id = assignment.rule_id AND rule.tenant_id = assignment.tenant_id
+        JOIN hr_employee employee ON employee.id = #{employeeId} AND employee.tenant_id = #{tenantId} AND employee.deleted = 0
+        WHERE assignment.tenant_id = #{tenantId}
+          AND ((assignment.target_type = 'EMPLOYEE' AND assignment.target_id = employee.id)
+            OR (assignment.target_type = 'DEPT' AND assignment.target_id = employee.dept_id))
+          AND (assignment.schedule_date = #{date} OR (assignment.schedule_date IS NULL AND assignment.effective_start &lt;= #{date}
+            AND (assignment.effective_end IS NULL OR assignment.effective_end &gt;= #{date})))
+          AND assignment.status IN ('ACTIVE', 'PUBLISHED')
+        ORDER BY CASE WHEN assignment.target_type = 'EMPLOYEE' THEN 0 ELSE 1 END,
+                 CASE WHEN assignment.schedule_date IS NOT NULL THEN 0 ELSE 1 END,
+                 assignment.effective_start DESC, assignment.id DESC LIMIT 1
+    </select>
+    <select id="calendar" resultType="map">
+        SELECT calendar.calendar_id AS calendarId, calendar.version AS calendarVersion, calendar.status,
+               calendar.weekly_rest_days AS weeklyRestDays, calendar.default_flag AS defaultFlag,
+               date_row.date_id AS dateId, date_row.version AS dateVersion, date_row.date_type AS dateType,
+               date_row.triple_pay_flag AS triplePayFlag, date_row.year_no AS yearNo
+        FROM sys_holiday_calendar calendar
+        LEFT JOIN sys_holiday_date date_row ON date_row.calendar_id = calendar.calendar_id
+          AND date_row.tenant_id = calendar.tenant_id AND date_row.holiday_date = #{date} AND date_row.deleted = 0
+        WHERE calendar.tenant_id = #{tenantId} AND calendar.calendar_id = #{calendarId} AND calendar.deleted = 0
+    </select>
+    <select id="fallbackCalendars" resultType="long">
+        SELECT COALESCE(dept.holiday_calendar_id, calendar.calendar_id)
+        FROM hr_employee employee JOIN sys_dept dept ON dept.dept_id = employee.dept_id
+          AND dept.tenant_id = employee.tenant_id AND dept.deleted = 0
+        LEFT JOIN sys_holiday_calendar calendar ON calendar.tenant_id = employee.tenant_id
+          AND calendar.default_flag = 1 AND calendar.status = 'ENABLED' AND calendar.deleted = 0 AND dept.holiday_calendar_id IS NULL
+        WHERE employee.tenant_id = #{tenantId} AND employee.id = #{employeeId} AND employee.deleted = 0
+    </select>
+    <select id="definition" resultType="map">
+        SELECT definition_id AS definitionId, model_json AS modelJson, version, lock_version AS lockVersion
+        FROM wf_process_definition WHERE tenant_id = #{tenantId} AND process_key = #{processKey}
+          AND deleted = 0 AND status = 'PUBLISHED' AND is_latest = 1 AND is_archived = 0
+    </select>
+    <select id="activeUser" resultType="long">
+        SELECT user_id FROM sys_user WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND status = '0' AND deleted = 0
+    </select>
+    <select id="permissionUsers" resultType="long">
+        SELECT DISTINCT user_row.user_id
+        FROM sys_user user_row
+        JOIN sys_user_role user_role ON user_role.user_id = user_row.user_id
+        JOIN sys_role role_row ON role_row.role_id = user_role.role_id AND role_row.tenant_id = user_row.tenant_id
+        JOIN sys_dept employee_dept ON employee_dept.dept_id = #{deptId} AND employee_dept.tenant_id = user_row.tenant_id AND employee_dept.deleted = 0
+        WHERE user_row.tenant_id = #{tenantId} AND user_row.status = '0' AND user_row.deleted = 0
+          AND role_row.status = '0' AND role_row.deleted = 0
+          AND (role_row.role_key = 'admin' OR EXISTS (
+            SELECT 1 FROM sys_role_menu role_menu JOIN sys_menu menu_row ON menu_row.menu_id = role_menu.menu_id
+            WHERE role_menu.role_id = role_row.role_id AND menu_row.perms = #{permission} AND menu_row.status = '0'))
+          AND (role_row.ds_type = 0 OR (role_row.ds_type = 1 AND FIND_IN_SET(CAST(#{deptId} AS CHAR), role_row.ds_scope) &gt; 0)
+            OR (role_row.ds_type = 3 AND user_row.dept_id = #{deptId})
+            OR (role_row.ds_type = 2 AND (user_row.dept_id = #{deptId} OR FIND_IN_SET(CAST(user_row.dept_id AS CHAR), employee_dept.ancestors) &gt; 0)))
+        ORDER BY user_row.user_id
+    </select>
+    <select id="roleUsers" resultType="long">
+        SELECT DISTINCT user_row.user_id FROM sys_user user_row
+        JOIN sys_user_role relation ON relation.user_id = user_row.user_id
+        JOIN sys_role role_row ON role_row.role_id = relation.role_id AND role_row.tenant_id = user_row.tenant_id
+        WHERE user_row.tenant_id = #{tenantId} AND user_row.status = '0' AND user_row.deleted = 0
+          AND role_row.role_key = #{role} AND role_row.status = '0' AND role_row.deleted = 0 ORDER BY user_row.user_id
+    </select>
+    <select id="correctionLocked" resultType="com.cloudflow.hr.domain.entity.HrPayrollCorrection">
+        SELECT * FROM hr_payroll_correction WHERE tenant_id = #{tenantId} AND correction_id = #{id} FOR UPDATE
+    </select>
+    <select id="lockEmployees" resultType="com.cloudflow.hr.domain.entity.HrEmployee">
+        SELECT * FROM hr_employee WHERE tenant_id = #{tenantId} AND id IN
+        <foreach collection="employeeIds" item="employeeId" open="(" separator="," close=")">#{employeeId}</foreach>
+        ORDER BY id FOR UPDATE
+    </select>
+    <select id="overtimeLocked" resultType="com.cloudflow.hr.domain.entity.HrOvertimeRequest">
+        SELECT * FROM hr_overtime_request WHERE tenant_id = #{tenantId} AND request_id = #{id} FOR UPDATE
+    </select>
+    <select id="shiftLocked" resultType="com.cloudflow.hr.domain.entity.HrShiftRequest">
+        SELECT * FROM hr_shift_request WHERE tenant_id = #{tenantId} AND request_id = #{id} FOR UPDATE
+    </select>
+    <select id="overtimeReplay" resultType="com.cloudflow.hr.domain.entity.HrOvertimeRequest">
+        SELECT * FROM hr_overtime_request WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId} AND idempotency_key = #{key}
+    </select>
+    <select id="shiftReplay" resultType="com.cloudflow.hr.domain.entity.HrShiftRequest">
+        SELECT * FROM hr_shift_request WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId} AND idempotency_key = #{key}
+    </select>
+    <select id="correctionSource" resultType="com.cloudflow.hr.domain.entity.HrOvertimeRequest">
+        SELECT * FROM hr_overtime_request WHERE tenant_id = #{tenantId} AND payroll_correction_id = #{correctionId}
+    </select>
+    <select id="checkins" resultType="com.cloudflow.hr.domain.entity.HrAttendanceCheckin">
+        SELECT * FROM hr_attendance_checkin WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND check_time &gt;= #{from} AND check_time &lt;= #{to} ORDER BY check_time, checkin_id
+    </select>
+    <sql id="cancelPending">
+        EXISTS (SELECT 1 FROM hr_audit_log start_audit WHERE start_audit.tenant_id = request_row.tenant_id
+          AND start_audit.business_domain = #{businessType} AND start_audit.business_id = request_row.request_id
+          AND start_audit.operation_type = 'WORKFLOW_START_ATTEMPT')
+        AND NOT EXISTS (SELECT 1 FROM hr_audit_log cancel_audit WHERE cancel_audit.tenant_id = request_row.tenant_id
+          AND cancel_audit.business_domain = #{businessType} AND cancel_audit.business_id = request_row.request_id
+          AND cancel_audit.operation_type = 'WORKFLOW_CANCELLED')
+    </sql>
+    <select id="overtimeOverlap" resultType="long">
+        <bind name="businessType" value="'HR_OVERTIME'"/>
+        SELECT COUNT(*) FROM hr_overtime_request request_row WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND deleted = 0 AND start_time &lt; #{to} AND end_time &gt; #{from}
+          <if test="excludedId != null">AND request_id &lt;&gt; #{excludedId}</if>
+          AND (status IN ('SUBMITTED','PENDING','APPROVING','APPROVED') OR (status = 'CANCELLED' AND <include refid="cancelPending"/>))
+    </select>
+    <select id="leaveOverlap" resultType="com.cloudflow.hr.domain.entity.HrTimeRequest">
+        SELECT * FROM hr_time_request WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId} AND deleted = 0
+          AND request_type = 'LEAVE' AND status IN ('SUBMITTED','PENDING','APPROVING','APPROVED')
+          AND start_time &lt; #{to} AND end_time &gt; #{from}
+    </select>
+    <select id="shiftOverlap" resultType="long">
+        <bind name="businessType" value="'HR_SHIFT_REQUEST'"/>
+        SELECT COUNT(*) FROM hr_shift_request request_row WHERE tenant_id = #{tenantId}
+          AND (employee_id = #{employeeId} OR swap_employee_id = #{employeeId}) AND deleted = 0
+          AND from_date &lt;= #{to} AND from_date &gt;= #{from}
+          <if test="excludedId != null">AND request_id &lt;&gt; #{excludedId}</if>
+          AND (status IN ('WAITING_ACCEPTANCE','PENDING','APPROVING') OR (status = 'APPROVED' AND application_status = 'PENDING')
+            OR (status = 'CANCELLED' AND <include refid="cancelPending"/>))
+    </select>
+    <select id="actualMinutes" resultType="long">
+        SELECT COALESCE(SUM(actual_minutes), 0) FROM hr_overtime_request WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND deleted = 0 AND status IN ('SUBMITTED','PENDING','APPROVING','APPROVED') AND work_date BETWEEN #{from} AND #{to}
+          <if test="excludedId != null">AND request_id &lt;&gt; #{excludedId}</if>
+    </select>
+    <select id="approvedMinutes" resultType="long">
+        SELECT COALESCE(SUM(approved_minutes), 0) FROM hr_overtime_request WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND deleted = 0 AND status = 'APPROVED' AND attendance_date BETWEEN #{from} AND #{to}
+    </select>
+    <select id="settledCredits" resultType="com.cloudflow.hr.domain.entity.HrOvertimeRequest">
+        SELECT request_id, approved_minutes, compensatory_ratio, compensatory_quantity, leave_ledger_id, settlement_resolution
+        FROM hr_overtime_request WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND leave_type_id = #{leaveTypeId} AND leave_period_id = #{periodId} AND settle_mode = 'COMPENSATORY' AND settlement_status = 'SETTLED'
+        ORDER BY request_id
+    </select>
+    <select id="approvedDays" resultType="map">
+        SELECT employee_id AS employeeId, CAST(attendance_date AS CHAR) AS attendanceDate,
+               SUM(approved_minutes) AS approvedMinutes
+        FROM hr_overtime_request WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = 'APPROVED'
+          AND attendance_date BETWEEN #{from} AND #{to} AND employee_id IN
+          <foreach collection="employeeIds" item="employeeId" open="(" separator="," close=")">#{employeeId}</foreach>
+        GROUP BY employee_id, attendance_date
+    </select>
+    <select id="compensationCurrency" resultType="string">
+        SELECT grade.currency FROM hr_employee_comp compensation
+        JOIN hr_comp_grade grade ON grade.id = compensation.grade_id AND grade.tenant_id = compensation.tenant_id
+        WHERE compensation.tenant_id = #{tenantId} AND compensation.id = #{compensationId}
+          AND compensation.deleted = 0 AND grade.status = 1
+    </select>
+    <select id="changeSource" resultType="com.cloudflow.hr.domain.entity.HrCompChange">
+        SELECT id, tenant_id, change_no, employee_id, change_type, change_amount AS change_amount_text,
+               effective_date, status, deleted, salary_component_id, payroll_period_id, source_biz_type, source_biz_id
+        FROM hr_comp_change WHERE tenant_id = #{tenantId} AND source_biz_type = 'HR_OVERTIME' AND source_biz_id = #{requestId}
+    </select>
+    <insert id="insertOvertimeChange" useGeneratedKeys="true" keyProperty="row.id">
+        INSERT INTO hr_comp_change
+          (tenant_id, change_no, employee_id, change_type, before_total, after_total, change_amount,
+           effective_date, salary_component_id, payroll_period_id, source_biz_type, source_biz_id,
+           reason, status, deleted, version, create_by, update_by, create_time, update_time)
+        VALUES (#{row.tenantId}, #{row.changeNo}, #{row.employeeId}, 'OVERTIME', #{zeroCipher}, #{amountCipher}, #{amountCipher},
+                #{row.effectiveDate}, #{row.salaryComponentId}, #{row.payrollPeriodId}, 'HR_OVERTIME', #{row.sourceBizId},
+                #{row.reason}, 'APPROVED', 0, 0, #{row.createBy}, #{row.updateBy}, #{row.createTime}, #{row.updateTime})
+    </insert>
+    <select id="ledgerSource" resultType="com.cloudflow.hr.domain.entity.HrLeaveLedger">
+        SELECT * FROM hr_leave_ledger WHERE tenant_id = #{tenantId} AND source_event_key = #{eventKey}
+    </select>
+    <select id="payrollPeriodLocked" resultType="com.cloudflow.hr.domain.entity.HrPayrollPeriod">
+        SELECT * FROM hr_payroll_period WHERE tenant_id = #{tenantId} AND period_id = #{id} FOR UPDATE
+    </select>
+    <select id="pendingPayroll" resultType="long">
+        SELECT COUNT(*) FROM hr_overtime_request WHERE tenant_id = #{tenantId} AND payroll_period_id = #{periodId}
+          AND deleted = 0 AND settle_mode = 'PAY' AND status IN ('SUBMITTED','PENDING','APPROVING','APPROVED')
+          AND settlement_status NOT IN ('SETTLED','REJECTED')
+          <if test="employeeId != null">AND employee_id = #{employeeId}</if>
+    </select>
+    <select id="pendingLeave" resultType="long">
+        SELECT COUNT(*) FROM hr_overtime_request WHERE tenant_id = #{tenantId} AND leave_period_id = #{periodId}
+          AND deleted = 0 AND settle_mode = 'COMPENSATORY' AND status IN ('SUBMITTED','PENDING','APPROVING','APPROVED')
+          AND settlement_status NOT IN ('SETTLED','REJECTED')
+    </select>
+    <select id="confirmedMonth" resultType="long">
+        SELECT COUNT(*) FROM hr_attendance_monthly WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND year = CAST(SUBSTRING(#{month}, 1, 4) AS UNSIGNED)
+          AND month = CAST(SUBSTRING(#{month}, 6, 2) AS UNSIGNED) AND status = 'CONFIRMED'
+    </select>
+    <select id="manualAttendance" resultType="long">
+        SELECT COUNT(*) FROM hr_attendance_record WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND attendance_date BETWEEN #{from} AND #{to} AND manual_adjusted_flag = 1 AND deleted = 0
+    </select>
+    <select id="rawAttendance" resultType="long">
+        SELECT COUNT(*) FROM hr_attendance_checkin WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId}
+          AND (attendance_date = #{date} OR (check_time &gt;= #{from} AND check_time &lt;= #{to}))
+    </select>
+    <select id="sourceAssignments" resultType="com.cloudflow.hr.domain.entity.HrScheduleAssignment">
+        SELECT * FROM hr_schedule_assignment WHERE tenant_id = #{tenantId} AND source_shift_request_id IS NOT NULL
+          <if test="requestId != null">AND source_shift_request_id = #{requestId}</if>
+        ORDER BY id
+    </select>
+    <select id="protectedShifts" resultType="com.cloudflow.hr.domain.entity.HrShiftRequest">
+        SELECT * FROM hr_shift_request WHERE tenant_id = #{tenantId} AND deleted = 0
+          AND (status IN ('WAITING_ACCEPTANCE','PENDING','APPROVING') OR (status = 'APPROVED' AND application_status = 'PENDING'))
+    </select>
+    <select id="protectedOvertimes" resultType="com.cloudflow.hr.domain.entity.HrOvertimeRequest">
+        SELECT request_id, employee_id, dept_id, work_date, attendance_date, shift_id, rule_id, calculation_snapshot, policy_snapshot
+        FROM hr_overtime_request WHERE tenant_id = #{tenantId} AND deleted = 0 AND status IN ('SUBMITTED','PENDING','APPROVING')
+    </select>
+</mapper>

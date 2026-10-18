@@ -15,6 +15,7 @@ import com.cloudflow.hr.domain.entity.HrEmployeeContract;
 import com.cloudflow.hr.domain.vo.ess.HrCertificateRequestVO;
 import com.cloudflow.hr.domain.vo.ess.HrContractSignatureVO;
 import com.cloudflow.hr.domain.vo.ess.HrEmployeeContractVO;
+import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.service.IHrCertificateService;
 import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.hr.service.HrEssSupport;
@@ -69,11 +70,12 @@ class HrCertificateRequestController {
     @SaCheckPermission("hr:ess:cert:view")
     public R<HrCertificateRequestVO> get(@PathVariable Long id) {
         Map<String, Object> row = crudService.get(HrCertificateRequest.class, id);
-        Object employeeId = row == null ? null : row.get("employeeId");
-        if (employeeId instanceof Number num) {
-            essSupport.assertOwner(num.longValue());
+        if (row == null || row.isEmpty()) {
+            throw new HrBusinessException("CERTIFICATE_NOT_FOUND", "证明申请不存在");
         }
-        return R.ok(MapConverters.toVO(row, HrCertificateRequestVO.class, objectMapper));
+        HrCertificateRequestVO request = MapConverters.toVO(row, HrCertificateRequestVO.class, objectMapper);
+        essSupport.assertOwner(request.getEmployeeId());
+        return R.ok(request);
     }
 
     @SysLog("发起HR证明开具")

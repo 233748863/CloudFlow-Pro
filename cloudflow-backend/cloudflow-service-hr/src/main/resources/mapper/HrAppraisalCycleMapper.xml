@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrAppraisalCycleMapper">
+  <select id="lockCycle" resultType="java.lang.Long">
+    SELECT cycle_id FROM hr_appraisal_cycle WHERE tenant_id = #{tenantId} AND cycle_id = #{cycleId} AND deleted = 0 FOR UPDATE
+  </select>
+  <select id="pageCycles" resultType="java.lang.Long">
+    SELECT cycle.cycle_id FROM hr_appraisal_cycle cycle WHERE cycle.tenant_id = #{tenantId} AND cycle.deleted = 0
+    <if test="query.keyword != null and query.keyword != ''">AND cycle.cycle_name LIKE CONCAT('%', #{query.keyword}, '%')</if>
+    <if test="query.status != null">AND cycle.status = #{query.status}</if>
+    AND (
+      <if test="!mine">(cycle.status = 'DRAFT' AND (#{scope.type} = 0 OR cycle.create_by = #{operator})) OR</if>
+      EXISTS (SELECT 1 FROM hr_appraisal_result result
+        JOIN hr_employee employee ON employee.id = result.employee_id AND employee.tenant_id = result.tenant_id AND employee.deleted = 0
+        WHERE result.tenant_id = cycle.tenant_id AND result.cycle_id = cycle.cycle_id
+        <include refid="com.cloudflow.hr.mapper.HrSkillMapper.employeeScope" />
+      )
+    ) ORDER BY cycle.cycle_id DESC
+  </select>
+  <select id="preview" resultType="com.cloudflow.hr.domain.vo.performance.HrAppraisalViews$Employee">
+    SELECT employee.id AS employeeId, employee.name AS employeeName, employee.employee_no AS employeeNo,
+      employee.dept_id AS deptId, employee.position_id AS positionId, position.level_id AS jobLevelId,
+      employee.user_id AS userId, employee.update_time AS updateTime
+    FROM hr_employee employee
+    LEFT JOIN hr_position position ON position.tenant_id = employee.tenant_id AND position.id = employee.position_id
+    WHERE employee.tenant_id = #{tenantId} AND employee.deleted = 0 AND employee.dept_id IS NOT NULL
+      AND employee.employee_status IN ('ACTIVE','REGULAR','PROBATION','INTERN','ON_LEAVE','TRANSFERRED')
+      AND employee.hire_date &lt;= #{today} AND (employee.resign_date IS NULL OR employee.resign_date &gt; #{today})
+    <include refid="com.cloudflow.hr.mapper.HrSkillMapper.employeeScope" />
+    <if test="cycle.scopeDeptIds != null and !cycle.scopeDeptIds.isEmpty()">
+      AND employee.dept_id IN <foreach collection="cycle.scopeDeptIds" item="identifier" open="(" close=")" separator=",">#{identifier}</foreach>
+    </if>
+    <if test="cycle.scopePositionIds != null and !cycle.scopePositionIds.isEmpty()">
+      AND employee.position_id IN <foreach collection="cycle.scopePositionIds" item="identifier" open="(" close=")" separator=",">#{identifier}</foreach>
+    </if>
+    <if test="cycle.scopeJobLevelIds != null and !cycle.scopeJobLevelIds.isEmpty()">
+      AND position.level_id IN <foreach collection="cycle.scopeJobLevelIds" item="identifier" open="(" close=")" separator=",">#{identifier}</foreach>
+    </if>
+    ORDER BY employee.id
+  </select>
+  <select id="visibleEmployees" resultType="java.lang.Long">
+    SELECT result.employee_id FROM hr_appraisal_result result
+    JOIN hr_employee employee ON employee.id = result.employee_id AND employee.tenant_id = result.tenant_id AND employee.deleted = 0
+    WHERE result.tenant_id = #{tenantId} AND result.cycle_id = #{cycleId}
+    <include refid="com.cloudflow.hr.mapper.HrSkillMapper.employeeScope" />
+    ORDER BY result.employee_id
+  </select>
+  <select id="validScopeIds" resultType="java.lang.Long">
+    <choose>
+      <when test="kind == 'DEPT'">SELECT dept_id FROM sys_dept WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0' AND dept_id</when>
+      <when test="kind == 'POSITION'">SELECT id FROM hr_position WHERE tenant_id = #{tenantId} AND status = 1 AND id</when>
+      <when test="kind == 'LEVEL'">SELECT id FROM hr_job_level WHERE tenant_id = #{tenantId} AND status = 1 AND id</when>
+      <otherwise>SELECT id FROM hr_employee WHERE 1 = 0 AND id</otherwise>
+    </choose>
+    IN <foreach collection="identifiers" item="identifier" open="(" close=")" separator=",">#{identifier}</foreach>
+  </select>
+  <select id="sourceInputs" resultType="com.cloudflow.hr.domain.vo.performance.HrAppraisalViews$SourceInput">
+    SELECT response.id AS responseId, invitation.id AS invitationId, invitation.evaluatee_id AS employeeId,
+      invitation.evaluator_id AS evaluatorEmployeeId, invitation.evaluator_source AS source,
+      invitation.version AS invitationVersion, response.score, response.submit_time AS submitTime
+    FROM hr_performance_objective objective
+    JOIN hr_perf_evaluator invitation ON invitation.tenant_id = objective.tenant_id AND invitation.objective_id = objective.id
+    JOIN hr_perf_evaluator_response response ON response.tenant_id = invitation.tenant_id AND response.evaluator_id = invitation.id
+      AND response.objective_id = invitation.objective_id AND response.evaluatee_id = invitation.evaluatee_id
+      AND response.evaluator_source = invitation.evaluator_source
+    WHERE objective.tenant_id = #{tenantId} AND objective.cycle_id = #{cycleId} AND objective.deleted = 0
+      AND invitation.evaluatee_id = #{employeeId} AND invitation.deleted = 0 AND invitation.status = 'SUBMITTED' AND response.deleted = 0
+    ORDER BY invitation.id, response.id
+  </select>
+  <select id="employeesForUser" resultType="java.lang.Long">
+    SELECT employee.id FROM hr_employee employee JOIN sys_user account ON account.tenant_id = employee.tenant_id AND account.user_id = employee.user_id
+    WHERE employee.tenant_id = #{tenantId} AND employee.user_id = #{userId} AND employee.deleted = 0 AND account.deleted = 0 AND account.status = '0'
+  </select>
+  <select id="options" resultType="com.cloudflow.hr.domain.vo.performance.HrAppraisalViews$Option">
+    <choose>
+      <when test="kind == 'DEPT'">SELECT dept_id AS identifier, dept_name AS name FROM sys_dept WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0' ORDER BY dept_id</when>
+      <when test="kind == 'POSITION'">SELECT id AS identifier, position_name AS name FROM hr_position WHERE tenant_id = #{tenantId} AND status = 1 ORDER BY id</when>
+      <when test="kind == 'LEVEL'">SELECT id AS identifier, level_name AS name FROM hr_job_level WHERE tenant_id = #{tenantId} AND status = 1 ORDER BY level_rank, id</when>
+      <otherwise>SELECT id AS identifier, name FROM hr_employee WHERE 1 = 0</otherwise>
+    </choose>
+  </select>
+  <select id="people" resultType="com.cloudflow.hr.domain.vo.performance.HrAppraisalViews$Employee">
+    SELECT employee.id AS employeeId, employee.name AS employeeName, employee.employee_no AS employeeNo,
+      employee.dept_id AS deptId, employee.position_id AS positionId, position.level_id AS jobLevelId,
+      employee.user_id AS userId, employee.update_time AS updateTime
+    FROM hr_employee employee
+    LEFT JOIN hr_position position ON position.tenant_id = employee.tenant_id AND position.id = employee.position_id
+    WHERE employee.tenant_id = #{tenantId} AND employee.deleted = 0
+      AND employee.employee_status IN ('ACTIVE','REGULAR','PROBATION','INTERN','ON_LEAVE','TRANSFERRED')
+      AND employee.hire_date &lt;= #{today} AND (employee.resign_date IS NULL OR employee.resign_date &gt; #{today})
+    <include refid="com.cloudflow.hr.mapper.HrSkillMapper.employeeScope" />
+    <if test="query.keyword != null and query.keyword != ''">
+      AND (employee.name LIKE CONCAT('%', #{query.keyword}, '%') OR employee.employee_no LIKE CONCAT('%', #{query.keyword}, '%'))
+    </if>
+    ORDER BY employee.id
+  </select>
+  <select id="meetingPeople" resultType="com.cloudflow.hr.domain.vo.performance.HrAppraisalViews$Option">
+    SELECT account.user_id AS identifier, account.nick_name AS name FROM sys_user account
+    WHERE account.tenant_id = #{tenantId} AND account.deleted = 0
+      AND account.user_id IN <foreach collection="userIds" item="identifier" open="(" close=")" separator=",">#{identifier}</foreach>
+    ORDER BY account.user_id
+  </select>
+</mapper>

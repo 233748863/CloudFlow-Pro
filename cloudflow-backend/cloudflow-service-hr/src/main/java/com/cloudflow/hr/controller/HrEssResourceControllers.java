@@ -58,6 +58,13 @@ class HrSalarySlipController {
     private final IHrEssService hrEssService;
     private final HrEssSupport essSupport;
     private final ObjectMapper objectMapper;
+    private final com.cloudflow.hr.service.HrSalarySlipPrintService printService;
+
+    @GetMapping("/{id}/pdf")
+    @SaCheckPermission("hr:ess:slip:view")
+    public org.springframework.http.ResponseEntity<byte[]> print(@PathVariable Long id) {
+        return printService.response(hrEssService.getMySalarySlip(id));
+    }
 
     @GetMapping
     @SaCheckPermission("hr:ess:slip:view")

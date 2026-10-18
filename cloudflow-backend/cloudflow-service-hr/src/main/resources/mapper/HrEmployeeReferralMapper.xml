@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrEmployeeReferralMapper">
+    <select id="lockReferrer" resultType="java.lang.Long">
+        SELECT id FROM hr_employee WHERE tenant_id = #{tenantId} AND id = #{employeeId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="salaryCount" resultType="long">
+        SELECT COUNT(*) FROM hr_salary_slip WHERE tenant_id = #{tenantId} AND employee_id = #{employeeId} AND deleted = 0
+          AND status NOT IN ('CANCELLED','VOIDED')
+          AND (JSON_CONTAINS(JSON_EXTRACT(components, '$[*].payrollPeriodId'), CAST(#{periodId} AS JSON))
+            OR JSON_CONTAINS(JSON_EXTRACT(components, '$[*].payrollPeriodId'), JSON_QUOTE(CAST(#{periodId} AS CHAR))))
+    </select>
+    <select id="pendingBonus" resultType="long">
+        SELECT COUNT(*) FROM hr_employee_referral WHERE tenant_id = #{tenantId} AND referrer_employee_id = #{employeeId}
+          AND bonus_status = 'PENDING' AND JSON_UNQUOTE(JSON_EXTRACT(bonus_condition_snapshot, '$.payrollPeriodId')) = CAST(#{periodId} AS CHAR)
+    </select>
+    <select id="lockByCandidate" resultMap="mybatis-plus_HrEmployeeReferral">
+        SELECT * FROM hr_employee_referral WHERE tenant_id = #{tenantId} AND candidate_id = #{candidateId} FOR UPDATE
+    </select>
+    <select id="pendingEmployment" resultType="java.lang.Long">
+        SELECT candidate_id FROM hr_employee_referral referral
+        WHERE tenant_id = #{tenantId} AND candidate_id &gt; #{afterId} AND status = 'OFFERED'
+          AND EXISTS (SELECT 1 FROM hr_audit_log audit WHERE audit.tenant_id = referral.tenant_id
+            AND audit.business_domain = 'HR_REFERRAL' AND audit.business_id = referral.referral_id AND audit.operation_type = 'EMPLOYMENT_SOURCE')
+        ORDER BY candidate_id LIMIT #{limit}
+    </select>
+    <update id="incrementHired">
+        UPDATE hr_recruitment_requisition SET hired_count = COALESCE(hired_count, 0) + 1
+        WHERE tenant_id = #{tenantId} AND id = #{requisitionId} AND deleted = 0
+    </update>
+    <select id="lockReferral" resultMap="mybatis-plus_HrEmployeeReferral">
+        SELECT * FROM hr_employee_referral WHERE tenant_id = #{tenantId} AND referral_id = #{referralId} FOR UPDATE
+    </select>
+    <select id="pageReferrals" resultMap="mybatis-plus_HrEmployeeReferral">
+        SELECT referral.* FROM hr_employee_referral referral
+        WHERE referral.tenant_id = #{tenantId}
+        <if test="employeeId != null">AND referral.referrer_employee_id = #{employeeId}</if>
+        <if test="query.status != null">AND referral.status = #{query.status}</if>
+        <if test="query.keyword != null and query.keyword != ''">AND referral.candidate_name LIKE CONCAT('%', #{query.keyword}, '%')</if>
+        <if test="scope != null and scope.type != 0">
+            AND EXISTS (SELECT 1 FROM hr_employee employee WHERE employee.tenant_id = referral.tenant_id
+                AND employee.id = referral.referrer_employee_id AND employee.deleted = 0
+                <choose>
+                    <when test="scope.type == 3">AND employee.dept_id = #{scope.departmentId}</when>
+                    <when test="(scope.type == 1 or scope.type == 2) and scope.departmentIds != null and !scope.departmentIds.isEmpty()">
+                        AND employee.dept_id IN <foreach collection="scope.departmentIds" item="departmentId" open="(" close=")" separator=",">#{departmentId}</foreach>
+                    </when>
+                    <otherwise>AND 1 = 0</otherwise>
+                </choose>)
+        </if>
+        ORDER BY referral.create_time DESC, referral.referral_id DESC
+    </select>
+    <select id="activePosition" resultType="java.lang.Long">
+        SELECT id FROM hr_position WHERE tenant_id = #{tenantId} AND id = #{positionId} AND status = 1
+    </select>
+    <select id="positionOptions" resultType="com.cloudflow.hr.mapper.HrEmployeeReferralMapper$Option">
+        SELECT id AS value, position_name AS label FROM hr_position WHERE tenant_id = #{tenantId} AND status = 1
+        <if test="query.keyword != null and query.keyword != ''">AND position_name LIKE CONCAT('%', #{query.keyword}, '%')</if>
+        ORDER BY position_name, id
+    </select>
+    <select id="requisitionOptions" resultType="com.cloudflow.hr.mapper.HrEmployeeReferralMapper$Option">
+        SELECT id AS value, CONCAT(requisition_no, ' · ', title) AS label FROM hr_recruitment_requisition
+        WHERE tenant_id = #{tenantId} AND position_id = #{positionId} AND status = 'RECRUITING' AND deleted = 0
+        <if test="query.keyword != null and query.keyword != ''">AND title LIKE CONCAT('%', #{query.keyword}, '%')</if>
+        <choose>
+            <when test="scope.type == 0" />
+            <when test="scope.type == 3">AND dept_id = #{scope.departmentId}</when>
+            <when test="(scope.type == 1 or scope.type == 2) and scope.departmentIds != null and !scope.departmentIds.isEmpty()">
+                AND dept_id IN <foreach collection="scope.departmentIds" item="departmentId" open="(" close=")" separator=",">#{departmentId}</foreach>
+            </when>
+            <otherwise>AND 1 = 0</otherwise>
+        </choose>
+        ORDER BY id DESC
+    </select>
+    <select id="bonusOptions" resultType="com.cloudflow.hr.mapper.HrEmployeeReferralMapper$Option">
+        <choose>
+            <when test="components">
+                SELECT id AS value, component_name AS label FROM hr_comp_component
+                WHERE tenant_id = #{tenantId} AND status = 1 AND component_type = 'VARIABLE' AND taxable = 1
+                <if test="query.keyword != null and query.keyword != ''">AND component_name LIKE CONCAT('%', #{query.keyword}, '%')</if>
+                ORDER BY sort_order, id
+            </when>
+            <otherwise>
+                SELECT period_id AS value, period_name AS label FROM hr_payroll_period
+                WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = 'OPEN' AND end_date &gt;= CURRENT_DATE
+                <if test="query.keyword != null and query.keyword != ''">AND period_name LIKE CONCAT('%', #{query.keyword}, '%')</if>
+                ORDER BY start_date, period_id
+            </otherwise>
+        </choose>
+    </select>
+    <select id="lockResume" resultType="com.cloudflow.hr.mapper.HrEmployeeReferralMapper$ResumeFile">
+        SELECT file_id, file_name, file_size, file_hash, biz_id AS business_id FROM sys_file
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_REFERRAL_RESUME' AND deleted = 0
+          AND access_type = 'PRIVATE' AND url = '' AND portal_owner_id IS NULL
+          AND (biz_type IS NULL OR biz_type = 'HR_REFERRAL_RESUME') FOR UPDATE
+    </select>
+    <update id="bindResume">
+        UPDATE sys_file SET biz_id = #{referralId}, biz_type = 'HR_REFERRAL_RESUME', file_hash = #{hash}
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND file_type = 'HR_REFERRAL_RESUME'
+          AND deleted = 0 AND biz_id IS NULL AND biz_type IS NULL
+          AND access_type = 'PRIVATE' AND url = '' AND portal_owner_id IS NULL
+    </update>
+</mapper>

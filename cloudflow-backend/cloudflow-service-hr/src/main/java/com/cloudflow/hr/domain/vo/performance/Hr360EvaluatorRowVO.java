@@ -23,6 +23,7 @@ public class Hr360EvaluatorRowVO {
     @Schema(description = "被评员工 ID") private Long evaluateeId;
     @Schema(description = "被评员工姓名") private String evaluateeName;
     @Schema(description = "评估人 ID") private Long evaluatorId;
+    private Long evaluatorUserId;
     @Schema(description = "评估人姓名") private String evaluatorName;
     @Schema(description = "评估来源（SELF/MANAGER/PEER/SUBORDINATE/CUSTOMER）") private String evaluatorSource;
     @Schema(description = "权重") private BigDecimal weight;

@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -24,6 +25,26 @@ public class HrLeaveTypePayload {
     private Integer needQuota;
     private Integer isPaid;
     private String unit;
+    private BigDecimal maxDaysPerYear;
+    private Integer applicableAfterDays;
+    private BigDecimal maxContinuousDays;
+    private Integer carryForwardFlag;
+    private BigDecimal maxCarryForwardDays;
+    private Integer carryForwardExpireDays;
+    private Integer earnedLeaveFlag;
+    private String earnedLeaveFrequency;
+    private String roundingMode;
+    private Integer encashmentFlag;
+    private Long encashmentComponentId;
+    private Integer lwpFlag;
+    private Integer partialPaidFlag;
+    private BigDecimal salaryFractionPerDay;
+    private Integer compensatoryFlag;
+    private Integer optionalLeaveFlag;
+    private Integer includeHolidayFlag;
+    private Integer allowNegativeFlag;
+    private Integer allowOverAllocationFlag;
+    private Integer needAttachmentFlag;
     private Integer status;
     private LocalDateTime createTime;
     @Version

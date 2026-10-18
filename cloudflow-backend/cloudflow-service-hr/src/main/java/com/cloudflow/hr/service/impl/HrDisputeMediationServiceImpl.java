@@ -37,10 +37,12 @@ public class HrDisputeMediationServiceImpl implements IHrDisputeMediationService
     private final HrLaborDisputeMapper disputeMapper;
     private final HrTypedCrudService crudService;
     private final ObjectMapper objectMapper;
+    private final com.cloudflow.hr.service.HrGrievanceAccessService grievanceAccess;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createMediation(Long disputeId, HrDisputeMediationDTO dto) {
+        grievanceAccess.assertDisputeAccess(disputeId);
         if (disputeMapper.selectById(disputeId) == null) {
             throw new HrBusinessException("LABOR_DISPUTE_NOT_FOUND", "争议不存在：" + disputeId);
         }
@@ -58,12 +60,16 @@ public class HrDisputeMediationServiceImpl implements IHrDisputeMediationService
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "更新争议调解", diff = true, highRisk = true)
     public void updateMediation(Long mediationId, HrDisputeMediationDTO dto) {
+        HrDisputeMediation existing = mediationMapper.selectById(mediationId);
+        if (existing == null) throw new HrBusinessException("MEDIATION_NOT_FOUND", "调解记录不存在");
+        grievanceAccess.assertDisputeAccess(existing.getDisputeId());
         crudService.updateProperties(HrDisputeMediation.class, mediationId,
                 MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
     public PageResult<HrDisputeMediationVO> listByDispute(Long disputeId) {
+        grievanceAccess.assertDisputeAccess(disputeId);
         QueryWrapper<HrDisputeMediation> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("dispute_id", disputeId).eq("deleted", 0)
                 .orderByDesc("create_time");
