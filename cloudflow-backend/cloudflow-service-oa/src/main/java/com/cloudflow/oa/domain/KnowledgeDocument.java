@@ -43,6 +43,15 @@ public class KnowledgeDocument implements Serializable {
 
     private String status;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Integer externalVisibleFlag;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long externalVersionId;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String externalAttachmentFileIds;
+
     private Long submitterId;
 
     private String submitterName;

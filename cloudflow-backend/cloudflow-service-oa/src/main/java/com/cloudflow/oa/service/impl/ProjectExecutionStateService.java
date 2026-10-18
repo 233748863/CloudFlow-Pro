@@ -3,11 +3,9 @@ package com.cloudflow.oa.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.oa.domain.OaProject;
-import com.cloudflow.oa.domain.OaProjectMilestone;
-import com.cloudflow.oa.domain.WorkTask;
+import com.cloudflow.oa.domain.OaProjectTask;
 import com.cloudflow.oa.mapper.OaProjectMapper;
-import com.cloudflow.oa.mapper.OaProjectMilestoneMapper;
-import com.cloudflow.oa.mapper.WorkTaskMapper;
+import com.cloudflow.oa.mapper.OaProjectTaskMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,8 +20,7 @@ import java.util.List;
 public class ProjectExecutionStateService {
 
     private final OaProjectMapper projectMapper;
-    private final OaProjectMilestoneMapper milestoneMapper;
-    private final WorkTaskMapper workTaskMapper;
+    private final OaProjectTaskMapper projectTaskMapper;
 
     public void syncProjectStatus(Long projectId, String updateBy) {
         if (projectId == null) {
@@ -41,19 +38,13 @@ public class ProjectExecutionStateService {
             return;
         }
 
-        List<OaProjectMilestone> milestones = milestoneMapper.selectList(new LambdaQueryWrapper<OaProjectMilestone>()
-                .eq(OaProjectMilestone::getProjectId, projectId)
-                .eq(OaProjectMilestone::getDeleted, "0"));
-        List<WorkTask> tasks = workTaskMapper.selectList(new LambdaQueryWrapper<WorkTask>()
-                .eq(WorkTask::getProjectId, projectId)
-                .eq(WorkTask::getDeleted, 0));
-
-        boolean hasDeliverables = !milestones.isEmpty() || !tasks.isEmpty();
-        boolean hasStarted = milestones.stream().anyMatch(this::isMilestoneStarted)
-                || tasks.stream().anyMatch(this::isTaskStarted);
-        boolean milestonesComplete = milestones.isEmpty() || milestones.stream().allMatch(this::isMilestoneCompleted);
-        boolean tasksComplete = tasks.isEmpty() || tasks.stream().allMatch(this::isTaskCompleted);
-        boolean allComplete = hasDeliverables && milestonesComplete && tasksComplete;
+        List<OaProjectTask> tasks = projectTaskMapper.selectList(new LambdaQueryWrapper<OaProjectTask>()
+                .eq(OaProjectTask::getTenantId, project.getTenantId())
+                .eq(OaProjectTask::getProjectId, projectId)
+                .eq(OaProjectTask::getDeleted, 0));
+        boolean hasDeliverables = !tasks.isEmpty();
+        boolean hasStarted = tasks.stream().anyMatch(this::isTaskStarted);
+        boolean allComplete = hasDeliverables && tasks.stream().allMatch(this::isTaskCompleted);
 
         String targetStatus;
         if (allComplete) {
@@ -64,7 +55,7 @@ public class ProjectExecutionStateService {
             targetStatus = "APPROVED";
         }
 
-        BigDecimal targetProgress = resolveProjectProgress(project, milestones, tasks, targetStatus);
+        BigDecimal targetProgress = resolveProjectProgress(project, tasks, targetStatus);
         LocalDate targetActualStartDate = hasStarted
                 ? (project.getActualStartDate() != null ? project.getActualStartDate() : LocalDate.now())
                 : project.getActualStartDate();
@@ -89,24 +80,23 @@ public class ProjectExecutionStateService {
         projectMapper.update(null, wrapper);
     }
 
-    private BigDecimal resolveProjectProgress(OaProject project,
-                                              List<OaProjectMilestone> milestones,
-                                              List<WorkTask> tasks,
-                                              String targetStatus) {
-        if ("COMPLETED".equalsIgnoreCase(targetStatus)) {
-            return BigDecimal.valueOf(100);
-        }
-        if (!tasks.isEmpty() && !milestones.isEmpty()) {
-            return completionRate(tasks.stream().filter(this::isTaskCompleted).count() + milestones.stream().filter(this::isMilestoneCompleted).count(),
-                    tasks.size() + milestones.size());
-        }
-        if (!tasks.isEmpty()) {
-            return completionRate(tasks.stream().filter(this::isTaskCompleted).count(), tasks.size());
-        }
-        if (!milestones.isEmpty()) {
-            return completionRate(milestones.stream().filter(this::isMilestoneCompleted).count(), milestones.size());
-        }
-        return project.getProgress() == null ? BigDecimal.ZERO : project.getProgress();
+    private BigDecimal resolveProjectProgress(OaProject project, List<OaProjectTask> tasks, String targetStatus) {
+        if ("COMPLETED".equalsIgnoreCase(targetStatus)) return BigDecimal.valueOf(100);
+        String mode = project.getPercentCompleteMode() == null ? "TASK_COMPLETION" : project.getPercentCompleteMode();
+        BigDecimal current = project.getProgress() == null ? BigDecimal.ZERO : project.getProgress();
+        return switch (mode) {
+            case "MANUAL" -> current;
+            case "TASK_PROGRESS" -> {
+                if (tasks.isEmpty()) yield current;
+                BigDecimal weights = tasks.stream().map(task -> task.getTaskWeight() == null ? BigDecimal.ONE : task.getTaskWeight()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                if (weights.signum() == 0) yield BigDecimal.ZERO;
+                BigDecimal weighted = tasks.stream().map(task -> (task.getTaskWeight() == null ? BigDecimal.ONE : task.getTaskWeight())
+                        .multiply(task.getProgress() == null ? BigDecimal.ZERO : task.getProgress())).reduce(BigDecimal.ZERO, BigDecimal::add);
+                yield weighted.divide(weights, 2, RoundingMode.HALF_UP);
+            }
+            case "TASK_COMPLETION" -> tasks.isEmpty() ? current : completionRate(tasks.stream().filter(this::isTaskCompleted).count(), tasks.size());
+            default -> throw new IllegalArgumentException("项目进度模式无效");
+        };
     }
 
     private BigDecimal completionRate(long completed, long total) {
@@ -118,28 +108,17 @@ public class ProjectExecutionStateService {
                 .divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP);
     }
 
-    private boolean isMilestoneStarted(OaProjectMilestone milestone) {
-        return milestone != null && (isMilestoneCompleted(milestone)
-                || "IN_PROGRESS".equalsIgnoreCase(milestone.getStatus())
-                || (milestone.getProgress() != null && milestone.getProgress().compareTo(BigDecimal.ZERO) > 0));
+
+
+
+
+    private boolean isTaskStarted(OaProjectTask task) {
+        return task != null && (isTaskCompleted(task) || "IN_PROGRESS".equalsIgnoreCase(task.getStatus()) || task.getActualStart() != null
+                || task.getProgress() != null && task.getProgress().signum() > 0);
     }
 
-    private boolean isMilestoneCompleted(OaProjectMilestone milestone) {
-        return milestone != null && (milestone.getActualDate() != null
-                || "DONE".equalsIgnoreCase(milestone.getStatus())
-                || "COMPLETED".equalsIgnoreCase(milestone.getStatus())
-                || "COMPLETED_MILESTONE".equalsIgnoreCase(milestone.getStatus()));
-    }
-
-    private boolean isTaskStarted(WorkTask task) {
-        return task != null && (isTaskCompleted(task)
-                || "DOING".equalsIgnoreCase(task.getStatus())
-                || task.getActualStartTime() != null
-                || (task.getProgress() != null && task.getProgress().compareTo(BigDecimal.ZERO) > 0));
-    }
-
-    private boolean isTaskCompleted(WorkTask task) {
-        return task != null && "DONE".equalsIgnoreCase(task.getStatus());
+    private boolean isTaskCompleted(OaProjectTask task) {
+        return task != null && "COMPLETED".equalsIgnoreCase(task.getStatus());
     }
 
     private boolean sameDate(LocalDate left, LocalDate right) {

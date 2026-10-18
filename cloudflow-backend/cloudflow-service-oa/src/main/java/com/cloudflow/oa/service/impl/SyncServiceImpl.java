@@ -5,7 +5,7 @@ import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.oa.config.properties.OaProperties;
 import com.cloudflow.oa.domain.SysAnnouncement;
-import com.cloudflow.oa.domain.SysNotice;
+import com.cloudflow.oa.domain.OaMessageRecord;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.dto.SyncDeviceRegisterDTO;
 import com.cloudflow.oa.domain.dto.SyncDownloadDTO;
@@ -14,7 +14,7 @@ import com.cloudflow.oa.domain.dto.SyncUploadDTO;
 import com.cloudflow.oa.service.IOaSyncDeviceService;
 import com.cloudflow.oa.service.ISyncService;
 import com.cloudflow.oa.service.ISysAnnouncementService;
-import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.oa.mapper.OaMessageRecordMapper;
 import com.cloudflow.oa.service.ISysScheduleService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +39,7 @@ import java.util.Map;
 public class SyncServiceImpl implements ISyncService {
 
     @Autowired
-    private ISysNoticeService sysNoticeService;
+    private OaMessageRecordMapper messageRecordMapper;
 
     @Autowired
     private ISysScheduleService sysScheduleService;
@@ -121,7 +121,16 @@ public class SyncServiceImpl implements ISyncService {
             case "notice_read":
                 Long noticeId = getLongValue(payload, "noticeId");
                 if (noticeId != null) {
-                    sysNoticeService.readNotice(noticeId);
+                    OaMessageRecord update = new OaMessageRecord();
+                    update.setReadFlag(1);
+                    update.setReadTime(LocalDateTime.now());
+                    update.setUpdateTime(LocalDateTime.now());
+                    messageRecordMapper.update(update, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<OaMessageRecord>()
+                            .eq(OaMessageRecord::getRecordId, noticeId)
+                            .eq(OaMessageRecord::getReceiverId, userId)
+                            .eq(OaMessageRecord::getTenantId, UserContext.getTenantId())
+                            .eq(OaMessageRecord::getChannelType, "INTERNAL")
+                            .eq(OaMessageRecord::getSendStatus, "SUCCESS"));
                     log.debug("消息已标记为已读，ID: {}", noticeId);
                 }
                 break;
@@ -195,18 +204,17 @@ public class SyncServiceImpl implements ISyncService {
             pageQuery.setPageNum(1);
             pageQuery.setPageSize(100);
 
-            com.cloudflow.common.core.domain.PageResult<SysNotice> noticeResult =
-                    sysNoticeService.getMyNotices(userId, pageQuery);
+            List<OaMessageRecord> noticeRows = messageRecordMapper.selectRecentForUser(UserContext.getTenantId(), userId, 100);
 
-            for (SysNotice notice : noticeResult.getRows()) {
+            for (OaMessageRecord notice : noticeRows) {
                 if (notice.getCreateTime() != null && notice.getCreateTime().isAfter(lastSync)) {
                     SyncDownloadDTO.MessageData messageData = new SyncDownloadDTO.MessageData();
-                    messageData.setNoticeId(notice.getNoticeId());
-                    messageData.setTitle(notice.getNoticeTitle());
-                    messageData.setContent(notice.getNoticeContent());
-                    messageData.setType(notice.getNoticeType());
+                    messageData.setNoticeId(notice.getRecordId());
+                    messageData.setTitle(notice.getTitle());
+                    messageData.setContent(notice.getContent());
+                    messageData.setType(notice.getMessageCategory());
                     messageData.setCreateTime(notice.getCreateTime().toString());
-                    messageData.setIsRead("1".equals(notice.getStatus()));
+                    messageData.setIsRead(Integer.valueOf(1).equals(notice.getReadFlag()));
                     messages.add(messageData);
                 }
             }
@@ -289,7 +297,13 @@ public class SyncServiceImpl implements ISyncService {
                     Map<String, Object> localData = castObjectMap(conflict.getLocalData());
                     Long noticeId = getLongValue(localData, "noticeId");
                     if (noticeId != null) {
-                        sysNoticeService.readNotice(noticeId);
+                        OaMessageRecord update = new OaMessageRecord();
+                        update.setReadFlag(1);
+                        update.setReadTime(LocalDateTime.now());
+                        update.setUpdateTime(LocalDateTime.now());
+                        messageRecordMapper.update(update, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<OaMessageRecord>()
+                                .eq(OaMessageRecord::getRecordId, noticeId)
+                                .eq(OaMessageRecord::getReceiverId, userId));
                         log.info("使用本地状态标记消息已读，ID: {}", noticeId);
                     }
                 }

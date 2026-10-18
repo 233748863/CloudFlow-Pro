@@ -1,6 +1,5 @@
 package com.cloudflow.oa.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
@@ -15,11 +14,14 @@ import com.cloudflow.oa.util.OaContractConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * 合同审批结果处理器。
@@ -32,6 +34,7 @@ public class ContractApprovalHandler implements ApprovalResultHandler {
     private final OaContractMapper contractMapper;
     private final IOaTraceEventService oaTraceEventService;
     private final RedisStreamUtil redisStreamUtil;
+    private final OaContractPerformanceService performance;
 
     @Override
     public String getSupportedBusinessType() {
@@ -39,6 +42,7 @@ public class ContractApprovalHandler implements ApprovalResultHandler {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void handleApproved(ApprovalResultDTO dto) {
         OaContract contract = updateStatus(dto, OaContractConstants.CONTRACT_STATUS_APPROVED, "APPROVAL_APPROVED", "合同审批通过");
         if (contract != null) {
@@ -47,6 +51,7 @@ public class ContractApprovalHandler implements ApprovalResultHandler {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void handleRejected(ApprovalResultDTO dto) {
         OaContract contract = updateStatus(dto, OaContractConstants.CONTRACT_STATUS_REJECTED, "APPROVAL_REJECTED", "合同审批驳回");
         if (contract != null) {
@@ -55,24 +60,26 @@ public class ContractApprovalHandler implements ApprovalResultHandler {
     }
 
     private OaContract updateStatus(ApprovalResultDTO dto, String status, String eventType, String eventTitle) {
-        OaContract contract = contractMapper.selectById(dto.getBusinessId());
+        if (dto == null || !Objects.equals(dto.getTenantId(), OaRecordSupport.tenantId()))
+            throw new IllegalArgumentException("合同审批回写租户不一致");
+        OaContract contract = contractMapper.selectForUpdate(dto.getBusinessId(), dto.getTenantId());
         if (contract == null || !Integer.valueOf(0).equals(contract.getDeleted())) {
             throw new IllegalStateException("未找到合同记录，businessId=" + dto.getBusinessId());
         }
-        LambdaUpdateWrapper<OaContract> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(OaContract::getContractId, dto.getBusinessId())
-                .eq(OaContract::getInstanceId, dto.getProcessInstanceId())
-                .set(OaContract::getStatus, status)
-                .set(OaContract::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
-                .set(OaContract::getUpdateTime, LocalDateTime.now());
-        int updated = contractMapper.update(null, wrapper);
-        if (updated <= 0) {
-            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
-                    "合同", dto.getBusinessId(), contract.getInstanceId(), dto.getProcessInstanceId())) {
-                return null;
-            }
-            throw new IllegalStateException("合同审批结果回写失败，businessId=" + dto.getBusinessId());
+        if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                "合同", dto.getBusinessId(), contract.getInstanceId(), dto.getProcessInstanceId())) return null;
+        if (OaContractConstants.CONTRACT_STATUS_CANCELLED.equals(contract.getStatus())) return null;
+        if (Objects.equals(contract.getStatus(), status) || OaContractConstants.CONTRACT_STATUS_APPROVED.equals(status)
+                && Set.of("SEALING", "SEALED", "ACTIVE", "EXPIRED", "TERMINATED").contains(contract.getStatus())) {
+            performance.synchronize(contract.getContractId());
+            return null;
         }
+        if (!OaContractConstants.CONTRACT_STATUS_PENDING.equals(contract.getStatus()))
+            throw new IllegalStateException("合同当前状态与审批回写不一致，请核对原流程");
+        contract.setStatus(status); contract.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
+        contract.setUpdateTime(LocalDateTime.now());
+        OaRecordSupport.saved(contractMapper.updateById(contract));
+        performance.synchronize(contract.getContractId());
         oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),
                 OaContractConstants.BUSINESS_TYPE_APPROVAL, contract.getContractId(), eventType, eventTitle,
                 dto.getApprovalComment(), dto.getApproverId(), dto.getApproverName(), null);

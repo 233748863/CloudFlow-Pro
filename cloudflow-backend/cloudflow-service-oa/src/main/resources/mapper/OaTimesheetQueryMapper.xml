@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaTimesheetQueryMapper">
+    <select id="dailyHours" resultType="com.cloudflow.oa.domain.vo.OaTimesheetDayTotal">
+        SELECT detail.work_date, SUM(CASE WHEN detail.hours &gt; 0 OR sheet.status = 'APPROVED' THEN detail.hours ELSE 0 END) AS hours
+        FROM oa_timesheet_detail detail JOIN oa_timesheet sheet ON sheet.timesheet_id = detail.timesheet_id AND sheet.tenant_id = detail.tenant_id
+        WHERE detail.tenant_id = #{tenantId} AND sheet.employee_id = #{employeeId} AND detail.deleted = 0 AND sheet.deleted = 0
+          AND sheet.status IN ('DRAFT', 'SUBMITTED', 'APPROVING', 'APPROVED') AND detail.work_date BETWEEN #{from} AND #{to}
+        <if test="excludeId != null">AND sheet.timesheet_id != #{excludeId}</if>
+        GROUP BY detail.work_date
+    </select>
+    <select id="reversalTotals" resultType="com.cloudflow.oa.domain.vo.OaTimesheetReversalTotals">
+        SELECT COALESCE(SUM(-detail.hours), 0) AS hours, COALESCE(SUM(-detail.costing_amount), 0) AS costing_amount, COALESCE(SUM(-detail.billing_amount), 0) AS billing_amount
+        FROM oa_timesheet_detail detail JOIN oa_timesheet sheet ON sheet.timesheet_id = detail.timesheet_id AND sheet.tenant_id = detail.tenant_id
+        WHERE detail.tenant_id = #{tenantId} AND detail.reversal_of_detail_id = #{detailId} AND detail.deleted = 0 AND sheet.deleted = 0
+          AND sheet.status IN ('DRAFT', 'SUBMITTED', 'APPROVING', 'APPROVED')
+        <if test="excludeId != null">AND sheet.timesheet_id != #{excludeId}</if>
+    </select>
+    <select id="reviewableSheetIds" resultType="java.lang.Long">
+        SELECT DISTINCT detail.timesheet_id FROM oa_timesheet_detail detail
+        JOIN oa_project project ON project.project_id = detail.project_id AND project.tenant_id = detail.tenant_id
+        WHERE detail.tenant_id = #{tenantId} AND detail.deleted = 0 AND project.deleted = 0 AND project.owner_id = #{userId}
+    </select>
+    <select id="availableProjects" resultType="com.cloudflow.oa.domain.OaProject">
+        SELECT project.* FROM oa_project project
+        WHERE project.tenant_id = #{tenantId} AND project.deleted = 0 AND project.status NOT IN ('CANCELLED', 'ARCHIVED')
+          AND (project.owner_id = #{userId} OR EXISTS (
+            SELECT 1 FROM oa_project_member member WHERE member.project_id = project.project_id AND member.tenant_id = project.tenant_id
+              AND member.user_id = #{userId} AND member.deleted = 0 AND (member.leave_date IS NULL OR member.leave_date &gt;= CURRENT_DATE)
+          )) ORDER BY project.project_id DESC
+    </select>
+    <select id="availableProjectsForPeriod" resultType="com.cloudflow.oa.domain.OaProject">
+        SELECT project.* FROM oa_project project
+        WHERE project.tenant_id = #{tenantId} AND project.deleted = 0 AND project.status NOT IN ('CANCELLED', 'ARCHIVED')
+          AND (project.owner_id = #{userId} OR EXISTS (
+            SELECT 1 FROM oa_project_member member WHERE member.project_id = project.project_id AND member.tenant_id = project.tenant_id
+              AND member.user_id = #{userId} AND member.deleted = 0
+              AND (member.join_date IS NULL OR member.join_date &lt;= LEAST(#{toDate}, CURRENT_DATE))
+              AND (member.leave_date IS NULL OR member.leave_date &gt;= #{fromDate})
+          )) ORDER BY project.project_id DESC
+    </select>
+    <select id="totals" resultType="com.cloudflow.oa.domain.vo.OaProjectFinancialTotals">
+        SELECT COALESCE(SUM(detail.costing_amount), 0) AS labor_cost_amount,
+               COALESCE(SUM(detail.billing_amount), 0) AS billable_amount,
+               COALESCE(SUM(detail.hours), 0) AS actual_hours,
+               (SELECT COALESCE(SUM(purchase.total_amount), 0) FROM biz_purchase_request purchase
+                WHERE purchase.tenant_id = #{tenantId} AND purchase.project_id = #{projectId} AND purchase.deleted = 0 AND purchase.status = 'RECEIVED') AS purchase_cost_amount,
+               (SELECT COALESCE(SUM(invoice.gross_amount), 0) FROM oa_invoice invoice
+                JOIN oa_contract contract ON contract.contract_id = invoice.contract_id AND contract.tenant_id = invoice.tenant_id
+                WHERE invoice.tenant_id = #{tenantId} AND contract.project_id = #{projectId} AND contract.deleted = 0
+                  AND invoice.deleted = 0 AND invoice.invoice_direction = 'OUTPUT' AND invoice.status != 'VOID') AS billed_amount
+        FROM oa_timesheet_detail detail JOIN oa_timesheet sheet ON sheet.timesheet_id = detail.timesheet_id AND sheet.tenant_id = detail.tenant_id
+        WHERE detail.tenant_id = #{tenantId} AND detail.project_id = #{projectId} AND detail.deleted = 0 AND sheet.deleted = 0 AND sheet.status = 'APPROVED'
+    </select>
+    <select id="taskHours" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(detail.hours), 0)
+        FROM oa_timesheet_detail detail JOIN oa_timesheet sheet ON sheet.timesheet_id = detail.timesheet_id AND sheet.tenant_id = detail.tenant_id
+        WHERE detail.tenant_id = #{tenantId} AND detail.task_id = #{taskId} AND detail.deleted = 0 AND sheet.deleted = 0 AND sheet.status = 'APPROVED'
+    </select>
+</mapper>

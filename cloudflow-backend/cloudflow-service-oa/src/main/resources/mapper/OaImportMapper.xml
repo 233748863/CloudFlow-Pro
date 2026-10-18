@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaImportMapper">
+    <select id="existingAssets" resultType="java.lang.String">
+        SELECT asset_code FROM oa_asset WHERE tenant_id = #{tenantId} AND asset_code IN
+        <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+    </select>
+    <select id="existingSuppliers" resultType="com.cloudflow.oa.domain.SysSupplier">
+        SELECT supplier_code, credit_code FROM oa_supplier WHERE tenant_id = #{tenantId} AND
+        (supplier_code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        <if test="creditCodes != null and creditCodes.size() > 0">
+            OR credit_code IN <foreach collection="creditCodes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        </if>)
+    </select>
+</mapper>

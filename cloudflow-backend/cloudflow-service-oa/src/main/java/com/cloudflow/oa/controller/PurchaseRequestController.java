@@ -11,8 +11,13 @@ import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.dto.PurchaseFromSuggestionDTO;
 import com.cloudflow.oa.domain.dto.PurchaseReceiptDTO;
+import com.cloudflow.oa.domain.dto.ConsumableQuery;
+import com.cloudflow.oa.domain.vo.ConsumableResults;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.oa.service.impl.ConsumablePurchaseService;
 import com.cloudflow.oa.service.IPurchaseRequestService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -24,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 public class PurchaseRequestController {
 
     private final IPurchaseRequestService purchaseRequestService;
+    private final ConsumablePurchaseService consumablePurchases;
 
     @GetMapping("/list")
     @SaCheckPermission("oa:purchase:list")
@@ -38,7 +44,7 @@ public class PurchaseRequestController {
     @GetMapping("/{id}")
     @SaCheckPermission("oa:purchase:list")
     public R<BizPurchaseRequest> getInfo(@PathVariable Long id) {
-        BizPurchaseRequest purchase = purchaseRequestService.getRequestWithItems(id);
+        BizPurchaseRequest purchase = purchaseRequestService.getAccessibleRequestWithItems(id);
         if (purchase == null || !Integer.valueOf(0).equals(purchase.getDeleted())) {
             return R.fail("采购申请不存在");
         }
@@ -85,12 +91,7 @@ public class PurchaseRequestController {
     @DeleteMapping("/{ids}")
     @SaCheckPermission("oa:purchase:remove")
     public R<Void> remove(@PathVariable Long[] ids) {
-        for (Long id : ids) {
-            BizPurchaseRequest purchase = new BizPurchaseRequest();
-            purchase.setId(id);
-            purchase.setDeleted(1);
-            purchaseRequestService.updateById(purchase);
-        }
+        for (Long id : ids) purchaseRequestService.deleteDraft(id);
         return R.ok();
     }
 
@@ -108,13 +109,14 @@ public class PurchaseRequestController {
     }
 
     @SysLog("采购分批入库")
+    @RepeatSubmit.Disabled
     @PostMapping("/{id}/receipt")
     @SaCheckPermission("oa:purchase:receipt")
-    public R<Void> receipt(@PathVariable Long id, @RequestBody PurchaseReceiptDTO receipt) {
+    public ResponseEntity<R<ConsumableResults.StockPosting>> receipt(@PathVariable Long id, @RequestBody PurchaseReceiptDTO receipt) {
         try {
-            return purchaseRequestService.receivePurchase(id, receipt) ? R.ok() : R.fail("入库失败");
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
+            return ResponseEntity.ok(R.ok(purchaseRequestService.receivePurchase(id, receipt)));
+        } catch (IllegalArgumentException exception) {
+            return ConsumableExceptionHandler.rejection(exception);
         }
     }
 
@@ -129,6 +131,12 @@ public class PurchaseRequestController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             return R.fail(e.getMessage());
         }
+    }
+
+    @GetMapping("/{id}/receipts")
+    @SaCheckPermission("oa:purchase:list")
+    public R<PageResult<ConsumableResults.PurchaseReceiptView>> receipts(@PathVariable Long id, ConsumableQuery query) {
+        return R.ok(consumablePurchases.receipts(id, query));
     }
 }
 

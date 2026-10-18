@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.SysConsumable;
 import com.cloudflow.oa.domain.dto.ConsumableReplenishmentSuggestionDTO;
+import com.cloudflow.oa.domain.dto.ConsumableCommands;
 
 import java.util.List;
 
@@ -30,12 +31,14 @@ public interface IConsumableService extends IService<SysConsumable> {
     /**
      * 入库（增加库存）
      */
-    boolean addStock(Long consumableId, int quantity, String remark);
+    void createMaterial(ConsumableCommands.MasterData command);
 
     /**
      * 出库（减少库存）
      */
-    boolean reduceStock(Long consumableId, int quantity, String stockOutType, String remark);
+    void editMaterial(ConsumableCommands.MasterData command);
+
+    void deleteMaterials(List<Long> ids);
 
     /**
      * 是否可删除。

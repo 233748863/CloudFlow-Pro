@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaMeetingMinutesMapper">
+    <select id="visiblePage" resultType="com.cloudflow.oa.domain.OaMeetingMinutes">
+        SELECT minutes.* FROM oa_meeting_minutes minutes
+        LEFT JOIN oa_schedule_event meeting ON meeting.tenant_id = minutes.tenant_id
+            AND meeting.event_id = COALESCE(minutes.schedule_event_id, minutes.meeting_id) AND meeting.deleted = 0
+        LEFT JOIN sys_user creator ON creator.tenant_id = meeting.tenant_id AND creator.user_id = meeting.creator_id
+        WHERE minutes.tenant_id = #{tenantId} AND minutes.deleted = 0
+        <if test="keyword != null and keyword != ''">AND minutes.meeting_title LIKE CONCAT('%', #{keyword}, '%')</if>
+        <if test="status != null and status != ''">AND minutes.status = #{status}</if>
+        <if test="meetingId != null">AND COALESCE(minutes.schedule_event_id, minutes.meeting_id) = #{meetingId}</if>
+        AND (COALESCE(minutes.schedule_event_id, minutes.meeting_id) IS NULL OR (meeting.event_id IS NOT NULL AND (
+            meeting.creator_id = #{userId}
+            OR EXISTS (SELECT 1 FROM oa_meeting_attendance invitation WHERE invitation.tenant_id = meeting.tenant_id
+                AND invitation.schedule_event_id = meeting.event_id AND invitation.user_id = #{userId} AND invitation.deleted = 0)
+            <if test="managerAll">OR 1 = 1</if>
+            <if test="managerUser != null">OR meeting.creator_id = #{managerUser}</if>
+            <if test="managerDepartments != null and !managerDepartments.isEmpty()">
+                OR creator.dept_id IN <foreach collection="managerDepartments" item="departmentId" open="(" close=")" separator=",">#{departmentId}</foreach>
+            </if>
+        ))) ORDER BY minutes.meeting_time DESC, minutes.id DESC
+    </select>
+    <select id="lock" resultType="com.cloudflow.oa.domain.OaMeetingMinutes">
+        SELECT * FROM oa_meeting_minutes WHERE tenant_id = #{tenantId} AND id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="forEvent" resultType="long">
+        SELECT id FROM oa_meeting_minutes WHERE tenant_id = #{tenantId}
+            AND COALESCE(schedule_event_id, meeting_id) = #{eventId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="eventAttendance" resultType="com.cloudflow.oa.domain.OaMeetingAttendance">
+        SELECT * FROM oa_meeting_attendance WHERE tenant_id = #{tenantId} AND schedule_event_id = #{eventId} AND user_id = #{userId} FOR UPDATE
+    </select>
+    <select id="lockAttendance" resultType="com.cloudflow.oa.domain.OaMeetingAttendance">
+        SELECT * FROM oa_meeting_attendance WHERE tenant_id = #{tenantId} AND id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="minutesAttendance" resultType="com.cloudflow.oa.domain.OaMeetingAttendance">
+        SELECT * FROM oa_meeting_attendance WHERE tenant_id = #{tenantId} AND minutes_id = #{minutesId} AND user_id = #{userId} FOR UPDATE
+    </select>
+    <update id="bindAttendance">
+        UPDATE oa_meeting_attendance SET minutes_id = #{minutesId}
+        WHERE tenant_id = #{tenantId} AND schedule_event_id = #{eventId}
+    </update>
+    <update id="unlinkAttendance">
+        UPDATE oa_meeting_attendance SET minutes_id = NULL WHERE tenant_id = #{tenantId} AND minutes_id = #{minutesId}
+    </update>
+    <update id="saveAttendance">
+        UPDATE oa_meeting_attendance SET minutes_id = #{row.minutesId}, attend_status = #{row.attendStatus},
+            check_in_time = #{row.checkInTime}, remark = #{row.remark}, user_name = #{row.userName},
+            deleted = #{row.deleted}, update_by = #{row.updateBy}, update_time = #{row.updateTime}
+        WHERE tenant_id = #{row.tenantId} AND id = #{row.id} AND user_id = #{row.userId}
+    </update>
+</mapper>

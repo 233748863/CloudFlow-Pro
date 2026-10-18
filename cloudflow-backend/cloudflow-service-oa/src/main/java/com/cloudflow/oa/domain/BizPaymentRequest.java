@@ -52,6 +52,10 @@ public class BizPaymentRequest implements Serializable {
     /** 付款金额 */
     private BigDecimal amount;
 
+    private String sourceBizType;
+
+    private String sourceBizId;
+
     /** 付款类型(PURCHASE采购/SERVICE服务/RENT租金/OTHER其他) */
     private String paymentType;
 

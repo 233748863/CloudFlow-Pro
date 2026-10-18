@@ -43,6 +43,8 @@ public class FrontendErrorLog implements Serializable {
     /** 租户ID */
     private Long tenantId;
 
+    private String traceId;
+
     /** 错误消息 */
     private String message;
 

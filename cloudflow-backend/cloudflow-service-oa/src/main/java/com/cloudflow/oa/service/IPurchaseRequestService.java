@@ -6,6 +6,7 @@ import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.dto.PurchaseFromSuggestionDTO;
 import com.cloudflow.oa.domain.dto.PurchaseReceiptDTO;
+import com.cloudflow.oa.domain.vo.ConsumableResults;
 
 /**
  * 行政采购申请 Service。
@@ -16,6 +17,8 @@ public interface IPurchaseRequestService extends IService<BizPurchaseRequest> {
 
     BizPurchaseRequest getRequestWithItems(Long id);
 
+    BizPurchaseRequest getAccessibleRequestWithItems(Long id);
+
     String generatePurchaseNo();
 
     boolean createPurchase(BizPurchaseRequest purchase);
@@ -24,7 +27,7 @@ public interface IPurchaseRequestService extends IService<BizPurchaseRequest> {
 
     boolean submitPurchase(Long id);
 
-    boolean receivePurchase(Long id, PurchaseReceiptDTO receipt);
+    ConsumableResults.StockPosting receivePurchase(Long id, PurchaseReceiptDTO receipt);
 
     BizPaymentRequest createPaymentRequest(Long id);
 
@@ -33,4 +36,6 @@ public interface IPurchaseRequestService extends IService<BizPurchaseRequest> {
     void updatePaymentStatus(Long paymentRequestId, String paymentStatus);
 
     void releaseBudgetOnRejected(Long purchaseId);
+
+    void deleteDraft(Long id);
 }

@@ -6,9 +6,9 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.oa.domain.OaProject;
 import com.cloudflow.oa.domain.OaProjectDependency;
 import com.cloudflow.oa.domain.OaProjectMember;
-import com.cloudflow.oa.domain.OaProjectMilestone;
+import com.cloudflow.oa.domain.OaProjectTask;
 import com.cloudflow.oa.domain.OaProjectRisk;
-import com.cloudflow.oa.domain.WorkTask;
+
 import com.cloudflow.oa.domain.dto.ProjectWbsTreeNodeDTO;
 import com.cloudflow.oa.domain.vo.ProjectCostSummaryVO;
 import com.cloudflow.oa.domain.vo.ProjectDetailVO;
@@ -29,9 +29,9 @@ public interface IOaProjectService extends IService<OaProject> {
 
     List<OaProjectMember> listMembers(Long projectId);
 
-    List<OaProjectMilestone> listMilestones(Long projectId);
+    List<OaProjectTask> listMilestones(Long projectId);
 
-    List<WorkTask> listWbsTasks(Long projectId);
+    List<OaProjectTask> listWbsTasks(Long projectId);
 
     List<OaProjectDependency> listDependencies(Long projectId);
 
@@ -45,9 +45,9 @@ public interface IOaProjectService extends IService<OaProject> {
 
     boolean removeMembers(List<Long> ids);
 
-    boolean addMilestone(OaProjectMilestone milestone);
+    boolean addMilestone(OaProjectTask milestone);
 
-    boolean updateMilestone(OaProjectMilestone milestone);
+    boolean updateMilestone(OaProjectTask milestone);
 
     boolean removeMilestones(List<Long> ids);
 
@@ -57,9 +57,9 @@ public interface IOaProjectService extends IService<OaProject> {
 
     boolean removeRisks(List<Long> ids);
 
-    boolean addWbsTask(WorkTask task);
+    boolean addWbsTask(OaProjectTask task);
 
-    boolean updateWbsTask(WorkTask task);
+    boolean updateWbsTask(OaProjectTask task);
 
     boolean updateWbsTree(Long projectId, List<ProjectWbsTreeNodeDTO> nodes);
 

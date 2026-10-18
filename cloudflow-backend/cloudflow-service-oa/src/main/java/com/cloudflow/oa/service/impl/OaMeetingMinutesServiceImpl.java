@@ -3,11 +3,18 @@ package com.cloudflow.oa.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.exception.ServiceException;
+import com.cloudflow.common.datascope.DataScope;
+import com.cloudflow.common.datascope.DataScopeHandle;
+import cn.dev33.satoken.stp.StpUtil;
 import com.cloudflow.oa.domain.OaMeetingAttendance;
 import com.cloudflow.oa.domain.OaMeetingMinutes;
 import com.cloudflow.oa.domain.WorkTask;
+import com.cloudflow.oa.domain.SysScheduleEvent;
+import com.cloudflow.oa.domain.vo.OaIdentityReference;
 import com.cloudflow.oa.mapper.OaMeetingAttendanceMapper;
 import com.cloudflow.oa.mapper.OaMeetingMinutesMapper;
+import com.cloudflow.oa.mapper.OaIdentityReferenceMapper;
 import com.cloudflow.oa.service.IOaMeetingMinutesService;
 import com.cloudflow.oa.service.IWorkTaskService;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -27,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * OA-P1-2 会议纪要 + 出席记录实现。
@@ -36,96 +44,89 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
 
-    private static final Long DEFAULT_TENANT_ID = 100000L;
-
     private final OaMeetingMinutesMapper minutesMapper;
     private final OaMeetingAttendanceMapper attendanceMapper;
     private final IWorkTaskService workTaskService;
     private final ObjectMapper objectMapper;
+    private final OaMeetingAccess meetingAccess;
+    private final OaIdentityReferenceMapper identities;
+    private final DataScopeHandle dataScopes;
 
     @Override
     public Page<OaMeetingMinutes> page(String keyword, String status, Long meetingId, Integer pageNum, Integer pageSize) {
-        LambdaQueryWrapper<OaMeetingMinutes> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OaMeetingMinutes::getDeleted, 0);
-        if (StringUtils.hasText(keyword)) {
-            wrapper.like(OaMeetingMinutes::getMeetingTitle, keyword);
-        }
-        if (StringUtils.hasText(status)) {
-            wrapper.eq(OaMeetingMinutes::getStatus, status);
-        }
-        if (meetingId != null) {
-            wrapper.eq(OaMeetingMinutes::getMeetingId, meetingId);
-        }
-        wrapper.orderByDesc(OaMeetingMinutes::getMeetingTime)
-                .orderByDesc(OaMeetingMinutes::getId);
-        return minutesMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        OaMeetingRules.require(pageNum != null && pageNum > 0 && pageSize != null && pageSize > 0 && pageSize <= 50,
+                "MEETING_PAGE_INVALID", "页码须大于0，每页最多50条");
+        DataScope scope = new DataScope();
+        boolean manager = StpUtil.hasPermission("oa:meeting:manage");
+        boolean all = manager && Boolean.TRUE.equals(dataScopes.calcScope(scope));
+        return minutesMapper.visiblePage(new Page<>(pageNum, pageSize), OaRecordSupport.tenantId(), keyword, status, meetingId,
+                OaMeetingAccess.userId(), all, manager ? scope.getUserId() : null, manager ? scope.getDeptList() : List.of());
     }
 
     @Override
     public OaMeetingMinutes getDetail(Long id) {
-        if (id == null) {
-            return null;
-        }
-        return minutesMapper.selectById(id);
+        OaMeetingMinutes minutes = id == null ? null : minutesMapper.selectById(id);
+        if (minutes == null || !Objects.equals(minutes.getTenantId(), OaRecordSupport.tenantId()) || !Integer.valueOf(0).equals(minutes.getDeleted())) throw unavailable();
+        Long eventId = linkedId(minutes);
+        if (eventId != null && !meetingAccess.visible(meetingAccess.get(eventId))) throw unavailable();
+        return minutes;
     }
 
     @Override
     @Transactional
     public boolean save(OaMeetingMinutes minutes) {
-        if (minutes == null) {
-            throw new IllegalArgumentException("纪要不能为空");
-        }
-        if (minutes.getTenantId() == null) {
-            minutes.setTenantId(DEFAULT_TENANT_ID);
-        }
-        if (!StringUtils.hasText(minutes.getStatus())) {
-            minutes.setStatus("DRAFT");
-        }
-        if (!StringUtils.hasText(minutes.getOrganizerName())) {
-            minutes.setOrganizerName(UserContext.getUserName());
-            minutes.setOrganizerId(UserContext.getUserId());
-        }
-        minutes.setCreateBy(UserContext.getUserName());
-        minutes.setUpdateBy(UserContext.getUserName());
-        return minutesMapper.insert(minutes) > 0;
+        OaRecordSupport.require(minutes, "纪要不能为空");
+        Long eventId = linkedId(minutes);
+        if (eventId != null) {
+            SysScheduleEvent event = lockEvent(eventId);
+            requireOccurred(event);
+            if (!minutesMapper.forEvent(OaRecordSupport.tenantId(), eventId).isEmpty()) throw new ServiceException("本会议已有纪要，请打开原纪要维护", 409);
+            association(minutes, event);
+        } else organizer(minutes);
+        minutes.setMeetingTitle(OaRecordSupport.text(minutes.getMeetingTitle(), 200, "会议标题"));
+        OaRecordSupport.create(minutes, "id"); minutes.setStatus("DRAFT"); minutes.setConfirmedTime(null);
+        OaRecordSupport.saved(minutesMapper.insert(minutes));
+        if (eventId != null) minutesMapper.bindAttendance(OaRecordSupport.tenantId(), eventId, minutes.getId());
+        return true;
     }
 
     @Override
     @Transactional
     @Audit(name = "更新会议纪要", highRisk = true)
     public boolean update(OaMeetingMinutes minutes) {
-        if (minutes == null || minutes.getId() == null) {
-            throw new IllegalArgumentException("ID 必填");
+        OaRecordSupport.require(minutes, "纪要不能为空");
+        OaMeetingMinutes original = lock(minutes.getId());
+        OaMeetingAccess.version(minutes.getVersion(), original.getVersion());
+        if ("CONFIRMED".equals(original.getStatus())) throw new ServiceException("已确认纪要不能直接编辑", 409);
+        if (!Objects.equals(linkedId(minutes), linkedId(original))) throw new ServiceException("纪要关联的会议不可修改", 409);
+        if (linkedId(original) == null) {
+            original.setMeetingTitle(OaRecordSupport.text(minutes.getMeetingTitle(), 200, "会议标题"));
+            original.setMeetingTime(minutes.getMeetingTime()); original.setRoomId(minutes.getRoomId()); original.setLocation(minutes.getLocation());
+            original.setOrganizerId(minutes.getOrganizerId()); organizer(original);
         }
-        minutes.setUpdateBy(UserContext.getUserName());
-        minutes.setUpdateTime(LocalDateTime.now());
-        return minutesMapper.updateById(minutes) > 0;
+        original.setMinutesContent(minutes.getMinutesContent()); original.setDecisions(minutes.getDecisions()); original.setAttachmentUrl(minutes.getAttachmentUrl());
+        OaRecordSupport.touch(original); OaRecordSupport.saved(minutesMapper.updateById(original));
+        return true;
     }
 
     @Override
     @Transactional
     @Audit(name = "删除会议纪要", highRisk = true)
     public boolean remove(Long id) {
-        if (id == null) {
-            return false;
-        }
-        OaMeetingMinutes exist = minutesMapper.selectById(id);
-        if (exist == null) {
-            return false;
-        }
+        OaMeetingMinutes exist = lock(id);
         exist.setDeleted(1);
         exist.setUpdateBy(UserContext.getUserName());
         exist.setUpdateTime(LocalDateTime.now());
-        return minutesMapper.updateById(exist) > 0;
+        OaRecordSupport.saved(minutesMapper.updateById(exist));
+        if (linkedId(exist) != null) minutesMapper.unlinkAttendance(OaRecordSupport.tenantId(), id);
+        return true;
     }
 
     @Override
     @Transactional
     public boolean confirm(Long id) {
-        OaMeetingMinutes exist = minutesMapper.selectById(id);
-        if (exist == null || (exist.getDeleted() != null && exist.getDeleted() == 1)) {
-            return false;
-        }
+        OaMeetingMinutes exist = lock(id);
+        if ("CONFIRMED".equals(exist.getStatus())) return true;
         exist.setStatus("CONFIRMED");
         exist.setConfirmedTime(LocalDateTime.now());
         exist.setUpdateBy(UserContext.getUserName());
@@ -135,10 +136,9 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
 
     @Override
     public List<OaMeetingAttendance> listAttendance(Long minutesId) {
-        if (minutesId == null) {
-            return List.of();
-        }
+        getDetail(minutesId);
         return attendanceMapper.selectList(new LambdaQueryWrapper<OaMeetingAttendance>()
+                .eq(OaMeetingAttendance::getTenantId, OaRecordSupport.tenantId())
                 .eq(OaMeetingAttendance::getMinutesId, minutesId)
                 .eq(OaMeetingAttendance::getDeleted, 0)
                 .orderByAsc(OaMeetingAttendance::getId));
@@ -150,55 +150,55 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
         if (attendance == null || attendance.getMinutesId() == null || attendance.getUserId() == null) {
             throw new IllegalArgumentException("纪要ID与参会人ID必填");
         }
-        if (attendance.getTenantId() == null) {
-            attendance.setTenantId(DEFAULT_TENANT_ID);
+        OaMeetingMinutes minutes = lock(attendance.getMinutesId());
+        Long eventId = linkedId(minutes);
+        String status = OaRecordSupport.code(attendance.getAttendStatus(), "NOT_CHECKED", Set.of("ATTEND", "ABSENT", "LATE", "LEAVE", "NOT_CHECKED"));
+        OaIdentityReference user = OaRecordSupport.require(identities.user(attendance.getUserId(), OaRecordSupport.tenantId()), "参会人员不存在或已停用");
+        OaMeetingAttendance exist;
+        if (eventId != null) {
+            requireOccurred(meetingAccess.get(eventId));
+            exist = minutesMapper.eventAttendance(OaRecordSupport.tenantId(), eventId, attendance.getUserId());
+            if (exist == null || !Integer.valueOf(0).equals(exist.getDeleted())) throw new ServiceException("该人员不在本会议有效邀请名单内", 409);
+        } else {
+            exist = minutesMapper.minutesAttendance(OaRecordSupport.tenantId(), minutes.getId(), attendance.getUserId());
         }
-        if (!StringUtils.hasText(attendance.getAttendStatus())) {
-            attendance.setAttendStatus("NOT_CHECKED");
-        }
-        OaMeetingAttendance exist = attendanceMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<OaMeetingAttendance>()
-                .eq(OaMeetingAttendance::getMinutesId, attendance.getMinutesId())
-                .eq(OaMeetingAttendance::getUserId, attendance.getUserId())
-                .eq(OaMeetingAttendance::getDeleted, 0))
-                .getRecords().stream().findFirst().orElse(null);
         if (exist != null) {
-            exist.setAttendStatus(attendance.getAttendStatus());
-            exist.setCheckInTime(attendance.getCheckInTime());
+            exist.setMinutesId(minutes.getId()); exist.setAttendStatus(status); exist.setDeleted(0);
+            exist.setCheckInTime("NOT_CHECKED".equals(status) ? null : attendance.getCheckInTime());
             exist.setRemark(attendance.getRemark());
-            exist.setUserName(attendance.getUserName());
+            exist.setUserName(user.getName());
             exist.setUpdateBy(UserContext.getUserName());
             exist.setUpdateTime(LocalDateTime.now());
-            return attendanceMapper.updateById(exist) > 0;
+            OaRecordSupport.saved(minutesMapper.saveAttendance(exist)); return true;
         }
-        attendance.setCreateBy(UserContext.getUserName());
-        attendance.setUpdateBy(UserContext.getUserName());
-        return attendanceMapper.insert(attendance) > 0;
+        OaMeetingAttendance created = new OaMeetingAttendance(); OaRecordSupport.create(created, "id");
+        created.setMinutesId(minutes.getId()); created.setUserId(attendance.getUserId()); created.setUserName(user.getName());
+        created.setAttendStatus(status); created.setCheckInTime("NOT_CHECKED".equals(status) ? null : attendance.getCheckInTime());
+        created.setRemark(attendance.getRemark()); created.setAcceptanceStatus("NONE"); created.setInvitationVersion(0);
+        OaRecordSupport.saved(attendanceMapper.insert(created)); return true;
     }
 
     @Override
     @Transactional
     @Audit(name = "删除会议纪要参会记录", highRisk = true)
     public boolean removeAttendance(Long id) {
-        if (id == null) {
-            return false;
-        }
-        OaMeetingAttendance exist = attendanceMapper.selectById(id);
-        if (exist == null) {
-            return false;
-        }
-        exist.setDeleted(1);
+        OaMeetingAttendance observed = id == null ? null : attendanceMapper.selectById(id);
+        if (observed == null || !Objects.equals(observed.getTenantId(), OaRecordSupport.tenantId()) || observed.getMinutesId() == null) throw unavailable();
+        OaMeetingMinutes minutes = lock(observed.getMinutesId());
+        OaMeetingAttendance exist = minutesMapper.lockAttendance(OaRecordSupport.tenantId(), id);
+        if (exist == null || !Objects.equals(exist.getMinutesId(), minutes.getId())) throw unavailable();
+        if (linkedId(minutes) == null) exist.setDeleted(1);
+        else { exist.setAttendStatus("NOT_CHECKED"); exist.setCheckInTime(null); exist.setRemark(null); }
         exist.setUpdateBy(UserContext.getUserName());
         exist.setUpdateTime(LocalDateTime.now());
-        return attendanceMapper.updateById(exist) > 0;
+        OaRecordSupport.saved(minutesMapper.saveAttendance(exist)); return true;
     }
 
     @Override
     @Transactional
     public List<Long> dispatchDecisionsToWorkTasks(Long minutesId, List<Map<String, Object>> decisionOverrides) {
-        OaMeetingMinutes minutes = minutesMapper.selectById(minutesId);
-        if (minutes == null) {
-            throw new IllegalArgumentException("纪要不存在: " + minutesId);
-        }
+        OaMeetingMinutes minutes = lock(minutesId);
+        if (!"CONFIRMED".equals(minutes.getStatus())) throw new ServiceException("请先确认会议纪要，再派发决议项", 409);
         // 优先使用前端覆盖的 decisions 数组（用于一键派发前的微调），否则读库内已存的 JSON。
         List<Map<String, Object>> decisions = decisionOverrides;
         if (decisions == null || decisions.isEmpty()) {
@@ -247,12 +247,60 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
             minutes.setDecisions(objectMapper.writeValueAsString(decisions));
             minutes.setUpdateBy(UserContext.getUserName());
             minutes.setUpdateTime(LocalDateTime.now());
-            minutesMapper.updateById(minutes);
+            OaRecordSupport.saved(minutesMapper.updateById(minutes));
         } catch (Exception e) {
-            log.warn("回写 decisions 失败 minutesId={}", minutesId, e);
+            throw new IllegalStateException("会议决议派发记录保存失败", e);
         }
         return taskIds;
     }
+
+    private Long linkedId(OaMeetingMinutes minutes) {
+        if (minutes.getMeetingId() != null && minutes.getScheduleEventId() != null && !Objects.equals(minutes.getMeetingId(), minutes.getScheduleEventId())) {
+            throw new ServiceException("纪要会议标识不一致", 400);
+        }
+        return minutes.getScheduleEventId() == null ? minutes.getMeetingId() : minutes.getScheduleEventId();
+    }
+
+    private SysScheduleEvent lockEvent(Long id) {
+        SysScheduleEvent observed = meetingAccess.get(id);
+        meetingAccess.lockRooms(java.util.Collections.singletonList(observed.getRoomId()));
+        SysScheduleEvent event = meetingAccess.lock(observed);
+        OaMeetingAttendance invitation = minutesMapper.eventAttendance(OaRecordSupport.tenantId(), id, OaMeetingAccess.userId());
+        if (!Objects.equals(event.getCreatorId(), OaMeetingAccess.userId()) && !meetingAccess.manageable(event)
+                && (invitation == null || !Integer.valueOf(0).equals(invitation.getDeleted()))) throw unavailable();
+        return event;
+    }
+
+    private OaMeetingMinutes lock(Long id) {
+        OaMeetingMinutes observed = getDetail(id);
+        Long eventId = linkedId(observed);
+        if (eventId != null) lockEvent(eventId);
+        OaMeetingMinutes minutes = minutesMapper.lock(OaRecordSupport.tenantId(), id);
+        if (minutes == null || !Objects.equals(eventId, linkedId(minutes))) throw unavailable();
+        return minutes;
+    }
+
+    private void requireOccurred(SysScheduleEvent event) {
+        boolean occurred = Set.of("IN_PROGRESS", "COMPLETED").contains(event.getStatus())
+                || "CANCELLED".equals(event.getStatus()) && Set.of("NOT_REQUIRED", "APPROVED").contains(event.getApprovalStatus());
+        if (!"MEETING".equals(event.getType()) || "SERIES".equals(event.getRecurrenceRole()) || !occurred) {
+            throw new ServiceException("纪要和签到只能关联已经开始的实际会议，不能关联周期主记录或未举行会议", 409);
+        }
+    }
+
+    private void association(OaMeetingMinutes minutes, SysScheduleEvent event) {
+        minutes.setMeetingId(event.getEventId()); minutes.setScheduleEventId(event.getEventId()); minutes.setMeetingTitle(event.getTitle());
+        minutes.setMeetingTime(event.getStartTime()); minutes.setRoomId(event.getRoomId() == null ? null : event.getRoomId().toString());
+        minutes.setOrganizerId(event.getCreatorId()); organizer(minutes);
+    }
+
+    private void organizer(OaMeetingMinutes minutes) {
+        Long userId = minutes.getOrganizerId() == null ? OaMeetingAccess.userId() : minutes.getOrganizerId();
+        OaIdentityReference user = OaRecordSupport.require(identities.user(userId, OaRecordSupport.tenantId()), "组织者不存在或已停用");
+        minutes.setOrganizerId(userId); minutes.setOrganizerName(user.getName());
+    }
+
+    private ServiceException unavailable() { return new ServiceException("会议纪要不存在或无权访问", 404); }
 
     private List<Map<String, Object>> parseDecisionsJson(String json) {
         if (!StringUtils.hasText(json)) {

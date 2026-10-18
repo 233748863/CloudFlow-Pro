@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 /**
  * 日程事件实体
@@ -43,6 +45,33 @@ public class SysScheduleEvent {
      * JSON Array: [1, 2, 3]
      */
     private String attendees;
+
+    private String joinUrl;
+    private String meetingPlatform;
+    private String reminders;
+    private String recurrenceRule;
+    private LocalDate recurrenceEndDate;
+    private String recurrenceRole;
+    private Long parentEventId;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime originalStartTime;
+
+    private Integer recurrenceExceptionFlag;
+    private Integer sourceSeriesVersion;
+    private String timezoneId;
+    private String status;
+    private String approvalStatus;
+    private String instanceId;
+    private Integer expectedAttendees;
+    private Integer bufferMinutesSnapshot;
+    private Integer scheduleVersion;
+
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private boolean confirmParticipantConflicts;
+
+    @Version
+    private Integer version;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime createTime;

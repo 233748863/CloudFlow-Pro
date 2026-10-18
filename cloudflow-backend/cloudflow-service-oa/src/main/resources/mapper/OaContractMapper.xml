@@ -2,13 +2,37 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.oa.mapper.OaContractMapper">
 
+    <sql id="currencyLocked">
+        (EXISTS(SELECT 1 FROM crm_deal_team team WHERE team.tenant_id = oa_contract.tenant_id
+            AND ((team.biz_type = 'CONTRACT' AND team.biz_id = oa_contract.contract_id)
+                OR (team.biz_type = 'RECEIVABLE' AND team.biz_id IN
+                    (SELECT receivable.receivable_id FROM crm_receivable receivable
+                        WHERE receivable.tenant_id = oa_contract.tenant_id AND receivable.contract_id = oa_contract.contract_id))))
+        OR EXISTS(SELECT 1 FROM crm_deal_event event WHERE event.tenant_id = oa_contract.tenant_id
+            AND ((event.biz_type = 'CONTRACT' AND event.biz_id = oa_contract.contract_id)
+                OR (event.biz_type = 'RECEIVABLE' AND event.biz_id IN
+                    (SELECT receivable.receivable_id FROM crm_receivable receivable
+                        WHERE receivable.tenant_id = oa_contract.tenant_id AND receivable.contract_id = oa_contract.contract_id))))
+        OR EXISTS(SELECT 1 FROM outbox_event source WHERE source.tenant_id = oa_contract.tenant_id
+            AND source.aggregate_id = oa_contract.contract_id AND source.aggregate_type = 'cloudflow-service-oa'
+            AND source.event_type = 'CONTRACT_PERFORMANCE_CHANGED')
+        OR EXISTS(SELECT 1 FROM oa_invoice_writeoff writeoff WHERE writeoff.tenant_id = oa_contract.tenant_id
+            AND writeoff.business_type = 'CRM_RECEIVABLE' AND writeoff.business_id IN
+                (SELECT receivable.receivable_id FROM crm_receivable receivable
+                    WHERE receivable.tenant_id = oa_contract.tenant_id AND receivable.contract_id = oa_contract.contract_id)))
+    </sql>
+
     <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.OaContract">
-        SELECT *
+        SELECT oa_contract.*,
+            <include refid="currencyLocked"/> AS currency_locked
         FROM oa_contract
         <where>
             <if test="query != null">
                 <if test="query.contractId != null">
                     AND contract_id = #{query.contractId}
+                </if>
+                <if test="query.customerId != null">
+                    AND customer_id = #{query.customerId}
                 </if>
                 <if test="query.contractType != null and query.contractType != ''">
                     AND contract_type = #{query.contractType}
@@ -34,4 +58,22 @@
         ORDER BY create_time DESC
     </select>
 
+    <select id="selectForUpdate" resultType="com.cloudflow.oa.domain.OaContract">
+        SELECT * FROM oa_contract WHERE contract_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="selectTeamForUpdate" resultType="com.cloudflow.oa.domain.OaContract">
+        SELECT * FROM oa_contract WHERE contract_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+    <update id="writeTeamOwner">
+        UPDATE oa_contract SET owner_id = #{contract.ownerId}, owner_name = #{contract.ownerName},
+            dept_id = #{contract.deptId}, dept_name = #{contract.deptName}, version = version + 1,
+            update_by = #{contract.updateBy}, update_time = #{contract.updateTime}
+        WHERE contract_id = #{contract.contractId} AND tenant_id = #{contract.tenantId} AND deleted = 0 AND version = #{expectedVersion}
+    </update>
+    <update id="removeLocked">
+        UPDATE oa_contract SET deleted = 1, version = version + 1,
+            update_by = #{contract.updateBy}, update_time = #{contract.updateTime}
+        WHERE contract_id = #{contract.contractId} AND tenant_id = #{contract.tenantId}
+            AND deleted = 0 AND version = #{contract.version}
+    </update>
 </mapper>

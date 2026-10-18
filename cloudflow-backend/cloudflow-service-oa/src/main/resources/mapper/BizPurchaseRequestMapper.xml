@@ -6,6 +6,14 @@
         <id property="id" column="id"/>
         <result property="tenantId" column="tenant_id"/>
         <result property="instanceId" column="instance_id"/>
+        <result property="rfqId" column="rfq_id"/>
+        <result property="version" column="version"/>
+        <result property="projectId" column="project_id"/>
+        <result property="projectName" column="project_name"/>
+        <result property="customerId" column="customer_id"/>
+        <result property="customerName" column="customer_name"/>
+        <result property="budgetSubjectCode" column="budget_subject_code"/>
+        <result property="budgetSubjectName" column="budget_subject_name"/>
         <result property="userId" column="user_id"/>
         <result property="userName" column="user_name"/>
         <result property="purchaseNo" column="purchase_no"/>
@@ -33,6 +41,7 @@
             <id property="id" column="item_id"/>
             <result property="tenantId" column="item_tenant_id"/>
             <result property="purchaseId" column="purchase_id"/>
+            <result property="rfqItemId" column="item_rfq_item_id"/>
             <result property="consumableId" column="consumable_id"/>
             <result property="consumableName" column="consumable_name"/>
             <result property="model" column="model"/>
@@ -82,12 +91,13 @@
         ORDER BY create_time DESC
     </select>
 
-    <select id="selectRequestWithItems" resultMap="PurchaseRequestWithItemsMap">
+    <sql id="requestWithItems">
         SELECT
             r.*,
             i.id AS item_id,
             i.tenant_id AS item_tenant_id,
             i.purchase_id,
+            i.rfq_item_id AS item_rfq_item_id,
             i.consumable_id,
             i.consumable_name,
             i.model,
@@ -99,8 +109,17 @@
             i.budget_subject_code AS item_budget_subject_code,
             i.budget_subject_name AS item_budget_subject_name
         FROM biz_purchase_request r
-        LEFT JOIN biz_purchase_item i ON r.id = i.purchase_id
+        LEFT JOIN biz_purchase_item i ON r.id = i.purchase_id AND r.tenant_id = i.tenant_id
         WHERE r.id = #{id} AND r.deleted = '0'
+    </sql>
+
+    <select id="selectRequestWithItems" resultMap="PurchaseRequestWithItemsMap">
+        <include refid="requestWithItems"/>
+    </select>
+
+    <select id="selectPrintableWithItems" resultMap="PurchaseRequestWithItemsMap">
+        <include refid="requestWithItems"/>
+        AND r.tenant_id = #{tenantId}
     </select>
 
     <select id="getTodayMaxSeq" resultType="java.lang.Integer">
@@ -109,4 +128,7 @@
         WHERE purchase_no LIKE CONCAT('CG', DATE_FORMAT(NOW(), '%Y%m%d'), '%')
     </select>
 
+    <select id="selectForUpdate" resultType="com.cloudflow.oa.domain.BizPurchaseRequest">
+        SELECT * FROM biz_purchase_request WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
 </mapper>

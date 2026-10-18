@@ -2,9 +2,12 @@ package com.cloudflow.oa.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -30,6 +33,8 @@ public class OaContract implements Serializable {
     private String contractType;
     private BigDecimal amount;
     private String currency;
+    @TableField(exist = false)
+    private Boolean currencyLocked;
     private Long ownerId;
     private String ownerName;
     private Long deptId;
@@ -57,6 +62,10 @@ public class OaContract implements Serializable {
     private String remark;
     private String sourceType;
     private Long sourceId;
+    @TableField(exist = false)
+    private Integer sourceVersion;
+    @TableField(exist = false)
+    private Integer opportunityVersion;
     private Long templateId;
     private Integer deleted;
     @Version
@@ -70,4 +79,59 @@ public class OaContract implements Serializable {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+
+    private Long supplierId;
+
+    private Integer requiresFulfilmentFlag;
+
+    private String fulfilmentStatus;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate fulfilmentDeadline;
+
+    private Integer fulfilledTermCount;
+
+    private Integer totalTermCount;
+
+    private BigDecimal fulfilmentProgress;
+
+    private Integer signedFlag;
+
+    private String signMethod;
+
+    private Long ourSigneeId;
+
+    private String ourSigneeName;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime ourSignTime;
+
+    private String ourSignIp;
+
+    private String counterpartySignee;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime counterpartySignTime;
+
+    private String signPlace;
+
+    private String signRemark;
+
+    private String signedFileUrl;
+
+    private String esignProvider;
+
+    private String esignTransactionId;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String portalTermIds;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String portalMilestoneIds;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String portalPaymentScheduleIds;
 }

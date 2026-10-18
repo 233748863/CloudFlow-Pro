@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
+import com.cloudflow.oa.domain.KnowledgeDocVersion;
 import com.cloudflow.oa.domain.vo.knowledge.KnowledgeVersionDiffVO;
 import com.cloudflow.oa.domain.vo.knowledge.KnowledgeVersionVO;
 import com.cloudflow.oa.service.IKnowledgeVersionService;
@@ -36,7 +37,7 @@ public class KnowledgeVersionController {
     @SaCheckPermission("oa:knowledge:list")
     public R<KnowledgeVersionVO> getVersion(@PathVariable("id") Long documentId,
                                             @PathVariable("versionNo") Integer versionNo) {
-        var version = knowledgeVersionService.getVersion(documentId, versionNo);
+        KnowledgeDocVersion version = knowledgeVersionService.getVersion(documentId, versionNo);
         if (version == null) {
             return R.fail("指定版本不存在");
         }

@@ -139,11 +139,16 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
     public boolean createDraft(KnowledgeDocument document) {
         normalizeDocument(document);
         LocalDateTime now = LocalDateTime.now();
+        document.setDocumentId(null);
+        document.setTenantId(UserContext.getTenantId());
         document.setSubmitterId(UserContext.getUserId());
         document.setSubmitterName(UserContext.getUserName());
         document.setDeptId(UserContext.getDeptId());
         document.setDeptName(UserContext.getDeptName());
         document.setStatus("DRAFT");
+        document.setExternalVisibleFlag(0);
+        document.setExternalVersionId(null);
+        document.setExternalAttachmentFileIds(null);
         document.setDeleted(0);
         document.setCreateBy(UserContext.getUserName());
         document.setCreateTime(now);
@@ -166,6 +171,10 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         }
         normalizeDocument(document);
         document.setStatus(old.getStatus());
+        document.setTenantId(old.getTenantId());
+        document.setExternalVisibleFlag(null);
+        document.setExternalVersionId(null);
+        document.setExternalAttachmentFileIds(null);
         document.setSubmitterId(old.getSubmitterId());
         document.setSubmitterName(old.getSubmitterName());
         document.setDeptId(old.getDeptId());
@@ -239,13 +248,34 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         req.setBusinessKey("KNOWLEDGE_DOCUMENT:" + document.getDocumentId());
         req.setStartUserId(document.getSubmitterId());
         req.setStartUserName(document.getSubmitterName());
+        req.setVariables(workflowVariables(document));
 
+        R<?> result = remoteWorkflowService.startProcessInternal(req);
+        String instanceId = requireWorkflowInstanceId(document, result);
+        LambdaUpdateWrapper<KnowledgeDocument> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(KnowledgeDocument::getDocumentId, document.getDocumentId())
+                .and(w -> w.isNull(KnowledgeDocument::getInstanceId).or().eq(KnowledgeDocument::getInstanceId, ""))
+                .set(KnowledgeDocument::getInstanceId, instanceId)
+                .set(KnowledgeDocument::getUpdateBy, "event-consumer")
+                .set(KnowledgeDocument::getUpdateTime, LocalDateTime.now());
+        update(null, wrapper);
+    }
+
+    static Map<String, Object> workflowVariables(KnowledgeDocument document) {
         Map<String, Object> variables = new HashMap<>();
         variables.put("documentId", document.getDocumentId());
         variables.put("title", document.getTitle());
+        variables.put("documentTitle", document.getTitle());
         variables.put("category", document.getCategory());
+        variables.put("categoryName", document.getCategory());
         variables.put("summary", document.getSummary());
         variables.put("scopeType", document.getScopeType());
+        variables.put("publishScope", switch (document.getScopeType()) {
+            case "ALL" -> "全员";
+            case "DEPT" -> "部门";
+            case "ROLE" -> "指定角色";
+            default -> throw new IllegalArgumentException("知识文档可见范围无效");
+        });
         variables.put("scopeValue", document.getScopeValue());
         variables.put("submitterId", document.getSubmitterId());
         variables.put("submitterName", document.getSubmitterName());
@@ -257,17 +287,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
                 document.getTitle(),
                 "workflow:stream:approval-callback:oa"
         );
-        req.setVariables(variables);
-
-        R<?> result = remoteWorkflowService.startProcessInternal(req);
-        String instanceId = requireWorkflowInstanceId(document, result);
-        LambdaUpdateWrapper<KnowledgeDocument> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(KnowledgeDocument::getDocumentId, document.getDocumentId())
-                .and(w -> w.isNull(KnowledgeDocument::getInstanceId).or().eq(KnowledgeDocument::getInstanceId, ""))
-                .set(KnowledgeDocument::getInstanceId, instanceId)
-                .set(KnowledgeDocument::getUpdateBy, "event-consumer")
-                .set(KnowledgeDocument::getUpdateTime, LocalDateTime.now());
-        update(null, wrapper);
+        return variables;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -288,12 +308,19 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         if ("PENDING".equals(document.getStatus())) {
             throw new IllegalArgumentException("审批中的文档不能删除");
         }
-        KnowledgeDocument update = new KnowledgeDocument();
-        update.setDocumentId(documentId);
-        update.setDeleted(1);
-        update.setUpdateBy(UserContext.getUserName());
-        update.setUpdateTime(LocalDateTime.now());
-        return updateById(update);
+        return update(new LambdaUpdateWrapper<KnowledgeDocument>()
+                .eq(KnowledgeDocument::getTenantId, document.getTenantId())
+                .eq(KnowledgeDocument::getDocumentId, documentId)
+                .eq(KnowledgeDocument::getVersion, document.getVersion())
+                .eq(KnowledgeDocument::getDeleted, 0)
+                .ne(KnowledgeDocument::getStatus, "PENDING")
+                .set(KnowledgeDocument::getDeleted, 1)
+                .set(KnowledgeDocument::getExternalVisibleFlag, 0)
+                .set(KnowledgeDocument::getExternalVersionId, null)
+                .set(KnowledgeDocument::getExternalAttachmentFileIds, null)
+                .set(KnowledgeDocument::getVersion, Math.addExact(document.getVersion(), 1))
+                .set(KnowledgeDocument::getUpdateBy, UserContext.getUserName())
+                .set(KnowledgeDocument::getUpdateTime, LocalDateTime.now()));
     }
 
     @Override

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaHrPaymentMapper">
+    <select id="advanceEmployee" resultType="long">
+        SELECT employee_id FROM hr_employee_advance WHERE tenant_id = #{tenantId} AND advance_id = #{advanceId}
+    </select>
+    <select id="lockEmployee" resultType="long" flushCache="true" useCache="false">
+        SELECT id FROM hr_employee WHERE tenant_id = #{tenantId} AND id = #{employeeId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockAdvance" resultType="com.cloudflow.oa.mapper.OaHrPaymentMapper$AdvanceSource" flushCache="true" useCache="false">
+        SELECT advance.advance_id, advance.employee_id, employee.user_id, user_row.user_name,
+          JSON_UNQUOTE(JSON_EXTRACT(advance.rule_snapshot, '$.employeeName')) AS employee_name,
+          employee.dept_id, department.dept_name, advance.advance_no, advance.advance_amount AS amount,
+          advance.purpose, advance.status, advance.approval_status, advance.instance_id, advance.payment_request_id
+        FROM hr_employee_advance advance
+        JOIN hr_employee employee ON employee.tenant_id = advance.tenant_id AND employee.id = advance.employee_id AND employee.deleted = 0
+        JOIN sys_user user_row ON user_row.tenant_id = employee.tenant_id AND user_row.user_id = employee.user_id AND user_row.deleted = 0
+        JOIN sys_dept department ON department.tenant_id = employee.tenant_id AND department.dept_id = employee.dept_id AND department.deleted = 0
+        WHERE advance.tenant_id = #{tenantId} AND advance.advance_id = #{advanceId}
+          AND JSON_UNQUOTE(JSON_EXTRACT(advance.rule_snapshot, '$.workflow.applicantUserId')) = CAST(employee.user_id AS CHAR)
+          AND JSON_TYPE(JSON_EXTRACT(advance.rule_snapshot, '$.employeeName')) = 'STRING' FOR UPDATE
+    </select>
+    <select id="approved" resultType="int">
+        SELECT COUNT(*) FROM wf_process_instance instance
+        WHERE instance.tenant_id = #{tenantId} AND instance.instance_id = #{instanceId} AND instance.status = 'PASSED' AND instance.deleted = 0
+          AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessType')) = 'HR_ADVANCE'
+          AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessId')) = CAST(#{advanceId} AS CHAR)
+          AND EXISTS (SELECT 1 FROM wf_callback_side_effect effect WHERE effect.tenant_id = instance.tenant_id
+            AND effect.business_type = 'HR_ADVANCE' AND effect.business_id = #{advanceId}
+            AND effect.process_instance_id = instance.instance_id AND effect.effect_key = 'ADVANCE_DECISION')
+    </select>
+    <select id="sourcePayment" resultType="com.cloudflow.oa.domain.BizPaymentRequest" flushCache="true" useCache="false">
+        SELECT * FROM biz_payment_request WHERE tenant_id = #{tenantId} AND source_biz_type = 'HR_ADVANCE' AND source_biz_id = #{advanceId}
+    </select>
+    <select id="lockPayment" resultType="com.cloudflow.oa.domain.BizPaymentRequest" flushCache="true" useCache="false">
+        SELECT * FROM biz_payment_request WHERE tenant_id = #{tenantId} AND id = #{paymentId} FOR UPDATE
+    </select>
+    <select id="payableBy" resultType="int">
+        SELECT COUNT(DISTINCT user_row.user_id) FROM sys_user user_row
+        JOIN sys_user_role relation ON relation.user_id = user_row.user_id
+        JOIN sys_role role_row ON role_row.role_id = relation.role_id AND role_row.tenant_id = user_row.tenant_id
+        JOIN sys_dept department ON department.tenant_id = user_row.tenant_id AND department.dept_id = #{deptId} AND department.deleted = 0
+        WHERE user_row.tenant_id = #{tenantId} AND user_row.user_id = #{userId} AND user_row.deleted = 0 AND user_row.status = '0'
+          AND role_row.role_key IN ('admin', 'finance') AND role_row.deleted = 0 AND role_row.status = '0'
+          AND (role_row.ds_type = 0 OR (role_row.ds_type = 1 AND FIND_IN_SET(CAST(#{deptId} AS CHAR), role_row.ds_scope) &gt; 0)
+            OR (role_row.ds_type = 3 AND user_row.dept_id = #{deptId})
+            OR (role_row.ds_type = 2 AND (user_row.dept_id = #{deptId} OR FIND_IN_SET(CAST(user_row.dept_id AS CHAR), department.ancestors) &gt; 0)))
+    </select>
+    <select id="fundable" resultType="int" flushCache="true" useCache="false">
+        SELECT COUNT(*) FROM hr_employee employee
+        JOIN sys_user user_row ON user_row.tenant_id = employee.tenant_id AND user_row.user_id = employee.user_id
+          AND user_row.status = '0' AND user_row.deleted = 0
+        WHERE employee.tenant_id = #{tenantId} AND employee.id = #{employeeId} AND employee.deleted = 0
+          AND employee.employee_status IN ('ACTIVE', 'REGULAR', 'PROBATION', 'INTERN', 'ON_LEAVE', 'TRANSFERRED')
+          AND employee.hire_date &lt;= CURRENT_DATE AND (employee.resign_date IS NULL OR employee.resign_date &gt; CURRENT_DATE)
+          AND NOT EXISTS (SELECT 1 FROM hr_employee duplicate_employee WHERE duplicate_employee.tenant_id = employee.tenant_id
+            AND duplicate_employee.user_id = employee.user_id AND duplicate_employee.deleted = 0 AND duplicate_employee.id != employee.id)
+          AND NOT EXISTS (SELECT 1 FROM hr_final_settlement settlement WHERE settlement.tenant_id = employee.tenant_id
+            AND settlement.employee_id = employee.id AND settlement.settlement_kind = 'NORMAL' AND settlement.superseded_flag = 0
+            AND settlement.relieving_date &gt;= employee.hire_date
+            AND (settlement.status IN ('CONFIRMED', 'PAID', 'CLOSED') OR settlement.approval_status = 'SUBMITTED'))
+    </select>
+</mapper>

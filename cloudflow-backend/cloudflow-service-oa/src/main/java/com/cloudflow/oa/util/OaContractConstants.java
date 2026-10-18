@@ -1,5 +1,7 @@
 package com.cloudflow.oa.util;
 
+import java.util.Set;
+
 /**
  * OA 合同、链路与风险常量。
  */
@@ -23,6 +25,10 @@ public final class OaContractConstants {
     public static final String CONTRACT_STATUS_EXPIRED = "EXPIRED";
     public static final String CONTRACT_STATUS_TERMINATED = "TERMINATED";
     public static final String CONTRACT_STATUS_CANCELLED = "CANCELLED";
+
+    public static final Set<String> FULFILMENT_ELIGIBLE_STATUSES = Set.of(
+            CONTRACT_STATUS_APPROVED, CONTRACT_STATUS_SEALING, CONTRACT_STATUS_SEALED,
+            CONTRACT_STATUS_ACTIVE, CONTRACT_STATUS_EXPIRED);
 
     public static final String RISK_STATUS_OPEN = "OPEN";
     public static final String RISK_STATUS_HANDLING = "HANDLING";

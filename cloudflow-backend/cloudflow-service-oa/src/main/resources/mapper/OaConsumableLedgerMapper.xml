@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaConsumableLedgerMapper">
+    <select id="sourceContext" resultType="map">
+        <choose>
+            <when test="sourceType == 'PURCHASE_RECEIPT'">
+                SELECT CAST(purchase.id AS CHAR) AS documentId, purchase.version AS sourceVersion
+                FROM biz_purchase_receipt receipt JOIN biz_purchase_request purchase
+                    ON purchase.tenant_id = receipt.tenant_id AND purchase.id = receipt.purchase_id AND purchase.deleted = 0
+                WHERE receipt.tenant_id = #{tenantId} AND receipt.id = #{sourceId}
+            </when>
+            <otherwise>
+                SELECT CAST(request_id AS CHAR) AS documentId, version AS sourceVersion
+                FROM oa_consumable_request WHERE tenant_id = #{tenantId} AND request_id = #{sourceId} AND deleted = 0
+            </otherwise>
+        </choose>
+    </select>
+    <select id="operation" resultType="com.cloudflow.oa.domain.OaConsumableLedger">
+        SELECT * FROM oa_consumable_ledger WHERE tenant_id = #{tenantId} AND operation_key = #{key}
+        ORDER BY operation_line_no
+    </select>
+    <select id="tail" resultType="com.cloudflow.oa.domain.OaConsumableLedger">
+        SELECT * FROM oa_consumable_ledger WHERE tenant_id = #{tenantId} AND consumable_id = #{consumableId}
+        ORDER BY ledger_id DESC LIMIT 1
+    </select>
+    <select id="reversal" resultType="com.cloudflow.oa.domain.OaConsumableLedger">
+        SELECT * FROM oa_consumable_ledger WHERE tenant_id = #{tenantId} AND reversal_of_ledger_id = #{ledgerId}
+    </select>
+    <select id="chain" resultType="com.cloudflow.oa.domain.OaConsumableLedger">
+        SELECT * FROM oa_consumable_ledger WHERE tenant_id = #{tenantId} AND consumable_id = #{consumableId}
+            AND ledger_id &gt; #{afterId} ORDER BY ledger_id LIMIT 100
+    </select>
+    <select id="returns" resultType="com.cloudflow.oa.domain.OaConsumableLedger">
+        SELECT * FROM oa_consumable_ledger WHERE tenant_id = #{tenantId} AND source_ledger_id = #{ledgerId}
+        ORDER BY ledger_id
+    </select>
+    <select id="requestRows" resultType="com.cloudflow.oa.domain.OaConsumableLedger">
+        SELECT * FROM oa_consumable_ledger WHERE tenant_id = #{tenantId}
+            AND source_biz_type = 'CONSUMABLE_REQUEST' AND source_biz_id = #{requestId}
+        ORDER BY ledger_id
+    </select>
+    <select id="receivedAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount), 0.00) FROM oa_consumable_ledger WHERE tenant_id = #{tenantId}
+            AND source_biz_type = 'PURCHASE_RECEIPT' AND source_item_id = #{itemId} AND transaction_type = 'INBOUND'
+    </select>
+    <select id="lastPurchasePrice" resultType="java.math.BigDecimal">
+        SELECT ledger.unit_price FROM oa_consumable_ledger ledger
+        WHERE ledger.tenant_id = #{tenantId} AND ledger.consumable_id = #{consumableId}
+            AND ledger.source_biz_type = 'PURCHASE_RECEIPT' AND ledger.transaction_type = 'INBOUND'
+            AND ledger.reversal_of_ledger_id IS NULL AND ledger.quantity &gt; 0
+            AND NOT EXISTS(SELECT 1 FROM oa_consumable_ledger reversal
+                WHERE reversal.tenant_id = ledger.tenant_id AND reversal.reversal_of_ledger_id = ledger.ledger_id)
+        ORDER BY ledger.ledger_id DESC LIMIT 1
+    </select>
+    <select id="receivedQuantity" resultType="long">
+        SELECT COALESCE(SUM(quantity), 0) FROM oa_consumable_ledger WHERE tenant_id = #{tenantId}
+            AND source_biz_type = 'PURCHASE_RECEIPT' AND source_item_id = #{itemId} AND transaction_type = 'INBOUND'
+    </select>
+    <select id="lastInbound" resultType="com.cloudflow.oa.domain.OaConsumableLedger">
+        SELECT ledger.* FROM oa_consumable_ledger ledger
+        WHERE ledger.tenant_id = #{tenantId} AND ledger.consumable_id = #{consumableId}
+            AND ledger.transaction_type IN ('INBOUND', 'ADJUST') AND ledger.quantity &gt; 0
+            AND ledger.reversal_of_ledger_id IS NULL
+            AND NOT EXISTS(SELECT 1 FROM oa_consumable_ledger reversal
+                WHERE reversal.tenant_id = ledger.tenant_id AND reversal.reversal_of_ledger_id = ledger.ledger_id)
+        ORDER BY ledger.ledger_id DESC LIMIT 1
+    </select>
+    <select id="ledgerPage" resultType="com.cloudflow.oa.domain.OaConsumableLedger">
+        SELECT * FROM oa_consumable_ledger WHERE tenant_id = #{tenantId}
+        <if test="query.consumableId != null">AND consumable_id = #{query.consumableId}</if>
+        <if test="query.transactionType != null and query.transactionType != ''">AND transaction_type = #{query.transactionType}</if>
+        <if test="query.sourceBizType != null and query.sourceBizType != ''">AND source_biz_type = #{query.sourceBizType}</if>
+        <if test="query.sourceBizId != null">AND source_biz_id = #{query.sourceBizId}</if>
+        <if test="query.from != null">AND operate_time &gt;= #{query.from}</if>
+        <if test="query.to != null">AND operate_time &lt; #{query.to}</if>
+        ORDER BY ledger_id DESC
+    </select>
+    <select id="stockReport" resultType="com.cloudflow.oa.domain.vo.ConsumableResults$ReportRow">
+        SELECT CAST(material.consumable_id AS CHAR) AS consumable_id, material.name, material.unit,
+            COALESCE(SUM(CASE WHEN ledger.operate_time &lt; #{query.from} THEN ledger.quantity ELSE 0 END), 0) AS opening_quantity,
+            COALESCE(SUM(CASE WHEN ledger.operate_time &gt;= #{query.from} AND ledger.quantity &gt; 0 THEN ledger.quantity ELSE 0 END), 0) AS inbound_quantity,
+            COALESCE(SUM(CASE WHEN ledger.operate_time &gt;= #{query.from} AND ledger.quantity &lt; 0 THEN -ledger.quantity ELSE 0 END), 0) AS outbound_quantity,
+            COALESCE(SUM(ledger.quantity), 0) AS closing_quantity,
+            COALESCE(SUM(CASE WHEN ledger.operate_time &lt; #{query.from} THEN ledger.amount ELSE 0.00 END), 0.00) AS opening_amount,
+            COALESCE(SUM(CASE WHEN ledger.operate_time &gt;= #{query.from} AND ledger.quantity &gt; 0 THEN ledger.amount ELSE 0.00 END), 0.00) AS inbound_amount,
+            COALESCE(SUM(CASE WHEN ledger.operate_time &gt;= #{query.from} AND ledger.quantity &lt; 0 THEN -ledger.amount ELSE 0.00 END), 0.00) AS outbound_amount,
+            COALESCE(SUM(ledger.amount), 0.00) AS closing_amount,
+            COALESCE(SUM(CASE WHEN ledger.operate_time &gt;= #{query.from} AND ledger.transaction_type = 'INBOUND' THEN ledger.amount ELSE 0.00 END), 0.00) AS inbound_cost,
+            COALESCE(SUM(CASE WHEN ledger.operate_time &gt;= #{query.from} AND ledger.transaction_type = 'SCRAP' THEN -ledger.amount ELSE 0.00 END), 0.00) AS scrap_amount,
+            COALESCE(SUM(CASE WHEN ledger.operate_time &gt;= #{query.from} AND ledger.transaction_type = 'ADJUST' THEN ledger.amount ELSE 0.00 END), 0.00) AS adjust_amount
+        FROM oa_consumable material LEFT JOIN oa_consumable_ledger ledger
+            ON ledger.tenant_id = material.tenant_id AND ledger.consumable_id = material.consumable_id AND ledger.operate_time &lt; #{query.to}
+        WHERE material.tenant_id = #{tenantId} AND material.deleted = 0
+        <if test="query.consumableId != null">AND material.consumable_id = #{query.consumableId}</if>
+        <if test="query.categoryId != null">AND material.category_id = #{query.categoryId}</if>
+        GROUP BY material.consumable_id, material.name, material.unit ORDER BY material.consumable_id
+    </select>
+    <select id="usageReport" resultType="com.cloudflow.oa.domain.vo.ConsumableResults$ReportRow">
+        SELECT CAST(consumable_id AS CHAR) AS consumable_id, MAX(consumable_name) AS name, unit,
+        <if test="query.groupBy == 'DEPARTMENT'">CAST(dept_id AS CHAR) AS dept_id, MAX(dept_name) AS dept_name,</if>
+        <if test="query.groupBy == 'PERSON'">CAST(beneficiary_id AS CHAR) AS beneficiary_id, MAX(beneficiary_name) AS beneficiary_name,</if>
+            -SUM(CASE WHEN transaction_type = 'OUTBOUND' THEN quantity ELSE 0 END) AS issued_quantity,
+            SUM(CASE WHEN transaction_type = 'RETURN' THEN quantity ELSE 0 END) AS returned_quantity,
+            -SUM(quantity) AS net_quantity,
+            -SUM(CASE WHEN transaction_type = 'OUTBOUND' THEN amount ELSE 0.00 END) AS issued_amount,
+            SUM(CASE WHEN transaction_type = 'RETURN' THEN amount ELSE 0.00 END) AS returned_amount,
+            -SUM(amount) AS net_amount
+        FROM oa_consumable_ledger WHERE tenant_id = #{tenantId} AND source_biz_type = 'CONSUMABLE_REQUEST'
+            AND transaction_type IN ('OUTBOUND', 'RETURN') AND operate_time &gt;= #{query.from} AND operate_time &lt; #{query.to}
+        <if test="query.consumableId != null">AND consumable_id = #{query.consumableId}</if>
+        <if test="query.deptId != null">AND dept_id = #{query.deptId}</if>
+        <if test="query.applicantId != null">AND beneficiary_id = #{query.applicantId}</if>
+        <if test="!allData">
+            AND (1 = 0
+            <if test="scopeUserId != null">OR beneficiary_id = #{scopeUserId}</if>
+            <if test="scopeDeptIds != null and scopeDeptIds.size() > 0">
+                OR dept_id IN
+                <foreach collection="scopeDeptIds" item="department" open="(" separator="," close=")">#{department}</foreach>
+            </if>
+            )
+        </if>
+        GROUP BY consumable_id, unit
+        <if test="query.groupBy == 'DEPARTMENT'">, dept_id</if>
+        <if test="query.groupBy == 'PERSON'">, beneficiary_id</if>
+        ORDER BY consumable_id, unit
+        <if test="query.groupBy == 'DEPARTMENT'">, dept_id</if>
+        <if test="query.groupBy == 'PERSON'">, beneficiary_id</if>
+    </select>
+</mapper>

@@ -14,4 +14,5 @@ public interface ISupplierService extends IService<SysSupplier> {
     boolean createSupplier(SysSupplier supplier);
 
     boolean updateSupplier(SysSupplier supplier);
+    void removeSuppliers(java.util.List<Long> ids);
 }

@@ -26,6 +26,7 @@ public interface RemoteCrmService {
 
     @Data
     class InvoiceStatusSyncRequest {
+        private String eventId;
         private Long invoiceId;
         private String invoiceStatus;
         private BigDecimal grossAmount;

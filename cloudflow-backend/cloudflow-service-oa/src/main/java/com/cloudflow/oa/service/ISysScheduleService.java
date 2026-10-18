@@ -53,7 +53,7 @@ public interface ISysScheduleService extends IService<SysScheduleEvent> {
     /**
      * 取消预订
      */
-    boolean cancelBooking(Long eventId, Long userId);
+    boolean cancelBooking(Long eventId, Long userId, Integer version, String reason);
 
     /**
      * 会议室使用统计

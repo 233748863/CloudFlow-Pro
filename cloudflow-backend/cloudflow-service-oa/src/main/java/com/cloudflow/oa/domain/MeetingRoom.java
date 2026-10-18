@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.annotation.Version;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
  * 会议室实体
@@ -29,6 +30,20 @@ public class MeetingRoom {
      * JSON Array: ["投影仪", "白板"]
      */
     private String equipment;
+
+    private String equipmentTags;
+    private LocalTime openTime;
+    private LocalTime closeTime;
+    private String bookableWeekdays;
+    private Long holidayCalendarId;
+    private Integer holidayBookableFlag;
+    private Integer minBookingMinutes;
+    private Integer maxBookingMinutes;
+    private Integer advanceBookingDays;
+    private Integer needApprovalFlag;
+    private Long approverId;
+    private Integer bufferMinutes;
+    private Long photoFileId;
     
     /**
      * 1:可用, 0:维护中

@@ -67,7 +67,7 @@ public class PaymentRequestController {
     @GetMapping("/{id}")
     @SaCheckPermission("oa:payment:list")
     public R<BizPaymentRequest> getInfo(@PathVariable Long id) {
-        return R.ok(paymentRequestService.getById(id));
+        return R.ok(paymentRequestService.getAccessiblePayment(id));
     }
 
     /**

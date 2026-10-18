@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaIdentityReferenceMapper">
+    <select id="mayInviteRfq" resultType="boolean">
+        SELECT COUNT(*) &gt; 0
+        FROM sys_user account
+        JOIN sys_user_role membership ON membership.user_id = account.user_id
+        JOIN sys_role role_entry ON role_entry.role_id = membership.role_id AND role_entry.tenant_id = account.tenant_id
+        WHERE account.user_id = #{actorId} AND account.tenant_id = #{tenantId} AND account.deleted = 0 AND account.status = '0'
+          AND role_entry.deleted = 0 AND role_entry.status = '0'
+          AND (role_entry.role_key = 'admin' OR (account.user_id = #{ownerId} AND EXISTS (
+              SELECT 1 FROM sys_role_menu permission_entry JOIN sys_menu menu_entry ON menu_entry.menu_id = permission_entry.menu_id
+              WHERE permission_entry.role_id = role_entry.role_id AND menu_entry.status = '0' AND menu_entry.perms = 'oa:rfq:invite'
+          )))
+    </select>
+    <select id="user" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        SELECT account.user_id AS id, account.tenant_id, account.nick_name AS name,
+               account.user_id, account.dept_id, department.dept_name
+        FROM sys_user account
+        LEFT JOIN sys_dept department ON department.dept_id = account.dept_id
+            AND department.tenant_id = account.tenant_id AND department.deleted = 0
+        WHERE account.user_id = #{id} AND account.tenant_id = #{tenantId} AND account.deleted = 0 AND account.status = '0'
+    </select>
+    <select id="department" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        SELECT dept_id AS id, tenant_id, dept_name AS name, dept_id, dept_name, parent_id, leader
+        FROM sys_dept WHERE dept_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 AND status = '0'
+    </select>
+    <select id="userForUpdate" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        SELECT user_id AS id, tenant_id, user_id, dept_id, nick_name AS name
+        FROM sys_user WHERE user_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+    <sql id="employeeColumns">
+        SELECT employee.id, employee.tenant_id, employee.name, employee.user_id, employee.dept_id,
+               position.level_id AS job_level_id
+        FROM hr_employee employee LEFT JOIN hr_position position ON position.id = employee.position_id
+            AND position.tenant_id = employee.tenant_id
+        WHERE employee.tenant_id = #{tenantId} AND employee.deleted = 0
+          AND employee.employee_status NOT IN ('RESIGNED', 'TERMINATED')
+    </sql>
+    <select id="employeesForUser" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        <include refid="employeeColumns"/> AND employee.user_id = #{userId}
+    </select>
+    <select id="employee" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        <include refid="employeeColumns"/> AND employee.id = #{id}
+    </select>
+    <select id="employees" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        <include refid="employeeColumns"/> ORDER BY employee.id
+    </select>
+    <select id="jobLevel" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        SELECT id, tenant_id, level_name AS name FROM hr_job_level WHERE tenant_id = #{tenantId} AND id = #{id} AND status = 1
+    </select>
+    <select id="jobLevels" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        SELECT id, tenant_id, level_name AS name FROM hr_job_level WHERE tenant_id = #{tenantId} AND status = 1 ORDER BY level_rank, id
+    </select>
+    <select id="employeeRecord" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        SELECT id, tenant_id, name, user_id, dept_id FROM hr_employee WHERE tenant_id = #{tenantId} AND id = #{id} AND deleted = 0
+    </select>
+    <select id="employeeLinkCount" resultType="long">
+        SELECT COUNT(*) FROM hr_employee employee
+        INNER JOIN sys_user account ON account.user_id = employee.user_id
+            AND account.tenant_id = employee.tenant_id AND account.deleted = 0
+        WHERE employee.tenant_id = #{tenantId} AND employee.user_id = #{userId} AND employee.deleted = 0
+    </select>
+    <select id="leaderCandidates" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        SELECT user_id AS id, tenant_id, user_id, nick_name AS name, dept_id
+        FROM sys_user WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0'
+          AND (CAST(user_id AS CHAR) = #{value} OR user_name = #{value} OR nick_name = #{value})
+        ORDER BY CASE WHEN CAST(user_id AS CHAR) = #{value} THEN 0 WHEN user_name = #{value} THEN 1 ELSE 2 END, user_id
+    </select>
+</mapper>

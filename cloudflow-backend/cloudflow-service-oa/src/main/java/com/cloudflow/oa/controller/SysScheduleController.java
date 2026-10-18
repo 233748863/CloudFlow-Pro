@@ -63,6 +63,7 @@ public class SysScheduleController {
     }
     
     @SysLog("编辑日程")
+    @RepeatSubmit
     @PutMapping
     @SaCheckPermission("oa:schedule:edit")
     public R<Boolean> edit(@RequestBody SysScheduleEvent event) {
@@ -79,9 +80,10 @@ public class SysScheduleController {
     }
 
     @SysLog("删除日程")
+    @RepeatSubmit
     @DeleteMapping("/{id}")
     @SaCheckPermission("oa:schedule:remove")
-    public R<Boolean> remove(@PathVariable("id") Long id) {
+    public R<Boolean> remove(@PathVariable("id") Long id, @RequestParam("version") Integer version, @RequestParam("reason") String reason) {
         // 权限检查：只有创建者可以删除日程
         Long currentUserId = UserContext.getUserId();
         SysScheduleEvent existing = sysScheduleService.getById(id);
@@ -91,7 +93,7 @@ public class SysScheduleController {
         if (!currentUserId.equals(existing.getCreatorId())) {
             return R.fail("无权删除此日程，只有创建者可以删除");
         }
-        return R.ok(sysScheduleService.removeById(id));
+        return R.ok(sysScheduleService.cancelBooking(id, currentUserId, version, reason));
     }
 
     /**
@@ -135,10 +137,11 @@ public class SysScheduleController {
      * @param id 日程ID
      */
     @SysLog("取消预订")
+    @RepeatSubmit
     @PutMapping("/cancel/{id}")
     @SaCheckPermission("oa:schedule:cancel")
-    public R<Boolean> cancelBooking(@PathVariable("id") Long id) {
-        return R.ok(sysScheduleService.cancelBooking(id, UserContext.getUserId()));
+    public R<Boolean> cancelBooking(@PathVariable("id") Long id, @RequestParam("version") Integer version, @RequestParam("reason") String reason) {
+        return R.ok(sysScheduleService.cancelBooking(id, UserContext.getUserId(), version, reason));
     }
 
     /**
@@ -154,4 +157,3 @@ public class SysScheduleController {
         return R.ok(sysScheduleService.getRoomUsageStats(startDate, endDate));
     }
 }
-

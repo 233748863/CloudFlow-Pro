@@ -100,4 +100,6 @@ public class BizPurchaseRequest implements Serializable {
 
     @TableField(exist = false)
     private List<BizPurchaseItem> items;
+
+    private Long rfqId;
 }

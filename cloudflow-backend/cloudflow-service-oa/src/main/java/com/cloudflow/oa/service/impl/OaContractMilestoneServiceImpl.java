@@ -37,6 +37,7 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
 
     private final OaContractMilestoneMapper milestoneMapper;
     private final OaContractPaymentScheduleMapper paymentMapper;
+    private final ContractPortalSelectionMaintenance portalSelections;
 
     @Override
     public Page<OaContractMilestone> pageMilestones(Long contractId, String status, Integer pageNum, Integer pageSize) {
@@ -96,6 +97,11 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
         if (milestone == null || milestone.getId() == null) {
             throw new IllegalArgumentException("ID 必填");
         }
+        OaContractMilestone previous = OaRecordSupport.active(milestoneMapper.selectById(milestone.getId()));
+        portalSelections.lockContract(previous.getContractId());
+        if (milestone.getContractId() != null) OaRecordSupport.same(previous.getContractId(), milestone.getContractId(), "关键节点不能更换合同");
+        if (milestone.getTenantId() != null) OaRecordSupport.same(previous.getTenantId(), milestone.getTenantId(), "关键节点不能更换租户");
+        if (milestone.getDeleted() != null && milestone.getDeleted() != 0) throw new IllegalArgumentException("删除关键节点须使用删除操作");
         milestone.setUpdateBy(UserContext.getUserName());
         milestone.setUpdateTime(LocalDateTime.now());
         return milestoneMapper.updateById(milestone) > 0;
@@ -112,10 +118,12 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
         if (exist == null) {
             return false;
         }
+        portalSelections.forget(exist.getContractId(), ContractPortalSelectionMaintenance.Kind.MILESTONE, id);
         exist.setDeleted(1);
         exist.setUpdateBy(UserContext.getUserName());
         exist.setUpdateTime(LocalDateTime.now());
-        return milestoneMapper.updateById(exist) > 0;
+        OaRecordSupport.saved(milestoneMapper.updateById(exist));
+        return true;
     }
 
     @Override
@@ -194,6 +202,11 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
         if (schedule == null || schedule.getId() == null) {
             throw new IllegalArgumentException("ID 必填");
         }
+        OaContractPaymentSchedule previous = OaRecordSupport.active(paymentMapper.selectById(schedule.getId()));
+        portalSelections.lockContract(previous.getContractId());
+        if (schedule.getContractId() != null) OaRecordSupport.same(previous.getContractId(), schedule.getContractId(), "付款计划不能更换合同");
+        if (schedule.getTenantId() != null) OaRecordSupport.same(previous.getTenantId(), schedule.getTenantId(), "付款计划不能更换租户");
+        if (schedule.getDeleted() != null && schedule.getDeleted() != 0) throw new IllegalArgumentException("删除付款计划须使用删除操作");
         schedule.setUpdateBy(UserContext.getUserName());
         schedule.setUpdateTime(LocalDateTime.now());
         return paymentMapper.updateById(schedule) > 0;
@@ -210,10 +223,12 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
         if (exist == null) {
             return false;
         }
+        portalSelections.forget(exist.getContractId(), ContractPortalSelectionMaintenance.Kind.PAYMENT, id);
         exist.setDeleted(1);
         exist.setUpdateBy(UserContext.getUserName());
         exist.setUpdateTime(LocalDateTime.now());
-        return paymentMapper.updateById(exist) > 0;
+        OaRecordSupport.saved(paymentMapper.updateById(exist));
+        return true;
     }
 
     @Override

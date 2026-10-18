@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaBusinessSearchMapper">
+    <select id="contracts" resultType="com.cloudflow.common.core.search.BusinessSearchRow" timeout="2">
+        SELECT contract_id AS id, contract_name AS title, contract_no AS number, status,
+            dept_id AS scope_dept_id, owner_id AS scope_owner_id
+        FROM oa_contract
+        WHERE tenant_id = #{tenantId} AND deleted = 0
+            AND (contract_name LIKE #{pattern} ESCAPE '!' OR contract_no LIKE #{pattern} ESCAPE '!')
+    </select>
+    <select id="assets" resultType="com.cloudflow.common.core.search.BusinessSearchRow" timeout="2">
+        SELECT asset_id AS id, name AS title, asset_code AS number, status
+        FROM oa_asset
+        WHERE tenant_id = #{tenantId} AND deleted = 0
+            AND (name LIKE #{pattern} ESCAPE '!' OR asset_code LIKE #{pattern} ESCAPE '!')
+    </select>
+</mapper>

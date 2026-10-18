@@ -23,6 +23,13 @@ public class OaMeetingAttendance implements Serializable {
     private Long tenantId;
     private Long minutesId;
     private Long meetingId;
+    private Long scheduleEventId;
+    private String acceptanceStatus;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime responseTime;
+
+    private Integer invitationVersion;
     private Long userId;
     private String userName;
     /** ATTEND / ABSENT / LATE / LEAVE / NOT_CHECKED */

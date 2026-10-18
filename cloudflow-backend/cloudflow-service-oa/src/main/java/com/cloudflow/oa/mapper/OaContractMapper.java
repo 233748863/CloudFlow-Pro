@@ -16,4 +16,8 @@ public interface OaContractMapper extends BaseMapper<OaContract> {
     Page<OaContract> selectPageByDataScope(Page<OaContract> page,
                                            @Param("query") OaContract query,
                                            @Param("dataScope") DataScope dataScope);
+    OaContract selectForUpdate(@org.apache.ibatis.annotations.Param("id") Long id, @org.apache.ibatis.annotations.Param("tenantId") Long tenantId);
+    OaContract selectTeamForUpdate(@Param("id") Long id, @Param("tenantId") Long tenantId, @Param("dataScope") DataScope dataScope);
+    int writeTeamOwner(@Param("contract") OaContract contract, @Param("expectedVersion") Integer expectedVersion);
+    int removeLocked(@Param("contract") OaContract contract);
 }

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaAssetDepreciationScheduleMapper">
+    <insert id="insertPlanned">
+        INSERT INTO oa_asset_depreciation_schedule
+            (tenant_id, asset_id, period_no, period_date, depreciation_amount, accumulated_amount,
+             net_value, status, version, create_by, create_time, update_by, update_time)
+        SELECT #{tenantId}, #{assetId}, period.period_no, period.period_date, period.depreciation_amount,
+               period.accumulated_amount, period.net_value, 'PLANNED', 0, #{actor}, #{createdAt}, #{actor}, #{createdAt}
+        FROM JSON_TABLE(#{periodsJson}, '$[*]' COLUMNS (
+            period_no INT PATH '$.periodNo' ERROR ON EMPTY ERROR ON ERROR,
+            period_date DATE PATH '$.periodDate' ERROR ON EMPTY ERROR ON ERROR,
+            depreciation_amount DECIMAL(10,2) PATH '$.depreciationAmount' ERROR ON EMPTY ERROR ON ERROR,
+            accumulated_amount DECIMAL(10,2) PATH '$.accumulatedAmount' ERROR ON EMPTY ERROR ON ERROR,
+            net_value DECIMAL(10,2) PATH '$.netValue' ERROR ON EMPTY ERROR ON ERROR
+        )) AS period
+    </insert>
+
+    <update id="updateUnposted">
+        UPDATE oa_asset_depreciation_schedule existing
+        JOIN JSON_TABLE(#{periodsJson}, '$[*]' COLUMNS (
+            schedule_id BIGINT PATH '$.scheduleId' ERROR ON EMPTY ERROR ON ERROR,
+            expected_version INT PATH '$.version' ERROR ON EMPTY ERROR ON ERROR,
+            period_no INT PATH '$.periodNo' ERROR ON EMPTY ERROR ON ERROR,
+            period_date DATE PATH '$.periodDate' ERROR ON EMPTY ERROR ON ERROR,
+            depreciation_amount DECIMAL(10,2) PATH '$.depreciationAmount' ERROR ON EMPTY ERROR ON ERROR,
+            accumulated_amount DECIMAL(10,2) PATH '$.accumulatedAmount' ERROR ON EMPTY ERROR ON ERROR,
+            net_value DECIMAL(10,2) PATH '$.netValue' ERROR ON EMPTY ERROR ON ERROR,
+            target_status VARCHAR(16) PATH '$.status' ERROR ON EMPTY ERROR ON ERROR
+        )) AS period ON existing.schedule_id = period.schedule_id AND existing.version = period.expected_version
+        SET existing.period_date = period.period_date, existing.depreciation_amount = period.depreciation_amount,
+            existing.accumulated_amount = period.accumulated_amount, existing.net_value = period.net_value,
+            existing.status = period.target_status, existing.version = existing.version + 1,
+            existing.update_by = #{actor}, existing.update_time = #{updatedAt}
+        WHERE existing.tenant_id = #{tenantId} AND existing.asset_id = #{assetId}
+          AND existing.period_no = period.period_no
+          AND existing.status IN ('PLANNED', 'CANCELLED') AND period.target_status IN ('PLANNED', 'CANCELLED')
+    </update>
+
+    <select id="selectForUpdate" resultType="com.cloudflow.oa.domain.OaAssetDepreciationSchedule">
+        SELECT * FROM oa_asset_depreciation_schedule
+        WHERE schedule_id = #{id} AND tenant_id = #{tenantId}
+        FOR UPDATE
+    </select>
+</mapper>

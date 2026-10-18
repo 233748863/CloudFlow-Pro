@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaMeetingMapper">
+    <select id="lockRoom" resultType="com.cloudflow.oa.domain.MeetingRoom">
+        SELECT * FROM oa_meeting_room WHERE tenant_id = #{tenantId} AND room_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockEvent" resultType="com.cloudflow.oa.domain.SysScheduleEvent">
+        SELECT * FROM oa_schedule_event WHERE tenant_id = #{tenantId} AND event_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="visibleToManager" resultType="com.cloudflow.oa.domain.SysScheduleEvent">
+        SELECT meeting.*, creator.dept_id FROM oa_schedule_event meeting
+        JOIN sys_user creator ON creator.tenant_id = meeting.tenant_id AND creator.user_id = meeting.creator_id
+        WHERE meeting.tenant_id = #{tenantId} AND meeting.event_id = #{id} AND meeting.deleted = 0
+    </select>
+    <sql id="occupancy">
+        deleted = 0 AND recurrence_role != 'SERIES'
+        AND status IN ('PLANNED', 'IN_PROGRESS', 'COMPLETED')
+        AND approval_status NOT IN ('DRAFT', 'REJECTED', 'CANCELLED')
+    </sql>
+    <select id="occupied" resultType="com.cloudflow.oa.domain.SysScheduleEvent">
+        SELECT * FROM oa_schedule_event WHERE tenant_id = #{tenantId} AND room_id = #{roomId}
+        AND <include refid="occupancy"/>
+        AND start_time &lt; #{end} AND DATE_ADD(end_time, INTERVAL buffer_minutes_snapshot MINUTE) &gt; #{start}
+        FOR UPDATE
+    </select>
+    <select id="futureForRoom" resultType="com.cloudflow.oa.domain.SysScheduleEvent">
+        SELECT * FROM oa_schedule_event WHERE tenant_id = #{tenantId} AND room_id = #{roomId}
+        AND <include refid="occupancy"/> AND end_time &gt; #{now}
+        FOR UPDATE
+    </select>
+    <select id="readOccupied" resultType="com.cloudflow.oa.domain.SysScheduleEvent">
+        SELECT * FROM oa_schedule_event WHERE tenant_id = #{tenantId} AND room_id = #{roomId}
+        AND <include refid="occupancy"/>
+        AND start_time &lt; #{end} AND DATE_ADD(end_time, INTERVAL buffer_minutes_snapshot MINUTE) &gt; #{start}
+        ORDER BY start_time, event_id
+    </select>
+    <select id="rooms" resultType="com.cloudflow.oa.domain.MeetingRoom">
+        SELECT * FROM oa_meeting_room WHERE tenant_id = #{tenantId} AND deleted = 0
+        <if test="capacity != null">AND (capacity IS NULL OR capacity &gt;= #{capacity})</if>
+        <foreach collection="tags" item="tag">
+            AND JSON_CONTAINS(COALESCE(equipment_tags, JSON_ARRAY()), JSON_QUOTE(#{tag}))
+        </foreach>
+        ORDER BY room_id
+    </select>
+    <select id="reminders" resultType="com.cloudflow.oa.domain.OaMeetingReminder">
+        SELECT * FROM oa_meeting_reminder WHERE tenant_id = #{tenantId} AND event_id = #{id}
+        ORDER BY schedule_version DESC, due_time, reminder_id
+    </select>
+    <select id="minutesId" resultType="long">
+        SELECT id FROM oa_meeting_minutes WHERE tenant_id = #{tenantId} AND COALESCE(schedule_event_id, meeting_id) = #{id} AND deleted = 0
+        ORDER BY id LIMIT 1
+    </select>
+    <select id="photoAllowed" resultType="int">
+        SELECT COUNT(*) FROM sys_file WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND deleted = 0
+            AND biz_type = 'OA_MEETING_ROOM' AND biz_id = CAST(#{roomId} AS CHAR) AND access_type = 'PRIVATE'
+            AND file_type IN ('png', 'jpg', 'jpeg')
+    </select>
+    <select id="series" resultType="com.cloudflow.oa.domain.SysScheduleEvent">
+        SELECT * FROM oa_schedule_event WHERE tenant_id = #{tenantId} AND parent_event_id = #{id} AND deleted = 0
+        FOR UPDATE
+    </select>
+    <select id="calendars" resultType="com.cloudflow.oa.domain.vo.MeetingViews$CalendarOption">
+        SELECT calendar_id, calendar_name FROM sys_holiday_calendar WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = 'ENABLED'
+        ORDER BY calendar_id
+    </select>
+    <select id="calendarAllowed" resultType="int">
+        SELECT COUNT(*) FROM sys_holiday_calendar WHERE tenant_id = #{tenantId} AND calendar_id = #{calendarId} AND deleted = 0 AND status = 'ENABLED'
+    </select>
+    <select id="participantBusy" resultType="com.cloudflow.oa.domain.SysScheduleEvent">
+        SELECT meeting.* FROM oa_schedule_event meeting
+        WHERE meeting.tenant_id = #{tenantId} AND meeting.deleted = 0 AND meeting.recurrence_role != 'SERIES'
+        AND meeting.status IN ('PLANNED', 'IN_PROGRESS') AND meeting.approval_status NOT IN ('DRAFT', 'REJECTED', 'CANCELLED')
+        AND meeting.start_time &lt; #{end} AND meeting.end_time &gt; #{start}
+        <if test="excludeId != null">AND meeting.event_id != #{excludeId}</if>
+        AND (meeting.creator_id IN <foreach collection="userIds" item="userId" open="(" close=")" separator=",">#{userId}</foreach>
+          OR EXISTS (SELECT 1 FROM oa_meeting_attendance invitation WHERE invitation.tenant_id = meeting.tenant_id
+            AND invitation.schedule_event_id = meeting.event_id AND invitation.deleted = 0 AND invitation.acceptance_status != 'DECLINED'
+            AND invitation.user_id IN <foreach collection="userIds" item="userId" open="(" close=")" separator=",">#{userId}</foreach>))
+        ORDER BY meeting.start_time, meeting.event_id
+    </select>
+    <select id="mine" resultType="com.cloudflow.oa.domain.SysScheduleEvent">
+        SELECT meeting.* FROM oa_schedule_event meeting
+        WHERE meeting.tenant_id = #{tenantId} AND meeting.deleted = 0 AND meeting.recurrence_role != 'SERIES' AND meeting.type = 'MEETING'
+        AND meeting.start_time &lt; #{end} AND meeting.end_time &gt; #{start}
+        AND (meeting.creator_id = #{userId} OR EXISTS (SELECT 1 FROM oa_meeting_attendance invitation
+            WHERE invitation.tenant_id = meeting.tenant_id AND invitation.schedule_event_id = meeting.event_id
+            AND invitation.user_id = #{userId} AND invitation.deleted = 0))
+        ORDER BY meeting.start_time, meeting.event_id
+    </select>
+    <select id="attendees" resultType="com.cloudflow.oa.domain.OaMeetingAttendance">
+        SELECT * FROM oa_meeting_attendance WHERE tenant_id = #{tenantId} AND schedule_event_id = #{id} ORDER BY user_id
+    </select>
+    <update id="saveEvent">
+        UPDATE oa_schedule_event SET title = #{event.title}, description = #{event.description},
+            start_time = #{event.startTime}, end_time = #{event.endTime}, is_all_day = #{event.isAllDay}, type = #{event.type},
+            room_id = #{event.roomId}, attendees = #{event.attendees}, join_url = #{event.joinUrl}, meeting_platform = #{event.meetingPlatform},
+            reminders = #{event.reminders}, recurrence_rule = #{event.recurrenceRule}, recurrence_end_date = #{event.recurrenceEndDate},
+            recurrence_exception_flag = #{event.recurrenceExceptionFlag}, source_series_version = #{event.sourceSeriesVersion}, timezone_id = #{event.timezoneId},
+            status = #{event.status}, approval_status = #{event.approvalStatus}, instance_id = #{event.instanceId},
+            expected_attendees = #{event.expectedAttendees}, buffer_minutes_snapshot = #{event.bufferMinutesSnapshot},
+            schedule_version = #{event.scheduleVersion}, update_time = #{event.updateTime}, version = version + 1
+        WHERE tenant_id = #{event.tenantId} AND event_id = #{event.eventId} AND deleted = 0 AND version = #{event.version}
+    </update>
+    <update id="saveRoomRule">
+        UPDATE oa_meeting_room SET equipment_tags = #{room.equipmentTags}, open_time = #{room.openTime}, close_time = #{room.closeTime},
+            bookable_weekdays = #{room.bookableWeekdays}, holiday_calendar_id = #{room.holidayCalendarId}, holiday_bookable_flag = #{room.holidayBookableFlag},
+            min_booking_minutes = #{room.minBookingMinutes}, max_booking_minutes = #{room.maxBookingMinutes}, advance_booking_days = #{room.advanceBookingDays},
+            need_approval_flag = #{room.needApprovalFlag}, approver_id = #{room.approverId}, buffer_minutes = #{room.bufferMinutes}, photo_file_id = #{room.photoFileId},
+            update_by = #{room.updateBy}, update_time = #{room.updateTime}, version = version + 1
+        WHERE tenant_id = #{room.tenantId} AND room_id = #{room.roomId} AND deleted = 0 AND version = #{room.version}
+    </update>
+    <update id="saveInvitation">
+        UPDATE oa_meeting_attendance SET acceptance_status = #{invitation.acceptanceStatus}, response_time = #{invitation.responseTime},
+            invitation_version = #{invitation.invitationVersion}, deleted = #{invitation.deleted}, update_by = #{invitation.updateBy}, update_time = #{invitation.updateTime}
+        WHERE tenant_id = #{invitation.tenantId} AND id = #{invitation.id} AND schedule_event_id = #{invitation.scheduleEventId} AND user_id = #{invitation.userId}
+    </update>
+    <select id="approverAllowed" resultType="int">
+        SELECT COUNT(*) FROM sys_user account
+        JOIN sys_dept department ON department.tenant_id = account.tenant_id AND department.dept_id = account.dept_id AND department.deleted = 0 AND department.status = '0'
+        JOIN sys_user_role membership ON membership.tenant_id = account.tenant_id AND membership.user_id = account.user_id
+        JOIN sys_role role_entry ON role_entry.tenant_id = membership.tenant_id AND role_entry.role_id = membership.role_id AND role_entry.deleted = 0 AND role_entry.status = '0'
+        WHERE account.tenant_id = #{tenantId} AND account.user_id = #{userId} AND account.deleted = 0 AND account.status = '0'
+        AND (role_entry.role_key = 'admin' OR EXISTS (SELECT 1 FROM sys_role_menu grant_entry
+            JOIN sys_menu menu_entry ON menu_entry.menu_id = grant_entry.menu_id AND menu_entry.status = '0'
+            WHERE grant_entry.tenant_id = role_entry.tenant_id AND grant_entry.role_id = role_entry.role_id AND menu_entry.perms = 'workflow:task:complete'))
+    </select>
+    <select id="calendarFact" resultType="com.cloudflow.common.holiday.domain.DayTypeInfo">
+        SELECT calendar_date.holiday_date AS date, calendar_date.date_type, calendar_date.holiday_name, calendar_date.triple_pay_flag
+        FROM sys_holiday_date calendar_date JOIN sys_holiday_calendar calendar_entry ON calendar_entry.tenant_id = calendar_date.tenant_id
+            AND calendar_entry.calendar_id = calendar_date.calendar_id AND calendar_entry.deleted = 0 AND calendar_entry.status = 'ENABLED'
+        WHERE calendar_date.tenant_id = #{tenantId} AND calendar_date.calendar_id = #{calendarId} AND calendar_date.holiday_date = #{date} AND calendar_date.deleted = 0
+    </select>
+    <select id="expiredPending" resultType="long">
+        SELECT event_id FROM oa_schedule_event WHERE tenant_id = #{tenantId} AND deleted = 0 AND event_id &gt; #{afterId}
+            AND recurrence_role != 'SERIES' AND status = 'PLANNED' AND approval_status = 'PENDING' AND end_time &lt;= #{now}
+        ORDER BY event_id LIMIT 100
+    </select>
+</mapper>

@@ -12,6 +12,10 @@ public interface IOaInvoiceService extends IService<OaInvoice> {
 
     PageResult<OaInvoice> queryPage(OaInvoice query, PageQuery pageQuery);
 
+    OaInvoice getInvoiceInfo(Long invoiceId);
+
+    boolean removeInvoices(List<Long> ids);
+
     boolean createInvoice(OaInvoice invoice);
 
     boolean updateInvoice(OaInvoice invoice);

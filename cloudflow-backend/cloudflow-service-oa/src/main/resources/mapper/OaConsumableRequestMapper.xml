@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaConsumableRequestMapper">
+    <select id="lock" resultType="com.cloudflow.oa.domain.OaConsumableRequest">
+        SELECT * FROM oa_consumable_request WHERE tenant_id = #{tenantId} AND request_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="byCreateKey" resultType="com.cloudflow.oa.domain.OaConsumableRequest">
+        SELECT * FROM oa_consumable_request WHERE tenant_id = #{tenantId} AND create_key = #{key} AND deleted = 0
+    </select>
+    <select id="visible" resultType="com.cloudflow.oa.domain.OaConsumableRequest">
+        SELECT * FROM oa_consumable_request WHERE tenant_id = #{tenantId} AND request_id = #{id} AND deleted = 0
+        <if test="applicantId != null">AND applicant_id = #{applicantId}</if>
+    </select>
+    <select id="requestPage" resultType="com.cloudflow.oa.domain.OaConsumableRequest">
+        SELECT * FROM oa_consumable_request WHERE tenant_id = #{tenantId} AND deleted = 0
+        <if test="applicantId != null">AND applicant_id = #{applicantId}</if>
+        <if test="dispatch">AND status IN ('APPROVED', 'ISSUED')</if>
+        <if test="query.status != null and query.status != ''">AND status = #{query.status}</if>
+        <if test="query.requestNo != null and query.requestNo != ''">AND request_no LIKE CONCAT('%', #{query.requestNo}, '%')</if>
+        <if test="query.applicantName != null and query.applicantName != ''">AND applicant_name LIKE CONCAT('%', #{query.applicantName}, '%')</if>
+        <if test="query.deptId != null">AND dept_id = #{query.deptId}</if>
+        <if test="query.applicantId != null">AND applicant_id = #{query.applicantId}</if>
+        <if test="query.from != null">AND create_time &gt;= #{query.from}</if>
+        <if test="query.to != null">AND create_time &lt; #{query.to}</if>
+        ORDER BY request_id DESC
+    </select>
+    <update id="saveState">
+        UPDATE oa_consumable_request SET purpose = #{record.purpose}, apply_date = #{record.applyDate},
+            expect_date = #{record.expectDate}, total_amount = #{record.totalAmount}, issued_amount = #{record.issuedAmount},
+            returned_amount = #{record.returnedAmount}, status = #{record.status}, instance_id = #{record.instanceId},
+            submit_key = #{record.submitKey}, submit_hash = #{record.submitHash}, rule_snapshot = #{record.ruleSnapshot},
+            submit_time = #{record.submitTime}, issue_by = #{record.issueBy}, issue_time = #{record.issueTime},
+            cancel_by = #{record.cancelBy}, cancel_time = #{record.cancelTime}, cancel_reason = #{record.cancelReason},
+            update_by = #{record.updateBy}, update_time = #{record.updateTime}, version = version + 1
+        WHERE tenant_id = #{record.tenantId} AND request_id = #{record.requestId} AND deleted = 0 AND version = #{record.version}
+    </update>
+    <select id="approverAllowed" resultType="int">
+        SELECT COUNT(*) FROM sys_user_role membership
+        JOIN sys_role role ON role.role_id = membership.role_id AND role.tenant_id = membership.tenant_id
+            AND role.status = '0' AND role.deleted = 0
+        JOIN sys_role_menu permission ON permission.role_id = role.role_id AND permission.tenant_id = role.tenant_id
+        JOIN sys_menu menu ON menu.menu_id = permission.menu_id AND menu.status = '0'
+        WHERE membership.tenant_id = #{tenantId} AND membership.user_id = #{userId}
+            AND menu.perms IN ('workflow:task:complete', '*:*:*')
+    </select>
+    <select id="ruleVersion" resultType="map">
+        SELECT revision.id AS revisionId, revision.version_no AS versionNo, revision.threshold_value AS thresholdValue,
+            revision.effect, revision.enabled, revision.priority
+        FROM sys_business_rule_version revision JOIN sys_business_rule rule
+            ON rule.id = revision.rule_id AND rule.tenant_id = revision.tenant_id AND rule.rule_code = revision.rule_code
+        WHERE revision.tenant_id = #{tenantId} AND revision.rule_code = #{code} AND revision.status = 'PUBLISHED'
+        ORDER BY revision.version_no DESC LIMIT 1
+    </select>
+    <select id="operationTrace" resultType="com.cloudflow.oa.domain.OaTraceEvent">
+        SELECT * FROM oa_trace_event WHERE tenant_id = #{tenantId} AND business_type = 'OA_CONSUMABLE_REQUEST'
+            AND event_type = #{eventType} AND event_content = #{key}
+        <if test="businessId != null">AND business_id = #{businessId}</if>
+        ORDER BY id DESC LIMIT 1
+    </select>
+</mapper>

@@ -24,4 +24,10 @@ public interface RemoteBusinessRuleService {
 
     @PostMapping("/system/rules/hit-records")
     R<Void> recordHit(@RequestBody BusinessRuleHitRecordDTO record);
+
+    @GetMapping("/inner/auth/oa-project-rules/effective/{ruleCode}")
+    R<BusinessRuleDTO> getEffectiveProjectRule(@PathVariable("ruleCode") String ruleCode);
+
+    @PostMapping("/inner/auth/oa-project-rules/hit-records")
+    R<Void> recordProjectHit(@RequestBody BusinessRuleHitRecordDTO record);
 }

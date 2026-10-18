@@ -77,6 +77,10 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     private final StateMachineRegistry stateMachineRegistry;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
+    private final OaSupplierGovernanceService supplierGovernance;
+    private final OaProjectAccountingService projectAccounting;
+    private final OaRfqPurchaseSourceService purchaseSource;
+    private final ConsumablePurchaseService consumablePurchases;
 
     @Override
     public Page<BizPurchaseRequest> queryPage(Integer pageNum, Integer pageSize, String status, Long supplierId, Long userId) {
@@ -90,6 +94,19 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     }
 
     @Override
+    public BizPurchaseRequest getAccessibleRequestWithItems(Long id) {
+        Long tenantId = UserContext.getTenantId();
+        if (id == null || tenantId == null) {
+            throw new com.cloudflow.common.core.exception.ServiceException("采购申请不存在或无权访问", 403);
+        }
+        BizPurchaseRequest purchase = baseMapper.selectPrintableWithItems(id, tenantId, DataScopeUtils.listScope());
+        if (purchase == null || !tenantId.equals(purchase.getTenantId()) || !Integer.valueOf(0).equals(purchase.getDeleted())) {
+            throw new com.cloudflow.common.core.exception.ServiceException("采购申请不存在或无权访问", 403);
+        }
+        return purchase;
+    }
+
+    @Override
     public String generatePurchaseNo() {
         String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         Integer maxSeq = baseMapper.getTodayMaxSeq();
@@ -99,9 +116,11 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
 
     @Override
     @Audit(name = "创建采购申请", spel = "#purchase")
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public boolean createPurchase(BizPurchaseRequest purchase) {
+        purchaseSource.lockForCreate(purchase);
         normalizeAndValidatePurchase(purchase);
+        purchase.setInstanceId(null); purchase.setPaymentRequestId(null); purchase.setVersion(0);
         fillSupplierSnapshot(purchase);
         fillUserSnapshot(purchase);
         LocalDateTime now = LocalDateTime.now();
@@ -116,24 +135,31 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         boolean saved = save(purchase);
         if (saved) {
             insertItems(purchase);
+            purchaseSource.bind(purchase);
         }
         return saved;
     }
 
     @Override
     @Audit(name = "更新采购申请", spel = "#purchase", oldVal = "@purchaseRequestServiceImpl.getRequestWithItems(#purchase.id)")
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public boolean updatePurchase(BizPurchaseRequest purchase) {
         if (purchase == null || purchase.getId() == null) {
             throw new IllegalArgumentException("采购申请ID不能为空");
         }
-        BizPurchaseRequest persisted = getById(purchase.getId());
+        BizPurchaseRequest persisted = purchaseSource.lockForWrite(purchase.getId(), purchase.getRfqId());
         if (persisted == null || !Integer.valueOf(0).equals(persisted.getDeleted())) {
             throw new IllegalArgumentException("采购申请不存在");
         }
         if (!STATUS_DRAFT.equals(persisted.getStatus())) {
             throw new IllegalArgumentException("只有草稿状态可以编辑");
         }
+        purchaseSource.assertWritable(persisted);
+        OaRecordSupport.update(purchase, persisted);
+        purchase.setPurchaseNo(persisted.getPurchaseNo()); purchase.setInstanceId(persisted.getInstanceId());
+        purchase.setUserId(persisted.getUserId()); purchase.setUserName(persisted.getUserName());
+        purchase.setDeptId(persisted.getDeptId()); purchase.setDeptName(persisted.getDeptName());
+        purchase.setPaymentRequestId(persisted.getPaymentRequestId()); purchase.setPaymentStatus(persisted.getPaymentStatus());
         normalizeAndValidatePurchase(purchase);
         fillSupplierSnapshot(purchase);
         purchase.setStatus(STATUS_DRAFT);
@@ -142,19 +168,22 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         boolean updated = updateById(purchase);
         if (updated) {
             LambdaQueryWrapper<BizPurchaseItem> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(BizPurchaseItem::getPurchaseId, purchase.getId());
+            wrapper.eq(BizPurchaseItem::getPurchaseId, purchase.getId()).eq(BizPurchaseItem::getTenantId, OaRecordSupport.tenantId());
             purchaseItemMapper.delete(wrapper);
             insertItems(purchase);
+            purchaseSource.bind(purchase);
         }
         return updated;
     }
 
     @Override
     @Audit(name = "提交采购申请", spel = "#id", oldVal = "@purchaseRequestServiceImpl.getRequestWithItems(#id)")
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     // M1-5: 防并发冲突
     @DistributedLock(key = "'purchase:' + #id + ':submit'")
     public boolean submitPurchase(Long id) {
+        BizPurchaseRequest reference = OaRecordSupport.active(getById(id));
+        purchaseSource.lockForWrite(id, reference.getRfqId());
         BizPurchaseRequest purchase = getRequestWithItems(id);
         if (purchase == null || !Integer.valueOf(0).equals(purchase.getDeleted())) {
             return false;
@@ -162,6 +191,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         if (!STATUS_DRAFT.equals(purchase.getStatus())) {
             throw new IllegalArgumentException("只有草稿状态可以提交");
         }
+        purchaseSource.assertWritable(purchase);
         normalizeAndValidatePurchase(purchase);
         compensateUserSnapshot(purchase);
         reserveBudget(purchase);
@@ -184,6 +214,8 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             event.setTotalAmount(purchase.getTotalAmount());
             event.setReason(purchase.getReason());
             event.setItemSummary(buildItemSummary(purchase.getItems()));
+            event.setQuantity(purchase.getItems().stream().mapToLong(item -> item.getQuantity().longValue()).sum());
+            event.setExpectedDate(purchase.getExpectedDate() == null ? null : purchase.getExpectedDate().toLocalDate());
             event.setSubmittedAt(LocalDateTime.now());
             publishPurchaseSubmittedEvent(purchase, event);
         }
@@ -191,87 +223,17 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     }
 
     @Override
-    @Audit(name = "采购分批入库", spel = "#receipt", oldVal = "@purchaseRequestServiceImpl.getRequestWithItems(#id)")
-    @Transactional(rollbackFor = Exception.class)
-    public boolean receivePurchase(Long id, PurchaseReceiptDTO receipt) {
-        BizPurchaseRequest purchase = getRequestWithItems(id);
-        if (purchase == null || !Integer.valueOf(0).equals(purchase.getDeleted())) {
-            throw new IllegalArgumentException("采购申请不存在");
-        }
-        if (!STATUS_APPROVED.equals(purchase.getStatus()) && !STATUS_PARTIAL_RECEIVED.equals(purchase.getStatus())) {
-            throw new IllegalArgumentException("只有已通过或部分入库的采购申请可以入库");
-        }
-        if (receipt == null || receipt.getItems() == null || receipt.getItems().isEmpty()) {
-            throw new IllegalArgumentException("入库明细不能为空");
-        }
-
-        Map<Long, BizPurchaseItem> itemMap = new HashMap<>();
-        for (BizPurchaseItem item : purchase.getItems()) {
-            itemMap.put(item.getId(), item);
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        for (PurchaseReceiptDTO.PurchaseReceiptItemDTO receiptItem : receipt.getItems()) {
-            if (receiptItem == null || receiptItem.getItemId() == null || receiptItem.getQuantity() == null
-                    || receiptItem.getQuantity() <= 0) {
-                throw new IllegalArgumentException("入库数量必须大于0");
-            }
-            BizPurchaseItem item = itemMap.get(receiptItem.getItemId());
-            if (item == null) {
-                throw new IllegalArgumentException("采购明细不存在，itemId=" + receiptItem.getItemId());
-            }
-            int requested = defaultInt(item.getQuantity());
-            int received = defaultInt(item.getReceivedQuantity());
-            int nextReceived = received + receiptItem.getQuantity();
-            if (nextReceived > requested) {
-                throw new IllegalArgumentException("入库数量不能超过申请数量：" + item.getConsumableName());
-            }
-            String stockRemark = "采购入库：" + purchase.getPurchaseNo()
-                    + (StringUtils.hasText(receipt.getRemark()) ? "，" + receipt.getRemark() : "");
-            if (!consumableService.addStock(item.getConsumableId(), receiptItem.getQuantity(), stockRemark)) {
-                throw new IllegalArgumentException("耗材入库失败：" + item.getConsumableName());
-            }
-
-            LambdaUpdateWrapper<BizPurchaseItem> itemUpdate = new LambdaUpdateWrapper<>();
-            itemUpdate.eq(BizPurchaseItem::getId, item.getId())
-                    .set(BizPurchaseItem::getReceivedQuantity, nextReceived);
-            purchaseItemMapper.update(null, itemUpdate);
-            item.setReceivedQuantity(nextReceived);
-
-            BizPurchaseReceipt record = new BizPurchaseReceipt();
-            record.setTenantId(UserContext.getTenantId());
-            record.setPurchaseId(purchase.getId());
-            record.setItemId(item.getId());
-            record.setConsumableId(item.getConsumableId());
-            record.setConsumableName(item.getConsumableName());
-            record.setReceivedQuantity(receiptItem.getQuantity());
-            record.setOperatorId(UserContext.getUserId());
-            record.setOperatorName(UserContext.getUserName());
-            record.setReceiptTime(now);
-            record.setRemark(receipt.getRemark());
-            record.setCreateBy(UserContext.getUserName());
-            record.setCreateTime(now);
-            purchaseReceiptMapper.insert(record);
-        }
-
-        // M1-6: 使用状态机进行状态转换
-        StateMachine<PurchaseRequestStatus, PurchaseRequestEvent> stateMachine = stateMachineRegistry.require("PurchaseRequest");
-        PurchaseRequestStatus currentStatus = PurchaseRequestStatus.valueOf(purchase.getStatus());
-        boolean fullyReceived = isFullyReceived(purchase.getItems());
-        PurchaseRequestEvent event = fullyReceived ? PurchaseRequestEvent.FULL_RECEIVE : PurchaseRequestEvent.PARTIAL_RECEIVE;
-        PurchaseRequestStatus newStatus = stateMachine.fire(currentStatus, event);
-        purchase.setStatus(newStatus.name());
-
-        purchase.setUpdateBy(UserContext.getUserName());
-        purchase.setUpdateTime(now);
-        return updateById(purchase);
+    @Audit(name = "采购分批入库", highRisk = true)
+    public com.cloudflow.oa.domain.vo.ConsumableResults.StockPosting receivePurchase(Long id, PurchaseReceiptDTO receipt) {
+        return consumablePurchases.receive(id, receipt);
     }
 
     @Override
     @Audit(name = "采购生成付款申请", spel = "#id", oldVal = "@purchaseRequestServiceImpl.getRequestWithItems(#id)", diff = true, highRisk = true)
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public BizPaymentRequest createPaymentRequest(Long id) {
-        BizPurchaseRequest purchase = getRequestWithItems(id);
+        BizPurchaseRequest reference = OaRecordSupport.active(getById(id));
+        BizPurchaseRequest purchase = purchaseSource.lockForWrite(id, reference.getRfqId());
         if (purchase == null || !Integer.valueOf(0).equals(purchase.getDeleted())) {
             throw new IllegalArgumentException("采购申请不存在");
         }
@@ -315,13 +277,13 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         purchase.setPaymentStatus(PAYMENT_STATUS_DRAFT);
         purchase.setUpdateBy(UserContext.getUserName());
         purchase.setUpdateTime(now);
-        updateById(purchase);
+        OaRecordSupport.saved(baseMapper.updateById(purchase));
         return payment;
     }
 
     @Override
     @Audit(name = "补货建议生成采购草稿", spel = "#dto")
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public BizPurchaseRequest createFromSuggestion(PurchaseFromSuggestionDTO dto) {
         if (dto == null || dto.getItems() == null || dto.getItems().isEmpty()) {
             throw new IllegalArgumentException("补货明细不能为空");
@@ -375,7 +337,18 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         releaseBudget(purchase);
     }
 
+    @Override
+    @Audit(name = "删除草稿采购申请", highRisk = true, spel = "#id")
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
+    public void deleteDraft(Long id) {
+        BizPurchaseRequest reference = OaRecordSupport.active(getById(id));
+        BizPurchaseRequest purchase = purchaseSource.lockForWrite(id, reference.getRfqId()); purchaseSource.assertWritable(purchase);
+        if (purchase.getRfqId() != null || !purchaseSource.activeSources(id).isEmpty()) throw new IllegalArgumentException("采购已关联询价，请保留原始单据用于追溯");
+        purchase.setDeleted(1); OaRecordSupport.touch(purchase); OaRecordSupport.saved(baseMapper.updateById(purchase));
+    }
+
     private void normalizeAndValidatePurchase(BizPurchaseRequest purchase) {
+        if (purchase != null && purchase.getSupplierId() != null) supplierGovernance.assertSupplierAllowed(purchase.getSupplierId(), "PURCHASE");
         if (purchase == null) {
             throw new IllegalArgumentException("采购申请不能为空");
         }
@@ -398,6 +371,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             total = total.add(item.getAmount());
         }
         purchase.setTotalAmount(total);
+        purchaseSource.validateAndFill(purchase);
     }
 
     private void validateAndFillItem(BizPurchaseItem item) {

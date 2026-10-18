@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaConsumableMaintenanceMapper">
+    <select id="recalculationTrace" resultType="com.cloudflow.oa.domain.OaTraceEvent">
+        SELECT * FROM oa_trace_event WHERE tenant_id = #{tenantId} AND business_type = 'CONSUMABLE'
+            AND business_id = #{id} AND event_type = 'CONSUMABLE_RECALCULATE_REQUEST' AND event_content = #{key}
+        ORDER BY id DESC LIMIT 1
+    </select>
+    <select id="risks" resultType="com.cloudflow.oa.domain.OaRiskAlert">
+        SELECT * FROM oa_risk_alert WHERE tenant_id = #{tenantId} AND business_type = 'CONSUMABLE'
+            AND business_id = #{id} AND risk_code = 'CONSUMABLE_LOW_STOCK' AND risk_status IN ('OPEN', 'HANDLING', 'IGNORED')
+        ORDER BY id FOR UPDATE
+    </select>
+    <select id="sourceDrift" resultType="int">
+        SELECT
+            (SELECT COUNT(*) FROM biz_purchase_item item WHERE item.tenant_id = #{tenantId} AND item.consumable_id = #{id}
+                AND item.received_quantity &lt;&gt; COALESCE((SELECT SUM(ledger.quantity) FROM oa_consumable_ledger ledger
+                    WHERE ledger.tenant_id = item.tenant_id AND ledger.source_biz_type = 'PURCHASE_RECEIPT' AND ledger.source_item_id = item.id), 0))
+          + (SELECT COUNT(*) FROM oa_consumable_request_item item WHERE item.tenant_id = #{tenantId} AND item.consumable_id = #{id}
+                AND (item.issued_quantity &lt;&gt; COALESCE((SELECT -SUM(ledger.quantity) FROM oa_consumable_ledger ledger
+                        WHERE ledger.tenant_id = item.tenant_id AND ledger.source_biz_type = 'CONSUMABLE_REQUEST'
+                            AND ledger.source_item_id = item.item_id AND ledger.transaction_type = 'OUTBOUND'), 0)
+                    OR item.returned_quantity &lt;&gt; COALESCE((SELECT SUM(ledger.quantity) FROM oa_consumable_ledger ledger
+                        WHERE ledger.tenant_id = item.tenant_id AND ledger.source_biz_type = 'CONSUMABLE_REQUEST'
+                            AND ledger.source_item_id = item.item_id AND ledger.transaction_type = 'RETURN'), 0)
+                    OR item.issued_amount &lt;&gt; COALESCE((SELECT -SUM(ledger.amount) FROM oa_consumable_ledger ledger
+                        WHERE ledger.tenant_id = item.tenant_id AND ledger.source_biz_type = 'CONSUMABLE_REQUEST'
+                            AND ledger.source_item_id = item.item_id AND ledger.transaction_type = 'OUTBOUND'), 0.00)
+                    OR item.returned_amount &lt;&gt; COALESCE((SELECT SUM(ledger.amount) FROM oa_consumable_ledger ledger
+                        WHERE ledger.tenant_id = item.tenant_id AND ledger.source_biz_type = 'CONSUMABLE_REQUEST'
+                            AND ledger.source_item_id = item.item_id AND ledger.transaction_type = 'RETURN'), 0.00)))
+          + (SELECT COUNT(*) FROM oa_asset_log history WHERE history.tenant_id = #{tenantId} AND history.ref_type = '2'
+                AND history.ref_id = #{id} AND history.quantity_change &lt;&gt; 0
+                AND NOT EXISTS(SELECT 1 FROM oa_consumable_ledger ledger WHERE ledger.tenant_id = history.tenant_id AND ledger.asset_log_id = history.log_id))
+          + (SELECT COUNT(*) FROM biz_purchase_receipt receipt WHERE receipt.tenant_id = #{tenantId} AND receipt.consumable_id = #{id}
+                AND NOT EXISTS(SELECT 1 FROM oa_consumable_ledger ledger WHERE ledger.tenant_id = receipt.tenant_id
+                    AND ledger.source_biz_type = 'PURCHASE_RECEIPT' AND ledger.source_biz_id = receipt.id AND ledger.reversal_of_ledger_id IS NULL))
+          + (SELECT COUNT(*) FROM oa_consumable_request request WHERE request.tenant_id = #{tenantId} AND request.deleted = 0
+                AND EXISTS(SELECT 1 FROM oa_consumable_request_item target WHERE target.tenant_id = request.tenant_id
+                    AND target.request_id = request.request_id AND target.consumable_id = #{id})
+                AND (request.issued_amount &lt;&gt; COALESCE((SELECT SUM(detail.issued_amount) FROM oa_consumable_request_item detail
+                        WHERE detail.tenant_id = request.tenant_id AND detail.request_id = request.request_id), 0.00)
+                    OR request.returned_amount &lt;&gt; COALESCE((SELECT SUM(detail.returned_amount) FROM oa_consumable_request_item detail
+                        WHERE detail.tenant_id = request.tenant_id AND detail.request_id = request.request_id), 0.00)))
+    </select>
+    <select id="permissionCount" resultType="int">
+        SELECT COUNT(*) FROM sys_user_role membership
+        JOIN sys_role role ON role.role_id = membership.role_id AND role.tenant_id = membership.tenant_id AND role.status = '0' AND role.deleted = 0
+        JOIN sys_role_menu permission ON permission.role_id = role.role_id AND permission.tenant_id = role.tenant_id
+        JOIN sys_menu menu ON menu.menu_id = permission.menu_id AND menu.status = '0'
+        WHERE membership.tenant_id = #{tenantId} AND membership.user_id = #{userId} AND menu.perms IN (#{permission}, '*:*:*')
+    </select>
+</mapper>

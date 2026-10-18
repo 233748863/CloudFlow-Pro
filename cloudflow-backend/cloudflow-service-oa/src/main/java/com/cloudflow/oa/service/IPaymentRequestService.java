@@ -12,6 +12,9 @@ import java.util.List;
  */
 public interface IPaymentRequestService extends IService<BizPaymentRequest> {
 
+    /** 按列表相同的数据范围读取付款申请。 */
+    BizPaymentRequest getAccessiblePayment(Long id);
+
     /**
      * 分页查询付款申请列表
      */

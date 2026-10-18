@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.PortalKnowledgeMapper">
+    <sql id="activeIdentity">
+        SELECT 1 FROM sys_portal_user portal_user
+        JOIN crm_contact contact ON contact.tenant_id = portal_user.tenant_id
+            AND contact.contact_id = portal_user.ref_biz_id AND contact.customer_id = portal_user.customer_id
+        JOIN crm_customer customer ON customer.tenant_id = contact.tenant_id AND customer.customer_id = contact.customer_id
+        JOIN sys_tenant tenant ON tenant.tenant_id = portal_user.tenant_id
+        WHERE portal_user.tenant_id = #{identity.tenantId} AND portal_user.portal_user_id = #{identity.portalUserId}
+            AND portal_user.customer_id = #{identity.customerId} AND portal_user.ref_biz_id = #{identity.contactId}
+            AND portal_user.user_type = 'CUSTOMER_CONTACT' AND portal_user.ref_biz_type = 'CRM_CONTACT'
+            AND portal_user.status = 'ACTIVE' AND portal_user.deleted = 0
+            AND portal_user.session_version = #{identity.sessionVersion}
+            AND contact.version = #{identity.contactVersion} AND contact.status = 'ACTIVE' AND contact.deleted = 0
+            AND customer.status = 'ACTIVE' AND customer.deleted = 0
+            AND tenant.status = '0' AND tenant.deleted = 0
+            AND (tenant.expire_time IS NULL OR tenant.expire_time &gt; CURRENT_TIMESTAMP)
+    </sql>
+    <select id="activeIdentity" resultType="boolean">
+        SELECT EXISTS(<include refid="activeIdentity" />)
+    </select>
+    <sql id="publishedVersion">
+        FROM oa_knowledge_document document
+        JOIN oa_knowledge_doc_version published_version ON published_version.id = document.external_version_id
+            AND published_version.tenant_id = document.tenant_id AND published_version.document_id = document.document_id
+        WHERE document.tenant_id = #{identity.tenantId} AND document.deleted = 0
+            AND document.external_visible_flag = 1 AND published_version.deleted = 0
+            AND published_version.publish_time IS NOT NULL
+            AND EXISTS(<include refid="activeIdentity" />)
+    </sql>
+    <select id="published" resultType="com.cloudflow.common.core.domain.PortalKnowledgeVO">
+        SELECT document.document_id, published_version.id AS version_id, published_version.version_no, published_version.title
+        <include refid="publishedVersion" />
+        <if test="keyword != null and keyword != ''">
+            AND published_version.title LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY document.document_id DESC
+    </select>
+    <select id="detail" resultType="com.cloudflow.oa.domain.vo.knowledge.KnowledgePublication">
+        SELECT document.document_id, published_version.id AS version_id, published_version.version_no,
+            published_version.title, published_version.content, published_version.attachment_url,
+            document.version AS publication_version, document.external_attachment_file_ids
+        <include refid="publishedVersion" />
+            AND document.document_id = #{documentId}
+    </select>
+</mapper>

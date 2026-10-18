@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.KnowledgeExternalMapper">
+    <select id="document" resultType="com.cloudflow.oa.domain.KnowledgeDocument">
+        SELECT * FROM oa_knowledge_document
+        WHERE tenant_id = #{tenantId} AND document_id = #{documentId} AND deleted = 0
+        <if test="lock">FOR UPDATE</if>
+    </select>
+    <select id="version" resultType="com.cloudflow.oa.domain.KnowledgeDocVersion">
+        SELECT * FROM oa_knowledge_doc_version
+        WHERE tenant_id = #{tenantId} AND document_id = #{documentId} AND id = #{versionId}
+            AND deleted = 0 AND publish_time IS NOT NULL
+    </select>
+    <select id="versions" resultType="com.cloudflow.oa.domain.vo.knowledge.KnowledgeExternalStateVO$Version">
+        SELECT id, version_no, title, publish_time FROM oa_knowledge_doc_version
+        WHERE tenant_id = #{tenantId} AND document_id = #{documentId} AND deleted = 0 AND publish_time IS NOT NULL
+        ORDER BY version_no DESC
+    </select>
+    <update id="writePublication">
+        UPDATE oa_knowledge_document SET external_visible_flag = #{visible}, external_version_id = #{versionId},
+            external_attachment_file_ids = #{attachmentFileIds},
+            version = version + 1, update_by = #{document.updateBy}, update_time = #{document.updateTime}
+        WHERE tenant_id = #{document.tenantId} AND document_id = #{document.documentId}
+            AND version = #{document.version} AND deleted = 0
+    </update>
+    <select id="attachments" resultType="com.cloudflow.common.core.domain.PortalKnowledgeVO$Attachment">
+        SELECT file.file_id, file.file_name, file.file_size FROM sys_file file
+        JOIN oa_knowledge_document document ON document.tenant_id = file.tenant_id AND document.document_id = #{documentId}
+        JOIN sys_user uploader ON uploader.tenant_id = document.tenant_id AND uploader.user_id = document.submitter_id
+            AND CAST(uploader.user_name AS BINARY) = CAST(file.create_by AS BINARY)
+        WHERE file.tenant_id = #{tenantId} AND file.deleted = 0 AND document.deleted = 0 AND uploader.deleted = 0
+            AND file.access_type = 'PRIVATE' AND (file.biz_type IS NULL OR file.biz_type = '')
+            AND file.file_type REGEXP '^[a-z0-9]{1,10}$' AND file.file_size &gt; 0
+            AND file.file_id IN <foreach collection="fileIds" item="fileId" open="(" close=")" separator=",">#{fileId}</foreach>
+        ORDER BY file.file_id
+    </select>
+</mapper>

@@ -31,8 +31,8 @@ public class InvoiceController {
     @GetMapping("/{id}")
     @SaCheckPermission("oa:invoice:list")
     public R<OaInvoice> getInfo(@PathVariable("id") Long id) {
-        OaInvoice invoice = oaInvoiceService.getById(id);
-        return invoice == null || !Integer.valueOf(0).equals(invoice.getDeleted()) ? R.fail("发票不存在") : R.ok(invoice);
+        try { return R.ok(oaInvoiceService.getInvoiceInfo(id)); }
+        catch (IllegalArgumentException failure) { return R.fail(failure.getMessage()); }
     }
 
     @GetMapping("/{id}/writeoff/list")
@@ -110,13 +110,8 @@ public class InvoiceController {
     @DeleteMapping("/{ids}")
     @SaCheckPermission("oa:invoice:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
-        for (Long id : ids) {
-            OaInvoice invoice = new OaInvoice();
-            invoice.setInvoiceId(id);
-            invoice.setDeleted(1);
-            oaInvoiceService.updateById(invoice);
-        }
-        return R.ok();
+        try { return R.result(oaInvoiceService.removeInvoices(ids)); }
+        catch (IllegalArgumentException failure) { return R.fail(failure.getMessage()); }
     }
 }
 

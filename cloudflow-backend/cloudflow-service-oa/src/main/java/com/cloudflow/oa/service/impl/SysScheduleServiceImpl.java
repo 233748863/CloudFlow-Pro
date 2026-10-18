@@ -2,13 +2,13 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.exception.ServiceException;
-import com.cloudflow.oa.config.properties.OaProperties;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.SysScheduleEventMapper;
 import com.cloudflow.oa.service.ISysScheduleService;
 import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,72 +34,29 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
     private static final DateTimeFormatter DATE_ONLY = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Autowired
-    private OaProperties oaProperties;
+    private OaMeetingBookingService meetings;
+
+    @Autowired
+    private OaMeetingAccess meetingAccess;
+
+    @Autowired
+    private OaMeetingQueryService meetingQueries;
 
     @Override
     @Transactional
-    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#event.creatorId", condition = "#event != null && #event.creatorId != null")
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
     public boolean createEvent(SysScheduleEvent event) {
-        // 1. 业务配置校验
-        validateBookingConstraints(event);
-
-        // 2. 如果关联了会议室，进行冲突检测
-        if (event.getRoomId() != null) {
-            boolean conflict = checkConflict(event.getRoomId(), event.getStartTime(), event.getEndTime());
-            if (conflict) {
-                throw new ServiceException("该会议室在指定时间段已被预订");
-            }
-            event.setType("MEETING");
-        }
-
-        event.setCreateTime(LocalDateTime.now());
-        return save(event);
+        BeanUtils.copyProperties(meetings.createLegacy(event), event);
+        return true;
     }
 
     @Override
     @Transactional
-    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#event.creatorId", condition = "#event != null && #event.creatorId != null")
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
     @Audit(name = "更新日程", highRisk = true)
     public boolean updateEvent(SysScheduleEvent event) {
-        // 1. 业务配置校验
-        validateBookingConstraints(event);
-
-        // 2. 如果关联了会议室，进行冲突检测（排除自身）
-        if (event.getRoomId() != null && event.getEventId() != null) {
-            boolean conflict = checkConflictExcluding(
-                    event.getRoomId(), event.getStartTime(), event.getEndTime(), event.getEventId());
-            if (conflict) {
-                throw new ServiceException("该会议室在指定时间段已被预订");
-            }
-        }
-
-        event.setUpdateTime(LocalDateTime.now());
-        return updateById(event);
-    }
-
-    /**
-     * 业务配置校验：预订时长上限 + 不能预订过去的时间
-     */
-    private void validateBookingConstraints(SysScheduleEvent event) {
-        if (event.getStartTime() == null || event.getEndTime() == null) {
-            return;
-        }
-
-        OaProperties.MeetingRoomConfig config = oaProperties.getMeetingRoom();
-
-        // 校验预订时长
-        long hours = ChronoUnit.MINUTES.between(event.getStartTime(), event.getEndTime()) / 60.0 > 0
-                ? ChronoUnit.HOURS.between(event.getStartTime(), event.getEndTime())
-                : 0;
-        long minutes = ChronoUnit.MINUTES.between(event.getStartTime(), event.getEndTime());
-        if (minutes > config.getMaxBookingHours() * 60L) {
-            throw new ServiceException("预订时长不能超过 " + config.getMaxBookingHours() + " 小时");
-        }
-
-        // 校验不能预订已过去的时间
-        if (event.getStartTime().isBefore(LocalDateTime.now().minusMinutes(1))) {
-            throw new ServiceException("不能预订已过去的时间");
-        }
+        BeanUtils.copyProperties(meetings.updateLegacy(event), event);
+        return true;
     }
 
     @Override
@@ -148,19 +105,17 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
         LocalDateTime dayStart = parseDate(date);
         // 当天结束时间 = 当天开始 + 24小时
         LocalDateTime dayEnd = dayStart.plusDays(1);
-        return baseMapper.getRoomEvents(roomId, dayStart, dayEnd);
+        return baseMapper.getRoomEvents(roomId, dayStart, dayEnd).stream().map(this::roomView).toList();
     }
 
     @Override
     public boolean checkConflict(Long roomId, LocalDateTime start, LocalDateTime end) {
-        List<SysScheduleEvent> conflicts = baseMapper.checkConflict(roomId, start, end);
-        return !conflicts.isEmpty();
+        return meetingQueries.conflict(roomId, start, end, null);
     }
 
     @Override
     public boolean checkConflictExcluding(Long roomId, LocalDateTime start, LocalDateTime end, Long excludeEventId) {
-        List<SysScheduleEvent> conflicts = baseMapper.checkConflictExcluding(roomId, start, end, excludeEventId);
-        return !conflicts.isEmpty();
+        return meetingQueries.conflict(roomId, start, end, excludeEventId);
     }
 
     @Override
@@ -168,7 +123,7 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
         LocalDateTime start = parseDate(weekStart);
         // 一周 = 7天
         LocalDateTime end = start.plusWeeks(1);
-        return baseMapper.getRoomEvents(roomId, start, end);
+        return baseMapper.getRoomEvents(roomId, start, end).stream().map(this::roomView).toList();
     }
 
     @Override
@@ -187,21 +142,21 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
     }
 
     @Override
-    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#userId")
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
     @Audit(name = "取消日程预订", highRisk = true)
-    public boolean cancelBooking(Long eventId, Long userId) {
-        SysScheduleEvent event = getById(eventId);
-        if (event == null) {
-            throw new ServiceException("日程不存在");
-        }
-        if (!userId.equals(event.getCreatorId())) {
-            throw new ServiceException("无权取消此预订，只有创建者可以取消");
-        }
-        // 检查是否已经开始
-        if (event.getStartTime().isBefore(LocalDateTime.now())) {
-            throw new ServiceException("会议已开始，无法取消");
-        }
-        return removeById(eventId);
+    public boolean cancelBooking(Long eventId, Long userId, Integer version, String reason) {
+        if (!java.util.Objects.equals(userId, OaMeetingAccess.userId())) throw new ServiceException("不可代他人取消预约", 403);
+        meetings.cancel(eventId, new com.cloudflow.oa.domain.dto.MeetingCommands.Change(version, reason, "CANCELLED"));
+        return true;
+    }
+
+    private SysScheduleEvent roomView(SysScheduleEvent event) {
+        if (meetingAccess.visible(event)) return event;
+        SysScheduleEvent hidden = new SysScheduleEvent();
+        hidden.setEventId(event.getEventId()); hidden.setRoomId(event.getRoomId()); hidden.setTitle("忙碌时段");
+        hidden.setStartTime(event.getStartTime()); hidden.setEndTime(event.getEndTime()); hidden.setType("MEETING");
+        hidden.setStatus(event.getStatus()); hidden.setApprovalStatus(event.getApprovalStatus()); hidden.setBufferMinutesSnapshot(event.getBufferMinutesSnapshot());
+        return hidden;
     }
 
     @Override
@@ -214,52 +169,6 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
 
     @Override
     public List<Map<String, String>> getFreeSlots(Long roomId, String date) {
-        // 工作时间 8:00 - 21:00
-        int businessStart = 8;
-        int businessEnd = 21;
-
-        LocalDate targetDate = LocalDate.parse(date, DATE_ONLY);
-        LocalDateTime dayStart = targetDate.atTime(businessStart, 0);
-        LocalDateTime dayEnd = targetDate.atTime(businessEnd, 0);
-        LocalDateTime now = LocalDateTime.now();
-
-        // 如果查询的是今天，起始时间从当前时间开始
-        if (targetDate.equals(LocalDate.now()) && now.isAfter(dayStart)) {
-            dayStart = now.withMinute(0).withSecond(0).withNano(0).plusHours(1);
-        }
-
-        // 获取当日所有预订，按开始时间排序
-        List<SysScheduleEvent> bookings = baseMapper.getRoomEvents(roomId, dayStart, dayEnd);
-        bookings.sort((a, b) -> a.getStartTime().compareTo(b.getStartTime()));
-
-        List<Map<String, String>> freeSlots = new ArrayList<>();
-        LocalDateTime cursor = dayStart;
-
-        for (SysScheduleEvent booking : bookings) {
-            LocalDateTime bookingStart = booking.getStartTime().isBefore(dayStart) ? dayStart : booking.getStartTime();
-            LocalDateTime bookingEnd = booking.getEndTime().isAfter(dayEnd) ? dayEnd : booking.getEndTime();
-
-            // cursor 到 bookingStart 之间是空闲时段
-            if (cursor.isBefore(bookingStart)) {
-                Map<String, String> slot = new LinkedHashMap<>();
-                slot.put("start", cursor.format(DTF));
-                slot.put("end", bookingStart.format(DTF));
-                freeSlots.add(slot);
-            }
-            // cursor 移到 bookingEnd
-            if (bookingEnd.isAfter(cursor)) {
-                cursor = bookingEnd;
-            }
-        }
-
-        // cursor 到 dayEnd 之间是空闲时段
-        if (cursor.isBefore(dayEnd)) {
-            Map<String, String> slot = new LinkedHashMap<>();
-            slot.put("start", cursor.format(DTF));
-            slot.put("end", dayEnd.format(DTF));
-            freeSlots.add(slot);
-        }
-
-        return freeSlots;
+        return meetingQueries.freeSlots(roomId, LocalDate.parse(date, DATE_ONLY));
     }
 }

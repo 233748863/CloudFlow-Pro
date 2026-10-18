@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaConsumableRequestItemMapper">
+    <select id="items" resultType="com.cloudflow.oa.domain.OaConsumableRequestItem">
+        SELECT * FROM oa_consumable_request_item WHERE tenant_id = #{tenantId} AND request_id = #{requestId}
+        ORDER BY sort_no, item_id
+    </select>
+    <select id="lockItems" resultType="com.cloudflow.oa.domain.OaConsumableRequestItem">
+        SELECT * FROM oa_consumable_request_item WHERE tenant_id = #{tenantId} AND request_id = #{requestId}
+        ORDER BY item_id FOR UPDATE
+    </select>
+    <update id="saveState">
+        UPDATE oa_consumable_request_item SET approved_quantity = #{record.approvedQuantity},
+            issued_quantity = #{record.issuedQuantity}, returned_quantity = #{record.returnedQuantity},
+            unit_price = #{record.unitPrice}, amount = #{record.amount}, issued_amount = #{record.issuedAmount},
+            returned_amount = #{record.returnedAmount}, update_by = #{record.updateBy},
+            update_time = #{record.updateTime}, version = version + 1
+        WHERE tenant_id = #{record.tenantId} AND request_id = #{record.requestId} AND item_id = #{record.itemId}
+            AND version = #{record.version}
+    </update>
+    <delete id="replaceDraftLines">
+        DELETE FROM oa_consumable_request_item WHERE tenant_id = #{tenantId} AND request_id = #{requestId}
+            AND issued_quantity = 0 AND returned_quantity = 0
+            AND EXISTS(SELECT 1 FROM oa_consumable_request request
+                WHERE request.tenant_id = #{tenantId} AND request.request_id = #{requestId}
+                    AND request.deleted = 0 AND request.status IN ('DRAFT', 'REJECTED'))
+    </delete>
+</mapper>

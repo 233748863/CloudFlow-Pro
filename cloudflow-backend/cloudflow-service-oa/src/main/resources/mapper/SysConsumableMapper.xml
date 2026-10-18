@@ -5,10 +5,69 @@
     <select id="selectLowStockList" resultType="com.cloudflow.oa.domain.SysConsumable">
         SELECT *
         FROM oa_consumable
-        WHERE quantity &lt;= low_stock_threshold
+        WHERE tenant_id = #{tenantId} AND quantity &lt;= low_stock_threshold
           AND warn_enabled = 1
           AND deleted = 0
         ORDER BY quantity ASC
     </select>
 
+    <select id="selectForUpdate" resultType="com.cloudflow.oa.domain.SysConsumable">
+        SELECT * FROM oa_consumable WHERE tenant_id = #{tenantId} AND consumable_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <update id="updateBalance">
+        UPDATE oa_consumable SET quantity = #{record.quantity}, stock_amount = #{record.stockAmount},
+            avg_cost = #{record.avgCost}, last_purchase_price = #{record.lastPurchasePrice},
+            last_calc_time = #{record.lastCalcTime}, version = version + 1,
+            update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND consumable_id = #{record.consumableId}
+            AND deleted = 0 AND version = #{record.version}
+    </update>
+    <update id="updateMaster">
+        UPDATE oa_consumable SET name = #{record.name}, model = #{record.model}, unit = #{record.unit},
+            category_id = #{record.categoryId}, brand = #{record.brand}, low_stock_threshold = #{record.lowStockThreshold},
+            target_stock = #{record.targetStock}, max_stock = #{record.maxStock}, default_supplier_id = #{record.defaultSupplierId},
+            warn_enabled = #{record.warnEnabled}, storage_location = #{record.storageLocation}, status = #{record.status},
+            version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND consumable_id = #{record.consumableId}
+            AND deleted = 0 AND version = #{record.version}
+    </update>
+    <update id="softDelete">
+        UPDATE oa_consumable SET deleted = 1, version = version + 1,
+            update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE tenant_id = #{record.tenantId} AND consumable_id = #{record.consumableId}
+            AND deleted = 0 AND version = #{record.version} AND quantity = 0 AND stock_amount = 0
+    </update>
+    <select id="referenceCount" resultType="int">
+        SELECT (EXISTS(SELECT 1 FROM biz_purchase_item WHERE tenant_id = #{tenantId} AND consumable_id = #{id}))
+             + (EXISTS(SELECT 1 FROM oa_consumable_ledger WHERE tenant_id = #{tenantId} AND consumable_id = #{id}))
+             + (EXISTS(SELECT 1 FROM oa_consumable_request_item WHERE tenant_id = #{tenantId} AND consumable_id = #{id}))
+    </select>
+    <select id="categories" resultType="com.cloudflow.oa.domain.vo.ConsumableResults$Category">
+        SELECT CAST(dict_code AS CHAR) AS category_id, dict_label AS label, dict_value AS value
+        FROM sys_dict_data WHERE tenant_id = #{tenantId} AND dict_type = 'oa_consumable_category' AND status = '0'
+        ORDER BY dict_sort, dict_code
+    </select>
+    <select id="categoryExists" resultType="int">
+        SELECT COUNT(*) FROM sys_dict_data WHERE tenant_id = #{tenantId} AND dict_type = 'oa_consumable_category'
+            AND status = '0' AND dict_code = #{id}
+    </select>
+    <select id="catalog" resultType="com.cloudflow.oa.domain.vo.ConsumableResults$CatalogItem">
+        SELECT CAST(consumable_id AS CHAR) AS consumable_id, name, model, unit, quantity, CAST(category_id AS CHAR) AS category_id
+        FROM oa_consumable WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = 'ACTIVE'
+        <if test="query.keyword != null and query.keyword != ''">
+            AND (name LIKE CONCAT('%', #{query.keyword}, '%') OR model LIKE CONCAT('%', #{query.keyword}, '%'))
+        </if>
+        <if test="query.categoryId != null">AND category_id = #{query.categoryId}</if>
+        ORDER BY name, consumable_id
+    </select>
+    <select id="batchIds" resultType="long">
+        SELECT consumable_id FROM oa_consumable WHERE tenant_id = #{tenantId} AND deleted = 0
+            AND consumable_id &gt; #{afterId} ORDER BY consumable_id LIMIT 100
+    </select>
+    <update id="closeRecoveredRisks">
+        UPDATE oa_risk_alert SET risk_status = 'CLOSED', handled_time = CURRENT_TIMESTAMP,
+            handle_remark = '耗材库存已恢复至预警阈值之上', update_by = 'system', update_time = CURRENT_TIMESTAMP
+        WHERE tenant_id = #{tenantId} AND business_type = 'CONSUMABLE' AND business_id = #{id}
+            AND risk_code = 'CONSUMABLE_LOW_STOCK' AND risk_status IN ('OPEN', 'HANDLING', 'IGNORED')
+    </update>
 </mapper>

@@ -27,7 +27,18 @@ public class RemoteBusinessRuleFallbackFactory implements FallbackFactory<Remote
             public R<Void> recordHit(BusinessRuleHitRecordDTO record) {
                 log.warn("业务规则命中记录写入失败，ruleCode={}, cause={}",
                         record == null ? null : record.getRuleCode(), cause.getMessage());
-                return R.ok();
+                return R.fail(503, "业务规则命中记录暂时无法保存");
+            }
+
+            @Override
+            public R<BusinessRuleDTO> getEffectiveProjectRule(String ruleCode) {
+                log.warn("项目工时规则读取失败，ruleCode={}", ruleCode);
+                return R.fail(503, "项目工时规则暂时无法读取");
+            }
+
+            @Override
+            public R<Void> recordProjectHit(BusinessRuleHitRecordDTO record) {
+                return recordHit(record);
             }
         };
     }

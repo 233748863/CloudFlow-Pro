@@ -37,21 +37,23 @@ public class MeetingRoomController {
     @PostMapping
     @SaCheckPermission("oa:meeting-room:add")
     public R<Boolean> add(@RequestBody MeetingRoom meetingRoom) {
-        return R.ok(meetingRoomService.save(meetingRoom));
+        return R.ok(meetingRoomService.createRoom(meetingRoom));
     }
 
     @SysLog("编辑会议室")
+    @RepeatSubmit
     @PutMapping
     @SaCheckPermission("oa:meeting-room:edit")
     public R<Boolean> edit(@RequestBody MeetingRoom meetingRoom) {
-        return R.ok(meetingRoomService.updateById(meetingRoom));
+        return R.ok(meetingRoomService.updateRoom(meetingRoom));
     }
 
     @SysLog("删除会议室")
+    @RepeatSubmit
     @DeleteMapping("/{id}")
     @SaCheckPermission("oa:meeting-room:remove")
-    public R<Boolean> remove(@PathVariable("id") Long id) {
-        return R.ok(meetingRoomService.removeById(id));
+    public R<Boolean> remove(@PathVariable("id") Long id, @RequestParam("version") Integer version) {
+        return R.ok(meetingRoomService.removeRoom(id, version));
     }
 }
 

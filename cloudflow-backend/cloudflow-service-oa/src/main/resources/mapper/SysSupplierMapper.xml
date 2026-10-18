@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.SysSupplierMapper">
+    <select id="selectForUpdate" resultType="com.cloudflow.oa.domain.SysSupplier">
+        SELECT * FROM oa_supplier WHERE supplier_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="countReferences" resultType="long">
+        SELECT (SELECT COUNT(*) FROM biz_purchase_request WHERE supplier_id = #{id} AND tenant_id = #{tenantId})
+             + (SELECT COUNT(*) FROM oa_purchase_rfq_supplier WHERE supplier_id = #{id} AND tenant_id = #{tenantId})
+             + (SELECT COUNT(*) FROM oa_contract WHERE supplier_id = #{id} AND tenant_id = #{tenantId})
+             + (SELECT COUNT(*) FROM oa_asset_repair WHERE supplier_id = #{id} AND tenant_id = #{tenantId})
+             + (SELECT COUNT(*) FROM oa_supplier_qualification WHERE supplier_id = #{id} AND tenant_id = #{tenantId})
+    </select>
+</mapper>

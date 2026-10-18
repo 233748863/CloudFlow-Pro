@@ -17,6 +17,15 @@ spring:
         enabled: true
       client:
         config:
+          oaFinanceFiles:
+            connect-timeout: 3000
+            read-timeout: 10000
+          meetingRoomFiles:
+            connect-timeout: 3000
+            read-timeout: 10000
+          oaRemoteWorkflowService:
+            connect-timeout: 3000
+            read-timeout: 10000
           cloudflow-service-crm:
             connect-timeout: 1000
             read-timeout: 2000
@@ -65,6 +74,24 @@ spring:
       database: 0
       timeout: 3000ms
 
+resilience4j:
+  timelimiter:
+    instances:
+      RemoteFinanceFileServiceuploadStringLongMultipartFile:
+        timeout-duration: 15s
+      RemoteWorkflowServicestartProcessInternalInternalWorkflowStartDTO:
+        timeout-duration: 15s
+      RemoteWorkflowServiceinvalidateByBusinessBusinessProcessInvalidateDTO:
+        timeout-duration: 15s
+      RemoteMeetingRoomFileServiceuploadLongMultipartFile:
+        timeout-duration: 15s
+      RemoteMeetingRoomFileServicecontentLongLong:
+        timeout-duration: 15s
+      RemoteContractTeamDirectoryemployeesList:
+        timeout-duration: 5s
+      RemoteCrmServicesyncReceivableInvoiceStatusStringStringLongInvoiceStatusSyncRequest:
+        timeout-duration: 5s
+
 # MyBatis Plus配置
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -94,6 +121,8 @@ sa-token:
 
 # 日志配置
 logging:
+  pattern:
+    level: '%5p [traceId=%X{traceId}]'
   level:
     root: INFO
     com.cloudflow.oa: ${LOG_LEVEL_APP:INFO}
@@ -125,3 +154,12 @@ info:
     name: ${spring.application.name}
     description: CloudFlow OA Service
     version: 1.0.0
+
+cloudflow:
+  job:
+    internal-auth:
+      keys:
+        cloudflow-auth: ${CLOUDFLOW_JOB_AUTH_KEY:}
+        cloudflow-service-oa: ${CLOUDFLOW_JOB_OA_KEY:}
+  import:
+    enabled: true

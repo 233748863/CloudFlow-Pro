@@ -2,6 +2,7 @@ package com.cloudflow.oa.service.impl;
 
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.OaTraceEvent;
@@ -14,7 +15,8 @@ import com.cloudflow.oa.service.IOaContractMilestoneService;
 import com.cloudflow.oa.service.IOaRiskAlertService;
 import com.cloudflow.oa.service.IOaTraceEventService;
 import com.cloudflow.oa.service.IWorkplaceService;
-import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.oa.domain.OaMessageRecord;
+import com.cloudflow.oa.mapper.OaMessageRecordMapper;
 import com.cloudflow.oa.service.ISysScheduleService;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import com.cloudflow.oa.service.remote.RemoteCrmWorkplaceService;
@@ -61,7 +63,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     private ISysScheduleService sysScheduleService;
 
     @Autowired
-    private ISysNoticeService sysNoticeService;
+    private OaMessageRecordMapper messageRecordMapper;
 
     @Autowired
     private ISysAnnouncementService sysAnnouncementService;
@@ -166,7 +168,12 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             
             // 未读消息数量
             try {
-                long unreadCount = sysNoticeService.getUnreadCount(userId);
+                long unreadCount = messageRecordMapper.selectCount(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OaMessageRecord>()
+                        .eq(OaMessageRecord::getTenantId, UserContext.getTenantId())
+                        .eq(OaMessageRecord::getReceiverId, userId)
+                        .eq(OaMessageRecord::getChannelType, "INTERNAL")
+                        .eq(OaMessageRecord::getReadFlag, 0)
+                        .eq(OaMessageRecord::getSendStatus, "SUCCESS"));
                 statistics.setUnreadMessages((int) unreadCount);
                 stats.setUnreadMessages((int) unreadCount);
                 log.debug("未读消息数量: {}", statistics.getUnreadMessages());
@@ -396,7 +403,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     private RemoteCrmWorkplaceService.CrmDashboardWorkplaceResponse loadCrmWorkplace(
             Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth) {
         try {
-            var response = remoteCrmWorkplaceService.getDashboardWorkplace();
+            R<RemoteCrmWorkplaceService.CrmDashboardWorkplaceResponse> response = remoteCrmWorkplaceService.getDashboardWorkplace();
             if (response == null || !response.isSuccess() || response.getData() == null) {
                 markService(serviceHealth, "crm", false, "CRM 工作台返回异常");
                 return null;
@@ -671,7 +678,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     private List<WorkplaceSummaryDTO.RiskItem> loadHrReminders(Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth,
                                                                Long userId) {
         try {
-            var response = remoteHrWorkplaceService.listReminders(userId, 30, 8);
+            R<List<RemoteHrWorkplaceService.HrReminderItem>> response = remoteHrWorkplaceService.listReminders(userId, 30, 8);
             if (response == null || !response.isSuccess() || response.getData() == null) {
                 markService(serviceHealth, "hr", false, "HR 提醒返回异常");
                 return new ArrayList<>();

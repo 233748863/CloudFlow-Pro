@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.PortalContractMapper">
+    <sql id="activeIdentity">
+        SELECT 1 FROM sys_portal_user portal_user
+        JOIN crm_contact contact ON contact.tenant_id = portal_user.tenant_id
+            AND contact.contact_id = portal_user.ref_biz_id AND contact.customer_id = portal_user.customer_id
+        JOIN crm_customer customer ON customer.tenant_id = contact.tenant_id AND customer.customer_id = contact.customer_id
+        JOIN sys_tenant tenant ON tenant.tenant_id = portal_user.tenant_id
+        WHERE portal_user.tenant_id = #{identity.tenantId} AND portal_user.portal_user_id = #{identity.portalUserId}
+            AND portal_user.customer_id = #{identity.customerId} AND portal_user.ref_biz_id = #{identity.contactId}
+            AND portal_user.user_type = 'CUSTOMER_CONTACT' AND portal_user.ref_biz_type = 'CRM_CONTACT'
+            AND portal_user.status = 'ACTIVE' AND portal_user.deleted = 0
+            AND portal_user.session_version = #{identity.sessionVersion}
+            AND contact.version = #{identity.contactVersion} AND contact.status = 'ACTIVE' AND contact.deleted = 0
+            AND customer.status = 'ACTIVE' AND customer.deleted = 0
+            AND tenant.status = '0' AND tenant.deleted = 0
+            AND (tenant.expire_time IS NULL OR tenant.expire_time &gt; CURRENT_TIMESTAMP)
+    </sql>
+    <select id="activeIdentity" resultType="boolean">
+        SELECT EXISTS(<include refid="activeIdentity" />)
+    </select>
+    <sql id="openingConditions">
+        contract.deleted = 0 AND contract.customer_id IS NOT NULL
+        AND contract.status IN ('APPROVED', 'SEALING', 'SEALED', 'ACTIVE', 'EXPIRED', 'TERMINATED')
+        AND contract.signed_flag = 1 AND contract.our_signee_id &gt; 0
+        AND contract.our_sign_time IS NOT NULL AND contract.our_sign_time &lt;= #{now}
+        AND contract.counterparty_sign_time IS NOT NULL AND contract.counterparty_sign_time &lt;= #{now}
+        AND contract.counterparty_signee REGEXP '[^[:space:]]'
+        AND contract.signed_file_url REGEXP '[^[:space:]]'
+        AND EXISTS(SELECT 1 FROM wf_process_instance approval
+            WHERE approval.tenant_id = contract.tenant_id AND approval.instance_id = contract.instance_id
+                AND approval.business_key = CONCAT('CONTRACT:', contract.contract_id)
+                AND approval.process_def_key = 'biz_contract' AND approval.status IN ('PASSED', 'AUTO_PASSED')
+                AND approval.deleted = 0 AND approval.end_time IS NOT NULL AND approval.end_time &lt;= #{now})
+    </sql>
+    <sql id="portalScope">
+        contract.tenant_id = #{identity.tenantId} AND contract.customer_id = #{identity.customerId}
+        AND <include refid="openingConditions" />
+        AND EXISTS(<include refid="activeIdentity" />)
+    </sql>
+    <sql id="contractColumns">
+        contract.contract_id, contract.contract_no, contract.contract_name, contract.counterparty_name,
+        CAST(contract.amount AS CHAR) AS amount, contract.currency, contract.start_date, contract.end_date,
+        CASE WHEN contract.status IN ('ACTIVE', 'EXPIRED', 'TERMINATED') THEN contract.status ELSE 'SIGNED' END AS status
+    </sql>
+    <sql id="termColumns">
+        term.term_id, term.term_no, term.term_category, term.term_content, term.requirement, term.responsible_party,
+        term.deadline_date, term.fulfilled_date,
+        CASE WHEN term.waived_flag = 1 THEN 'WAIVED' WHEN term.fulfilled_flag = 1 THEN 'FULFILLED'
+            WHEN term.deadline_date &lt; DATE(#{now}) THEN 'OVERDUE' ELSE 'PENDING' END AS status
+    </sql>
+    <sql id="milestoneColumns">
+        milestone.id, milestone.milestone_no, milestone.milestone_name, milestone.milestone_type,
+        milestone.planned_date, milestone.actual_date, CAST(milestone.amount AS CHAR) AS amount, contract.currency,
+        CASE WHEN milestone.status IN ('PENDING', 'IN_PROGRESS', 'DONE', 'OVERDUE', 'CANCELLED')
+            THEN milestone.status ELSE 'UNKNOWN' END AS status
+    </sql>
+    <sql id="paymentColumns">
+        schedule.id, schedule.payment_no, schedule.payment_name, schedule.plan_date, schedule.actual_date,
+        CAST(schedule.amount AS CHAR) AS amount, CAST(schedule.actual_amount AS CHAR) AS actual_amount, schedule.currency,
+        CASE WHEN schedule.status IN ('PENDING', 'PAID', 'OVERDUE', 'CANCELLED') THEN schedule.status ELSE 'UNKNOWN' END AS status
+    </sql>
+    <select id="opened" resultType="com.cloudflow.common.core.domain.PortalContractVO">
+        SELECT <include refid="contractColumns" /> FROM oa_contract contract
+        WHERE <include refid="portalScope" />
+        <if test="keyword != null and keyword != ''">
+            AND (contract.contract_no LIKE CONCAT('%', #{keyword}, '%') OR contract.contract_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY contract.contract_id DESC
+    </select>
+    <select id="detail" resultType="com.cloudflow.common.core.domain.PortalContractVO">
+        SELECT <include refid="contractColumns" /> FROM oa_contract contract
+        WHERE <include refid="portalScope" /> AND contract.contract_id = #{contractId}
+    </select>
+    <select id="terms" resultType="com.cloudflow.common.core.domain.PortalContractVO$Term">
+        SELECT <include refid="termColumns" /> FROM oa_contract_fulfilment_term term
+        JOIN oa_contract contract ON contract.tenant_id = term.tenant_id AND contract.contract_id = term.contract_id
+        WHERE <include refid="portalScope" /> AND contract.contract_id = #{contractId} AND term.deleted = 0
+            AND JSON_TYPE(contract.portal_term_ids) = 'ARRAY'
+            AND JSON_CONTAINS(contract.portal_term_ids, JSON_ARRAY(term.term_id)) = 1
+        ORDER BY term.sort_no, term.term_no, term.term_id
+    </select>
+    <select id="milestones" resultType="com.cloudflow.common.core.domain.PortalContractVO$Milestone">
+        SELECT <include refid="milestoneColumns" /> FROM oa_contract_milestone milestone
+        JOIN oa_contract contract ON contract.tenant_id = milestone.tenant_id AND contract.contract_id = milestone.contract_id
+        WHERE <include refid="portalScope" /> AND contract.contract_id = #{contractId} AND milestone.deleted = 0
+            AND JSON_TYPE(contract.portal_milestone_ids) = 'ARRAY'
+            AND JSON_CONTAINS(contract.portal_milestone_ids, JSON_ARRAY(milestone.id)) = 1
+        ORDER BY milestone.milestone_no, milestone.id
+    </select>
+    <select id="payments" resultType="com.cloudflow.common.core.domain.PortalContractVO$PaymentSchedule">
+        SELECT <include refid="paymentColumns" /> FROM oa_contract_payment_schedule schedule
+        JOIN oa_contract contract ON contract.tenant_id = schedule.tenant_id AND contract.contract_id = schedule.contract_id
+        WHERE <include refid="portalScope" /> AND contract.contract_id = #{contractId} AND schedule.deleted = 0
+            AND JSON_TYPE(contract.portal_payment_schedule_ids) = 'ARRAY'
+            AND JSON_CONTAINS(contract.portal_payment_schedule_ids, JSON_ARRAY(schedule.id)) = 1
+        ORDER BY schedule.payment_no, schedule.id
+    </select>
+</mapper>

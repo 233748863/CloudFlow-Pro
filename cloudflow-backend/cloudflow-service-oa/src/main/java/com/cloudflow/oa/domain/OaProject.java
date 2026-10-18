@@ -61,4 +61,25 @@ public class OaProject implements Serializable {
     private String updateBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+
+    private BigDecimal estimatedCost;
+
+    private BigDecimal laborCostAmount;
+
+    private BigDecimal purchaseCostAmount;
+
+    private BigDecimal otherCostAmount;
+
+    private BigDecimal billableAmount;
+
+    private BigDecimal billedAmount;
+
+    private BigDecimal grossMargin;
+
+    @com.baomidou.mybatisplus.annotation.TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private BigDecimal grossMarginRate;
+
+    private BigDecimal actualHours;
+
+    private String percentCompleteMode;
 }

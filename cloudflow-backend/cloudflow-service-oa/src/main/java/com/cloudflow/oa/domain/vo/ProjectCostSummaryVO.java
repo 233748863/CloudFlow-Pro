@@ -12,4 +12,8 @@ public class ProjectCostSummaryVO {
     private BigDecimal purchaseAmount = BigDecimal.ZERO;
     private BigDecimal paymentAmount = BigDecimal.ZERO;
     private BigDecimal totalAmount = BigDecimal.ZERO;
+    private BigDecimal laborAmount = BigDecimal.ZERO;
+    private BigDecimal otherAmount = BigDecimal.ZERO;
+    private BigDecimal billableAmount = BigDecimal.ZERO;
+    private BigDecimal billedAmount = BigDecimal.ZERO;
 }

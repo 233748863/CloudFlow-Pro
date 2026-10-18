@@ -45,6 +45,12 @@ public class VehicleFuelLog {
 
     private BigDecimal driveDistance;
 
+    /**
+     * 必须显式指定列名：MyBatis-Plus 默认驼峰转下划线不在字母与数字之间断词，
+     * fuelPer100km 会被推成 fuel_per100km，而建表列是 fuel_per_100km，
+     * 生成的 SQL 直接 Unknown column（车辆详情弹窗「最近费用」实测报服务异常）。
+     */
+    @TableField("fuel_per_100km")
     private BigDecimal fuelPer100km;
 
     private String stationName;

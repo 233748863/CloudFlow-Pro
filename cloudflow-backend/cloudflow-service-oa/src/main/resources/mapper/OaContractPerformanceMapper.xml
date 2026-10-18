@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaContractPerformanceMapper">
+    <select id="latest" resultType="com.cloudflow.common.event.outbox.OutboxEvent">
+        SELECT * FROM outbox_event WHERE tenant_id = #{tenantId} AND aggregate_id = #{id}
+            AND aggregate_type = 'cloudflow-service-oa' AND event_type = 'CONTRACT_PERFORMANCE_CHANGED'
+        ORDER BY id DESC LIMIT 1
+    </select>
+    <select id="approvedTime" resultType="java.time.LocalDateTime">
+        SELECT end_time FROM wf_process_instance WHERE tenant_id = #{contract.tenantId}
+            AND instance_id = #{contract.instanceId} AND business_key = CONCAT('CONTRACT:', #{contract.contractId})
+            AND process_def_key = 'biz_contract' AND status IN ('PASSED', 'AUTO_PASSED') AND deleted = 0
+    </select>
+    <select id="customerExists" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM crm_customer WHERE tenant_id = #{tenantId} AND customer_id = #{id} AND deleted = 0)
+    </select>
+    <select id="dueContracts" resultType="long">
+        SELECT contract_id FROM oa_contract WHERE tenant_id = #{tenantId} AND deleted = 0 AND contract_id &gt; #{afterId}
+            AND customer_id IS NOT NULL AND contract_type IN ('SALES', 'SERVICE', 'OTHER')
+            AND ((signed_flag = 1 AND start_date &lt;= #{today} AND status IN ('APPROVED', 'SEALING', 'SEALED', 'ACTIVE'))
+                OR (status IN ('CANCELLED', 'TERMINATED') AND EXISTS(SELECT 1 FROM outbox_event source
+                    WHERE source.tenant_id = oa_contract.tenant_id AND source.aggregate_id = oa_contract.contract_id
+                        AND source.aggregate_type = 'cloudflow-service-oa' AND source.event_type = 'CONTRACT_PERFORMANCE_CHANGED')))
+        ORDER BY contract_id LIMIT #{limit}
+    </select>
+    <update id="completeStartDate">
+        UPDATE oa_contract SET start_date = #{contract.startDate}, version = version + 1,
+            update_by = #{contract.updateBy}, update_time = #{contract.updateTime}
+        WHERE tenant_id = #{contract.tenantId} AND contract_id = #{contract.contractId}
+            AND deleted = 0 AND version = #{contract.version} AND start_date IS NULL
+    </update>
+    <select id="confirmation" resultType="com.cloudflow.oa.mapper.OaContractPerformanceMapper$Confirmation">
+        SELECT event_id, amount, currency, team_version, source_snapshot FROM crm_deal_event
+        WHERE tenant_id = #{tenantId} AND biz_type = 'CONTRACT' AND biz_id = #{id}
+            AND event_type = 'CONTRACT' AND event_key = #{eventKey} AND baseline_flag = 0
+    </select>
+</mapper>

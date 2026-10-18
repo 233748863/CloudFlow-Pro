@@ -17,6 +17,10 @@ import java.util.Map;
 @Mapper
 public interface BizPaymentRequestMapper extends BaseMapper<BizPaymentRequest> {
 
+    BizPaymentRequest selectByIdWithDataScope(@Param("id") Long id,
+                                              @Param("tenantId") Long tenantId,
+                                              @Param("dataScope") DataScope dataScope);
+
     IPage<BizPaymentRequest> selectPageByDataScope(Page<BizPaymentRequest> page,
                                                    @Param("status") String status,
                                                    @Param("paymentType") String paymentType,

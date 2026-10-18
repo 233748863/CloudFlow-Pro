@@ -1,5 +1,9 @@
 package com.cloudflow.oa.domain;
 
+import java.time.LocalDate;
+
+import java.math.BigDecimal;
+
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -56,4 +60,80 @@ public class SysSupplier implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    private String supplierCode;
+
+    private String supplierType;
+
+    private Long categoryId;
+
+    private String shortName;
+
+    private String creditCode;
+
+    private String legalPerson;
+
+    private BigDecimal registerCapital;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate registerDate;
+
+    private String businessScope;
+
+    private String address;
+
+    private String province;
+
+    private String city;
+
+    private String contactEmail;
+
+    private String taxNo;
+
+    private BigDecimal taxRate;
+
+    private String paymentTerms;
+
+    private String currency;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate cooperationStartDate;
+
+    private String levelCode;
+
+    private BigDecimal score;
+
+    private String standing;
+
+    private String indicatorColor;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime lastScoreTime;
+
+    private Integer blacklistFlag;
+
+    private String blacklistReason;
+
+    private Long blacklistBy;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime blacklistTime;
+
+    private Integer preventPurchaseFlag;
+
+    private Integer preventRfqFlag;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate qualificationExpireDate;
+
+    private String instanceId;
+
+    private Integer bypassFlag;
+
+    private String bypassReason;
+
+    private Long bypassBy;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate bypassExpireDate;
 }

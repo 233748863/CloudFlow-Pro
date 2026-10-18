@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
@@ -21,9 +22,9 @@ import com.cloudflow.oa.domain.OaInvoice;
 import com.cloudflow.oa.domain.OaProject;
 import com.cloudflow.oa.domain.OaProjectDependency;
 import com.cloudflow.oa.domain.OaProjectMember;
-import com.cloudflow.oa.domain.OaProjectMilestone;
+import com.cloudflow.oa.domain.OaProjectTask;
 import com.cloudflow.oa.domain.OaProjectRisk;
-import com.cloudflow.oa.domain.WorkTask;
+
 import com.cloudflow.oa.domain.dto.ProjectWbsTreeNodeDTO;
 import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
@@ -41,10 +42,10 @@ import com.cloudflow.oa.mapper.OaInvoiceMapper;
 import com.cloudflow.oa.mapper.OaProjectDependencyMapper;
 import com.cloudflow.oa.mapper.OaProjectMapper;
 import com.cloudflow.oa.mapper.OaProjectMemberMapper;
-import com.cloudflow.oa.mapper.OaProjectMilestoneMapper;
+
 import com.cloudflow.oa.mapper.OaProjectRiskMapper;
 import com.cloudflow.oa.service.IOaProjectService;
-import com.cloudflow.oa.service.IWorkTaskService;
+
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -73,10 +74,10 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     private final RemoteWorkflowService remoteWorkflowService;
     private final OaWorkflowFailureHelper workflowFailureHelper;
     private final OaProjectMemberMapper projectMemberMapper;
-    private final OaProjectMilestoneMapper projectMilestoneMapper;
+    private final OaProjectTaskService projectTaskService;
     private final OaProjectRiskMapper projectRiskMapper;
     private final OaProjectDependencyMapper projectDependencyMapper;
-    private final IWorkTaskService workTaskService;
+
     private final OaBudgetPlanMapper budgetPlanMapper;
     private final OaInvoiceMapper invoiceMapper;
     private final OaContractMapper contractMapper;
@@ -84,6 +85,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     private final BizPurchaseRequestMapper purchaseRequestMapper;
     private final BizPaymentRequestMapper paymentRequestMapper;
     private final OutboxPublisher outboxPublisher;
+    private final OaProjectAccountingService accounting;
     private final ObjectMapper objectMapper;
     private final ProjectExecutionStateService projectExecutionStateService;
 
@@ -104,6 +106,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public Long createProject(OaProject project) {
         validate(project);
         OaProject existed = findExistingSourceProject(project);
@@ -116,7 +119,9 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
                 : "PRJ" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         project.setStatus(StringUtils.hasText(project.getStatus()) ? project.getStatus() : "DRAFT");
         project.setProgress(project.getProgress() == null ? BigDecimal.ZERO : project.getProgress());
-        project.setActualCostAmount(project.getActualCostAmount() == null ? BigDecimal.ZERO : project.getActualCostAmount());
+        project.setActualCostAmount(BigDecimal.ZERO); project.setLaborCostAmount(BigDecimal.ZERO); project.setPurchaseCostAmount(BigDecimal.ZERO);
+        project.setBillableAmount(BigDecimal.ZERO); project.setBilledAmount(BigDecimal.ZERO); project.setActualHours(BigDecimal.ZERO);
+        project.setGrossMargin(BigDecimal.ZERO); project.setGrossMarginRate(null);
         project.setOwnerId(project.getOwnerId() == null ? UserContext.getUserId() : project.getOwnerId());
         project.setOwnerName(StringUtils.hasText(project.getOwnerName()) ? project.getOwnerName() : resolveUserName());
         project.setDeptId(project.getDeptId() == null ? UserContext.getDeptId() : project.getDeptId());
@@ -133,24 +138,30 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         if (!saved || project.getProjectId() == null) {
             throw new IllegalArgumentException("项目创建失败");
         }
+        accounting.recalculate(project.getProjectId());
         return project.getProjectId();
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     @Audit(name = "更新项目")
     public boolean updateProject(OaProject project) {
         if (project == null || project.getProjectId() == null) {
             throw new IllegalArgumentException("项目ID不能为空");
         }
         validate(project);
-        OaProject persisted = requireProject(project.getProjectId());
+        OaProject persisted = OaRecordSupport.active(baseMapper.selectForUpdate(project.getProjectId(), resolveTenantId()));
+        if (!Objects.equals(project.getVersion(), persisted.getVersion())) throw new IllegalStateException("记录已修改，请刷新后重试");
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(persisted, OaProject::getOwnerId, "项目");
         project.setTenantId(persisted.getTenantId());
         project.setProjectNo(StringUtils.hasText(project.getProjectNo()) ? project.getProjectNo() : persisted.getProjectNo());
         project.setInstanceId(persisted.getInstanceId());
         project.setStatus(StringUtils.hasText(project.getStatus()) ? project.getStatus() : persisted.getStatus());
-        project.setActualCostAmount(project.getActualCostAmount() == null ? persisted.getActualCostAmount() : project.getActualCostAmount());
+        project.setActualCostAmount(persisted.getActualCostAmount()); project.setLaborCostAmount(persisted.getLaborCostAmount());
+        project.setPurchaseCostAmount(persisted.getPurchaseCostAmount()); project.setBillableAmount(persisted.getBillableAmount());
+        project.setBilledAmount(persisted.getBilledAmount()); project.setActualHours(persisted.getActualHours());
+        project.setGrossMargin(persisted.getGrossMargin()); project.setGrossMarginRate(persisted.getGrossMarginRate());
         project.setOwnerId(project.getOwnerId() == null ? persisted.getOwnerId() : project.getOwnerId());
         project.setOwnerName(StringUtils.hasText(project.getOwnerName()) ? project.getOwnerName() : persisted.getOwnerName());
         project.setDeptId(project.getDeptId() == null ? persisted.getDeptId() : project.getDeptId());
@@ -163,11 +174,14 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         project.setActualEndDate(persisted.getActualEndDate());
         project.setUpdateBy(UserContext.getUserName());
         project.setUpdateTime(LocalDateTime.now());
-        return updateById(project);
+        boolean updated = updateById(project);
+        OaRecordSupport.saved(updated ? 1 : 0);
+        if (updated) { accounting.recalculate(project.getProjectId()); projectExecutionStateService.syncProjectStatus(project.getProjectId(), resolveUserName()); }
+        return updated;
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public boolean submitProject(Long projectId) {
         OaProject project = requireProject(projectId);
         // M1-4: 所有权校验
@@ -219,7 +233,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
                     "workflow:stream:approval-callback:oa"
             );
             dto.setVariables(variables);
-            var result = remoteWorkflowService.startProcessInternal(dto);
+            R<?> result = remoteWorkflowService.startProcessInternal(dto);
             if (result != null && result.isSuccess() && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (StringUtils.hasText(instanceId)) {
@@ -270,21 +284,12 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
-    public List<OaProjectMilestone> listMilestones(Long projectId) {
-        requireProject(projectId);
-        return projectMilestoneMapper.selectList(new LambdaQueryWrapper<OaProjectMilestone>()
-                .eq(OaProjectMilestone::getProjectId, projectId)
-                .eq(OaProjectMilestone::getDeleted, "0")
-                .orderByAsc(OaProjectMilestone::getSortOrder)
-                .orderByAsc(OaProjectMilestone::getPlannedDate)
-                .orderByAsc(OaProjectMilestone::getMilestoneId));
+    public List<OaProjectTask> listMilestones(Long projectId) {
+        return projectTaskService.list(projectId).stream().filter(task -> Integer.valueOf(1).equals(task.getIsMilestoneFlag())).toList();
     }
 
     @Override
-    public List<WorkTask> listWbsTasks(Long projectId) {
-        requireProject(projectId);
-        return workTaskService.listProjectTasks(projectId);
-    }
+    public List<OaProjectTask> listWbsTasks(Long projectId) { return projectTaskService.list(projectId); }
 
     @Override
     public List<OaProjectDependency> listDependencies(Long projectId) {
@@ -309,132 +314,104 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
 
     @Override
     public ProjectCostSummaryVO getCostSummary(Long projectId) {
-        requireProject(projectId);
-        ProjectCostSummaryVO summary = new ProjectCostSummaryVO();
-        summary.setProjectId(projectId);
-        summary.setExpenseAmount(sumExpenseAmount(projectId));
-        summary.setPurchaseAmount(sumPurchaseAmount(projectId));
-        summary.setPaymentAmount(sumPaymentAmount(projectId));
-        summary.setTotalAmount(summary.getExpenseAmount()
-                .add(summary.getPurchaseAmount())
-                .add(summary.getPaymentAmount()));
+        OaProject project = requireProject(projectId);
+        ProjectCostSummaryVO summary = new ProjectCostSummaryVO(); summary.setProjectId(projectId);
+        summary.setExpenseAmount(sumExpenseAmount(projectId)); summary.setPaymentAmount(sumPaymentAmount(projectId));
+        summary.setPurchaseAmount(OaRecordSupport.zero(project.getPurchaseCostAmount()));
+        summary.setLaborAmount(OaRecordSupport.zero(project.getLaborCostAmount())); summary.setOtherAmount(OaRecordSupport.zero(project.getOtherCostAmount()));
+        summary.setBillableAmount(OaRecordSupport.zero(project.getBillableAmount())); summary.setBilledAmount(OaRecordSupport.zero(project.getBilledAmount()));
+        summary.setTotalAmount(OaRecordSupport.zero(project.getActualCostAmount()));
         return summary;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean addMember(OaProjectMember member) {
         if (member == null || member.getProjectId() == null || member.getUserId() == null) {
             throw new IllegalArgumentException("项目成员信息不完整");
         }
-        requireProject(member.getProjectId());
-        LocalDateTime now = LocalDateTime.now();
-        member.setTenantId(resolveTenantId());
+        OaRecordSupport.active(baseMapper.selectForUpdate(member.getProjectId(), resolveTenantId()));
+        validateMemberPeriod(member);
         member.setUserName(StringUtils.hasText(member.getUserName()) ? member.getUserName() : resolveUserName());
         member.setRoleCode(StringUtils.hasText(member.getRoleCode()) ? member.getRoleCode() : "MEMBER");
         member.setRoleName(StringUtils.hasText(member.getRoleName()) ? member.getRoleName() : "项目成员");
-        member.setBillableFlag(member.getBillableFlag() == null ? 1 : member.getBillableFlag());
-        member.setDeleted(0);
-        member.setCreateBy(resolveUserName());
-        member.setCreateTime(now);
-        member.setUpdateBy(resolveUserName());
-        member.setUpdateTime(now);
-        return projectMemberMapper.insert(member) > 0;
+        member.setBillableFlag(member.getBillableFlag() == null ? 1 : OaRecordSupport.flag(member.getBillableFlag()));
+        OaRecordSupport.create(member, "id");
+        OaRecordSupport.saved(projectMemberMapper.insert(member));
+        return true;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     @Audit(name = "更新项目成员", highRisk = true)
     public boolean updateMember(OaProjectMember member) {
         if (member == null || member.getId() == null || member.getProjectId() == null) {
             throw new IllegalArgumentException("项目成员ID不能为空");
         }
-        requireProject(member.getProjectId());
-        member.setUpdateBy(resolveUserName());
-        member.setUpdateTime(LocalDateTime.now());
-        return projectMemberMapper.updateById(member) > 0;
+        OaRecordSupport.active(baseMapper.selectForUpdate(member.getProjectId(), resolveTenantId()));
+        OaProjectMember previous = OaRecordSupport.active(projectMemberMapper.selectById(member.getId()));
+        OaRecordSupport.same(previous.getProjectId(), member.getProjectId(), "成员不能更换所属项目");
+        if (member.getUserId() != null) OaRecordSupport.same(previous.getUserId(), member.getUserId(), "成员不能更换员工");
+        member.setUserId(previous.getUserId());
+        if (member.getJoinDate() == null) member.setJoinDate(previous.getJoinDate());
+        if (!StringUtils.hasText(member.getUserName())) member.setUserName(previous.getUserName());
+        if (!StringUtils.hasText(member.getRoleCode())) member.setRoleCode(previous.getRoleCode());
+        if (!StringUtils.hasText(member.getRoleName())) member.setRoleName(previous.getRoleName());
+        member.setBillableFlag(member.getBillableFlag() == null ? previous.getBillableFlag() : OaRecordSupport.flag(member.getBillableFlag()));
+        validateMemberPeriod(member);
+        OaRecordSupport.update(member, previous);
+        OaRecordSupport.saved(projectMemberMapper.update(null, new LambdaUpdateWrapper<OaProjectMember>()
+                .eq(OaProjectMember::getId, member.getId()).eq(OaProjectMember::getTenantId, resolveTenantId())
+                .eq(OaProjectMember::getProjectId, previous.getProjectId()).eq(OaProjectMember::getDeleted, 0)
+                .set(OaProjectMember::getUserName, member.getUserName()).set(OaProjectMember::getRoleCode, member.getRoleCode())
+                .set(OaProjectMember::getRoleName, member.getRoleName()).set(OaProjectMember::getBillableFlag, member.getBillableFlag())
+                .set(OaProjectMember::getJoinDate, member.getJoinDate()).set(OaProjectMember::getLeaveDate, member.getLeaveDate())
+                .set(OaProjectMember::getUpdateBy, member.getUpdateBy()).set(OaProjectMember::getUpdateTime, member.getUpdateTime())));
+        return true;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     @Audit(name = "删除项目成员", highRisk = true)
     public boolean removeMembers(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return true;
+        if (ids == null || ids.isEmpty()) return true;
+        List<Long> memberIds = ids.stream().distinct().sorted().toList();
+        List<OaProjectMember> records = new ArrayList<>();
+        for (Long memberId : memberIds) records.add(OaRecordSupport.active(projectMemberMapper.selectById(memberId)));
+        for (Long projectId : records.stream().map(OaProjectMember::getProjectId).distinct().sorted().toList()) {
+            OaRecordSupport.active(baseMapper.selectForUpdate(projectId, resolveTenantId()));
         }
-        LambdaUpdateWrapper<OaProjectMember> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.in(OaProjectMember::getId, ids)
-                .set(OaProjectMember::getDeleted, "1")
-                .set(OaProjectMember::getUpdateBy, resolveUserName())
-                .set(OaProjectMember::getUpdateTime, LocalDateTime.now());
-        return projectMemberMapper.update(null, wrapper) > 0;
+        int affected = projectMemberMapper.update(null, new LambdaUpdateWrapper<OaProjectMember>()
+                .in(OaProjectMember::getId, memberIds).eq(OaProjectMember::getTenantId, resolveTenantId())
+                .eq(OaProjectMember::getDeleted, 0).set(OaProjectMember::getDeleted, 1)
+                .set(OaProjectMember::getUpdateBy, resolveUserName()).set(OaProjectMember::getUpdateTime, LocalDateTime.now()));
+        if (affected != memberIds.size()) throw new IllegalStateException("成员记录已修改，请刷新后重试");
+        return true;
+    }
+
+    private void validateMemberPeriod(OaProjectMember member) {
+        if (member.getJoinDate() != null && member.getLeaveDate() != null && member.getLeaveDate().isBefore(member.getJoinDate())) {
+            throw new IllegalArgumentException("退出日期不能早于加入日期");
+        }
     }
 
     @Override
-    public boolean addMilestone(OaProjectMilestone milestone) {
-        if (milestone == null || milestone.getProjectId() == null || !StringUtils.hasText(milestone.getMilestoneName())) {
-            throw new IllegalArgumentException("项目里程碑信息不完整");
-        }
-        requireProject(milestone.getProjectId());
-        LocalDateTime now = LocalDateTime.now();
-        milestone.setTenantId(resolveTenantId());
-        milestone.setMilestoneCode(StringUtils.hasText(milestone.getMilestoneCode())
-                ? milestone.getMilestoneCode()
-                : "MS" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
-        milestone.setOwnerId(milestone.getOwnerId() == null ? UserContext.getUserId() : milestone.getOwnerId());
-        milestone.setOwnerName(StringUtils.hasText(milestone.getOwnerName()) ? milestone.getOwnerName() : resolveUserName());
-        milestone.setProgress(milestone.getProgress() == null ? BigDecimal.ZERO : milestone.getProgress());
-        milestone.setBaselineDate(milestone.getBaselineDate() == null ? milestone.getPlannedDate() : milestone.getBaselineDate());
-        milestone.setSortOrder(milestone.getSortOrder() == null ? nextMilestoneSortOrder(milestone.getProjectId()) : milestone.getSortOrder());
-        normalizeMilestoneState(milestone, null);
-        milestone.setDeleted(0);
-        milestone.setCreateBy(resolveUserName());
-        milestone.setCreateTime(now);
-        milestone.setUpdateBy(resolveUserName());
-        milestone.setUpdateTime(now);
-        boolean inserted = projectMilestoneMapper.insert(milestone) > 0;
-        if (inserted) {
-            projectExecutionStateService.syncProjectStatus(milestone.getProjectId(), resolveUserName());
-        }
-        return inserted;
+    public boolean addMilestone(OaProjectTask milestone) {
+        milestone.setTaskId(null); milestone.setIsMilestoneFlag(1); milestone.setIsGroupFlag(0); projectTaskService.saveTask(milestone); return true;
     }
 
     @Override
     @Audit(name = "更新项目里程碑", highRisk = true)
-    public boolean updateMilestone(OaProjectMilestone milestone) {
-        if (milestone == null || milestone.getMilestoneId() == null || milestone.getProjectId() == null) {
-            throw new IllegalArgumentException("项目里程碑ID不能为空");
-        }
-        requireProject(milestone.getProjectId());
-        OaProjectMilestone persisted = projectMilestoneMapper.selectById(milestone.getMilestoneId());
-        normalizeMilestoneState(milestone, persisted);
-        milestone.setUpdateBy(resolveUserName());
-        milestone.setUpdateTime(LocalDateTime.now());
-        boolean updated = projectMilestoneMapper.updateById(milestone) > 0;
-        if (updated) {
-            syncProjectRiskLevel(milestone.getProjectId());
-            projectExecutionStateService.syncProjectStatus(milestone.getProjectId(), resolveUserName());
-        }
-        return updated;
+    public boolean updateMilestone(OaProjectTask milestone) {
+        if (!Integer.valueOf(1).equals(projectTaskService.detail(milestone.getTaskId()).getIsMilestoneFlag())) throw new IllegalArgumentException("指定任务不是里程碑");
+        milestone.setIsMilestoneFlag(1); milestone.setIsGroupFlag(0); projectTaskService.saveTask(milestone); syncProjectRiskLevel(milestone.getProjectId()); return true;
     }
 
     @Override
     @Audit(name = "删除项目里程碑", highRisk = true)
     public boolean removeMilestones(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return true;
-        }
-        List<OaProjectMilestone> milestones = projectMilestoneMapper.selectBatchIds(ids);
-        LambdaUpdateWrapper<OaProjectMilestone> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.in(OaProjectMilestone::getMilestoneId, ids)
-                .set(OaProjectMilestone::getDeleted, "1")
-                .set(OaProjectMilestone::getUpdateBy, resolveUserName())
-                .set(OaProjectMilestone::getUpdateTime, LocalDateTime.now());
-        boolean updated = projectMilestoneMapper.update(null, wrapper) > 0;
-        if (updated) {
-            milestones.stream().map(OaProjectMilestone::getProjectId).distinct().forEach(projectId -> {
-                syncProjectRiskLevel(projectId);
-                projectExecutionStateService.syncProjectStatus(projectId, resolveUserName());
-            });
-        }
-        return updated;
+        for (Long id : ids) if (!Integer.valueOf(1).equals(projectTaskService.detail(id).getIsMilestoneFlag())) throw new IllegalArgumentException("指定任务不是里程碑");
+        projectTaskService.removeTasks(ids); return true;
     }
 
     @Override
@@ -500,173 +477,34 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
-    public boolean addWbsTask(WorkTask task) {
-        if (task == null || task.getProjectId() == null || !StringUtils.hasText(task.getTitle())) {
-            throw new IllegalArgumentException("WBS任务信息不完整");
-        }
-        requireProject(task.getProjectId());
-        LocalDateTime now = LocalDateTime.now();
-        task.setTenantId(resolveTenantId());
-        task.setOwnerId(task.getOwnerId() == null ? UserContext.getUserId() : task.getOwnerId());
-        task.setAssigneeId(task.getAssigneeId() == null ? UserContext.getUserId() : task.getAssigneeId());
-        task.setDeptId(task.getDeptId() == null ? UserContext.getDeptId() : task.getDeptId());
-        task.setPriority(task.getPriority() == null ? 1 : task.getPriority());
-        task.setStatus(StringUtils.hasText(task.getStatus()) ? task.getStatus() : "TODO");
-        task.setWbsCode(StringUtils.hasText(task.getWbsCode()) ? task.getWbsCode() : nextWbsCode(task.getProjectId()));
-        task.setProgress(task.getProgress() == null ? BigDecimal.ZERO : task.getProgress());
-        task.setEstimatedHours(task.getEstimatedHours() == null ? BigDecimal.ZERO : task.getEstimatedHours());
-        task.setActualHours(task.getActualHours() == null ? BigDecimal.ZERO : task.getActualHours());
-        task.setBaselineStartTime(task.getBaselineStartTime() == null ? task.getPlannedStartTime() : task.getBaselineStartTime());
-        task.setBaselineEndTime(task.getBaselineEndTime() == null ? task.getPlannedEndTime() : task.getBaselineEndTime());
-        task.setSortOrder(task.getSortOrder() == null ? nextTaskSortOrder(task.getProjectId()) : task.getSortOrder());
-        task.setCreateBy(resolveUserName());
-        task.setCreateTime(now);
-        task.setUpdateBy(resolveUserName());
-        task.setUpdateTime(now);
-        task.setDeleted(0);
-        boolean saved = workTaskService.save(task);
-        if (saved) {
-            projectExecutionStateService.syncProjectStatus(task.getProjectId(), resolveUserName());
-        }
-        return saved;
-    }
+    public boolean addWbsTask(OaProjectTask task) { task.setTaskId(null); projectTaskService.saveTask(task); return true; }
 
     @Override
     @Audit(name = "更新WBS任务", highRisk = true)
-    public boolean updateWbsTask(WorkTask task) {
-        if (task == null || task.getTaskId() == null || task.getProjectId() == null) {
-            throw new IllegalArgumentException("WBS任务ID不能为空");
-        }
-        requireProject(task.getProjectId());
-        WorkTask persisted = workTaskService.getById(task.getTaskId());
-        if (persisted != null) {
-            task.setStatus(persisted.getStatus());
-            task.setActualStartTime(persisted.getActualStartTime());
-            task.setActualEndTime(persisted.getActualEndTime());
-            task.setProgress(task.getProgress() == null ? persisted.getProgress() : task.getProgress());
-        }
-        task.setUpdateBy(resolveUserName());
-        task.setUpdateTime(LocalDateTime.now());
-        boolean updated = workTaskService.updateById(task);
-        if (updated) {
-            projectExecutionStateService.syncProjectStatus(task.getProjectId(), resolveUserName());
-        }
-        return updated;
-    }
+    public boolean updateWbsTask(OaProjectTask task) { OaRecordSupport.require(task.getTaskId(), "任务ID不能为空"); projectTaskService.saveTask(task); return true; }
 
     @Override
     @Audit(name = "更新WBS树")
-    public boolean updateWbsTree(Long projectId, List<ProjectWbsTreeNodeDTO> nodes) {
-        requireProject(projectId);
-        if (nodes == null || nodes.isEmpty()) {
-            return true;
-        }
-        for (ProjectWbsTreeNodeDTO node : nodes) {
-            if (node == null || node.getTaskId() == null) {
-                continue;
-            }
-            WorkTask task = workTaskService.getById(node.getTaskId());
-            if (task == null || !Objects.equals(task.getProjectId(), projectId) || !Integer.valueOf(0).equals(task.getDeleted())) {
-                throw new IllegalArgumentException("WBS任务不存在或不属于当前项目");
-            }
-        }
-        return workTaskService.batchUpdateTree(nodes, resolveUserName());
-    }
+    public boolean updateWbsTree(Long projectId, List<ProjectWbsTreeNodeDTO> nodes) { projectTaskService.updateTree(projectId, nodes); return true; }
 
     @Override
     @Audit(name = "删除WBS任务", highRisk = true)
-    public boolean removeWbsTasks(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return true;
-        }
-        List<WorkTask> tasks = ids.stream()
-                .map(workTaskService::getById)
-                .filter(Objects::nonNull)
-                .toList();
-        boolean removed = workTaskService.removeProjectTasks(ids);
-        if (removed) {
-            tasks.stream()
-                    .map(WorkTask::getProjectId)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .forEach(projectId -> projectExecutionStateService.syncProjectStatus(projectId, resolveUserName()));
-        }
-        return removed;
-    }
+    public boolean removeWbsTasks(List<Long> ids) { projectTaskService.removeTasks(ids); return true; }
 
     @Override
-    public boolean addDependency(OaProjectDependency dependency) {
-        validateDependency(dependency, true);
-        LocalDateTime now = LocalDateTime.now();
-        dependency.setTenantId(resolveTenantId());
-        dependency.setDependencyType(StringUtils.hasText(dependency.getDependencyType()) ? dependency.getDependencyType() : "FS");
-        dependency.setLagDays(dependency.getLagDays() == null ? 0 : dependency.getLagDays());
-        dependency.setDeleted(0);
-        dependency.setCreateBy(resolveUserName());
-        dependency.setCreateTime(now);
-        dependency.setUpdateBy(resolveUserName());
-        dependency.setUpdateTime(now);
-        return projectDependencyMapper.insert(dependency) > 0;
-    }
+    public boolean addDependency(OaProjectDependency dependency) { dependency.setDependencyId(null); projectTaskService.saveDependency(dependency); return true; }
 
     @Override
     @Audit(name = "更新项目依赖", highRisk = true)
-    public boolean updateDependency(OaProjectDependency dependency) {
-        if (dependency == null || dependency.getDependencyId() == null) {
-            throw new IllegalArgumentException("依赖ID不能为空");
-        }
-        validateDependency(dependency, false);
-        dependency.setUpdateBy(resolveUserName());
-        dependency.setUpdateTime(LocalDateTime.now());
-        return projectDependencyMapper.updateById(dependency) > 0;
-    }
+    public boolean updateDependency(OaProjectDependency dependency) { OaRecordSupport.require(dependency.getDependencyId(), "依赖ID不能为空"); projectTaskService.saveDependency(dependency); return true; }
 
     @Override
     @Audit(name = "删除项目依赖", highRisk = true)
-    public boolean removeDependencies(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return true;
-        }
-        LambdaUpdateWrapper<OaProjectDependency> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.in(OaProjectDependency::getDependencyId, ids)
-                .set(OaProjectDependency::getDeleted, "1")
-                .set(OaProjectDependency::getUpdateBy, resolveUserName())
-                .set(OaProjectDependency::getUpdateTime, LocalDateTime.now());
-        return projectDependencyMapper.update(null, wrapper) > 0;
-    }
+    public boolean removeDependencies(List<Long> ids) { projectTaskService.removeDependencies(ids); return true; }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean snapshotBaseline(Long projectId) {
-        OaProject project = requireProject(projectId);
-        List<OaProjectMilestone> milestones = listMilestones(projectId);
-        for (OaProjectMilestone milestone : milestones) {
-            OaProjectMilestone update = new OaProjectMilestone();
-            update.setMilestoneId(milestone.getMilestoneId());
-            update.setProjectId(projectId);
-            update.setBaselineDate(milestone.getPlannedDate());
-            update.setUpdateBy(resolveUserName());
-            update.setUpdateTime(LocalDateTime.now());
-            projectMilestoneMapper.updateById(update);
-        }
-        List<WorkTask> tasks = listWbsTasks(projectId);
-        for (WorkTask task : tasks) {
-            WorkTask update = new WorkTask();
-            update.setTaskId(task.getTaskId());
-            update.setProjectId(projectId);
-            update.setBaselineStartTime(task.getPlannedStartTime());
-            update.setBaselineEndTime(task.getPlannedEndTime());
-            update.setUpdateBy(resolveUserName());
-            update.setUpdateTime(LocalDateTime.now());
-            workTaskService.updateById(update);
-        }
-        LambdaUpdateWrapper<OaProject> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(OaProject::getProjectId, projectId)
-                .set(OaProject::getBaselineVersion, defaultInt(project.getBaselineVersion()) + 1)
-                .set(OaProject::getUpdateBy, resolveUserName())
-                .set(OaProject::getUpdateTime, LocalDateTime.now());
-        return update(null, wrapper);
-    }
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
+    public boolean snapshotBaseline(Long projectId) { projectTaskService.snapshotBaseline(projectId); return true; }
 
     @Override
     public boolean archiveProject(Long projectId) {
@@ -684,6 +522,11 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     private void validate(OaProject project) {
+        if (project != null) {
+            project.setPercentCompleteMode(OaRecordSupport.code(project.getPercentCompleteMode(), "TASK_COMPLETION", java.util.Set.of("MANUAL", "TASK_COMPLETION", "TASK_PROGRESS")));
+            project.setEstimatedCost(OaRecordSupport.decimal(OaRecordSupport.zero(project.getEstimatedCost()), 18, 2, false, "预估成本"));
+            project.setOtherCostAmount(OaRecordSupport.decimal(OaRecordSupport.zero(project.getOtherCostAmount()), 18, 2, false, "其他成本"));
+        }
         if (project == null) {
             throw new IllegalArgumentException("项目不能为空");
         }
@@ -717,9 +560,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         return project;
     }
 
-    private Long resolveTenantId() {
-        return UserContext.getTenantId() == null ? 100000L : UserContext.getTenantId();
-    }
+    private Long resolveTenantId() { return OaRecordSupport.tenantId(); }
 
     private String resolveUserName() {
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
@@ -736,31 +577,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         return data != null ? String.valueOf(data) : null;
     }
 
-    private void normalizeMilestoneState(OaProjectMilestone milestone, OaProjectMilestone persisted) {
-        if (milestone == null) {
-            return;
-        }
-        if (milestone.getProgress() == null) {
-            milestone.setProgress(persisted != null && persisted.getProgress() != null ? persisted.getProgress() : BigDecimal.ZERO);
-        }
-        if (milestone.getActualDate() != null) {
-            milestone.setStatus("COMPLETED");
-            milestone.setProgress(BigDecimal.valueOf(100));
-            return;
-        }
-        if (!StringUtils.hasText(milestone.getStatus())) {
-            milestone.setStatus(persisted != null && StringUtils.hasText(persisted.getStatus()) ? persisted.getStatus() : "PLANNED");
-        }
-        if (milestone.getProgress() != null && milestone.getProgress().compareTo(BigDecimal.valueOf(100)) >= 0) {
-            milestone.setStatus("COMPLETED");
-            if (milestone.getActualDate() == null && persisted != null) {
-                milestone.setActualDate(persisted.getActualDate());
-            }
-            if (milestone.getActualDate() == null) {
-                milestone.setActualDate(LocalDate.now());
-            }
-        }
-    }
+
 
     private void publishProjectSubmittedEvent(OaProject project, ProjectSubmittedEvent event) {
         try {
@@ -778,13 +595,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     private void refreshProjectActualCost(Long projectId) {
-        ProjectCostSummaryVO summary = getCostSummary(projectId);
-        LambdaUpdateWrapper<OaProject> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(OaProject::getProjectId, projectId)
-                .set(OaProject::getActualCostAmount, summary.getTotalAmount())
-                .set(OaProject::getUpdateBy, resolveUserName())
-                .set(OaProject::getUpdateTime, LocalDateTime.now());
-        update(null, wrapper);
+        accounting.recalculate(projectId);
     }
 
     private void syncProjectRiskLevel(Long projectId) {
@@ -793,6 +604,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             return;
         }
         String riskLevel = resolveProjectRiskLevel(projectId);
+        if (Objects.equals(project.getRiskLevel(), riskLevel)) return;
         LambdaUpdateWrapper<OaProject> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(OaProject::getProjectId, projectId)
                 .set(OaProject::getRiskLevel, riskLevel)
@@ -810,7 +622,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         for (OaProjectRisk risk : manualRisks) {
             level = maxRiskLevel(level, risk.getRiskLevel());
         }
-        for (OaProjectMilestone milestone : listMilestones(projectId)) {
+        for (OaProjectTask milestone : listMilestones(projectId)) {
             if (isMilestoneOverdue(milestone)) {
                 level = maxRiskLevel(level, "HIGH");
             }
@@ -819,31 +631,26 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     private void appendMilestoneOverdueRisks(Long projectId, List<OaProjectRisk> risks) {
-        for (OaProjectMilestone milestone : listMilestones(projectId)) {
+        for (OaProjectTask milestone : listMilestones(projectId)) {
             if (!isMilestoneOverdue(milestone)) {
                 continue;
             }
             OaProjectRisk risk = new OaProjectRisk();
             risk.setProjectId(projectId);
-            risk.setRiskCode("AUTO-MILESTONE-" + milestone.getMilestoneId());
+            risk.setRiskCode("AUTO-MILESTONE-" + milestone.getTaskId());
             risk.setRiskName("里程碑逾期");
             risk.setRiskLevel("HIGH");
             risk.setStatus("OPEN");
             risk.setTriggerSource("MILESTONE_OVERDUE");
-            risk.setOwnerId(milestone.getOwnerId());
-            risk.setOwnerName(milestone.getOwnerName());
-            risk.setSummary("里程碑 " + milestone.getMilestoneName() + " 已逾期");
+            risk.setOwnerId(milestone.getAssigneeId());
+            risk.setOwnerName(milestone.getAssigneeName());
+            risk.setSummary("里程碑 " + milestone.getSubject() + " 已逾期");
             risk.setActionPlan("调整计划或补充资源");
             risks.add(risk);
         }
     }
 
-    private boolean isMilestoneOverdue(OaProjectMilestone milestone) {
-        return milestone.getPlannedDate() != null
-                && milestone.getPlannedDate().isBefore(java.time.LocalDate.now())
-                && milestone.getActualDate() == null
-                && !"COMPLETED".equalsIgnoreCase(milestone.getStatus());
-    }
+    private boolean isMilestoneOverdue(OaProjectTask milestone) { return isTaskOverdue(milestone); }
 
     private String maxRiskLevel(String left, String right) {
         return riskWeight(right) > riskWeight(left) ? right : left;
@@ -895,11 +702,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private String nextWbsCode(Long projectId) {
-        List<WorkTask> tasks = workTaskService.listProjectTasks(projectId);
-        int next = tasks.size() + 1;
-        return String.format("WBS-%03d", next);
-    }
+
 
     private String resolveSourceName(OaProject project) {
         if (project == null) {
@@ -917,55 +720,15 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         return project.getProjectName();
     }
 
-    private int nextMilestoneSortOrder(Long projectId) {
-        return listMilestones(projectId).stream()
-                .map(OaProjectMilestone::getSortOrder)
-                .filter(Objects::nonNull)
-                .max(Integer::compareTo)
-                .orElse(0) + 1;
-    }
 
-    private int nextTaskSortOrder(Long projectId) {
-        return listWbsTasks(projectId).stream()
-                .map(WorkTask::getSortOrder)
-                .filter(Objects::nonNull)
-                .max(Integer::compareTo)
-                .orElse(0) + 1;
-    }
 
-    private void validateDependency(OaProjectDependency dependency, boolean create) {
-        if (dependency == null) {
-            throw new IllegalArgumentException("依赖不能为空");
-        }
-        if (dependency.getProjectId() == null) {
-            throw new IllegalArgumentException("项目ID不能为空");
-        }
-        requireProject(dependency.getProjectId());
-        if (!StringUtils.hasText(dependency.getPredecessorType()) || dependency.getPredecessorId() == null
-                || !StringUtils.hasText(dependency.getSuccessorType()) || dependency.getSuccessorId() == null) {
-            throw new IllegalArgumentException("依赖前置和后置对象不能为空");
-        }
-        if (Objects.equals(dependency.getPredecessorType(), dependency.getSuccessorType())
-                && Objects.equals(dependency.getPredecessorId(), dependency.getSuccessorId())) {
-            throw new IllegalArgumentException("依赖前置和后置不能相同");
-        }
-        if (create) {
-            Long count = projectDependencyMapper.selectCount(new LambdaQueryWrapper<OaProjectDependency>()
-                    .eq(OaProjectDependency::getProjectId, dependency.getProjectId())
-                    .eq(OaProjectDependency::getPredecessorType, dependency.getPredecessorType())
-                    .eq(OaProjectDependency::getPredecessorId, dependency.getPredecessorId())
-                    .eq(OaProjectDependency::getSuccessorType, dependency.getSuccessorType())
-                    .eq(OaProjectDependency::getSuccessorId, dependency.getSuccessorId())
-                    .eq(OaProjectDependency::getDeleted, "0"));
-            if (count != null && count > 0) {
-                throw new IllegalArgumentException("项目依赖已存在");
-            }
-        }
-    }
+
+
+
 
     private ProjectKpiVO buildProjectKpi(Long projectId) {
-        List<OaProjectMilestone> milestones = listMilestones(projectId);
-        List<WorkTask> tasks = listWbsTasks(projectId);
+        List<OaProjectTask> milestones = listMilestones(projectId);
+        List<OaProjectTask> tasks = listWbsTasks(projectId);
         List<OaProjectRisk> risks = listRisks(projectId);
         ProjectCostSummaryVO costSummary = getCostSummary(projectId);
         OaProject project = requireProject(projectId);
@@ -974,7 +737,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         kpi.setOverdueMilestoneCount((int) milestones.stream().filter(this::isMilestoneOverdue).count());
         kpi.setOverdueTaskCount((int) tasks.stream().filter(this::isTaskOverdue).count());
         kpi.setOpenRiskCount((int) risks.stream().filter(item -> !"CLOSED".equalsIgnoreCase(item.getStatus())).count());
-        kpi.setScheduleVarianceDays(resolveScheduleVarianceDays(milestones, tasks));
+        kpi.setScheduleVarianceDays(resolveScheduleVarianceDays(tasks));
         BigDecimal budget = defaultDecimal(project.getBudgetAmount());
         BigDecimal total = defaultDecimal(costSummary.getTotalAmount());
         kpi.setCostExecutionRate(budget.signum() <= 0
@@ -1007,15 +770,17 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             summary.setBudgetSummary("预算 " + budgets.size() + " 条，预警 " + warningCount + " 条");
         }
 
-        List<OaInvoice> invoices = invoiceMapper.selectList(new LambdaQueryWrapper<OaInvoice>()
-                .eq(OaInvoice::getDeleted, "0")
-                .and(wrapper -> {
-                    if (project.getContractId() != null) {
-                        wrapper.eq(OaInvoice::getContractId, project.getContractId());
-                    } else if (project.getCustomerId() != null) {
-                        wrapper.eq(OaInvoice::getCustomerId, project.getCustomerId());
-                    }
-                }));
+        List<OaInvoice> invoices = List.of();
+        if (project.getContractId() != null || project.getCustomerId() != null) {
+            LambdaQueryWrapper<OaInvoice> invoiceQuery = new LambdaQueryWrapper<OaInvoice>()
+                    .eq(OaInvoice::getDeleted, "0");
+            if (project.getContractId() != null) {
+                invoiceQuery.eq(OaInvoice::getContractId, project.getContractId());
+            } else {
+                invoiceQuery.eq(OaInvoice::getCustomerId, project.getCustomerId());
+            }
+            invoices = invoiceMapper.selectList(invoiceQuery);
+        }
         if (invoices.isEmpty()) {
             summary.setInvoiceSummary("未关联合同/客户发票");
         } else {
@@ -1033,26 +798,15 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         return summary;
     }
 
-    private boolean isTaskOverdue(WorkTask task) {
-        return task != null
-                && task.getPlannedEndTime() != null
-                && task.getPlannedEndTime().toLocalDate().isBefore(LocalDate.now())
-                && task.getActualEndTime() == null
-                && !"DONE".equalsIgnoreCase(task.getStatus());
+    private boolean isTaskOverdue(OaProjectTask task) {
+        return task.getPlannedEnd() != null && task.getPlannedEnd().toLocalDate().isBefore(LocalDate.now()) && task.getActualEnd() == null
+                && !List.of("COMPLETED", "CANCELLED").contains(task.getStatus());
     }
 
-    private BigDecimal resolveScheduleVarianceDays(List<OaProjectMilestone> milestones, List<WorkTask> tasks) {
+    private BigDecimal resolveScheduleVarianceDays(List<OaProjectTask> tasks) {
         long variance = 0L;
-        for (OaProjectMilestone milestone : milestones) {
-            if (milestone.getPlannedDate() != null && milestone.getBaselineDate() != null) {
-                variance += Math.abs(java.time.temporal.ChronoUnit.DAYS.between(milestone.getBaselineDate(), milestone.getPlannedDate()));
-            }
-        }
-        for (WorkTask task : tasks) {
-            if (task.getPlannedEndTime() != null && task.getBaselineEndTime() != null) {
-                variance += Math.abs(java.time.temporal.ChronoUnit.DAYS.between(task.getBaselineEndTime().toLocalDate(), task.getPlannedEndTime().toLocalDate()));
-            }
-        }
+        for (OaProjectTask task : tasks) if (task.getPlannedEnd() != null && task.getBaselineEnd() != null)
+            variance += Math.abs(java.time.temporal.ChronoUnit.DAYS.between(task.getBaselineEnd().toLocalDate(), task.getPlannedEnd().toLocalDate()));
         return BigDecimal.valueOf(variance);
     }
 

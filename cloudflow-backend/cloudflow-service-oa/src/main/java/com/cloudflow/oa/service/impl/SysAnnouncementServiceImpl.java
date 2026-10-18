@@ -5,6 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.message.api.MessageReceiver;
+import com.cloudflow.common.message.api.MessageSendRequest;
+import com.cloudflow.common.message.api.MessageSender;
+import com.cloudflow.common.message.constant.MessageCategory;
+import com.cloudflow.common.message.constant.MessageChannelType;
 import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.domain.SysAnnouncementRead;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
@@ -38,6 +43,13 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
 
     @Autowired
     private SysAnnouncementReadMapper readMapper;
+
+    /**
+     * 公告仍由 OA 表承载内容与范围；发布成功后额外写统一消息 outbox，
+     * 让消息中心和实时铃铛可以感知同一条公告。
+     */
+    @Autowired
+    private MessageSender messageSender;
 
     @Override
     public List<SysAnnouncement> getMyAnnouncements(Long userId) {
@@ -86,13 +98,50 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
     public boolean publish(SysAnnouncement announcement) {
         normalizeAnnouncementScope(announcement);
+        if (announcement.getTenantId() == null) {
+            announcement.setTenantId(UserContext.getTenantId() == null ? 100000L : UserContext.getTenantId());
+        }
         announcement.setStatus("1"); // Published
         announcement.setPublishTime(LocalDateTime.now());
         announcement.setCreateTime(LocalDateTime.now());
-        return save(announcement);
+        boolean saved = save(announcement);
+        if (!saved || announcement.getAnnouncementId() == null) {
+            return saved;
+        }
+
+        List<Map<String, Object>> expectedReaders = selectExpectedReaders(announcement);
+        if (expectedReaders.isEmpty()) {
+            return true;
+        }
+        List<MessageReceiver> receivers = expectedReaders.stream()
+                .map(this::toMessageReceiver)
+                .filter(receiver -> receiver.getReceiverId() != null)
+                .toList();
+        // 消费侧默认展开上限为 500；公告按用户分片写入 outbox，避免大租户发布被整批拒绝。
+        final int chunkSize = 500;
+        for (int from = 0; from < receivers.size(); from += chunkSize) {
+            int to = Math.min(from + chunkSize, receivers.size());
+            Map<String, Object> params = new LinkedHashMap<>();
+            params.put("title", announcement.getTitle());
+            params.put("content", announcement.getContent());
+            messageSender.send(MessageSendRequest.builder()
+                    .templateCode("OA_ANNOUNCEMENT")
+                    .channelTypes(List.of(MessageChannelType.INTERNAL))
+                    .receivers(receivers.subList(from, to))
+                    .params(params)
+                    .category(MessageCategory.ANNOUNCEMENT)
+                    .bizType("OA_ANNOUNCEMENT")
+                    .bizId(String.valueOf(announcement.getAnnouncementId()))
+                    .linkUrl("/announcement")
+                    .title(announcement.getTitle())
+                    .content(announcement.getContent())
+                    .build());
+        }
+        return true;
     }
     
     @Override
@@ -225,8 +274,10 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
         }
         if (!StringUtils.hasText(announcement.getScopeType())) {
             announcement.setScopeType("ALL");
+        } else {
+            announcement.setScopeType(announcement.getScopeType().trim().toUpperCase(java.util.Locale.ROOT));
         }
-        if ("ALL".equalsIgnoreCase(announcement.getScopeType())) {
+        if ("ALL".equals(announcement.getScopeType())) {
             announcement.setScopeValue(null);
             return;
         }
@@ -268,6 +319,9 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     private List<Map<String, Object>> normalizeUserRows(List<Map<String, Object>> rows) {
         List<Map<String, Object>> result = new ArrayList<>();
         Set<Long> seenUserIds = new LinkedHashSet<>();
+        if (rows == null || rows.isEmpty()) {
+            return result;
+        }
         for (Map<String, Object> row : rows) {
             Long userId = mapUserId(row);
             if (userId == null || !seenUserIds.add(userId)) {
@@ -316,5 +370,15 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
 
     private String stringValue(Object value) {
         return value != null ? String.valueOf(value) : "";
+    }
+
+    private MessageReceiver toMessageReceiver(Map<String, Object> row) {
+        Long userId = mapUserId(row);
+        String name = stringValue(rowValue(row, "nickName", "nick_name", "userName", "user_name"));
+        return MessageReceiver.builder()
+                .receiverType("USER")
+                .receiverId(userId)
+                .receiverName(StringUtils.hasText(name) ? name : null)
+                .build();
     }
 }

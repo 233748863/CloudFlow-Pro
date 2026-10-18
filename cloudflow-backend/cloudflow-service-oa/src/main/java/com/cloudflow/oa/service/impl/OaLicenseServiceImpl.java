@@ -14,7 +14,7 @@ import com.cloudflow.oa.mapper.OaLicenseExpiryReminderLogMapper;
 import com.cloudflow.oa.mapper.OaLicenseBorrowMapper;
 import com.cloudflow.oa.mapper.OaLicenseMapper;
 import com.cloudflow.oa.service.IOaLicenseService;
-import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -39,7 +39,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
 
     private final OaLicenseBorrowMapper licenseBorrowMapper;
     private final OaLicenseExpiryReminderLogMapper expiryReminderLogMapper;
-    private final ISysNoticeService sysNoticeService;
+    private final MessageSender sysNoticeService;
     private final SysConfigHelper sysConfigHelper;
 
     private static final String EXPIRY_REMINDER_DAYS_CONFIG = "sys.oa.license.expiryReminderDays";
@@ -309,7 +309,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
         log.setCreateBy(log.getOperatorName());
         log.setCreateTime(now);
         expiryReminderLogMapper.insert(log);
-        sysNoticeService.sendNotice(recipientId, "证照到期提醒", content, "2", log.getOperatorId(), log.getOperatorName());
+        sysNoticeService.send(recipientId, "证照到期提醒", content, "2", log.getOperatorId(), log.getOperatorName());
         return true;
     }
 

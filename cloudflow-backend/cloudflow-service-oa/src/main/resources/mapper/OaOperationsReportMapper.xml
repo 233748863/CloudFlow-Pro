@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaOperationsReportMapper">
+    <sql id="projectAccess">
+        project.tenant_id = #{query.tenantId} AND project.deleted = 0
+        AND (project.owner_id = #{query.userId} OR EXISTS (
+            SELECT 1 FROM oa_project_member membership WHERE membership.project_id = project.project_id AND membership.tenant_id = project.tenant_id
+              AND membership.deleted = 0 AND membership.user_id = #{query.userId}
+              AND (membership.join_date IS NULL OR membership.join_date &lt;= #{query.toDate}) AND (membership.leave_date IS NULL OR membership.leave_date &gt;= #{query.fromDate})))
+    </sql>
+    <sql id="contractAccess">
+        contract.tenant_id = #{query.tenantId} AND contract.deleted = 0
+        AND (contract.owner_id = #{query.userId} OR EXISTS (SELECT 1 FROM oa_contract_fulfilment_term assignment
+             WHERE assignment.tenant_id = contract.tenant_id AND assignment.contract_id = contract.contract_id AND assignment.deleted = 0 AND assignment.responsible_id = #{query.userId}))
+    </sql>
+    <sql id="rfqAccess">
+        rfq.tenant_id = #{query.tenantId} AND rfq.deleted = 0
+        <choose><when test="query.rfqIds != null and query.rfqIds.size() > 0">
+            AND rfq.rfq_id IN <foreach collection="query.rfqIds" item="rfqId" open="(" separator="," close=")">#{rfqId}</foreach>
+        </when><otherwise>AND 1 = 0</otherwise></choose>
+    </sql>
+    <select id="assetTotals" resultType="map">
+        SELECT COUNT(*) AS assetCount, COALESCE(SUM(purchase_amount), 0) AS purchaseAmount,
+               COALESCE(SUM(accumulated_depreciation), 0) AS accumulatedDepreciation, COALESCE(SUM(net_book_value), 0) AS netBookValue
+        FROM oa_asset WHERE tenant_id = #{query.tenantId} AND deleted = 0
+    </select>
+    <select id="assetDistribution" resultType="map">
+        SELECT 'CATEGORY' AS dimension, COALESCE(category.category_name, '未分类') AS groupName, COUNT(*) AS assetCount,
+               COALESCE(SUM(asset.purchase_amount), 0) AS purchaseAmount, COALESCE(SUM(asset.net_book_value), 0) AS netBookValue
+        FROM oa_asset asset LEFT JOIN oa_asset_category category ON category.category_id = asset.category_id AND category.tenant_id = asset.tenant_id
+        WHERE asset.tenant_id = #{query.tenantId} AND asset.deleted = 0 GROUP BY asset.category_id, category.category_name
+        UNION ALL
+        SELECT 'DEPARTMENT', COALESCE(dept_name, '未分配'), COUNT(*), COALESCE(SUM(purchase_amount), 0), COALESCE(SUM(net_book_value), 0)
+        FROM oa_asset WHERE tenant_id = #{query.tenantId} AND deleted = 0 GROUP BY dept_id, dept_name
+        UNION ALL
+        SELECT 'STATUS', status, COUNT(*), COALESCE(SUM(purchase_amount), 0), COALESCE(SUM(net_book_value), 0)
+        FROM oa_asset WHERE tenant_id = #{query.tenantId} AND deleted = 0 GROUP BY status
+    </select>
+    <select id="assetDepreciation" resultType="map">
+        SELECT DATE_FORMAT(schedule.period_date, '%Y-%m') AS period, COALESCE(category.category_name, '未分类') AS categoryName,
+               SUM(schedule.depreciation_amount) AS depreciationAmount, COUNT(DISTINCT schedule.asset_id) AS assetCount
+        FROM oa_asset_depreciation_schedule schedule JOIN oa_asset asset ON asset.asset_id = schedule.asset_id AND asset.tenant_id = schedule.tenant_id
+        LEFT JOIN oa_asset_category category ON category.category_id = asset.category_id AND category.tenant_id = asset.tenant_id
+        WHERE schedule.tenant_id = #{query.tenantId} AND schedule.status = 'POSTED' AND schedule.period_date BETWEEN #{query.fromDate} AND #{query.toDate}
+        GROUP BY period, asset.category_id, category.category_name ORDER BY period, categoryName
+    </select>
+    <select id="assetRepairs" resultType="map">
+        SELECT asset_id AS assetId, asset_name AS assetName, COUNT(*) AS repairCount, SUM(repair_cost) AS repairCost,
+               SUM(downtime_hours) AS downtimeHours, SUM(CASE WHEN capitalize_flag = 1 THEN repair_cost ELSE 0 END) AS capitalizedAmount
+        FROM oa_asset_repair WHERE tenant_id = #{query.tenantId} AND deleted = 0 AND repair_status = 'COMPLETED'
+          AND completion_date BETWEEN #{query.fromDate} AND #{query.toDate} GROUP BY asset_id, asset_name ORDER BY repairCost DESC
+    </select>
+    <select id="supplierStanding" resultType="map">
+        SELECT standing, indicator_color AS indicatorColor, COUNT(*) AS supplierCount FROM oa_supplier
+        WHERE tenant_id = #{query.tenantId} AND deleted = 0 GROUP BY standing, indicator_color ORDER BY standing
+    </select>
+    <select id="supplierScores" resultType="map">
+        SELECT card.supplier_id AS supplierId, supplier.supplier_name AS supplierName, card.period_type AS periodType,
+               card.period_start AS periodStart, card.period_end AS periodEnd, card.total_score AS totalScore, card.standing
+        FROM oa_supplier_scorecard card JOIN oa_supplier supplier ON supplier.supplier_id = card.supplier_id AND supplier.tenant_id = card.tenant_id
+        WHERE card.tenant_id = #{query.tenantId} AND card.deleted = 0 AND supplier.deleted = 0 AND card.status = 'CONFIRMED'
+          AND card.period_end BETWEEN #{query.fromDate} AND #{query.toDate} ORDER BY supplierId, periodEnd, card.scorecard_id
+    </select>
+    <select id="supplierExpiry" resultType="map">
+        SELECT qualification.qualification_id AS qualificationId, qualification.supplier_id AS supplierId, supplier.supplier_name AS supplierName,
+               qualification.cert_name AS certName, qualification.expire_date AS expireDate, qualification.verify_status AS verifyStatus,
+               DATEDIFF(qualification.expire_date, CURRENT_DATE) AS remainingDays
+        FROM oa_supplier_qualification qualification JOIN oa_supplier supplier ON supplier.supplier_id = qualification.supplier_id AND supplier.tenant_id = qualification.tenant_id
+        WHERE qualification.tenant_id = #{query.tenantId} AND qualification.deleted = 0 AND supplier.deleted = 0 AND qualification.long_term_flag = 0
+          AND qualification.expire_date &lt;= #{query.toDate} ORDER BY qualification.expire_date, qualification.qualification_id
+    </select>
+    <select id="supplierPurchases" resultType="map">
+        SELECT supplier.supplier_id AS supplierId, supplier.supplier_name AS supplierName, supplier.score, supplier.standing,
+               SUM(purchase.total_amount) AS purchaseAmount, COUNT(*) AS purchaseCount
+        FROM biz_purchase_request purchase JOIN oa_supplier supplier ON supplier.supplier_id = purchase.supplier_id AND supplier.tenant_id = purchase.tenant_id
+        WHERE purchase.tenant_id = #{query.tenantId} AND purchase.deleted = 0 AND supplier.deleted = 0
+          AND purchase.status IN ('APPROVED', 'PARTIAL_RECEIVED', 'RECEIVED') AND purchase.create_time &gt;= #{query.fromDate} AND purchase.create_time &lt; DATE_ADD(#{query.toDate}, INTERVAL 1 DAY)
+        GROUP BY supplier.supplier_id, supplier.supplier_name, supplier.score, supplier.standing ORDER BY purchaseAmount DESC LIMIT 20
+    </select>
+    <select id="projectCosts" resultType="map">
+        SELECT project.project_id AS projectId, project.project_name AS projectName, project.status, project.owner_name AS ownerName,
+               project.budget_amount AS budgetAmount, project.actual_cost_amount AS actualCostAmount, project.labor_cost_amount AS laborCostAmount,
+               project.purchase_cost_amount AS purchaseCostAmount, project.other_cost_amount AS otherCostAmount, project.billable_amount AS billableAmount,
+               project.billed_amount AS billedAmount, project.gross_margin AS grossMargin, project.gross_margin_rate AS grossMarginRate, project.actual_hours AS actualHours
+        FROM oa_project project WHERE <include refid="projectAccess"/> ORDER BY project.project_id DESC
+    </select>
+    <select id="projectLabor" resultType="map">
+        SELECT project.project_id AS projectId, project.project_name AS projectName, sheet.employee_id AS employeeId, sheet.employee_name AS employeeName,
+               detail.activity_type_id AS activityTypeId, activity.type_name AS activityName, SUM(detail.hours) AS hours,
+               SUM(CASE WHEN detail.billable_flag = 1 THEN detail.hours ELSE 0 END) AS billableHours
+        FROM oa_timesheet_detail detail JOIN oa_timesheet sheet ON sheet.timesheet_id = detail.timesheet_id AND sheet.tenant_id = detail.tenant_id
+        JOIN oa_project project ON project.project_id = detail.project_id AND project.tenant_id = detail.tenant_id
+        JOIN oa_activity_type activity ON activity.type_id = detail.activity_type_id AND activity.tenant_id = detail.tenant_id
+        WHERE <include refid="projectAccess"/> AND sheet.deleted = 0 AND detail.deleted = 0 AND sheet.status = 'APPROVED'
+          AND detail.work_date BETWEEN #{query.fromDate} AND #{query.toDate}
+        GROUP BY project.project_id, project.project_name, sheet.employee_id, sheet.employee_name, detail.activity_type_id, activity.type_name
+        ORDER BY projectId, employeeId, activityTypeId
+    </select>
+    <select id="projectFiling" resultType="map">
+        SELECT project.project_id AS projectId, project.project_name AS projectName, team.user_id AS userId, team.user_name AS userName,
+               CASE WHEN EXISTS (SELECT 1 FROM oa_timesheet_detail detail JOIN oa_timesheet sheet ON sheet.timesheet_id = detail.timesheet_id AND sheet.tenant_id = detail.tenant_id
+                   JOIN hr_employee employee ON employee.id = sheet.employee_id AND employee.tenant_id = sheet.tenant_id
+                   WHERE detail.project_id = project.project_id AND detail.tenant_id = project.tenant_id AND employee.user_id = team.user_id
+                     AND detail.deleted = 0 AND sheet.deleted = 0 AND sheet.status IN ('SUBMITTED', 'APPROVING', 'APPROVED')
+                     AND detail.work_date BETWEEN #{query.fromDate} AND #{query.toDate}) THEN 1 ELSE 0 END AS submittedFlag
+        FROM oa_project project JOIN (
+            SELECT tenant_id, project_id, user_id, user_name FROM oa_project_member WHERE tenant_id = #{query.tenantId} AND deleted = 0
+              AND (join_date IS NULL OR join_date &lt;= #{query.toDate}) AND (leave_date IS NULL OR leave_date &gt;= #{query.fromDate})
+            UNION SELECT tenant_id, project_id, owner_id, owner_name FROM oa_project WHERE tenant_id = #{query.tenantId} AND deleted = 0
+        ) team ON team.tenant_id = project.tenant_id AND team.project_id = project.project_id
+        WHERE <include refid="projectAccess"/> ORDER BY projectId, userId
+    </select>
+    <select id="projectGantt" resultType="map">
+        SELECT task.task_id AS taskId, project.project_id AS projectId, project.project_name AS projectName, task.parent_task_id AS parentTaskId,
+               task.subject, task.status, task.is_group_flag AS isGroupFlag, task.is_milestone_flag AS isMilestoneFlag, task.progress,
+               task.planned_start AS plannedStart, task.planned_end AS plannedEnd, task.baseline_start AS baselineStart, task.baseline_end AS baselineEnd, task.assignee_name AS assigneeName
+        FROM oa_project_task task JOIN oa_project project ON project.project_id = task.project_id AND project.tenant_id = task.tenant_id
+        WHERE <include refid="projectAccess"/> AND task.deleted = 0 AND (task.planned_start IS NULL OR task.planned_start &lt; DATE_ADD(#{query.toDate}, INTERVAL 1 DAY))
+          AND (task.planned_end IS NULL OR task.planned_end &gt;= #{query.fromDate}) ORDER BY project.project_id, task.sort_no, task.task_id
+    </select>
+    <sql id="contractFulfilmentScope">
+        contract.requires_fulfilment_flag = 1
+        AND contract.status IN ('APPROVED', 'SEALING', 'SEALED', 'ACTIVE', 'EXPIRED')
+    </sql>
+    <select id="contractDashboard" resultType="map">
+        SELECT contract.contract_id AS contractId, contract.contract_no AS contractNo, contract.contract_name AS contractName, contract.counterparty_name AS counterpartyName,
+               contract.owner_name AS ownerName, contract.status, contract.fulfilment_status AS fulfilmentStatus, contract.fulfilment_deadline AS fulfilmentDeadline,
+               contract.fulfilled_term_count AS fulfilledTermCount, contract.total_term_count AS totalTermCount, contract.fulfilment_progress AS fulfilmentProgress
+        FROM oa_contract contract WHERE <include refid="contractAccess"/> AND <include refid="contractFulfilmentScope"/>
+        ORDER BY contract.fulfilment_deadline, contract.contract_id
+    </select>
+    <select id="contractOverdue" resultType="map">
+        SELECT term.term_id AS termId, contract.contract_id AS contractId, contract.contract_name AS contractName, term.term_content AS termContent,
+               term.responsible_name AS responsibleName, term.deadline_date AS deadlineDate, DATEDIFF(CURRENT_DATE, term.deadline_date) AS overdueDays
+        FROM oa_contract_fulfilment_term term JOIN oa_contract contract ON contract.contract_id = term.contract_id AND contract.tenant_id = term.tenant_id
+        WHERE <include refid="contractAccess"/> AND <include refid="contractFulfilmentScope"/>
+          AND term.deleted = 0 AND term.fulfilled_flag = 0 AND term.waived_flag = 0 AND term.deadline_date &lt; CURRENT_DATE ORDER BY term.deadline_date, term.term_id
+    </select>
+    <select id="contractRates" resultType="map">
+        SELECT CASE WHEN #{dimension} = 'TYPE' THEN contract.contract_type WHEN #{dimension} = 'OWNER' THEN CAST(contract.owner_id AS CHAR) ELSE contract.counterparty_name END AS groupKey,
+               MAX(CASE WHEN #{dimension} = 'TYPE' THEN contract.contract_type WHEN #{dimension} = 'OWNER' THEN COALESCE(owner.nick_name, contract.owner_name) ELSE contract.counterparty_name END) AS groupName,
+               COUNT(*) AS contractCount, SUM(CASE WHEN contract.fulfilment_status = 'FULFILLED' THEN 1 ELSE 0 END) AS fulfilledContractCount,
+               SUM(contract.fulfilled_term_count) AS fulfilledTermCount, SUM(contract.total_term_count) AS totalTermCount,
+               ROUND(SUM(contract.fulfilled_term_count) / NULLIF(SUM(contract.total_term_count), 0) * 100, 2) AS fulfilmentRate
+        FROM oa_contract contract LEFT JOIN sys_user owner ON owner.user_id = contract.owner_id AND owner.tenant_id = contract.tenant_id AND owner.deleted = 0
+        WHERE <include refid="contractAccess"/> AND <include refid="contractFulfilmentScope"/>
+        GROUP BY groupKey ORDER BY groupName
+    </select>
+    <select id="rfqStatistics" resultType="map">
+        SELECT COUNT(*) AS rfqCount, COALESCE(ROUND(AVG(rfq.invited_count), 2), 0) AS averageInvited,
+               COALESCE(ROUND(AVG(rfq.responded_count / NULLIF(rfq.invited_count, 0)) * 100, 2), 0) AS averageResponseRate,
+               COALESCE(SUM(CASE WHEN rfq.status = 'AWARDED' THEN 1 ELSE 0 END), 0) AS awardedCount
+        FROM oa_purchase_rfq rfq WHERE <include refid="rfqAccess"/>
+    </select>
+    <select id="rfqSavings" resultType="map">
+        SELECT winner.currency, COUNT(*) AS awardedCount, ROUND(AVG(prices.average_amount - rfq.awarded_amount), 2) AS averageSavings,
+               SUM(prices.average_amount - rfq.awarded_amount) AS totalSavings
+        FROM oa_purchase_rfq rfq JOIN oa_supplier_quotation winner ON winner.quotation_id = rfq.awarded_quotation_id AND winner.tenant_id = rfq.tenant_id
+        JOIN (SELECT tenant_id, rfq_id, currency, AVG(total_amount) AS average_amount FROM oa_supplier_quotation
+              WHERE tenant_id = #{query.tenantId} AND status = 'SUBMITTED' AND deleted = 0 GROUP BY tenant_id, rfq_id, currency) prices
+          ON prices.tenant_id = rfq.tenant_id AND prices.rfq_id = rfq.rfq_id AND prices.currency = winner.currency
+        WHERE <include refid="rfqAccess"/> AND rfq.status = 'AWARDED' AND rfq.quote_deadline &lt; CURRENT_DATE GROUP BY winner.currency
+    </select>
+    <select id="rfqResponses" resultType="map">
+        SELECT invitation.supplier_id AS supplierId, invitation.supplier_name AS supplierName, COUNT(*) AS invitedCount,
+               SUM(CASE WHEN invitation.quote_status = 'RESPONDED' THEN 1 ELSE 0 END) AS respondedCount,
+               ROUND(SUM(CASE WHEN invitation.quote_status = 'RESPONDED' THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) AS responseRate
+        FROM oa_purchase_rfq_supplier invitation JOIN oa_purchase_rfq rfq ON rfq.rfq_id = invitation.rfq_id AND rfq.tenant_id = invitation.tenant_id
+        WHERE <include refid="rfqAccess"/> AND rfq.quote_deadline &lt; CURRENT_DATE AND rfq.status != 'CANCELLED'
+        GROUP BY invitation.supplier_id, invitation.supplier_name ORDER BY responseRate DESC, invitedCount DESC
+    </select>
+    <select id="rfqNonLowest" resultType="map">
+        SELECT rfq.rfq_id AS rfqId, rfq.rfq_no AS rfqNo, rfq.title, rfq.awarded_supplier_name AS supplierName,
+               winner.currency, rfq.awarded_amount AS awardedAmount, prices.lowest_amount AS lowestAmount, rfq.award_reason AS awardReason, rfq.award_time AS awardTime
+        FROM oa_purchase_rfq rfq JOIN oa_supplier_quotation winner ON winner.quotation_id = rfq.awarded_quotation_id AND winner.tenant_id = rfq.tenant_id
+        JOIN (SELECT tenant_id, rfq_id, currency, MIN(total_amount) AS lowest_amount FROM oa_supplier_quotation
+              WHERE tenant_id = #{query.tenantId} AND status = 'SUBMITTED' AND deleted = 0 GROUP BY tenant_id, rfq_id, currency) prices
+          ON prices.tenant_id = rfq.tenant_id AND prices.rfq_id = rfq.rfq_id AND prices.currency = winner.currency
+        WHERE <include refid="rfqAccess"/> AND rfq.status = 'AWARDED' AND rfq.quote_deadline &lt; CURRENT_DATE AND rfq.awarded_amount &gt; prices.lowest_amount ORDER BY rfq.award_time DESC
+    </select>
+</mapper>

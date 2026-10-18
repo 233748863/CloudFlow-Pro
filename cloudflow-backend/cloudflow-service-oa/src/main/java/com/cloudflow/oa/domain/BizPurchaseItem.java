@@ -42,4 +42,6 @@ public class BizPurchaseItem implements Serializable {
     private String budgetSubjectCode;
 
     private String budgetSubjectName;
+
+    private Long rfqItemId;
 }

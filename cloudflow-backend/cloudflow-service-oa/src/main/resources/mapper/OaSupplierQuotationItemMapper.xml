@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaSupplierQuotationItemMapper">
+    <select id="selectForUpdate" resultType="com.cloudflow.oa.domain.OaSupplierQuotationItem">
+        SELECT * FROM oa_supplier_quotation_item
+        WHERE item_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0
+        FOR UPDATE
+    </select>
+    <select id="selectAllForQuotation" resultType="com.cloudflow.oa.domain.OaSupplierQuotationItem">
+        SELECT * FROM oa_supplier_quotation_item
+        WHERE tenant_id = #{tenantId} AND quotation_id = #{quotationId}
+        ORDER BY item_id
+    </select>
+
+    <update id="restoreItem">
+        UPDATE oa_supplier_quotation_item
+        SET deleted = 0, sort_no = #{item.sortNo}, item_name = #{item.itemName}, spec = #{item.spec},
+            unit = #{item.unit}, quantity = #{item.quantity}, unit_price = #{item.unitPrice},
+            discount_rate = #{item.discountRate}, tax_rate = #{item.taxRate}, line_amount = #{item.lineAmount},
+            brand = #{item.brand}, model = #{item.model}, delivery_days = #{item.deliveryDays},
+            remark = #{item.remark}, update_by = #{item.updateBy}, update_time = #{item.updateTime}
+        WHERE item_id = #{item.itemId} AND tenant_id = #{item.tenantId}
+          AND quotation_id = #{item.quotationId} AND rfq_item_id = #{item.rfqItemId} AND deleted = 1
+    </update>
+</mapper>

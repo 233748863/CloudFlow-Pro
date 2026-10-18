@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaContractTeamMapper">
+    <select id="lockOpportunitySource" resultType="com.cloudflow.oa.mapper.OaContractTeamMapper$OpportunitySource">
+        SELECT opportunity.opportunity_id, opportunity.tenant_id, opportunity.customer_id, opportunity.stage, opportunity.status, opportunity.version,
+            customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+        FROM crm_opportunity opportunity JOIN crm_customer customer ON customer.customer_id = opportunity.customer_id
+            AND customer.tenant_id = opportunity.tenant_id AND customer.deleted = 0
+        WHERE opportunity.opportunity_id = #{id} AND opportunity.tenant_id = #{tenantId} AND opportunity.deleted = 0 FOR UPDATE
+    </select>
+    <select id="quoteOpportunity" resultType="com.cloudflow.oa.mapper.OaContractTeamMapper$OpportunitySource">
+        SELECT opportunity.opportunity_id, opportunity.tenant_id, opportunity.customer_id, opportunity.stage, opportunity.status, opportunity.version
+        FROM crm_quote quote JOIN crm_opportunity opportunity ON opportunity.opportunity_id = quote.opportunity_id
+            AND opportunity.tenant_id = quote.tenant_id AND opportunity.customer_id = quote.customer_id AND opportunity.deleted = 0
+        WHERE quote.quote_id = #{id} AND quote.tenant_id = #{tenantId} AND quote.deleted = 0
+    </select>
+    <select id="lockQuoteSource" resultType="com.cloudflow.oa.mapper.OaContractTeamMapper$QuoteSource">
+        SELECT quote.quote_id, quote.tenant_id, quote.customer_id, customer.customer_name,
+            quote.owner_id, quote.currency, quote.version,
+            customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+        FROM crm_quote quote JOIN crm_customer customer ON customer.customer_id = quote.customer_id
+            AND customer.tenant_id = quote.tenant_id AND customer.deleted = 0
+        WHERE quote.quote_id = #{id} AND quote.tenant_id = #{tenantId} AND quote.deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockQuoteTeam" resultType="com.cloudflow.oa.domain.OaContractTeam">
+        SELECT * FROM crm_deal_team WHERE tenant_id = #{tenantId} AND biz_type = 'QUOTE' AND biz_id = #{id} AND current_flag = 1 FOR UPDATE
+    </select>
+    <select id="quoteVersions" resultType="int">
+        SELECT DISTINCT team_version FROM crm_deal_team WHERE tenant_id = #{tenantId} AND biz_type = 'QUOTE' AND biz_id = #{id}
+        ORDER BY team_version DESC
+    </select>
+    <select id="quoteContracts" resultType="com.cloudflow.oa.domain.OaContract">
+        SELECT * FROM oa_contract WHERE tenant_id = #{tenantId} AND source_type = 'CRM_QUOTE' AND source_id = #{id}
+        FOR SHARE
+    </select>
+    <select id="hasHistory" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM crm_deal_team WHERE tenant_id = #{tenantId} AND biz_type = 'CONTRACT' AND biz_id = #{id})
+    </select>
+    <select id="hasCurrencyHistory" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM oa_contract WHERE contract_id = #{id} AND tenant_id = #{tenantId}
+            AND <include refid="com.cloudflow.oa.mapper.OaContractMapper.currencyLocked"/>)
+    </select>
+    <select id="versions" resultType="int">
+        SELECT DISTINCT team_version FROM crm_deal_team WHERE tenant_id = #{tenantId} AND biz_type = 'CONTRACT' AND biz_id = #{id}
+        ORDER BY team_version DESC
+    </select>
+    <select id="rows" resultType="com.cloudflow.oa.domain.OaContractTeam">
+        SELECT * FROM crm_deal_team WHERE tenant_id = #{tenantId} AND biz_type = 'CONTRACT' AND biz_id = #{id} AND team_version = #{version}
+        ORDER BY sales_user_id
+    </select>
+    <select id="lockCurrent" resultType="com.cloudflow.oa.domain.OaContractTeam">
+        SELECT * FROM crm_deal_team WHERE tenant_id = #{tenantId} AND biz_type = 'CONTRACT' AND biz_id = #{id} AND current_flag = 1
+        FOR UPDATE
+    </select>
+    <update id="retireCurrent">
+        UPDATE crm_deal_team SET current_flag = 0, update_by = #{actor}, update_time = #{now}
+        WHERE tenant_id = #{tenantId} AND biz_type = 'CONTRACT' AND biz_id = #{id} AND team_version = #{version} AND current_flag = 1
+    </update>
+    <update id="updatePreview">
+        UPDATE crm_deal_team SET allocated_amount = #{row.allocatedAmount}, commission_amount = #{row.commissionAmount},
+            update_by = #{row.updateBy}, update_time = #{row.updateTime}
+        WHERE tenant_id = #{row.tenantId} AND biz_type = 'CONTRACT' AND biz_id = #{row.bizId}
+            AND team_version = #{row.teamVersion} AND team_id = #{row.teamId} AND current_flag = 1
+    </update>
+</mapper>

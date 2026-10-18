@@ -2,6 +2,7 @@ package com.cloudflow.oa.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.SysAsset;
+import com.cloudflow.oa.domain.OaAssetCategory;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 
 import java.io.OutputStream;
@@ -42,5 +43,5 @@ public interface IAssetService extends IService<SysAsset> {
     /**
      * 获取所有分类列表
      */
-    List<String> getAllCategories();
+    List<OaAssetCategory> getAllCategories();
 }

@@ -66,6 +66,12 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     private final IOaContractAmountThresholdService oaContractAmountThresholdService;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
+    private final OaSupplierGovernanceService supplierGovernance;
+    private final OaContractFulfilmentService fulfilment;
+    private final OaContractTermTemplateService termTemplates;
+    private final OaProjectAccountingService projectAccounting;
+    private final OaContractTeamService contractTeams;
+    private final OaContractPerformanceService performance;
 
     @Override
     public PageResult<OaContract> queryPage(OaContract query, PageQuery pageQuery) {
@@ -76,13 +82,25 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
     @Override
     public OaContract getContractInfo(Long id) {
-        return requireContract(id);
+        if (id == null || id <= 0 || UserContext.getUserId() == null) throw new IllegalArgumentException("读取合同需要有效合同及用户身份");
+        OaContract query = new OaContract();
+        query.setContractId(id);
+        PageQuery page = new PageQuery();
+        page.setPageSize(1);
+        List<OaContract> rows = queryPage(query, page).getRows();
+        if (rows.isEmpty()) throw new IllegalArgumentException("合同不存在或无权访问");
+        return rows.get(0);
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public Long createContract(OaContract contract) {
+        if (contract == null) throw new IllegalArgumentException("合同不能为空");
+        if (contract.getContractId() != null) throw new IllegalArgumentException("新增合同不能指定ID");
+        OaContractTeamService.Initial initialTeam = contractTeams.prepareCreate(contract);
+        if (initialTeam != null && initialTeam.existingContractId() != null) return initialTeam.existingContractId();
         normalizeAndValidate(contract);
+        OaContractWritePolicy.initialize(contract);
         LocalDateTime now = LocalDateTime.now();
         contract.setTenantId(resolveTenantId());
         contract.setContractNo(StringUtils.hasText(contract.getContractNo()) ? contract.getContractNo() : generateContractNo());
@@ -93,6 +111,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         contract.setStatus(OaContractConstants.CONTRACT_STATUS_DRAFT);
         contract.setRiskLevel(StringUtils.hasText(contract.getRiskLevel()) ? contract.getRiskLevel() : OaContractConstants.RISK_LEVEL_LOW);
         contract.setDeleted(0);
+        contract.setVersion(0);
         contract.setCreateBy(resolveUserName());
         contract.setCreateTime(now);
         contract.setUpdateBy(resolveUserName());
@@ -101,6 +120,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         if (!saved || contract.getContractId() == null) {
             throw new IllegalArgumentException("合同创建失败");
         }
+        contractTeams.initialize(contract, initialTeam);
         oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),
                 OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(), "CONTRACT_CREATED",
                 "合同创建", contract.getContractNo() + " / " + contract.getContractName(),
@@ -133,19 +153,22 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
             log.warn("合同创建事件发布失败, contractId=" + contract.getContractId() + ", error=" + e.getMessage());
         }
 
+        if (contract.getTemplateId() != null) termTemplates.applyTemplate(contract.getContractId(), contract.getTemplateId());
         return contract.getContractId();
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     @Audit(name = "更新合同", diff = true, highRisk = true)
     public boolean updateContract(OaContract contract) {
         if (contract == null || contract.getContractId() == null) {
             throw new IllegalArgumentException("合同ID不能为空");
         }
-        OaContract persisted = requireContract(contract.getContractId());
+        OaContract persisted = OaRecordSupport.active(baseMapper.selectForUpdate(contract.getContractId(), resolveTenantId()));
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(persisted, OaContract::getOwnerId, "合同");
+        contractTeams.validateEdit(contract, persisted);
+        OaContractWritePolicy.preserve(contract, persisted);
         if (!OaContractConstants.CONTRACT_STATUS_DRAFT.equals(persisted.getStatus())
                 && !OaContractConstants.CONTRACT_STATUS_REJECTED.equals(persisted.getStatus())
                 && !OaContractConstants.CONTRACT_STATUS_APPROVED.equals(persisted.getStatus())
@@ -165,33 +188,42 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         contract.setDeleted(0);
         contract.setUpdateBy(resolveUserName());
         contract.setUpdateTime(LocalDateTime.now());
+        performance.synchronize(persisted.getContractId());
+        contractTeams.synchronize(contract, persisted);
         boolean updated = updateById(contract);
+        if (!updated) throw new IllegalArgumentException("合同已被修改，请刷新核对后重试");
         oaTraceEventService.record(persisted.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),
                 OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(), "CONTRACT_UPDATED",
                 "合同更新", contract.getContractName(), UserContext.getUserId(), resolveUserName(), null);
+        if (updated) {
+            fulfilment.refresh(contract.getContractId());
+            performance.synchronize(contract.getContractId());
+            if (persisted.getProjectId() != null) projectAccounting.recalculate(persisted.getProjectId());
+            if (contract.getProjectId() != null && !java.util.Objects.equals(contract.getProjectId(), persisted.getProjectId())) projectAccounting.recalculate(contract.getProjectId());
+        }
         return updated;
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     @Audit(name = "删除合同", highRisk = true)
     public boolean removeContracts(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;
         }
         for (Long id : ids) {
-            OaContract contract = requireContract(id);
+            OaContract contract = OaRecordSupport.active(baseMapper.selectForUpdate(id, resolveTenantId()));
+            DataScopeUtils.assertOwnership(contract, OaContract::getOwnerId, "合同");
+            if (contractTeams.hasCurrencyHistory(id)) throw new IllegalArgumentException("合同已有历史分成或收款记录，不能删除");
+            if (Integer.valueOf(1).equals(contract.getSignedFlag()) || !fulfilment.terms(id).isEmpty()) throw new IllegalArgumentException("已有签署或履约记录的合同不能删除");
             if (!OaContractConstants.CONTRACT_STATUS_DRAFT.equals(contract.getStatus())
                     && !OaContractConstants.CONTRACT_STATUS_REJECTED.equals(contract.getStatus())
                     && !OaContractConstants.CONTRACT_STATUS_CANCELLED.equals(contract.getStatus())) {
                 throw new IllegalArgumentException("只有草稿、已驳回或已取消合同可以删除");
             }
-            OaContract update = new OaContract();
-            update.setContractId(id);
-            update.setDeleted(1);
-            update.setUpdateBy(resolveUserName());
-            update.setUpdateTime(LocalDateTime.now());
-            updateById(update);
+            contract.setUpdateBy(resolveUserName());
+            contract.setUpdateTime(LocalDateTime.now());
+            OaRecordSupport.saved(baseMapper.removeLocked(contract));
             oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
                     OaContractConstants.BUSINESS_TYPE_CONTRACT, id, "CONTRACT_DELETED",
                     "合同删除", contract.getContractNo(), UserContext.getUserId(), resolveUserName(), null);
@@ -200,11 +232,11 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     // M1-5: 防并发冲突
     @DistributedLock(key = "'contract:' + #id + ':submit'")
     public boolean submitContract(Long id) {
-        OaContract contract = requireContract(id);
+        OaContract contract = OaRecordSupport.active(baseMapper.selectForUpdate(id, resolveTenantId()));
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(contract, OaContract::getOwnerId, "合同");
         if (!OaContractConstants.CONTRACT_STATUS_DRAFT.equals(contract.getStatus())
@@ -290,10 +322,11 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     @Audit(name = "取消合同", highRisk = true)
     public boolean cancelContract(Long id) {
-        OaContract contract = requireContract(id);
+        OaContract contract = OaRecordSupport.active(baseMapper.selectForUpdate(id, resolveTenantId()));
+        DataScopeUtils.assertOwnership(contract, OaContract::getOwnerId, "合同");
         if (!OaContractConstants.CONTRACT_STATUS_DRAFT.equals(contract.getStatus())
                 && !OaContractConstants.CONTRACT_STATUS_PENDING.equals(contract.getStatus())) {
             throw new IllegalArgumentException("只有草稿或审批中的合同可以取消");
@@ -302,6 +335,8 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         contract.setUpdateBy(resolveUserName());
         contract.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(contract);
+        if (!updated) throw new IllegalArgumentException("合同已被修改，请刷新核对后重试");
+        performance.synchronize(id);
         oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
                 OaContractConstants.BUSINESS_TYPE_CONTRACT, id, "CONTRACT_CANCELLED",
                 "合同取消", contract.getContractNo(), UserContext.getUserId(), resolveUserName(), null);
@@ -309,9 +344,10 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public boolean linkSeal(Long contractId, Long sealApplicationId) {
-        OaContract contract = requireContract(contractId);
+        OaContract contract = OaRecordSupport.active(baseMapper.selectForUpdate(contractId, resolveTenantId()));
+        DataScopeUtils.assertOwnership(contract, OaContract::getOwnerId, "合同");
         OaSealApplication application = sealApplicationMapper.selectById(sealApplicationId);
         if (application == null || !Integer.valueOf(0).equals(application.getDeleted())) {
             throw new IllegalArgumentException("用印申请不存在");
@@ -324,6 +360,8 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         contract.setUpdateBy(resolveUserName());
         contract.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(contract);
+        if (!updated) throw new IllegalArgumentException("合同已被修改，请刷新核对后重试");
+        performance.synchronize(contractId);
         OaSealApplication update = new OaSealApplication();
         update.setId(sealApplicationId);
         update.setContractId(contractId);
@@ -351,6 +389,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     }
 
     private void normalizeAndValidate(OaContract contract) {
+        if (contract != null && contract.getSupplierId() != null) supplierGovernance.assertSupplierAllowed(contract.getSupplierId(), "CONTRACT");
         if (contract == null) {
             throw new IllegalArgumentException("合同不能为空");
         }
@@ -370,6 +409,8 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
             throw new IllegalArgumentException("合同结束日期不能早于开始日期");
         }
         contract.setCurrency(StringUtils.hasText(contract.getCurrency()) ? contract.getCurrency() : "CNY");
+        contract.setCurrency(OaContractTeamPolicy.currency(contract.getCurrency()));
+        contract.setAmount(OaContractTeamPolicy.money(contract.getAmount()));
         contract.setAttachmentUrl(OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(contract.getAttachmentUrl(), "合同附件"));
         contract.setArchiveAttachmentUrl(OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(contract.getArchiveAttachmentUrl(), "合同归档附件"));
     }
@@ -404,6 +445,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         variables.put("startDate", contract.getStartDate() == null ? null : contract.getStartDate().toString());
         variables.put("endDate", contract.getEndDate() == null ? null : contract.getEndDate().toString());
         variables.put("hasAttachment", StringUtils.hasText(contract.getAttachmentUrl()));
+        variables.put("remark", contract.getRemark());
         // OA-P0-3 合同金额阈值: 按金额命中规则后写入 amountTier / requiredApproverRole, 供流程 CONDITION 分支路由
         OaContractAmountThreshold threshold = null;
         try {

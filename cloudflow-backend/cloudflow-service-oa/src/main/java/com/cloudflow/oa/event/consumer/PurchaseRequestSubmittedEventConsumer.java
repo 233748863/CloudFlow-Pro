@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -71,6 +72,24 @@ public class PurchaseRequestSubmittedEventConsumer implements BusinessEventConsu
             variables.put("deptName", event.getDeptName());
             variables.put("reason", event.getReason());
             variables.put("itemSummary", event.getItemSummary());
+            variables.put("itemName", event.getItemSummary());
+            Long quantity = event.getQuantity();
+            if (quantity == null) {
+                BizPurchaseRequest original = purchaseRequestService.getRequestWithItems(purchase.getId());
+                if (original == null || original.getItems() == null || original.getItems().isEmpty()) {
+                    throw new IllegalStateException("采购审批缺少原始采购明细");
+                }
+                quantity = original.getItems().stream().mapToLong(item -> {
+                    Integer itemQuantity = item.getQuantity();
+                    if (itemQuantity == null || itemQuantity <= 0) throw new IllegalStateException("采购审批原始数量无效");
+                    return itemQuantity.longValue();
+                }).sum();
+            }
+            if (quantity <= 0) throw new IllegalStateException("采购审批数量无效");
+            variables.put("quantity", quantity);
+            LocalDate expectedDate = event.getExpectedDate();
+            if (expectedDate == null && purchase.getExpectedDate() != null) expectedDate = purchase.getExpectedDate().toLocalDate();
+            variables.put("expectedDate", expectedDate == null ? null : expectedDate.toString());
             WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
                     OaBusinessTypes.PURCHASE_REQUEST,

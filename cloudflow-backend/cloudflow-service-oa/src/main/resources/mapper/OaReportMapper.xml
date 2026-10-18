@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaReportMapper">
+    <select id="expense" resultType="com.cloudflow.common.core.report.ReportRow" timeout="5">
+        WITH expense_fact AS (
+            SELECT claim.tenant_id, claim.id AS claim_count, claim.dept_id AS department, claim.dept_name AS department_name,
+                claim.status, item.expense_type, item.expense_date AS business_date,
+                CASE WHEN item.id IS NULL THEN claim.total_amount ELSE item.amount END AS claim_amount,
+                CASE WHEN claim.status IN ('APPROVED', 'PAID')
+                    THEN CASE WHEN item.id IS NULL THEN claim.total_amount ELSE item.amount END ELSE 0 END AS approved_amount,
+                CASE WHEN claim.status = 'PAID'
+                    THEN CASE WHEN item.id IS NULL THEN claim.total_amount ELSE item.amount END ELSE 0 END AS paid_amount,
+                CASE WHEN claim.total_amount IS NULL OR (item.id IS NOT NULL
+                    AND SUM(item.amount) OVER (PARTITION BY claim.tenant_id, claim.id) &lt;&gt; claim.total_amount)
+                    THEN 1 ELSE 0 END AS integrity_error
+            FROM biz_expense_claim claim
+            LEFT JOIN biz_expense_item item ON item.claim_id = claim.id AND item.tenant_id = claim.tenant_id
+            WHERE claim.tenant_id = #{tenantId} AND claim.deleted = 0
+            <if test="!scope.all">
+                AND (1 = 2
+                    <if test="scope.userId != null">OR claim.user_id = #{scope.userId}</if>
+                    <if test="!scope.departmentIds.isEmpty()">
+                        OR claim.dept_id IN <foreach collection="scope.departmentIds" item="departmentId" open="(" separator="," close=")">#{departmentId}</foreach>
+                    </if>
+                )
+            </if>
+        ), filtered_fact AS (
+            SELECT * FROM expense_fact fact WHERE 1 = 1
+            <include refid="com.cloudflow.common.report.ReportSqlMapper.conditions"/>
+        ), dated_result AS (
+            SELECT #{tenantId} AS tenant_id, <include refid="com.cloudflow.common.report.ReportSqlMapper.projection"/>, 0 AS missing_date_summary
+            FROM filtered_fact fact
+            WHERE fact.business_date BETWEEN #{query.startDate} AND #{query.endDate}
+            <include refid="com.cloudflow.common.report.ReportSqlMapper.grouping"/>
+            <include refid="com.cloudflow.common.report.ReportSqlMapper.ordering"/>
+        )
+        SELECT * FROM (
+            SELECT * FROM dated_result
+            UNION ALL
+            SELECT #{tenantId} AS tenant_id, NULL AS dimension1, NULL AS label1, NULL AS dimension2, NULL AS label2,
+                COUNT(DISTINCT fact.claim_count) AS measure1, COALESCE(SUM(fact.claim_amount), 0) AS measure2,
+                COALESCE(SUM(fact.approved_amount), 0) AS measure3, COALESCE(SUM(fact.paid_amount), 0) AS measure4,
+                NULL AS measure5, COUNT(*) AS source_rows, MAX(fact.integrity_error) AS integrity_error, 1 AS missing_date_summary
+            FROM filtered_fact fact WHERE fact.business_date IS NULL
+        ) combined
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.orderBy"/>
+    </select>
+    <select id="budget" resultType="com.cloudflow.common.core.report.ReportRow" timeout="5">
+        SELECT <include refid="com.cloudflow.common.report.ReportSqlMapper.projection"/>
+        FROM (
+            SELECT CONCAT(plan.fiscal_year, '/', plan.period_type) AS period,
+                CONCAT(plan.fiscal_year, '/', plan.period_type) AS period_name,
+                plan.dept_id AS department, plan.dept_name AS department_name,
+                line.subject_code AS subject, line.subject_name, line.amount AS budget_amount,
+                line.reserved_amount, line.actual_amount, line.available_amount, 0 AS integrity_error
+            FROM oa_budget_plan plan
+            INNER JOIN oa_budget_line line ON line.budget_id = plan.budget_id AND line.tenant_id = plan.tenant_id
+            WHERE plan.tenant_id = #{tenantId} AND plan.deleted = 0
+            <if test="!scope.all">
+                AND (1 = 2
+                    <if test="scope.userId != null">OR plan.owner_id = #{scope.userId}</if>
+                    <if test="!scope.departmentIds.isEmpty()">
+                        OR plan.dept_id IN <foreach collection="scope.departmentIds" item="departmentId" open="(" separator="," close=")">#{departmentId}</foreach>
+                    </if>
+                )
+            </if>
+        ) fact
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.filters"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.grouping"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.ordering"/>
+    </select>
+    <select id="assets" resultType="com.cloudflow.common.core.report.ReportRow" timeout="5">
+        SELECT <include refid="com.cloudflow.common.report.ReportSqlMapper.projection"/>
+        FROM (
+            SELECT asset.category_id AS category, category.category_name, asset.status,
+                asset.dept_id AS department, asset.dept_name AS department_name,
+                asset.custodian_id AS custodian, asset.custodian_name, asset.asset_id AS asset_count,
+                asset.purchase_amount, asset.accumulated_depreciation AS depreciation_amount,
+                asset.net_book_value AS net_amount, 0 AS integrity_error
+            FROM oa_asset asset
+            LEFT JOIN oa_asset_category category ON category.category_id = asset.category_id
+                AND category.tenant_id = asset.tenant_id AND category.deleted = 0
+            WHERE asset.tenant_id = #{tenantId} AND asset.deleted = 0
+        ) fact
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.filters"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.grouping"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.ordering"/>
+    </select>
+</mapper>

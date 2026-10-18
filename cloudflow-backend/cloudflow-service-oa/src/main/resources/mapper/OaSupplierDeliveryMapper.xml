@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaSupplierDeliveryMapper">
+    <select id="selectBySupplierAndPeriod" resultType="com.cloudflow.oa.domain.vo.SupplierDeliveryRecord">
+        SELECT receipt.id AS receipt_id, receipt.purchase_id,
+               DATE(receipt.receipt_time) AS actual_date, DATE(purchase.expected_date) AS expected_date
+        FROM biz_purchase_receipt receipt
+        JOIN biz_purchase_request purchase ON purchase.id = receipt.purchase_id
+            AND purchase.tenant_id = receipt.tenant_id
+        WHERE receipt.tenant_id = #{tenantId} AND purchase.supplier_id = #{supplierId}
+          AND purchase.deleted = 0 AND purchase.expected_date IS NOT NULL
+          AND receipt.received_quantity &gt; 0 AND receipt.receipt_time &gt;= #{from}
+          AND receipt.receipt_time &lt; DATE_ADD(#{to}, INTERVAL 1 DAY)
+        ORDER BY receipt.id
+    </select>
+</mapper>

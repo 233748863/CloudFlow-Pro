@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaSupplierQualificationMapper">
+    <select id="selectForUpdate" resultType="com.cloudflow.oa.domain.OaSupplierQualification">
+        SELECT * FROM oa_supplier_qualification
+        WHERE qualification_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0
+        FOR UPDATE
+    </select>
+</mapper>

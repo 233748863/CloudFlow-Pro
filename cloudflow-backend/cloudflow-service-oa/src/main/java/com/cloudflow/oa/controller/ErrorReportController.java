@@ -1,6 +1,7 @@
 package com.cloudflow.oa.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.IpUtils;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
@@ -52,13 +53,13 @@ public class ErrorReportController {
                 return R.ok();
             }
             if (!isAllowed(errorLog)) {
-                log.warn("拒绝前端错误上报，url={}，context={}，message={}", errorLog == null ? null : errorLog.getUrl(), errorLog == null ? null : errorLog.getContext(), errorLog == null ? null : errorLog.getMessage());
+                log.warn("拒绝不符合上报规则的前端错误");
                 return R.ok();
             }
             String clientIp = getClientIp(request);
             frontendErrorLogService.reportError(errorLog, clientIp);
         } catch (Exception e) {
-            log.error("处理前端错误上报时发生异常: {}", e.getMessage(), e);
+            log.error("处理前端错误上报失败: {}", e.getClass().getSimpleName());
         }
         return R.ok();
     }
@@ -74,6 +75,9 @@ public class ErrorReportController {
     private boolean isAllowed(FrontendErrorLog errorLog) {
         if (errorLog == null || !StringUtils.hasText(errorLog.getMessage())) {
             return false;
+        }
+        if (UserContext.getUserId() != null) {
+            return true;
         }
         String allowAnonymousPath = oaProperties.getErrorReport().getAllowAnonymousPath();
         if (!StringUtils.hasText(allowAnonymousPath)) {

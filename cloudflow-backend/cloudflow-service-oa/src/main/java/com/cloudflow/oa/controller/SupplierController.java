@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.SysSupplier;
@@ -35,7 +36,7 @@ public class SupplierController {
     public R<SysSupplier> getInfo(@PathVariable Long id) {
         SysSupplier supplier = supplierService.getById(id);
         if (supplier == null || !Integer.valueOf(0).equals(supplier.getDeleted())) {
-            return R.fail("供应商不存在");
+            throw new ServiceException("供应商不存在", 404);
         }
         return R.ok(supplier);
     }
@@ -46,34 +47,23 @@ public class SupplierController {
     @PostMapping
     @SaCheckPermission("oa:supplier:add")
     public R<Void> add(@RequestBody SysSupplier supplier) {
-        try {
-            return supplierService.createSupplier(supplier) ? R.ok() : R.fail("创建失败");
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
-        }
+        if (!supplierService.createSupplier(supplier)) throw new ServiceException("创建失败", 409);
+        return R.ok();
     }
 
     @SysLog("修改供应商")
     @PutMapping
     @SaCheckPermission("oa:supplier:edit")
     public R<Void> edit(@RequestBody SysSupplier supplier) {
-        try {
-            return supplierService.updateSupplier(supplier) ? R.ok() : R.fail("更新失败");
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
-        }
+        if (!supplierService.updateSupplier(supplier)) throw new ServiceException("更新失败", 409);
+        return R.ok();
     }
 
     @SysLog("删除供应商")
     @DeleteMapping("/{ids}")
     @SaCheckPermission("oa:supplier:remove")
     public R<Void> remove(@PathVariable List<Long> ids) {
-        for (Long id : ids) {
-            SysSupplier supplier = new SysSupplier();
-            supplier.setSupplierId(id);
-            supplier.setDeleted(1);
-            supplierService.updateById(supplier);
-        }
+        supplierService.removeSuppliers(ids);
         return R.ok();
     }
 }

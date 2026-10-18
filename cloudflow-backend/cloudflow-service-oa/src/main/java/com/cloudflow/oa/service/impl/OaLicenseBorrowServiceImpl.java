@@ -25,7 +25,7 @@ import com.cloudflow.oa.mapper.OaLicenseBorrowMapper;
 import com.cloudflow.oa.mapper.OaLicenseHandoverLogMapper;
 import com.cloudflow.oa.mapper.OaLicenseMapper;
 import com.cloudflow.oa.service.IOaLicenseBorrowService;
-import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
@@ -57,7 +57,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
     private final OaLicenseHandoverLogMapper handoverLogMapper;
     private final OaBorrowReminderLogMapper reminderLogMapper;
     private final RemoteWorkflowService remoteWorkflowService;
-    private final ISysNoticeService sysNoticeService;
+    private final MessageSender sysNoticeService;
     private final OaWorkflowFailureHelper workflowFailureHelper;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
@@ -504,11 +504,11 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         log.setCreateBy(log.getOperatorName());
         log.setCreateTime(now);
         reminderLogMapper.insert(log);
-        sysNoticeService.sendNotice(borrow.getUserId(), "证照归还提醒", content, "2",
+        sysNoticeService.send(borrow.getUserId(), "证照归还提醒", content, "2",
                 log.getOperatorId(), log.getOperatorName());
         OaLicense license = licenseMapper.selectById(borrow.getLicenseId());
         if (license != null && license.getKeeperId() != null && !license.getKeeperId().equals(borrow.getUserId())) {
-            sysNoticeService.sendNotice(license.getKeeperId(), "证照逾期提醒", content, "2",
+            sysNoticeService.send(license.getKeeperId(), "证照逾期提醒", content, "2",
                     log.getOperatorId(), log.getOperatorName());
         }
     }

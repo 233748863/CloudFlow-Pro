@@ -32,8 +32,12 @@ public interface BizPurchaseRequestMapper extends BaseMapper<BizPurchaseRequest>
      */
     BizPurchaseRequest selectRequestWithItems(@Param("id") Long id);
 
+    BizPurchaseRequest selectPrintableWithItems(@Param("id") Long id, @Param("tenantId") Long tenantId,
+                                               @Param("dataScope") DataScope dataScope);
+
     /**
      * 获取今日采购单号最大序号。
      */
     Integer getTodayMaxSeq();
+    BizPurchaseRequest selectForUpdate(@org.apache.ibatis.annotations.Param("id") Long id, @org.apache.ibatis.annotations.Param("tenantId") Long tenantId);
 }

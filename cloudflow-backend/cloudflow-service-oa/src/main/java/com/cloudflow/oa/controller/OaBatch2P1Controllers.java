@@ -186,6 +186,7 @@ class OaMeetingMinutesController {
     }
 
     @SysLog("修改会议纪要")
+    @RepeatSubmit
     @PutMapping
     @SaCheckPermission("oa:meeting:edit")
     public R<Void> edit(@RequestBody OaMeetingMinutes minutes) {
@@ -215,6 +216,7 @@ class OaMeetingMinutesController {
     }
 
     @SysLog("登记会议出席")
+    @RepeatSubmit
     @PostMapping("/attendance")
     @SaCheckPermission("oa:meeting:edit")
     public R<Void> upsertAttendance(@RequestBody OaMeetingAttendance attendance) {

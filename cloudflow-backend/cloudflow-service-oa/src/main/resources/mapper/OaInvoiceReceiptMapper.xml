@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaInvoiceReceiptMapper">
+    <sql id="receivable">
+        SELECT receivable.*,
+            CASE WHEN receivable.contract_id IS NULL THEN 'CNY'
+                ELSE (SELECT contract.currency FROM oa_contract contract WHERE contract.contract_id = receivable.contract_id
+                    AND contract.tenant_id = receivable.tenant_id AND contract.deleted = 0) END AS currency
+        FROM crm_receivable receivable WHERE receivable.receivable_id = #{id} AND receivable.tenant_id = #{tenantId} AND receivable.deleted = 0
+    </sql>
+    <select id="lockReceivable" resultType="com.cloudflow.oa.mapper.OaInvoiceReceiptMapper$Receivable">
+        <include refid="receivable"/> FOR UPDATE
+    </select>
+    <select id="readReceivable" resultType="com.cloudflow.oa.mapper.OaInvoiceReceiptMapper$Receivable">
+        <include refid="receivable"/>
+    </select>
+    <select id="lockCurrency" resultType="java.lang.String">
+        SELECT currency FROM oa_contract WHERE contract_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 FOR SHARE
+    </select>
+    <select id="boundInvoices" resultType="java.lang.Long">
+        SELECT invoice_id FROM oa_invoice WHERE receivable_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 ORDER BY invoice_id
+    </select>
+    <select id="pendingAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(writeoff.writeoff_amount), 0)
+        FROM oa_invoice_writeoff writeoff
+        JOIN oa_invoice invoice ON invoice.invoice_id = writeoff.invoice_id AND invoice.tenant_id = writeoff.tenant_id
+        LEFT JOIN crm_deal_event event ON event.tenant_id = writeoff.tenant_id
+            AND event.event_key = CONCAT('OA_INVOICE_RECEIPT:', writeoff.invoice_id, ':', writeoff.writeoff_id)
+        WHERE invoice.receivable_id = #{id} AND writeoff.tenant_id = #{tenantId} AND writeoff.business_type = 'CRM_RECEIVABLE'
+            AND writeoff.business_id = #{id} AND event.event_id IS NULL
+            AND EXISTS (SELECT 1 FROM outbox_event source WHERE source.tenant_id = writeoff.tenant_id
+                AND source.aggregate_type = 'cloudflow-service-oa' AND source.aggregate_id = writeoff.invoice_id
+                AND source.event_type = 'INVOICE_RECEIVABLE_CHANGED'
+                AND JSON_UNQUOTE(JSON_EXTRACT(JSON_UNQUOTE(JSON_EXTRACT(source.payload_json, '$.payload')), '$.writeoffId')) = writeoff.writeoff_id)
+    </select>
+    <select id="currentTeam" resultType="com.cloudflow.oa.domain.OaContractTeam">
+        SELECT * FROM crm_deal_team WHERE tenant_id = #{tenantId} AND biz_type = 'RECEIVABLE' AND biz_id = #{id}
+            AND current_flag = 1 ORDER BY sales_user_id
+    </select>
+</mapper>

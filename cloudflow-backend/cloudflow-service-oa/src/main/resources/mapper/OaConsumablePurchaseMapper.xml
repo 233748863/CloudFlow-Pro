@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaConsumablePurchaseMapper">
+    <select id="lockItems" resultType="com.cloudflow.oa.domain.BizPurchaseItem">
+        SELECT * FROM biz_purchase_item WHERE tenant_id = #{tenantId} AND purchase_id = #{purchaseId} ORDER BY id FOR UPDATE
+    </select>
+    <update id="updateReceived">
+        UPDATE biz_purchase_item SET received_quantity = #{record.receivedQuantity}
+        WHERE tenant_id = #{record.tenantId} AND purchase_id = #{record.purchaseId} AND id = #{record.id}
+            AND received_quantity = #{previous}
+    </update>
+    <select id="visible" resultType="com.cloudflow.oa.domain.BizPurchaseRequest">
+        SELECT * FROM biz_purchase_request WHERE tenant_id = #{tenantId} AND id = #{id} AND deleted = 0
+    </select>
+    <select id="receipts" resultType="com.cloudflow.oa.domain.vo.ConsumableResults$PurchaseReceiptView">
+        SELECT receipt.*, CAST(ledger.ledger_id AS CHAR) AS ledger_id,
+            (reversal.ledger_id IS NOT NULL) AS reversed, CAST(reversal.ledger_id AS CHAR) AS reversal_ledger_id
+        FROM biz_purchase_receipt receipt LEFT JOIN oa_consumable_ledger ledger
+            ON ledger.tenant_id = receipt.tenant_id AND ledger.source_biz_type = 'PURCHASE_RECEIPT'
+                AND ledger.source_biz_id = receipt.id AND ledger.reversal_of_ledger_id IS NULL
+        LEFT JOIN oa_consumable_ledger reversal
+            ON reversal.tenant_id = ledger.tenant_id AND reversal.reversal_of_ledger_id = ledger.ledger_id
+        WHERE receipt.tenant_id = #{tenantId} AND receipt.purchase_id = #{purchaseId} ORDER BY receipt.id DESC
+    </select>
+</mapper>

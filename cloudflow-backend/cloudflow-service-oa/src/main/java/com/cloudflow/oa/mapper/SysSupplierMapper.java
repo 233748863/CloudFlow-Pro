@@ -9,4 +9,6 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface SysSupplierMapper extends BaseMapper<SysSupplier> {
+    SysSupplier selectForUpdate(@org.apache.ibatis.annotations.Param("id") Long id, @org.apache.ibatis.annotations.Param("tenantId") Long tenantId);
+    long countReferences(@org.apache.ibatis.annotations.Param("id") Long id, @org.apache.ibatis.annotations.Param("tenantId") Long tenantId);
 }

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaOperationsReminderMapper">
+    <select id="unscoredSuppliers" resultType="com.cloudflow.oa.domain.SysSupplier">
+        SELECT supplier.* FROM oa_supplier supplier
+        WHERE supplier.tenant_id = #{tenantId} AND supplier.deleted = 0 AND supplier.status = 'ACTIVE'
+          AND (supplier.cooperation_start_date IS NULL OR supplier.cooperation_start_date &lt;= #{to})
+          AND NOT EXISTS (SELECT 1 FROM oa_supplier_scorecard card WHERE card.tenant_id = supplier.tenant_id AND card.supplier_id = supplier.supplier_id
+                AND card.deleted = 0 AND card.status = 'CONFIRMED' AND card.period_start &lt;= #{from} AND card.period_end &gt;= #{to})
+        ORDER BY supplier.supplier_id
+    </select>
+    <select id="missingTimesheets" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        SELECT DISTINCT employee.id, employee.tenant_id, employee.name, employee.user_id
+        FROM hr_employee employee JOIN sys_user account ON account.user_id = employee.user_id AND account.tenant_id = employee.tenant_id
+        WHERE employee.tenant_id = #{tenantId} AND employee.deleted = 0 AND employee.employee_status NOT IN ('RESIGNED', 'TERMINATED')
+          AND account.deleted = 0 AND account.status = '0'
+          AND EXISTS (SELECT 1 FROM oa_project project WHERE project.tenant_id = employee.tenant_id AND project.deleted = 0 AND project.status IN ('APPROVED', 'IN_PROGRESS')
+              AND (project.start_date IS NULL OR project.start_date &lt;= #{to})
+              AND (project.owner_id = employee.user_id OR EXISTS (SELECT 1 FROM oa_project_member membership WHERE membership.tenant_id = project.tenant_id AND membership.project_id = project.project_id
+                    AND membership.user_id = employee.user_id AND membership.deleted = 0 AND (membership.join_date IS NULL OR membership.join_date &lt;= #{to}) AND (membership.leave_date IS NULL OR membership.leave_date &gt;= #{from}))))
+          AND NOT EXISTS (SELECT 1 FROM oa_timesheet sheet JOIN oa_timesheet_detail detail ON detail.timesheet_id = sheet.timesheet_id AND detail.tenant_id = sheet.tenant_id
+              WHERE sheet.tenant_id = employee.tenant_id AND sheet.employee_id = employee.id AND sheet.deleted = 0 AND detail.deleted = 0
+                AND sheet.status IN ('SUBMITTED', 'APPROVING', 'APPROVED') AND detail.work_date BETWEEN #{from} AND #{to})
+        ORDER BY employee.user_id
+    </select>
+</mapper>

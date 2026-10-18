@@ -11,7 +11,7 @@ import com.cloudflow.oa.domain.OaSealApplication;
 import com.cloudflow.oa.mapper.OaSealApplicationMapper;
 import com.cloudflow.oa.mapper.OaSealMapper;
 import com.cloudflow.oa.service.IOaTraceEventService;
-import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.oa.util.OaContractConstants;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ public class SealApplicationApprovalHandler implements ApprovalResultHandler {
     private final OaSealApplicationMapper sealApplicationMapper;
     private final OaSealMapper sealMapper;
     private final IOaTraceEventService oaTraceEventService;
-    private final ISysNoticeService sysNoticeService;
+    private final MessageSender sysNoticeService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -97,7 +97,7 @@ public class SealApplicationApprovalHandler implements ApprovalResultHandler {
             return;
         }
         String content = "用印申请已审批通过，请处理借出：" + application.getApplicationNo() + " / " + application.getSealName();
-        sysNoticeService.sendNotice(seal.getKeeperId(), "用印待借出处理", content, "2",
+        sysNoticeService.send(seal.getKeeperId(), "用印待借出处理", content, "2",
                 null, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
     }
 }

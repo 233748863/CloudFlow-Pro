@@ -3,6 +3,7 @@ package com.cloudflow.oa.domain;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
@@ -20,6 +21,8 @@ public class OaInvoiceWriteoff implements Serializable {
     private Long writeoffId;
     private Long tenantId;
     private Long invoiceId;
+    @TableField(exist = false)
+    private Integer invoiceVersion;
     private String businessType;
     private Long businessId;
     private String businessNo;

@@ -1,6 +1,6 @@
 package com.cloudflow.oa.service.impl;
 
-import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.oa.service.IOaTraceEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 public class OaWorkflowFailureHelper {
 
     private final IOaTraceEventService oaTraceEventService;
-    private final ISysNoticeService sysNoticeService;
+    private final MessageSender sysNoticeService;
 
     /**
      * 记录工作流启动失败事件并通知提交人。
@@ -47,7 +47,7 @@ public class OaWorkflowFailureHelper {
         // 2. 通知提交人
         try {
             if (submitterId != null) {
-                sysNoticeService.sendNotice(submitterId,
+                sysNoticeService.send(submitterId,
                         "工作流启动失败",
                         "您的申请 " + businessNo + " 已提交，但审批流程启动失败，请联系管理员或稍后重试。",
                         "3",

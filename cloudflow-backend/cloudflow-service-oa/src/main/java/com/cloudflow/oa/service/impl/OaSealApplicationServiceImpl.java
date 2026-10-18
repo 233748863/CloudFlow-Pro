@@ -28,7 +28,7 @@ import com.cloudflow.oa.mapper.OaSealHandoverLogMapper;
 import com.cloudflow.oa.mapper.OaSealMapper;
 import com.cloudflow.oa.service.IOaSealApplicationService;
 import com.cloudflow.oa.service.IOaTraceEventService;
-import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
@@ -65,7 +65,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
     private final RemoteWorkflowService remoteWorkflowService;
     private final OaWorkflowFailureHelper workflowFailureHelper;
     private final IOaTraceEventService oaTraceEventService;
-    private final ISysNoticeService sysNoticeService;
+    private final MessageSender sysNoticeService;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
 
@@ -561,11 +561,11 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         log.setCreateBy(log.getOperatorName());
         log.setCreateTime(now);
         reminderLogMapper.insert(log);
-        sysNoticeService.sendNotice(application.getUserId(), "用印归还提醒", content, "2",
+        sysNoticeService.send(application.getUserId(), "用印归还提醒", content, "2",
                 log.getOperatorId(), log.getOperatorName());
         OaSeal seal = sealMapper.selectById(application.getSealId());
         if (seal != null && seal.getKeeperId() != null && !seal.getKeeperId().equals(application.getUserId())) {
-            sysNoticeService.sendNotice(seal.getKeeperId(), "用印逾期提醒", content, "2",
+            sysNoticeService.send(seal.getKeeperId(), "用印逾期提醒", content, "2",
                     log.getOperatorId(), log.getOperatorName());
         }
     }

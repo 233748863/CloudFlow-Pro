@@ -17,6 +17,7 @@ import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
 import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.IPaymentRequestService;
+import com.cloudflow.oa.service.PaymentSourceGuard;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.common.redis.lock.DistributedLock;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,10 +51,26 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private com.cloudflow.oa.service.OaHrPaymentService hrPayments;
+
     @Override
     public Page<BizPaymentRequest> queryPage(Integer pageNum, Integer pageSize, String status, String paymentType, Long userId) {
         return (Page<BizPaymentRequest>) baseMapper.selectPageByDataScope(
                 new Page<>(pageNum, pageSize), status, paymentType, userId, DataScopeUtils.listScope());
+    }
+
+    @Override
+    public BizPaymentRequest getAccessiblePayment(Long id) {
+        Long tenantId = UserContext.getTenantId();
+        if (id == null || tenantId == null) {
+            throw new com.cloudflow.common.core.exception.ServiceException("付款申请不存在或无权访问", 403);
+        }
+        BizPaymentRequest payment = baseMapper.selectByIdWithDataScope(id, tenantId, DataScopeUtils.listScope());
+        if (payment == null || !tenantId.equals(payment.getTenantId()) || !Integer.valueOf(0).equals(payment.getDeleted())) {
+            throw new com.cloudflow.common.core.exception.ServiceException("付款申请不存在或无权访问", 403);
+        }
+        return payment;
     }
 
     @Override
@@ -72,6 +89,8 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     @Override
     @Audit(name = "鍒涘缓浠樻鐢宠", spel = "#payment", diff = true, highRisk = true)
     public boolean createPayment(BizPaymentRequest payment) {
+        PaymentSourceGuard.ordinary(payment);
+        PaymentSourceGuard.amount(payment.getAmount());
         normalizePaymentAttachment(payment);
         return save(payment);
     }
@@ -79,8 +98,22 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     @Override
     @Audit(name = "鏇存柊浠樻鐢宠", spel = "#payment", oldVal = "@paymentRequestServiceImpl.getById(#payment.id)", diff = true, highRisk = true)
     public boolean updatePayment(BizPaymentRequest payment) {
+        PaymentSourceGuard.ordinary(payment);
+        if (payment.getAmount() != null) PaymentSourceGuard.amount(payment.getAmount());
         normalizePaymentAttachment(payment);
         return updateById(payment);
+    }
+
+    @Override
+    public boolean updateById(BizPaymentRequest payment) {
+        PaymentSourceGuard.ordinary(payment);
+        if (payment.getId() == null) throw new IllegalArgumentException("缺少付款申请编号");
+        BizPaymentRequest existing = getById(payment.getId());
+        if (existing == null) return false;
+        PaymentSourceGuard.ordinary(existing);
+        return baseMapper.update(payment, new LambdaUpdateWrapper<BizPaymentRequest>()
+                .eq(BizPaymentRequest::getId, payment.getId())
+                .isNull(BizPaymentRequest::getSourceBizType).isNull(BizPaymentRequest::getSourceBizId)) == 1;
     }
 
     @Override
@@ -138,6 +171,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     // M1-5: 闃插苟鍙戝啿绐?    @DistributedLock(key = "'payment:' + #id + ':confirm'", waitMs = 500, leaseMs = 15000)
     public boolean confirmPaid(Long id) {
         BizPaymentRequest payment = getById(id);
+        if (payment != null && payment.getSourceBizType() != null) return hrPayments.confirmPaid(id);
         if (payment == null || !Integer.valueOf(0).equals(payment.getDeleted())) {
             throw new IllegalArgumentException("payment request does not exist");
         }

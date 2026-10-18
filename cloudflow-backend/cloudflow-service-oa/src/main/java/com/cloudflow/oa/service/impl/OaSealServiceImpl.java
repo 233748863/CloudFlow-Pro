@@ -15,7 +15,7 @@ import com.cloudflow.oa.mapper.OaSealApplicationMapper;
 import com.cloudflow.oa.mapper.OaSealExpiryReminderLogMapper;
 import com.cloudflow.oa.mapper.OaSealMapper;
 import com.cloudflow.oa.service.IOaSealService;
-import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -40,7 +40,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
 
     private final OaSealApplicationMapper sealApplicationMapper;
     private final OaSealExpiryReminderLogMapper expiryReminderLogMapper;
-    private final ISysNoticeService sysNoticeService;
+    private final MessageSender sysNoticeService;
     private final SysConfigHelper sysConfigHelper;
 
     private static final String EXPIRY_REMINDER_DAYS_CONFIG = "sys.oa.seal.expiryReminderDays";
@@ -318,7 +318,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
         log.setCreateBy(log.getOperatorName());
         log.setCreateTime(now);
         expiryReminderLogMapper.insert(log);
-        sysNoticeService.sendNotice(recipientId, "印章到期提醒", content, "2", log.getOperatorId(), log.getOperatorName());
+        sysNoticeService.send(recipientId, "印章到期提醒", content, "2", log.getOperatorId(), log.getOperatorName());
         return true;
     }
 

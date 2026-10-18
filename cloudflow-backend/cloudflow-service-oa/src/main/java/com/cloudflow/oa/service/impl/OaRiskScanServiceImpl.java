@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaRiskAlert;
@@ -11,13 +12,14 @@ import com.cloudflow.oa.mapper.OaContractMapper;
 import com.cloudflow.oa.mapper.OaSealApplicationMapper;
 import com.cloudflow.oa.service.IOaRiskAlertService;
 import com.cloudflow.oa.service.IOaRiskScanService;
-import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.oa.service.remote.RemoteBusinessRuleService;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.oa.util.OaContractConstants;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -38,7 +40,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
     private final OaContractMapper contractMapper;
     private final OaSealApplicationMapper sealApplicationMapper;
     private final IOaRiskAlertService oaRiskAlertService;
-    private final ISysNoticeService sysNoticeService;
+    private final MessageSender sysNoticeService;
     private final RemoteBusinessRuleService remoteBusinessRuleService;
     private final SysConfigHelper sysConfigHelper;
 
@@ -49,6 +51,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int scanContractRisks() {
         int created = 0;
         created += scanExpiringContracts();
@@ -154,7 +157,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
 
     private BusinessRuleDTO resolveContractRiskRule() {
         try {
-            var result = remoteBusinessRuleService.getEffectiveRule("oa.contract.risk.threshold");
+            R<BusinessRuleDTO> result = remoteBusinessRuleService.getEffectiveRule("oa.contract.risk.threshold");
             if (result != null && result.isSuccess()) {
                 BusinessRuleDTO rule = result.getData();
                 if (rule != null && Integer.valueOf(1).equals(rule.getEnabled()) && rule.getThresholdValue() != null) {
@@ -216,7 +219,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
         risk.setHandleRemark(remark);
         boolean created = oaRiskAlertService.createRuleRiskIfAbsent(risk);
         if (created && contract.getOwnerId() != null) {
-            sysNoticeService.sendNotice(contract.getOwnerId(), "合同风险提醒",
+            sysNoticeService.send(contract.getOwnerId(), "合同风险提醒",
                     contract.getContractNo() + " / " + contract.getContractName() + "：" + name,
                     "2", null, StringUtils.hasText(contract.getOwnerName()) ? contract.getOwnerName() : "risk-scan");
         }

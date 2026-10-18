@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaMessageRecordMapper">
+    <select id="selectRecentForUser" resultType="com.cloudflow.oa.domain.OaMessageRecord">
+        SELECT record_id, tenant_id, template_code, channel_type, receiver_type, receiver_id,
+               receiver_name, title, content, message_category, biz_type, biz_id, link_url,
+               send_status, read_flag, send_time, create_time, update_time
+        FROM sys_message_record
+        WHERE tenant_id = #{tenantId}
+          AND receiver_id = #{userId}
+          AND channel_type = 'INTERNAL'
+          AND send_status = 'SUCCESS'
+        ORDER BY create_time DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

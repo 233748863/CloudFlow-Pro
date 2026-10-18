@@ -18,14 +18,14 @@ public class OaProjectDependency implements Serializable {
     private Long dependencyId;
     private Long tenantId;
     private Long projectId;
-    private String predecessorType;
-    private Long predecessorId;
-    private String successorType;
-    private Long successorId;
+    private Long predecessorTaskId;
+    private Long successorTaskId;
     private String dependencyType;
     private Integer lagDays;
     private String remark;
     private Integer deleted;
+    @com.baomidou.mybatisplus.annotation.Version
+    private Integer version;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
