@@ -25,7 +25,7 @@ CloudFlow Pro 是一个面向企业办公、流程审批、人力资源和客户
 | 公共能力 | 16 个 `cloudflow-common-*` 子模块 |
 | Controller | 业务服务 84+ 个，公共 SSE 1 个 |
 | 前端页面 | `src/pages` 下 94 个 TSX 页面组件 |
-| 数据库结构 | `01`-`04` 脚本合计 135 张结构表 |
+| 数据库结构 | `01`-`05` 合计 374 张结构表，`07` 补建 2 张日志归档表；完整演示库共 376 张表 |
 | 本地一键启动 | `start-cloudflow.ps1` 并行编译并启动 6 个后端服务和前端 |
 | Docker Compose | 已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、CRM、HR、Prometheus、Grafana、前端 |
 
@@ -134,18 +134,31 @@ CloudFlow Pro/
 
 | 文件 | 作用 | 结构表数量 |
 | --- | --- | --- |
-| `01.cloudflow-common.sql` | 租户、部门、用户、角色、菜单、岗位、文件、日志、字典、参数 | 18 |
-| `02.cloudflow-workflow.sql` | 流程定义、实例、任务、会签、模板、版本、归档、监控、告警 | 42 |
-| `03.cloudflow-hr.sql` | HR 组织、人事、考勤、薪酬、绩效、招聘、审计 | 37 |
-| `04.cloudflow-oa.sql` | OA、行政、资产、车辆、费用、合同、印章、证照、访客、知识库 | 53 |
-| `05.cloudflow-crm.sql` | CRM 微服务结构表：客户、联系人、商机、报价、回款、续约、工单 | 17 |
+| `01.cloudflow-common.sql` | 租户、部门、用户、角色、菜单、岗位、文件、日志、字典、参数 | 72 |
+| `02.cloudflow-workflow.sql` | 流程定义、实例、任务、会签、模板、版本、归档、监控、告警 | 47 |
+| `03.cloudflow-hr.sql` | HR 组织、人事、考勤、薪酬、绩效、招聘、审计 | 119 |
+| `04.cloudflow-oa.sql` | OA、行政、资产、车辆、费用、合同、印章、证照、访客、知识库 | 91 |
+| `05.cloudflow-crm.sql` | CRM 微服务结构表：客户、联系人、商机、报价、回款、续约、工单 | 45 |
 | `06.cloudflow-business-seed.sql` | 初始化菜单、账号、流程模板、权限统一收口与基础演示数据 | 0 |
-| `07.cloudflow-demo-seed.sql` | 50 个行业租户的全量 Demo 数据（每张表每租户至少 50 条） | 0 |
-| `99.cloudflow-clear-all.sql` | 清理业务数据 | 0 |
+| `07.cloudflow-demo-seed.sql` | 50 个租户的关联演示数据，补齐配置、操作记录及日志归档样例 | 2 |
+| `99.cloudflow-clear-all.sql` | 保留结构清空数据，含日志及归档；本次重建未使用 | 0 |
 
-执行 `06.cloudflow-business-seed.sql` 后可使用以下账号登录，密码均为 `123456`：`admin`、`li`、`wang`、`zhao`、`zhang`。继续执行 `07.cloudflow-demo-seed.sql` 后会生成 50 个启用租户，每个租户均可使用 `admin / 123456` 登录；其余演示账号为 `demo_u02` 至 `demo_u50`，密码同为 `123456`。
+执行 `06.cloudflow-business-seed.sql` 后可使用以下账号登录，密码均为 `123456`：`admin`、`li`、`wang`、`zhao`、`zhang`。继续执行 `07.cloudflow-demo-seed.sql` 后共有 50 个启用租户（ID 100000～100049），每个租户均可使用 `admin / 123456` 登录；其余演示账号为 `demo_u02` 至 `demo_u50`，密码同为 `123456`。默认租户保留 `06` 的代码 `xinyuan`，`07` 将其名称更新为“上海云杉数字科技有限公司”；登录时按实际租户代码选择，默认管理员首次登录要求改密。
 
-`07.cloudflow-demo-seed.sql` 由 `scripts/generate-demo-seed.ps1` 根据 01～05 的实际表结构生成；表结构调整后应重新运行该生成器，不要直接手工维护生成文件。
+`07.cloudflow-demo-seed.sql` 只供空开发库按 `01`～`06` 初始化后执行一次，不能在已有业务库反复执行。它由 `scripts/generate-demo-seed.ps1` 和 `demo_seed_*.py` 根据当前结构、业务注册及明确的关联规则生成；表结构调整后重新生成，不直接手工维护生成文件。通用生成器处理 314 类表，57 类配置及操作表按场景每租户补 1 条，基础、全局、日历及归档表按用途生成；完整库要求 376 张表均非空，不统一要求每表每租户 50 条。
+
+生成与只读核验（PowerShell 7、Python 3.9+；核验依赖 `paramiko`、`pymysql`）：
+
+```powershell
+python -m pip install paramiko pymysql
+pwsh -NoProfile -File scripts/generate-demo-seed.ps1
+# 将服务器 SSH 密码放入 CLOUDFLOW_SERVER_SSH_PASSWORD 环境变量，不写入源码或命令历史。
+python scripts/check-demo-data.py
+```
+
+核验会检查全部实际表、非空覆盖、同租户引用、业务类型对应关系，以及金额、库存、采购主从、离职结算、流程草稿、网关分支和 2026 正式节假日日历等一致性；失败返回非零退出码。外部数据源、IM、OAuth 和门户样例停用，邮件为草稿、投递为跳过、演示任务暂停；这些样例不代表外部对接验收。
+
+开发服务器重建工具 `scripts/rebuild-demo-database.py` 固定只处理 `192.168.1.173/cloud_flow_db`，依次执行 `prepare`、`import`、`start`、`cleanup`，每阶段传同一 `--run-id YYYYMMDD-HHMMSS`。`prepare` 停七个项目服务并临时备份，`import` 删除重建该库并顺序导入 `01`～`07`，`start` 先核验再恢复服务；基本访问通过且结论归档后执行 `cleanup` 删除本轮备份及上传 SQL，仅留小型状态记录。导入失败保持停服，核对失败语句后用 `resume --file 序号 --line 完整语句起始行` 继续，禁止用 `import` 反复删库。本轮执行结果及恢复限制见[数据库重建与测试数据整理记录](docs/design/数据库重建与测试数据整理记录-20261018.md)。
 
 仅重建指定业务表时，可使用 `./scripts/generate-demo-seed.ps1 -Tables wf_task_attachment,wf_task_delegation -OutputPath ./selected-demo-seed.sql` 生成这些表的演示数据；主键编号仍按完整表结构计算，对未重建表的引用在导入时按租户读取现有记录。指定表时必须使用独立输出文件，脚本拒绝覆盖完整的 07 文件，且不会修改未选中的表或菜单授权；完整初始化仍使用不带 `-Tables` 的生成命令。
 
@@ -159,7 +172,7 @@ CloudFlow Pro/
 - MySQL 8.0+
 - Redis 7.x
 - Nacos 2.3.x
-- Python 3.9+，仅用于 `push_nacos_config.py`
+- Python 3.9+，用于配置推送及演示数据生成、核验；生成脚本使用 PowerShell 7（`pwsh`）
 
 ### 🧱 2. 初始化数据库
 
