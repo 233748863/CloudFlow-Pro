@@ -17,6 +17,9 @@ import java.util.List;
 @Mapper
 public interface PerformanceStatsMapper extends BaseMapper<PerformanceStats> {
 
+    int lockAnomalyScanBucket(@Param("tenantId") Long tenantId, @Param("statDate") LocalDate statDate,
+                              @Param("processDefKey") String processDefKey, @Param("processName") String processName);
+
     /**
      * 查询性能统计数据
      */

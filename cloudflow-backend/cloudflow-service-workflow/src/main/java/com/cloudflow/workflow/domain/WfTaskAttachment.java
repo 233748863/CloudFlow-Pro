@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -19,9 +20,11 @@ public class WfTaskAttachment {
     private String taskId;
     private String instanceId;
     private String fileName;
+    @TableField("file_path")
     private String fileUrl;
     private String fileType;
     private Long fileSize;
+    @TableField("upload_user_id")
     private Long uploaderId;
     private String uploaderName;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

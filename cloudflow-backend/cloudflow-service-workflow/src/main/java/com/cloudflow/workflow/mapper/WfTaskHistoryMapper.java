@@ -14,6 +14,10 @@ import java.util.List;
 @Mapper
 public interface WfTaskHistoryMapper extends BaseMapper<WfTaskHistory> {
 
+    List<WfTaskHistory> selectTaskForUpdate(@Param("tenantId") Long tenantId, @Param("taskId") String taskId);
+
+    String selectLatestTaskAction(@Param("tenantId") Long tenantId, @Param("taskId") String taskId);
+
     /**
      * 批量查询流程实例的审批历史（转换为TaskDetailVO）
      *

@@ -94,12 +94,14 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
         
         // 今日统计
         overview.setTodayStarted(processMonitorMapper.countByDateAndStatus(todayStart, null, tenantId));
-        overview.setTodayCompleted(processMonitorMapper.countByDateAndStatus(todayStart, "COMPLETED", tenantId));
+        overview.setTodayCompleted(processMonitorMapper.countByDateAndStatus(todayStart, "PASSED", tenantId)
+                + processMonitorMapper.countByDateAndStatus(todayStart, "AUTO_PASSED", tenantId));
         overview.setTodayTimeout(timeoutAlertMapper.countByDate(todayStart, tenantId));
         overview.setTodayAnomaly(anomalyAlertMapper.countByDate(todayStart, tenantId));
         
         // 当前状态
-        overview.setRunningCount(processMonitorMapper.countByStatus("RUNNING", tenantId));
+        overview.setRunningCount(com.cloudflow.workflow.domain.enums.WfProcessStatus.activeCodes().stream()
+                .mapToInt(status -> processMonitorMapper.countByStatus(status, tenantId)).sum());
         overview.setPendingTaskCount(processMonitorMapper.countPendingTasks(tenantId));
         
         // 告警统计

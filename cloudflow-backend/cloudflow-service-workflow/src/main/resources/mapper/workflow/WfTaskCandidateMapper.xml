@@ -4,6 +4,22 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.workflow.mapper.WfTaskCandidateMapper">
 
+    <select id="selectPendingForTaskForUpdate" resultType="com.cloudflow.workflow.domain.WfTaskCandidate" useCache="false" flushCache="true">
+        SELECT * FROM wf_task_candidate
+        WHERE tenant_id = #{tenantId} AND task_id = #{taskId} AND status = 'PENDING'
+        <!-- 调用方先锁任务，只判断候选是否为空，不依赖排序。 -->
+        FOR UPDATE
+    </select>
+
+    <update id="cancelPendingForUser">
+        UPDATE wf_task_candidate SET status = 'CANCELLED', version = version + 1
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND status = 'PENDING'
+        <choose>
+            <when test="taskId != null">AND task_id = #{taskId}</when>
+            <otherwise>AND task_id IS NULL</otherwise>
+        </choose>
+    </update>
+
     <select id="selectBatchByTaskIds" resultType="com.cloudflow.workflow.domain.WfTaskCandidate">
         SELECT
             candidate_id,

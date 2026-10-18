@@ -6,6 +6,7 @@ import com.cloudflow.workflow.domain.dto.VersionComparisonDTO;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.service.IVersionComparisonService;
+import com.cloudflow.workflow.service.WorkflowTriggerSecrets;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +32,9 @@ public class VersionComparisonServiceImpl implements IVersionComparisonService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private WorkflowTriggerSecrets triggerSecrets;
 
     /**
      * 对比两个版本的差异（C6: 版本 id 即版本行 definitionId）
@@ -91,8 +95,8 @@ public class VersionComparisonServiceImpl implements IVersionComparisonService {
     @Override
     public VersionComparisonDTO compareDefinitions(String fromDefinition, String toDefinition) {
         try {
-            JsonNode fromJson = objectMapper.readTree(fromDefinition);
-            JsonNode toJson = objectMapper.readTree(toDefinition);
+            JsonNode fromJson = objectMapper.readTree(triggerSecrets.maskModel(fromDefinition));
+            JsonNode toJson = objectMapper.readTree(triggerSecrets.maskModel(toDefinition));
 
             VersionComparisonDTO result = new VersionComparisonDTO();
 

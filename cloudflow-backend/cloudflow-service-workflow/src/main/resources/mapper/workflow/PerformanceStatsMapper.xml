@@ -2,6 +2,12 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.workflow.mapper.PerformanceStatsMapper">
 
+    <insert id="lockAnomalyScanBucket">
+        INSERT INTO wf_performance_stats (tenant_id, stat_date, process_def_key, process_def_name)
+        VALUES (#{tenantId}, #{statDate}, #{processDefKey}, #{processName})
+        ON DUPLICATE KEY UPDATE id = id
+    </insert>
+
     <resultMap id="PerformanceStatsResult" type="com.cloudflow.workflow.domain.monitor.PerformanceStats">
         <id property="id" column="id"/>
         <result property="tenantId" column="tenant_id"/>
@@ -36,7 +42,7 @@
     </resultMap>
 
     <sql id="FinishedStatusCase">
-        pm.status IN ('COMPLETED', 'FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED')
+        pm.status IN ('PASSED', 'AUTO_PASSED', 'FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED', 'CANCELLED')
     </sql>
 
     <select id="selectPerformanceStats" resultMap="PerformanceStatsResult">
@@ -124,7 +130,7 @@
                 pm.process_def_key,
                 MAX(pm.process_def_name) AS process_def_name,
                 COUNT(*) AS total_count,
-                SUM(CASE WHEN pm.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_count,
+                SUM(CASE WHEN pm.status IN ('PASSED', 'AUTO_PASSED') THEN 1 ELSE 0 END) AS completed_count,
                 SUM(CASE WHEN pm.status IN ('FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED') THEN 1 ELSE 0 END) AS failed_count,
                 COALESCE(ROUND(AVG(CASE WHEN <include refid="FinishedStatusCase"/> AND pm.duration IS NOT NULL THEN pm.duration END)), 0) AS avg_duration_ms,
                 COALESCE(MIN(CASE WHEN <include refid="FinishedStatusCase"/> AND pm.duration IS NOT NULL THEN pm.duration END), 0) AS min_duration_ms,

@@ -52,7 +52,7 @@ public interface INodeExecutionService {
      * 完成流程实例（设置状态和结束时间）
      *
      * @param instance 流程实例
-     * @param status   目标状态（COMPLETED/REJECTED 等）
+     * @param status   目标状态（PASSED/AUTO_PASSED/REJECTED 等）
      */
     void completeInstance(WfProcessInstance instance, String status);
 

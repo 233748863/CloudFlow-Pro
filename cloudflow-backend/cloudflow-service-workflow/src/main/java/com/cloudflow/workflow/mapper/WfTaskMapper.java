@@ -14,6 +14,13 @@ import java.util.List;
 @Mapper
 public interface WfTaskMapper extends BaseMapper<WfTask> {
 
+    WfTask selectForUpdate(@Param("tenantId") Long tenantId, @Param("taskId") String taskId);
+
+    List<WfTask> selectInstanceForUpdate(@Param("tenantId") Long tenantId, @Param("instanceId") String instanceId);
+
+    List<WfTask> selectSignMembersForUpdate(@Param("tenantId") Long tenantId, @Param("instanceId") String instanceId,
+                                           @Param("reference") String reference);
+
     /**
      * 批量查询任务详情
      *

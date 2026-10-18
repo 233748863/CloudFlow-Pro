@@ -4,12 +4,19 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.workflow.mapper.WfParallelJoinMapper">
 
-    <select id="selectIdsForUpdate" resultType="java.lang.Long">
-        SELECT id
+    <select id="selectArrivalsForUpdate" resultType="com.cloudflow.workflow.domain.WfParallelJoin" useCache="false" flushCache="true">
+        SELECT *
         FROM wf_parallel_join
-        WHERE instance_id = #{instanceId}
-          AND gateway_id = #{gatewayId}
+        WHERE tenant_id = #{tenantId} AND activation_id = #{activationId}
         FOR UPDATE
     </select>
+
+    <delete id="deleteArchived">
+        DELETE FROM wf_parallel_join
+        WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId}
+          AND EXISTS (SELECT 1 FROM wf_process_instance
+                      WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND deleted = 1
+                        AND status IN ('PASSED', 'AUTO_PASSED', 'REJECTED', 'TERMINATED', 'INVALIDATED', 'CANCELLED'))
+    </delete>
 
 </mapper>

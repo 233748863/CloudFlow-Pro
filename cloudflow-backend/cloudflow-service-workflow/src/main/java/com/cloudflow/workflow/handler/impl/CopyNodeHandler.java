@@ -39,6 +39,7 @@ public class CopyNodeHandler implements INodeHandler {
 
     @Override
     public boolean handle(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables) {
+        com.cloudflow.workflow.service.WorkflowNodePolicy.assertAllowed(node, "allowCc");
         try {
             log.info("[CopyNodeHandler] 执行抄送节点, nodeKey={}, instanceId={}", node.getId(), instance.getInstanceId());
 

@@ -38,7 +38,7 @@ public class WorkflowInnerController {
                 req.getBusinessKey(),
                 req.getStartUserId(),
                 req.getStartUserName(),
-                req.getVariables()));
+                req.getVariables(), req.getNodeAssignees()));
     }
 
     @Inner(allowedServices = {INTERNAL_BUSINESS_INVALIDATE_CALLERS})

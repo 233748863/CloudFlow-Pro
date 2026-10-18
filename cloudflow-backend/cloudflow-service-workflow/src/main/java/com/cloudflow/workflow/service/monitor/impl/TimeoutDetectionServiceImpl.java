@@ -1,17 +1,21 @@
 package com.cloudflow.workflow.service.monitor.impl;
 
+import com.cloudflow.common.job.annotation.JobHandler;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.redis.config.RuntimeSysConfigService;
 import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.support.TenantIterator;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeDef;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeRegistry;
 import com.cloudflow.workflow.domain.WfEscalationChain;
 import com.cloudflow.workflow.domain.WfEscalationLog;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
+import com.cloudflow.workflow.service.WorkflowHParticipantPolicy;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.domain.monitor.TimeoutAlert;
@@ -41,11 +45,14 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +77,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     private final ProcessMonitorMapper processMonitorMapper;
     private final TimeoutAlertMapper timeoutAlertMapper;
     private final WfTaskMapper wfTaskMapper;
+    private final WorkflowHParticipantPolicy hParticipantPolicy;
     private final WfProcessInstanceMapper processInstanceMapper;
     private final INotificationService notificationService;
     private final PerformanceStatsRefreshService performanceStatsRefreshService;
@@ -85,13 +93,14 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     private final RuntimeSysConfigService runtimeSysConfigService;
     private final com.cloudflow.common.redis.core.RedisCache redisCache;
     private final com.cloudflow.workflow.job.TaskReminderJob taskReminderJob;
+    private final TransactionTemplate transactions;
 
     /**
      * 定时检测超时任务，每 5 分钟执行一次。
      */
     @Override
     @DistributedJob(name = "workflow-timeout-task-check-job", lockTime = 300)
-    @Scheduled(cron = "0 */5 * * * ?")
+    @JobHandler(value = "timeoutDetect", desc = "任务超时检测")
     @Transactional(rollbackFor = Exception.class)
     public void detectTimeoutTasks() {
         log.info("开始检测超时任务");
@@ -248,6 +257,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
         }
 
         if ("REASSIGN".equalsIgnoreCase(chain.getActionType()) && task != null && "TODO".equals(task.getStatus())) {
+            hParticipantPolicy.assertParticipantChange(task, java.util.List.of(target.userId()));
             task.setAssignee(target.userId());
             task.setAssigneeName(target.userName());
             task.setIsTimeout(1);
@@ -507,66 +517,80 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
      */
     @Override
     @DistributedJob(name = "workflow-timeout-process-check-job", lockTime = 300)
-    @Scheduled(cron = "0 */5 * * * ?")
-    @Transactional(rollbackFor = Exception.class)
+    @JobHandler(value = "timeoutDetectSecondary", desc = "流程超时检测")
     public void detectTimeoutProcesses() {
         log.info("开始检测超时流程");
-        // 重复告警全量收敛跨租户进行一次即可（无 tenantId 过滤，依赖 MP 行级隔离）
-        tenantIterator.forEachActiveTenant(tid -> {
-            try { cleanupDuplicateActiveAlerts(); } catch (Exception e) {
-                log.error("超时告警收敛失败, tenantId={}", tid, e);
+        // 每条流程独立提交，避免整轮扫描持有不同统计桶的锁而与任务扫描互锁。
+        TransactionTemplate itemTransaction = new TransactionTemplate(Objects.requireNonNull(transactions.getTransactionManager()));
+        itemTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        itemTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+        List<RuntimeException> failures = new ArrayList<>();
+        for (Long tenantId : tenantIterator.listActiveTenantIds()) {
+            try {
+                TenantBroker.runAs(tenantId, ignored -> {
+                    cleanupDuplicateActiveAlerts();
+                    List<ProcessMonitor> processes = processMonitorMapper.selectRunningProcesses(tenantId);
+                    for (ProcessMonitor candidate : processes) {
+                        try {
+                            itemTransaction.executeWithoutResult(status -> detectTimeoutProcess(tenantId, candidate.getId()));
+                        } catch (RuntimeException failure) {
+                            log.error("流程超时检测失败, tenantId={}, monitorId={}", tenantId, candidate.getId(), failure);
+                            failures.add(new IllegalStateException("流程超时检测失败，租户：" + tenantId + "，监控记录：" + candidate.getId(), failure));
+                        }
+                    }
+                    log.info("超时流程检测完成: tenantId={}, 检测数量={}", tenantId, processes.size());
+                });
+            } catch (RuntimeException failure) {
+                failures.add(new IllegalStateException("流程超时检测读取或告警收敛失败，租户：" + tenantId, failure));
             }
-            detectTimeoutProcessesForTenant(tid);
-        });
+        }
+        if (!failures.isEmpty()) {
+            IllegalStateException failure = new IllegalStateException("流程超时检测存在失败项：" + failures.size() + "项");
+            failures.forEach(failure::addSuppressed);
+            throw failure;
+        }
     }
 
-    private void detectTimeoutProcessesForTenant(Long tenantId) {
-        try {
-            List<ProcessMonitor> runningProcesses = processMonitorMapper.selectRunningProcesses(tenantId);
-
-            int alertCount = 0;
-            for (ProcessMonitor process : runningProcesses) {
-                long duration = ChronoUnit.MILLIS.between(process.getStartTime(), LocalDateTime.now());
-
-                String level = determineTimeoutLevel(duration);
-                if (level == null) {
-                    continue;
-                }
-
-                TimeoutAlert existingAlert = findLatestActiveAlert(tenantId, "PROCESS", process.getInstanceId());
-                if (existingAlert != null) {
-                    upgradeExistingAlert(existingAlert, level);
-                    performanceStatsRefreshService.refreshForProcess(process);
-                    continue;
-                }
-
-                TimeoutAlert alert = new TimeoutAlert();
-                alert.setTenantId(tenantId);
-                alert.setAlertType("PROCESS");
-                alert.setTargetId(process.getInstanceId());
-                alert.setTargetName(process.getProcessDefName());
-                alert.setTimeoutLevel(level);
-                alert.setTimeoutDuration(duration);
-                alert.setThreshold(getThresholdByLevel(level));
-                alert.setAssigneeId(process.getStartUserId());
-                alert.setAssigneeName(process.getStartUserName());
-                alert.setAlertTime(LocalDateTime.now());
-                alert.setNotificationSent("N");
-                alert.setEscalated("N");
-                alert.setResolved("N");
-                alert.setCreateTime(LocalDateTime.now());
-                alert.setUpdateTime(LocalDateTime.now());
-
-                timeoutAlertMapper.insert(alert);
-                alertCount++;
-                performanceStatsRefreshService.refreshForProcess(process);
-                sendTimeoutAlert(alert);
-            }
-
-            log.info("超时流程检测完成: tenantId={}, 检测数量={}, 新增告警={}", tenantId, runningProcesses.size(), alertCount);
-        } catch (Exception e) {
-            log.error("检测超时流程失败, tenantId={}", tenantId, e);
+    private void detectTimeoutProcess(Long tenantId, Long monitorId) {
+        ProcessMonitor process = processMonitorMapper.lockForAnomalyScan(tenantId, monitorId);
+        if (process == null || !"RUNNING".equals(process.getStatus())) {
+            return;
         }
+        long duration = ChronoUnit.MILLIS.between(process.getStartTime(), LocalDateTime.now());
+
+        String level = determineTimeoutLevel(duration);
+        if (level == null) {
+            return;
+        }
+
+        performanceStatsRefreshService.lockAnomalyScanBucket(process);
+        TimeoutAlert existingAlert = findLatestActiveAlert(tenantId, "PROCESS", process.getInstanceId());
+        if (existingAlert != null) {
+            upgradeExistingAlert(existingAlert, level);
+            performanceStatsRefreshService.refreshForProcess(process);
+            return;
+        }
+
+        TimeoutAlert alert = new TimeoutAlert();
+        alert.setTenantId(tenantId);
+        alert.setAlertType("PROCESS");
+        alert.setTargetId(process.getInstanceId());
+        alert.setTargetName(process.getProcessDefName());
+        alert.setTimeoutLevel(level);
+        alert.setTimeoutDuration(duration);
+        alert.setThreshold(getThresholdByLevel(level));
+        alert.setAssigneeId(process.getStartUserId());
+        alert.setAssigneeName(process.getStartUserName());
+        alert.setAlertTime(LocalDateTime.now());
+        alert.setNotificationSent("N");
+        alert.setEscalated("N");
+        alert.setResolved("N");
+        alert.setCreateTime(LocalDateTime.now());
+        alert.setUpdateTime(LocalDateTime.now());
+
+        timeoutAlertMapper.insert(alert);
+        performanceStatsRefreshService.refreshForProcess(process);
+        sendTimeoutAlert(alert);
     }
 
     @Override

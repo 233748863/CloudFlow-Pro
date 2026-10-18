@@ -9,7 +9,7 @@ import com.cloudflow.workflow.event.WorkflowEventPublisher;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfProcessSnapshotMapper;
 import com.cloudflow.workflow.service.IAsyncWorkflowService;
-import com.cloudflow.workflow.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.workflow.service.WorkflowAuditService;
 import com.cloudflow.workflow.service.monitor.IProcessMonitorService;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -36,7 +36,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AsyncWorkflowServiceImpl implements IAsyncWorkflowService {
 
-    private final ISysNoticeService sysNoticeService;
+    private final MessageSender sysNoticeService;
     private final WorkflowEventPublisher workflowEventPublisher;
     private final WfProcessInstanceMapper processInstanceMapper;
     private final WfProcessSnapshotMapper snapshotMapper;
@@ -67,7 +67,7 @@ public class AsyncWorkflowServiceImpl implements IAsyncWorkflowService {
             if (request.getRecipients() != null && !request.getRecipients().isEmpty()) {
                 for (Long recipientId : request.getRecipients()) {
                     try {
-                        sysNoticeService.sendNotice(
+                        sysNoticeService.send(
                             recipientId,
                             title,
                             content,

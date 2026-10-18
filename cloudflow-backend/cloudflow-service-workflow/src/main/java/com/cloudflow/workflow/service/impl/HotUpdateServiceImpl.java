@@ -289,7 +289,7 @@ public class HotUpdateServiceImpl implements IHotUpdateService {
     private List<WfProcessInstance> findRunningInstances(HotUpdateRequest request, String excludeDefinitionId) {
         LambdaQueryWrapper<WfProcessInstance> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WfProcessInstance::getProcessDefKey, request.getProcessKey())
-               .eq(WfProcessInstance::getStatus, "RUNNING")
+               .in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.activeCodes())
                .ne(WfProcessInstance::getDefinitionId, excludeDefinitionId);
 
         if (request.getInstanceIds() != null && !request.getInstanceIds().isEmpty()) {
@@ -310,6 +310,10 @@ public class HotUpdateServiceImpl implements IHotUpdateService {
     }
 
     private void migrateInstance(WfProcessInstance instance, WfProcessDefinition targetDef) {
+        WfProcessDefinition original = definitionMapper.selectById(instance.getDefinitionId());
+        if (instance.getFormVersion() != null && (original == null || !java.util.Objects.equals(original.getFormId(), targetDef.getFormId()))) {
+            throw com.cloudflow.workflow.exception.WorkflowException.validationError("实例已绑定表单版本，不能热更新到不同表单");
+        }
         nodeExecutionService.saveProcessSnapshot(instance, "HOT_UPDATE", "热更新前快照");
 
         WfProcessInstance update = new WfProcessInstance();

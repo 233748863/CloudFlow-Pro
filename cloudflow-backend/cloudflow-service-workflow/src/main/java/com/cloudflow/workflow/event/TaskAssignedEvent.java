@@ -13,6 +13,12 @@ public class TaskAssignedEvent extends TaskEvent {
     /** 任务处理人姓名 */
     private final String assigneeName;
 
+    private String taskType = "APPROVAL";
+
+    public String getTaskType() { return taskType; }
+
+    public void setTaskType(String taskType) { this.taskType = taskType; }
+
     public TaskAssignedEvent(Object source, String instanceId, String processDefKey,
                               String taskId, String nodeKey, String nodeName,
                               Long assigneeId, String assigneeName) {

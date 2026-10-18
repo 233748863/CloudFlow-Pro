@@ -100,6 +100,7 @@ public class CacheConfig {
                 .withCacheConfiguration(WF_DEFINITION_CACHE, wfDefinitionConfig)
                 .withCacheConfiguration(WF_FORM_CACHE, wfFormConfig)
                 .withCacheConfiguration(WF_USER_CACHE, wfUserConfig)
+                .transactionAware()
                 .build();
     }
 

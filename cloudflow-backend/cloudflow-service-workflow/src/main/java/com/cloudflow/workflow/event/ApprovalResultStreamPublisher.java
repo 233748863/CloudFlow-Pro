@@ -2,6 +2,7 @@ package com.cloudflow.workflow.event;
 
 import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackMetadata;
 import com.cloudflow.workflow.config.NotificationWebSocketHandler;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
@@ -77,9 +78,11 @@ public class ApprovalResultStreamPublisher {
         body.put("approverId", approverId == null ? "" : String.valueOf(approverId));
         body.put("approverName", approverName == null ? "" : approverName);
         body.put("approvalTime", String.valueOf(System.currentTimeMillis()));
+        body.putAll(WorkflowCallbackMetadata.variables(businessType, variables));
 
         // 回调 Stream 是跨微服务共享通道，必须写入全局 key。
         String messageId = redisStreamUtil.publishGlobal(streamKey, body);
+        if (!StringUtils.hasText(messageId)) throw new IllegalStateException("审批结果消息未成功写入");
         log.info("[ApprovalResultStream] 审批结果已发布: streamKey={}, messageId={}, businessType={}, businessId={}, result={}",
                 streamKey, messageId, businessType, businessId, approvalResult);
 
@@ -116,8 +119,7 @@ public class ApprovalResultStreamPublisher {
             return objectMapper.readValue(variablesJson, new TypeReference<Map<String, Object>>() {
             });
         } catch (Exception e) {
-            log.warn("[ApprovalResultStream] 解析流程变量失败: instanceVariables={}", variablesJson, e);
-            return new HashMap<>();
+            throw new IllegalStateException("审批回调实例变量解析失败");
         }
     }
 
@@ -136,4 +138,3 @@ public class ApprovalResultStreamPublisher {
         }
     }
 }
-

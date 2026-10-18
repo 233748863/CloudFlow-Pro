@@ -19,6 +19,7 @@ import com.cloudflow.workflow.domain.dto.TaskCompleteReq;
 import com.cloudflow.workflow.domain.dto.TerminateProcessRequest;
 import com.cloudflow.workflow.domain.dto.UrgeTaskRequest;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
+import com.cloudflow.workflow.domain.vo.StartableDefinitionVO;
 import com.cloudflow.workflow.service.ITaskStatisticsService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
 import com.cloudflow.workflow.service.IWfFormService;
@@ -28,7 +29,8 @@ import com.cloudflow.workflow.service.WorkflowStatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaMode;
+import cn.dev33.satoken.stp.StpUtil;
 
 @RestController
 @RequestMapping("/wf")
@@ -55,12 +57,31 @@ public class WorkflowController {
     @Autowired
     private BusinessTypeRegistry businessTypeRegistry;
 
+    @Autowired
+    private com.cloudflow.workflow.service.WfFormDraftService formDraftService;
+
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowFormAccessService formAccess;
+
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowDraftJson draftJson;
+
+    @PostMapping("/instance/{instanceId}/timer/{nodeKey}/finish")
+    @SaCheckPermission("workflow:process:resume")
+    @RepeatSubmit
+    @com.cloudflow.common.log.annotation.SysLog("人工提前结束定时等待")
+    public R<Void> finishTimerNode(@PathVariable String instanceId, @PathVariable String nodeKey,
+                                   @RequestBody java.util.Map<String, String> request) {
+        wfInstanceService.finishTimerNode(instanceId, nodeKey, request.get("reason"));
+        return R.ok();
+    }
+
     /**
      * 查询全量业务类型注册项。
-     * 供前端 BusinessTypeSelector / 监控面板下拉框使用。所有已登录用户可读。
+     * 供有流程定义或监控查看权限的下拉框使用。
      */
     @GetMapping("/business-types")
-    @SaCheckLogin
+    @SaCheckPermission(value = {"workflow:definition:list", "workflow:monitor:list"}, mode = SaMode.OR)
     public R<java.util.Collection<BusinessTypeDef>> listBusinessTypes() {
         return R.ok(businessTypeRegistry.all());
     }
@@ -71,8 +92,22 @@ public class WorkflowController {
      */
     @PostMapping("/start")
     @SaCheckPermission("workflow:process:start")
-    public R<?> startProcess(@RequestBody ProcessStartReq req) {
-        return wfInstanceService.startProcess(req.getProcessDefKey(), req.getBusinessKey(), req.getVariables());
+    @RepeatSubmit.Disabled
+    @com.cloudflow.common.log.annotation.SysLog(value = "发起流程", logParams = false)
+    public R<?> startProcess(@RequestBody String body) {
+        ProcessStartReq req = draftJson.readStartRequest(body);
+        if (req.getDraftId() != null) {
+            cn.dev33.satoken.stp.StpUtil.checkPermission("workflow:draft:submit");
+            if (req.getProcessDefKey() != null || req.getBusinessKey() != null || req.getVariables() != null
+                    || req.getNodeAssignees() != null) {
+                throw com.cloudflow.workflow.exception.WorkflowException.validationError("草稿提交不能覆盖已保存内容");
+            }
+            return formDraftService.submit(req.getDraftId(), req.getExpectedVersion());
+        }
+        if (req.getExpectedVersion() != null) {
+            throw com.cloudflow.workflow.exception.WorkflowException.validationError("普通发起不能携带草稿版本");
+        }
+        return wfInstanceService.startProcess(req.getProcessDefKey(), req.getBusinessKey(), req.getVariables(), req.getNodeAssignees());
     }
 
     /**
@@ -93,6 +128,12 @@ public class WorkflowController {
     public R<PageResult<WfTask>> getTodoTasks(@ModelAttribute PageQuery pageQuery) {
         Long userId = UserContext.getUserId();
         return R.ok(wfTaskService.getTodoTasks(userId, pageQuery));
+    }
+
+    @GetMapping("/todo/{taskId}")
+    @SaCheckPermission(value = {"workflow:task:todo", "workflow:process:view"}, mode = SaMode.AND)
+    public R<WfTask> getTodoTask(@PathVariable("taskId") String taskId) {
+        return R.ok(wfTaskService.getTodoTask(taskId));
     }
 
     /**
@@ -142,12 +183,23 @@ public class WorkflowController {
         return R.ok(wfDefinitionService.listProcessDefinitions(pageQuery));
     }
 
+    @GetMapping("/startable-definitions")
+    @SaCheckPermission("workflow:process:start")
+    public R<PageResult<StartableDefinitionVO>> listStartableDefinitions(@ModelAttribute PageQuery pageQuery) {
+        return R.ok(wfDefinitionService.listStartableDefinitions(pageQuery));
+    }
+
     /**
      * 查询表单定义
      */
     @GetMapping("/form/{formId}")
-    @SaCheckPermission("workflow:form:view")
-    public R<WfFormDefinition> getFormDefinition(@PathVariable("formId") String formId) {
+    @SaCheckPermission(value = {"workflow:form:view", "workflow:process:start", "workflow:process:view"}, mode = SaMode.OR)
+    public R<WfFormDefinition> getFormDefinition(@PathVariable("formId") String formId,
+                                                @RequestParam(required = false) String instanceId,
+                                                @RequestParam(required = false) String definitionId,
+                                                @RequestParam(required = false) String taskId) {
+        if (instanceId != null || definitionId != null || taskId != null) return R.ok(formAccess.form(formId, instanceId, definitionId, taskId).form());
+        StpUtil.checkPermission("workflow:form:view");
         return R.ok(wfFormService.getFormDefinition(formId));
     }
 
@@ -331,7 +383,7 @@ public class WorkflowController {
         if (taskId == null || taskId.isBlank()) {
             return R.fail("taskId不能为空");
         }
-        return wfTaskService.rejectTask(taskId, targetNodeKey, comment);
+        return wfTaskService.rejectTask(taskId, targetNodeKey, comment, dto.getStrategy());
     }
 
     /**

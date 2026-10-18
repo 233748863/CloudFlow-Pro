@@ -40,6 +40,10 @@ public class CrmWorkflowEventListener {
                 "CRM_QUOTE:", "DRAFT");
         register("customer_renewal_review", "crm_renewal", "renewal_id", "instance_id",
                 "CRM_RENEWAL:", "PLANNED");
+        register("customer_credit_review", "crm_approval", "approval_id", "instance_id",
+                "crm_customer_credit:", "CANCELLED");
+        register("opportunity_downgrade_review", "crm_approval", "approval_id", "instance_id",
+                "crm_opportunity_downgrade:", "CANCELLED");
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)

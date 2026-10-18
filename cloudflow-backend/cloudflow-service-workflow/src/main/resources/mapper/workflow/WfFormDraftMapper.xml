@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfFormDraftMapper">
+    <select id="findDefinition" resultMap="com.cloudflow.workflow.mapper.WorkflowConfigurationLockMapper.definition"
+            useCache="false" flushCache="true">
+        SELECT * FROM wf_process_definition
+        WHERE tenant_id = #{tenantId} AND definition_id = #{definitionId} AND deleted = 0
+    </select>
+    <select id="lockDefinitions" resultMap="com.cloudflow.workflow.mapper.WorkflowConfigurationLockMapper.definition"
+            useCache="false" flushCache="true">
+        SELECT * FROM wf_process_definition
+        WHERE process_key = #{processKey} AND tenant_id = #{tenantId}
+        ORDER BY definition_id FOR UPDATE
+    </select>
+    <select id="lockForm" resultMap="com.cloudflow.workflow.mapper.WorkflowConfigurationLockMapper.form"
+            useCache="false" flushCache="true">
+        SELECT * FROM wf_form_definition
+        WHERE tenant_id = #{tenantId} AND form_id = #{formId} AND is_latest = 1 FOR UPDATE
+    </select>
+    <select id="lockStartPermissions" resultType="com.cloudflow.workflow.domain.WfFormFieldPermission"
+            useCache="false" flushCache="true">
+        SELECT * FROM wf_form_field_permission
+        WHERE tenant_id = #{tenantId} AND definition_id = #{definitionId} AND node_key = '__START__'
+        ORDER BY field_id FOR UPDATE
+    </select>
+    <select id="findOwned" resultType="com.cloudflow.workflow.domain.WfFormDraft">
+        SELECT * FROM wf_form_draft
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND draft_id = #{draftId}
+    </select>
+    <select id="lockOwned" resultType="com.cloudflow.workflow.domain.WfFormDraft" useCache="false" flushCache="true">
+        SELECT * FROM wf_form_draft
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND draft_id = #{draftId} FOR UPDATE
+    </select>
+    <select id="findByDefinition" resultType="com.cloudflow.workflow.domain.WfFormDraft">
+        SELECT * FROM wf_form_draft
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND definition_id = #{definitionId}
+    </select>
+    <update id="updateOwned">
+        UPDATE wf_form_draft SET title = #{draft.title}, form_data = #{draft.formData},
+            node_assignees = #{draft.nodeAssignees}, last_save_time = #{draft.lastSaveTime},
+            expire_time = #{draft.expireTime}, update_by = #{draft.updateBy}, update_time = #{draft.updateTime},
+            lock_version = lock_version + 1
+        WHERE tenant_id = #{draft.tenantId} AND user_id = #{draft.userId} AND draft_id = #{draft.draftId}
+          AND lock_version = #{expectedVersion}
+    </update>
+    <delete id="deleteOwned">
+        DELETE FROM wf_form_draft
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND draft_id = #{draftId}
+          AND lock_version = #{expectedVersion}
+    </delete>
+    <select id="findSubmitted" resultType="com.cloudflow.workflow.domain.WfProcessInstance" useCache="false" flushCache="true">
+        SELECT * FROM wf_process_instance
+        WHERE tenant_id = #{tenantId} AND start_user_id = #{userId} AND business_key = #{businessKey} FOR UPDATE
+    </select>
+    <select id="findExpired" resultType="com.cloudflow.workflow.domain.WfFormDraft">
+        SELECT draft_id, tenant_id, lock_version, expire_time FROM wf_form_draft
+        WHERE tenant_id = #{tenantId} AND expire_time &lt;= #{cutoff}
+        ORDER BY expire_time, draft_id LIMIT 500
+    </select>
+    <delete id="deleteExpired">
+        DELETE FROM wf_form_draft
+        WHERE tenant_id = #{tenantId} AND draft_id = #{draftId} AND lock_version = #{expectedVersion}
+          AND expire_time &lt;= #{cutoff}
+    </delete>
+</mapper>

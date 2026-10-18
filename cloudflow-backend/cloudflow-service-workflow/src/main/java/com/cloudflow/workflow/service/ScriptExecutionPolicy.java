@@ -69,6 +69,9 @@ public class ScriptExecutionPolicy {
                     continue;
                 }
                 JsonNode props = node.path("props");
+                if (props.hasNonNull("triggerType")) {
+                    continue;
+                }
                 String scriptType = normalizeScriptType(props.path("scriptType").asText(null));
                 if ("JAVASCRIPT".equals(scriptType)) {
                     String nodeName = firstText(node.path("title").asText(null), node.path("label").asText(null), node.path("id").asText(null), "未命名脚本节点");

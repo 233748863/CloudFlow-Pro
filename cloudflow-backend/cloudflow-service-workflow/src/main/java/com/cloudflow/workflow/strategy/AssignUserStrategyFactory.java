@@ -65,6 +65,8 @@ public class AssignUserStrategyFactory {
         }
         try {
             return strategy.resolve(node, instance);
+        } catch (AssigneeResolutionException exception) {
+            throw exception;
         } catch (Exception e) {
             log.error("[AssignUserStrategyFactory] 解析审批人异常, approverType={}, error={}", approverType, e.getMessage(), e);
             return null;
@@ -88,6 +90,8 @@ public class AssignUserStrategyFactory {
         }
         try {
             return strategy.resolveMultiple(node, instance);
+        } catch (AssigneeResolutionException exception) {
+            throw exception;
         } catch (Exception e) {
             log.error("[AssignUserStrategyFactory] 解析多个审批人异常, approverType={}, error={}", approverType, e.getMessage(), e);
             return new ArrayList<>();

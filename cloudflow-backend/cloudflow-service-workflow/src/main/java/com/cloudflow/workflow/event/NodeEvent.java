@@ -17,6 +17,16 @@ public abstract class NodeEvent extends BaseWorkflowEvent {
     /** 节点类型（APPROVAL / NOTIFICATION / SCRIPT / CONDITION / PARALLEL / END 等） */
     private final String nodeType;
 
+    private String taskType;
+
+    public String getTaskType() {
+        return taskType;
+    }
+
+    public void setTaskType(String taskType) {
+        this.taskType = taskType;
+    }
+
     protected NodeEvent(Object source, String instanceId, String processDefKey,
                         String nodeKey, String nodeName, String nodeType) {
         super(source, instanceId, processDefKey);

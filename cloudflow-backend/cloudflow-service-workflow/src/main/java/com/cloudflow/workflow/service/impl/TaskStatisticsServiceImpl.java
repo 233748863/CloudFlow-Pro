@@ -15,6 +15,7 @@ import com.cloudflow.workflow.mapper.WfTaskMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.service.ITaskStatisticsService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
+import com.cloudflow.workflow.service.WorkflowHistoryAttribution;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -118,8 +119,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         Long todoCount = taskMapper.selectCount(todoCountQuery);
         statusStats.put("todo", todoCount != null ? todoCount : 0);
 
-        LambdaQueryWrapper<WfTaskHistory> doneWrapper = new LambdaQueryWrapper<WfTaskHistory>()
-            .eq(WfTaskHistory::getOperatorId, userId);
+        LambdaQueryWrapper<WfTaskHistory> doneWrapper = WorkflowHistoryAttribution.forOwner(userId);
         if (currentTenantId != null) {
             doneWrapper.eq(WfTaskHistory::getTenantId, currentTenantId);
         }
@@ -194,8 +194,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         }
 
         // 5. 平均处理时长
-        LambdaQueryWrapper<WfTaskHistory> historiesQuery = new LambdaQueryWrapper<WfTaskHistory>()
-            .eq(WfTaskHistory::getOperatorId, userId)
+        LambdaQueryWrapper<WfTaskHistory> historiesQuery = WorkflowHistoryAttribution.forOwner(userId)
             .isNotNull(WfTaskHistory::getDurationSeconds);
         if (currentTenantId != null) {
             historiesQuery.eq(WfTaskHistory::getTenantId, currentTenantId);
@@ -348,8 +347,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         counts.put("pending", pending);
         counts.put("todoCount", pending);
 
-        LambdaQueryWrapper<WfTaskHistory> doneCountQuery = new LambdaQueryWrapper<WfTaskHistory>()
-            .eq(WfTaskHistory::getOperatorId, userId);
+        LambdaQueryWrapper<WfTaskHistory> doneCountQuery = WorkflowHistoryAttribution.forOwner(userId);
         if (currentTenantId != null) {
             doneCountQuery.eq(WfTaskHistory::getTenantId, currentTenantId);
         }

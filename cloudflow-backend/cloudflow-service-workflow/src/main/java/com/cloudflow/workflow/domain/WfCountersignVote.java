@@ -1,11 +1,14 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 /**
  * 5.I: 会签投票记录
@@ -35,6 +38,8 @@ public class WfCountersignVote {
     
     /** 投票结果: APPROVE(同意), REJECT(拒绝) */
     private String voteResult;
+
+    private BigDecimal voteWeight;
     
     /** 投票意见 */
     private String comment;
@@ -42,5 +47,6 @@ public class WfCountersignVote {
     /** 投票时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
 
+    @TableField(insertStrategy = FieldStrategy.ALWAYS)
     private LocalDateTime voteTime;
 }

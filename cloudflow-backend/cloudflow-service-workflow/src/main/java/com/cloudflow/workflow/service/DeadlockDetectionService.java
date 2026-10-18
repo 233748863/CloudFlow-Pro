@@ -1,15 +1,28 @@
 package com.cloudflow.workflow.service;
 
 import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.message.api.MessageSender;
+import com.cloudflow.common.job.annotation.JobHandler;
 import com.cloudflow.common.job.annotation.DistributedJob;
+import com.cloudflow.common.job.model.JobResult;
+import com.cloudflow.common.tenant.TenantBroker;
+import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.common.tenant.support.TenantIterator;
+import com.cloudflow.common.message.api.MessageSendRequest;
 import com.cloudflow.workflow.config.properties.WorkflowProperties;
+import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.redisson.api.RScript;
+import org.redisson.RedissonObject;
+import org.redisson.client.codec.StringCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import java.nio.charset.StandardCharsets;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -48,14 +61,121 @@ public class DeadlockDetectionService {
 
     /** 锁等待记录前缀 */
     private static final String LOCK_WAITER_PREFIX = "sys:lock:waiter:";
+    private static final String WAITER_MUTEX_PREFIX = "sys:lock:metadata:waiter:";
+    private static final String WAITER_STAMP_PREFIX = "sys:lock:waiter-stamp:";
+    private static final String DEADLOCK_RECOVERY_PREFIX = "sys:deadlock:recovery:";
+    private static final String COMMIT_GATE_PREFIX = "sys:lock:commit:";
+    private static final String PREPARE_RECOVERY = """
+            -- deadlock-recovery-prepare: pending work has no expiry before final registration.
+            if redis.call('exists', KEYS[1]) == 1 then return 0 end
+            redis.call('set', KEYS[1], ARGV[1])
+            return 1
+            """;
+    private static final String RELEASE_RECOVERY_LOCK = """
+            -- deadlock-recovery-release: outcome and old-generation release are one operation.
+            if redis.call('get', KEYS[1]) ~= ARGV[1] then return -1 end
+            if #KEYS > 3 and redis.call('exists', KEYS[4]) == 1 then return -2 end
+            local matched = redis.call('hexists', KEYS[2], ARGV[2]) == 1
+                and redis.call('hget', KEYS[2], ARGV[3]) == ARGV[4]
+            redis.call('set', KEYS[1], matched and ARGV[5] or ARGV[6])
+            if not matched then return 0 end
+            redis.call('del', KEYS[2])
+            redis.pcall('spublish', KEYS[3], '0')
+            redis.pcall('publish', KEYS[3], '0')
+            return 1
+            """;
+    private static final String FINISH_RECOVERY = """
+            -- deadlock-recovery-finish: only remove the exact completed plan.
+            if redis.call('get', KEYS[1]) ~= ARGV[1] then return 0 end
+            return redis.call('del', KEYS[1])
+            """;
+    private static final String WRITE_WAITER_STATE = """
+            -- deadlock-waiter-state: preserve Set encoding and stamp every atomic mutation.
+            if (redis.call('get', KEYS[2]) or '') ~= ARGV[1] then return 0 end
+            if ARGV[2] == '' then
+                redis.call('set', KEYS[2], ARGV[3], 'PX', 120000)
+                redis.call('del', KEYS[1])
+            else
+                redis.call('mset', KEYS[1], ARGV[2], KEYS[2], ARGV[3])
+                redis.call('pexpire', KEYS[1], 120000)
+                redis.call('pexpire', KEYS[2], 120000)
+            end
+            return 1
+            """;
 
     /** 死锁牺牲记录前缀 */
     private static final String DEADLOCK_VICTIM_PREFIX = "sys:deadlock:victim:";
 
     /** 死锁牺牲统计前缀 */
     private static final String DEADLOCK_STATS_KEY = "sys:deadlock:stats";
+    private static final String DEADLOCK_IDENTITY_PREFIX = "sys:deadlock:identity:";
+    private static final String COMMIT_VICTIM_EVENT = """
+            -- deadlock-event-commit: validate every read before the single write batch.
+            if #KEYS == 4 and redis.call('get', KEYS[4]) ~= ARGV[9] then return 3 end
+            local previous = redis.call('get', KEYS[3])
+            if previous then
+                if not string.match(previous, '^%d+$') or redis.call('exists', ARGV[8] .. previous) == 0 then return -2 end
+                if #KEYS == 4 then redis.call('del', KEYS[4]) end
+                return 2
+            end
+            local stats = redis.call('get', KEYS[2])
+            if (stats or '') ~= ARGV[1] or (stats and '1' or '0') ~= ARGV[2] then return 0 end
+            if redis.call('exists', KEYS[1]) == 1 then return -1 end
+            redis.call('mset', KEYS[1], ARGV[3], KEYS[2], ARGV[4], KEYS[3], ARGV[5])
+            redis.call('pexpireat', KEYS[1], ARGV[6])
+            redis.call('pexpireat', KEYS[2], ARGV[7])
+            redis.call('pexpireat', KEYS[3], ARGV[6])
+            if #KEYS == 4 then redis.call('del', KEYS[4]) end
+            return 1
+            """;
 
-    /** 内存中的锁持有记录（用于快速检测） */
+    /** Stored in the lock itself, so expiration and a subsequent acquisition cannot reuse a generation. */
+    private static final String GENERATION_FIELD = "cloudflow:deadlock:generation";
+    private static final String STAMP_GENERATION = """
+            if redis.call('hexists', KEYS[1], ARGV[1]) == 0 then return nil end
+            local generation = redis.call('hget', KEYS[1], ARGV[2])
+            if not generation then
+                generation = ARGV[3]
+                redis.call('hset', KEYS[1], ARGV[2], generation)
+            end
+            return generation
+            """;
+    private static final String MATCH_GENERATION = """
+            if redis.call('hexists', KEYS[1], ARGV[1]) == 1
+                and redis.call('hget', KEYS[1], ARGV[2]) == ARGV[3] then return 1 end
+            return 0
+            """;
+    private static final String RELEASE_GENERATION = """
+            if #KEYS > 2 and redis.call('exists', KEYS[3]) == 1 then return 0 end
+            if redis.call('hexists', KEYS[1], ARGV[1]) == 0
+                or redis.call('hget', KEYS[1], ARGV[2]) ~= ARGV[3] then return 0 end
+            redis.call('del', KEYS[1])
+            -- Wake both supported Redisson subscription modes; Redis before 7 ignores SPUBLISH.
+            redis.pcall('spublish', KEYS[2], '0')
+            redis.call('publish', KEYS[2], '0')
+            return 1
+            """;
+    private static final String RENEW_GENERATION = """
+            -- Renewal only extends this exact owner, generation and matching monitor record.
+            if redis.call('hexists', KEYS[1], ARGV[1]) == 0
+                or redis.call('hget', KEYS[1], ARGV[2]) ~= ARGV[3] then return 0 end
+            local value = redis.call('get', KEYS[2])
+            if not value then return 0 end
+            local info = cjson.decode(value)
+            if info.generation ~= ARGV[3] or info.owner ~= ARGV[1] then return 0 end
+            redis.call('pexpire', KEYS[1], ARGV[4])
+            redis.call('pexpire', KEYS[2], ARGV[5])
+            return 1
+            """;
+    private static final String REMOVE_GENERATION_RECORD = """
+            local value = redis.call('get', KEYS[1])
+            if not value then return 0 end
+            local record = cjson.decode(value)
+            if record.generation == ARGV[1] then return redis.call('del', KEYS[1]) end
+            return 0
+            """;
+
+    /** 本实例取得的代次，仅用于释放及失败重入恢复；巡检从 Redis 读取。 */
     private final Map<String, LockInfo> lockHolders = new ConcurrentHashMap<>();
 
     /** 死锁牺牲计数器 */
@@ -71,9 +191,69 @@ public class DeadlockDetectionService {
     private WorkflowProperties workflowProperties;
     
     @Autowired
-    private ISysNoticeService sysNoticeService;
+    private MessageSender sysNoticeService;
+
+    @Autowired
+    private TenantIterator tenantIterator;
+
+    @Autowired
+    private SysUserMapper users;
+
+    @Autowired
+    private TransactionTemplate transactions;
 
     // ==================== 核心 API ====================
+
+    /** Captured acquisition identity; cleanup must never substitute a newer local holder. */
+    public record LockToken(Long tenantId, String key, String threadId, String owner, String generation, long leaseSeconds) { }
+
+    public LockToken tryRenewableLock(String key, long waitSeconds, long leaseSeconds) {
+        if (!tryLockWithDetection(key, waitSeconds, leaseSeconds)) return null;
+        LockInfo info = lockHolders.get(scopedLockKey(key));
+        if (info == null || !getThreadIdentifier().equals(info.threadId) || !matchesGeneration(key, info)) {
+            throw new IllegalStateException("审批锁登记后归属已变化");
+        }
+        return new LockToken(TenantContext.getTenantId(), key, info.threadId, info.owner, info.generation, leaseSeconds);
+    }
+
+    public boolean isHeldWithDetection(LockToken token) {
+        requireTokenTenant(token);
+        return getThreadIdentifier().equals(token.threadId()) && matchesGeneration(token.key(), tokenInfo(token));
+    }
+
+    public boolean renewWithDetection(LockToken token) {
+        requireTokenTenant(token);
+        Long renewed = redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_WRITE,
+                RENEW_GENERATION, RScript.ReturnType.INTEGER,
+                List.of(scopedLockKey(token.key()), scopedLockKey(LOCK_HOLDER_PREFIX + token.key())),
+                token.owner(), GENERATION_FIELD, token.generation(), token.leaseSeconds() * 1000, (token.leaseSeconds() + 10) * 1000);
+        return Long.valueOf(1).equals(renewed);
+    }
+
+    public void unlockWithDetection(LockToken token) {
+        requireTokenTenant(token);
+        if (!getThreadIdentifier().equals(token.threadId())) throw new IllegalStateException("审批锁只能由原请求释放");
+        LockInfo info = tokenInfo(token);
+        RLock lock = redissonClient.getLock(scopedLockKey(token.key()));
+        if (matchesGeneration(token.key(), info) && lock.isHeldByCurrentThread()) lock.unlock();
+        if (!matchesGeneration(token.key(), info)) removeLockHolder(token.key(), info);
+    }
+
+    public String commitGateKey(LockToken token) {
+        requireTokenTenant(token);
+        return scopedLockKey(COMMIT_GATE_PREFIX + token.threadId());
+    }
+
+    private void requireTokenTenant(LockToken token) {
+        if (token == null || token.tenantId() == null || !token.tenantId().equals(TenantContext.getTenantId())) {
+            throw new IllegalStateException("审批锁不属于当前租户");
+        }
+    }
+
+    private static LockInfo tokenInfo(LockToken token) {
+        LockInfo info = new LockInfo(token.threadId(), 0, token.leaseSeconds());
+        info.owner = token.owner(); info.generation = token.generation(); return info;
+    }
 
     /**
      * 安全获取锁（带死锁检测）
@@ -82,41 +262,65 @@ public class DeadlockDetectionService {
      * 
      * @param lockKey 锁的 key
      * @param waitTime 等待时间（秒）
-     * @param leaseTime 锁持有时间（秒）
+     * @param leaseTime 锁持有时间（正数秒；业务锁使用有限租期）
      * @return 是否成功获取锁
      */
     public boolean tryLockWithDetection(String lockKey, long waitTime, long leaseTime) {
+        // A fixed lease also prevents an old watchdog from renewing a later generation after recovery.
+        if (leaseTime <= 0 || leaseTime > Long.MAX_VALUE / 1000 - 10) {
+            throw new IllegalArgumentException("受监控业务锁必须设置有效的正数秒租期");
+        }
         String threadId = getThreadIdentifier();
-        
+        String scoped = scopedLockKey(lockKey);
+        RLock lock = redissonClient.getLock(scoped);
+        LockInfo previous = lockHolders.get(scoped);
+        LockInfo recorded = null;
+        boolean acquired = false;
         try {
-            // 1. 记录等待状态
             recordWaiter(lockKey, threadId);
-
-            // 2. 尝试获取锁
-            RLock lock = redissonClient.getLock(lockKey);
-            boolean acquired = lock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS);
-
+            acquired = lock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS);
             if (acquired) {
-                // 3. 记录锁持有者
-                recordLockHolder(lockKey, threadId, leaseTime);
-                // 4. 清除等待记录
-                removeWaiter(lockKey, threadId);
-                return true;
-            } else {
-                // 5. 获取失败，清除等待记录
-                removeWaiter(lockKey, threadId);
-                log.warn("[tryLockWithDetection] 获取锁失败, lockKey={}, threadId={}", lockKey, threadId);
-                return false;
+                recorded = stampLockHolder(lockKey, threadId, leaseTime);
+                saveLockHolder(lockKey, recorded);
+                if (!matchesGeneration(lockKey, recorded)) throw new IllegalStateException("锁在持有记录登记期间已失效");
+                lockHolders.put(scoped, recorded);
             }
-        } catch (InterruptedException e) {
+            removeWaiter(lockKey, threadId);
+            return acquired;
+        } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            removeWaiter(lockKey, threadId);
-            log.error("[tryLockWithDetection] 获取锁被中断, lockKey={}, threadId={}", lockKey, threadId);
+            IllegalStateException failure = new IllegalStateException("获取受监控锁被中断", interrupted);
+            rollbackAcquisition(lockKey, threadId, lock, acquired, recorded, previous, failure);
+            if (failure.getSuppressed().length > 0) throw failure;
             return false;
-        } catch (Exception e) {
+        } catch (RuntimeException failure) {
+            rollbackAcquisition(lockKey, threadId, lock, acquired, recorded, previous, failure);
+            throw failure;
+        }
+    }
+
+    private void rollbackAcquisition(String lockKey, String threadId, RLock lock, boolean acquired,
+                                     LockInfo recorded, LockInfo previous, RuntimeException failure) {
+        try {
+            if (acquired && lock.isHeldByCurrentThread()
+                    && (recorded == null || matchesGeneration(lockKey, recorded))) lock.unlock();
+            if (recorded != null) {
+                if (matchesGeneration(lockKey, recorded)) {
+                    // Undo only the new reentrant layer; its original owner and first acquisition stay valid.
+                    if (previous != null && Objects.equals(previous.generation, recorded.generation)) {
+                        lockHolders.replace(scopedLockKey(lockKey), recorded, previous);
+                    }
+                } else {
+                    removeLockHolder(lockKey, recorded);
+                }
+            }
+        } catch (RuntimeException cleanup) {
+            if (cleanup != failure) failure.addSuppressed(cleanup);
+        }
+        try {
             removeWaiter(lockKey, threadId);
-            log.error("[tryLockWithDetection] 获取锁异常, lockKey={}, error={}", lockKey, e.getMessage());
-            return false;
+        } catch (RuntimeException cleanup) {
+            if (cleanup != failure) failure.addSuppressed(cleanup);
         }
     }
 
@@ -124,65 +328,142 @@ public class DeadlockDetectionService {
      * 安全释放锁（带清理）
      */
     public void unlockWithDetection(String lockKey) {
-        String threadId = getThreadIdentifier();
-        
-        try {
-            RLock lock = redissonClient.getLock(lockKey);
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
-                removeLockHolder(lockKey, threadId);
-                log.debug("[unlockWithDetection] 锁已释放, lockKey={}, threadId={}", lockKey, threadId);
-            }
-        } catch (Exception e) {
-            log.error("[unlockWithDetection] 释放锁异常, lockKey={}, error={}", lockKey, e.getMessage());
-        }
+        LockInfo expected = lockHolders.get(scopedLockKey(lockKey));
+        RLock lock = redissonClient.getLock(scopedLockKey(lockKey));
+        if (expected != null && matchesGeneration(lockKey, expected) && lock.isHeldByCurrentThread()) lock.unlock();
+        // A failed metadata cleanup can be retried even after the actual lock was released.
+        if (expected != null && !matchesGeneration(lockKey, expected)) removeLockHolder(lockKey, expected);
     }
 
     // ==================== 死锁检测机制 ====================
 
     /**
      * 定时检测死锁
-     * 每 30 秒执行一次
+     * 平台默认每10分钟执行一次
      * 使用分布式锁防止多实例重复执行
      */
     @DistributedJob(name = "deadlock-detection-job", lockTime = 25)
-    @Scheduled(fixedDelay = 30000)
-    public void detectDeadlocks() {
+    @JobHandler(value = "deadlockDetection", desc = "死锁检测")
+    public JobResult detectDeadlocks() {
         String lockKey = "lock:scheduled:detectDeadlocks";
         RLock lock = redissonClient.getLock(lockKey);
-        
+        boolean acquired = false;
         try {
-            // 尝试获取锁，最多等待1秒，锁定25秒后自动释放
-            if (lock.tryLock(1, 25, TimeUnit.SECONDS)) {
+            acquired = lock.tryLock(1, TimeUnit.SECONDS);
+            if (!acquired) return JobResult.builder().executeStatus("SKIPPED").affectedRows(0)
+                    .resultMsg("死锁巡检已有任务执行，已跳过").build();
+            List<RuntimeException> failures = new ArrayList<>();
+            int[] counts = new int[3];
+            for (Long tenantId : resolveTenantIds()) {
                 try {
-                    // 1. 检测超时锁
-                    List<String> timeoutLocks = detectTimeoutLocks();
-                    if (!timeoutLocks.isEmpty()) {
-                        log.warn("[detectDeadlocks] 发现 {} 个超时锁", timeoutLocks.size());
-                        handleTimeoutLocks(timeoutLocks);
-                    }
-
-                    // 2. 检测循环等待
-                    List<DeadlockChain> deadlockChains = detectCircularWaits();
-                    if (!deadlockChains.isEmpty()) {
-                        log.error("[detectDeadlocks] 发现 {} 个死锁链", deadlockChains.size());
-                        handleDeadlockChains(deadlockChains);
-                    }
-
-                    // 3. 清理过期记录
-                    cleanupExpiredRecords();
-                } finally {
-                    lock.unlock();
+                    TenantBroker.runAs(tenantId, ignored -> {
+                        int previousFailures = failures.size();
+                        int[] pending = replayPendingRecoveries(failures);
+                        counts[0] += pending[0];
+                        counts[1] += pending[1];
+                        try { counts[0] += handleTimeoutLocks(detectTimeoutLocks(), failures); }
+                        catch (RuntimeException failure) { failures.add(new IllegalStateException("超时锁读取失败，租户：" + tenantId, failure)); }
+                        try {
+                            int[] circular = handleDeadlockChains(detectCircularWaits(), failures);
+                            counts[0] += circular[0];
+                            counts[1] += circular[1];
+                        } catch (RuntimeException failure) { failures.add(new IllegalStateException("循环等待读取失败，租户：" + tenantId, failure)); }
+                        if (failures.size() == previousFailures) counts[2] += cleanupExpiredRecords();
+                    });
+                } catch (RuntimeException failure) {
+                    failures.add(new IllegalStateException("死锁巡检失败，租户：" + tenantId, failure));
                 }
-            } else {
-                log.debug("[detectDeadlocks] 未能获取分布式锁，跳过本次检测");
             }
+            throwFailures(failures);
+            return JobResult.success(counts[0], "死锁巡检完成：释放锁" + counts[0] + "个，解除循环等待"
+                    + counts[1] + "条，清理过期记录" + counts[2] + "条");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("[detectDeadlocks] 获取分布式锁被中断");
-        } catch (Exception e) {
-            log.error("[detectDeadlocks] 死锁检测异常: {}", e.getMessage());
+            throw new IllegalStateException("死锁巡检获取锁被中断", e);
+        } finally {
+            if (acquired && lock.isHeldByCurrentThread()) lock.unlock();
         }
+    }
+
+    private List<Long> resolveTenantIds() {
+        com.cloudflow.common.job.config.JobInvocationContext.Execution execution =
+                com.cloudflow.common.job.config.JobInvocationContext.execution();
+        if (execution != null && "deadlockDetection".equals(execution.handlerName())) return tenantIterator.listActiveTenantIds();
+        Long tenantId = TenantContext.getTenantId();
+        return tenantId == null ? tenantIterator.listActiveTenantIds() : List.of(tenantId);
+    }
+
+    private static void throwFailures(List<RuntimeException> failures) {
+        if (failures.isEmpty()) return;
+        IllegalStateException failure = new IllegalStateException("死锁巡检存在失败项：" + failures.size() + "项");
+        failures.forEach(failure::addSuppressed);
+        throw failure;
+    }
+
+    private static String scopedLockKey(String lockKey) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) throw new IllegalStateException("死锁检测缺少租户上下文");
+        return tenantId + ":" + lockKey;
+    }
+
+    private Map<String, LockInfo> currentLockHolders() {
+        // Require context even when the shared cache is empty; never query an unscoped key pattern.
+        scopedLockKey("");
+        Map<String, LockInfo> current = new HashMap<>();
+        Collection<String> keys = redisCache.keys(LOCK_HOLDER_PREFIX + "*");
+        if (keys == null) return current;
+        for (String physicalKey : keys) {
+            String key = logicalRedisKey(physicalKey, LOCK_HOLDER_PREFIX).substring(LOCK_HOLDER_PREFIX.length());
+            LockInfo info = readLockHolder(key);
+            if (info != null) current.put(key, info);
+        }
+        return current;
+    }
+
+    private LockInfo readLockHolder(String lockKey) {
+        Object value = redisCache.getCacheObject(LOCK_HOLDER_PREFIX + lockKey);
+        if (value == null) return null;
+        if (!(value instanceof Map<?, ?> record)
+                || !(record.get("threadId") instanceof String threadId) || threadId.isBlank()
+                || !(record.get("owner") instanceof String owner) || owner.isBlank()
+                || !(record.get("generation") instanceof String generation) || generation.isBlank()
+                || !(record.get("acquireTime") instanceof Number acquired) || acquired.longValue() <= 0) {
+            throw new IllegalStateException("持锁监控记录不完整");
+        }
+        // Older records omit leaseTime. They remain detectable, but cannot use lease-based cleanup.
+        long leaseTime = 0;
+        if (record.containsKey("leaseTime")) {
+            if (!(record.get("leaseTime") instanceof Number lease) || lease.longValue() <= 0
+                    || lease.longValue() > Long.MAX_VALUE / 1000 - 10) throw new IllegalStateException("持锁监控租期无效");
+            leaseTime = lease.longValue();
+        }
+        LockInfo info = new LockInfo(threadId, acquired.longValue(), leaseTime);
+        info.owner = owner;
+        info.generation = generation;
+        return info;
+    }
+
+    private String logicalRedisKey(String physicalKey, String expectedPrefix) {
+        String prefix = scopedLockKey(expectedPrefix);
+        if (!physicalKey.startsWith(prefix)) throw new IllegalStateException("死锁巡检缓存不属于当前租户");
+        return physicalKey.substring(scopedLockKey("").length());
+    }
+
+    private boolean matchesGeneration(String lockKey, LockInfo info) {
+        if (info == null || info.generation == null) return false;
+        Long matched = redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_ONLY,
+                MATCH_GENERATION, RScript.ReturnType.INTEGER, List.of(scopedLockKey(lockKey)),
+                info.owner, GENERATION_FIELD, info.generation);
+        return Long.valueOf(1).equals(matched);
+    }
+
+    private boolean releaseGeneration(String lockKey, LockInfo info) {
+        String physical = scopedLockKey(lockKey);
+        Long released = redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_WRITE,
+                RELEASE_GENERATION, RScript.ReturnType.INTEGER,
+                List.of(physical, RedissonObject.prefixName("redisson_lock__channel", physical), scopedLockKey(COMMIT_GATE_PREFIX + info.threadId)),
+                info.owner, GENERATION_FIELD, info.generation);
+        return Long.valueOf(1).equals(released);
     }
 
     /**
@@ -192,7 +473,7 @@ public class DeadlockDetectionService {
         List<String> timeoutLocks = new ArrayList<>();
         long now = System.currentTimeMillis();
 
-        for (Map.Entry<String, LockInfo> entry : lockHolders.entrySet()) {
+        for (Map.Entry<String, LockInfo> entry : currentLockHolders().entrySet()) {
             LockInfo info = entry.getValue();
             long holdTime = (now - info.acquireTime) / 1000;
 
@@ -219,12 +500,14 @@ public class DeadlockDetectionService {
         Map<String, Set<String>> waitGraph = buildWaitGraph();
 
         // 检测循环
+        Set<String> identities = new HashSet<>();
         for (String waiter : waitGraph.keySet()) {
             Set<String> visited = new HashSet<>();
             List<String> path = new ArrayList<>();
             
             if (hasCycle(waiter, waitGraph, visited, path)) {
-                chains.add(new DeadlockChain(path));
+                String identity = path.stream().distinct().sorted().collect(Collectors.joining("\n"));
+                if (identities.add(identity)) chains.add(new DeadlockChain(path));
                 log.error("[detectCircularWaits] 发现死锁链: {}", path);
             }
         }
@@ -241,13 +524,15 @@ public class DeadlockDetectionService {
         // 从 Redis 读取所有等待记录
         Collection<String> waiterKeys = redisCache.keys(LOCK_WAITER_PREFIX + "*");
         
-        for (String key : waiterKeys) {
+        if (waiterKeys == null) return graph;
+        for (String physicalKey : waiterKeys) {
+            String key = logicalRedisKey(physicalKey, LOCK_WAITER_PREFIX);
             String lockKey = key.substring(LOCK_WAITER_PREFIX.length());
             Set<String> waiters = redisCache.getCacheObject(key);
             
             if (waiters != null) {
-                LockInfo holder = lockHolders.get(lockKey);
-                if (holder != null) {
+                LockInfo holder = readLockHolder(lockKey);
+                if (holder != null && matchesGeneration(lockKey, holder)) {
                     for (String waiter : waiters) {
                         graph.computeIfAbsent(waiter, k -> new HashSet<>()).add(holder.threadId);
                     }
@@ -265,6 +550,8 @@ public class DeadlockDetectionService {
                             Set<String> visited, List<String> path) {
         if (path.contains(node)) {
             // 发现循环
+            int cycleStart = path.indexOf(node);
+            path.subList(0, cycleStart).clear();
             path.add(node);
             return true;
         }
@@ -292,27 +579,28 @@ public class DeadlockDetectionService {
     /**
      * 处理超时锁
      */
-    private void handleTimeoutLocks(List<String> timeoutLocks) {
+    private int handleTimeoutLocks(List<String> timeoutLocks, List<RuntimeException> failures) {
+        int released = 0;
         for (String lockKey : timeoutLocks) {
             try {
-                RLock lock = redissonClient.getLock(lockKey);
-                
-                // 强制释放锁（谨慎操作）
-                if (lock.isLocked()) {
-                    lock.forceUnlock();
-                    log.warn("[handleTimeoutLocks] 强制释放超时锁, lockKey={}", lockKey);
+                LockInfo info = readLockHolder(lockKey);
+                if (info == null) continue;
+                if ((System.currentTimeMillis() - info.acquireTime) / 1000 <= workflowProperties.getLock().getDeadlockTimeout()) continue;
+                if (matchesGeneration(lockKey, info)) {
+                    sendDeadlockAlert("超时锁", lockKey, "锁持有时间超过 " + workflowProperties.getLock().getDeadlockTimeout()
+                            + " 秒，巡检将按现有规则尝试解除，请查看任务日志确认处理结果。", info.generation);
+                    if (releaseGeneration(lockKey, info)) released++;
+                    else if (matchesGeneration(lockKey, info)) continue; // Transaction commit is protected; retain the monitored owner.
                 }
 
                 // 清理记录
-                removeLockHolder(lockKey, null);
+                removeLockHolder(lockKey, info);
 
-                // 发送死锁告警（已实现：日志记录）
-                // 扩展点：外部通知渠道（钉钉、企业微信、邮件）
-                sendDeadlockAlert("超时锁", lockKey, "锁持有时间超过 " + workflowProperties.getLock().getDeadlockTimeout() + " 秒");
             } catch (Exception e) {
-                log.error("[handleTimeoutLocks] 处理超时锁失败, lockKey={}, error={}", lockKey, e.getMessage());
+                failures.add(new IllegalStateException("超时锁处理失败，租户：" + TenantContext.getTenantId() + "，锁：" + lockKey, e));
             }
         }
+        return released;
     }
 
     /**
@@ -325,36 +613,185 @@ public class DeadlockDetectionService {
      * 4. 记录牺牲事件到 Redis（供监控和审计）
      * 5. 发送告警通知
      */
-    private void handleDeadlockChains(List<DeadlockChain> chains) {
+    private int[] handleDeadlockChains(List<DeadlockChain> chains, List<RuntimeException> failures) {
+        int[] counts = new int[2];
         for (DeadlockChain chain : chains) {
             try {
-                // 1. 选择牺牲者（持有锁时间最短的线程，回滚代价最小）
+                Map<String, Set<String>> graph = buildWaitGraph();
+                boolean present = true;
+                for (int index = 0; index < chain.nodes.size() - 1; index++) {
+                    if (!graph.getOrDefault(chain.nodes.get(index), Set.of()).contains(chain.nodes.get(index + 1))) present = false;
+                }
+                if (!present) continue;
                 String victim = selectVictim(chain);
-                log.error("[handleDeadlockChains] 检测到死锁，选定牺牲线程: {}, 死锁链: {}", victim, chain.nodes);
-
-                // 2. 执行牺牲策略：强制释放牺牲者持有的所有锁
-                List<String> releasedLocks = forceReleaseVictimLocks(victim);
-
-                // 3. 清理牺牲者的所有等待记录
-                cleanupVictimWaiters(victim);
-
-                // 4. 记录牺牲事件到 Redis（供监控和审计查询）
-                recordVictimEvent(victim, chain, releasedLocks);
-
-                // 5. 发送告警通知
-                sendDeadlockAlert("循环等待-已自动恢复",
-                        String.join(" -> ", chain.nodes),
-                        String.format("死锁已解除，牺牲线程: %s，释放锁: %d 个", victim, releasedLocks.size()));
-
-                log.warn("[handleDeadlockChains] 死锁已自动恢复，牺牲线程: {}, 释放锁数量: {}", victim, releasedLocks.size());
+                Map<String, LockInfo> victimLocks = currentLockHolders().entrySet().stream()
+                        .filter(entry -> entry.getValue().threadId.equals(victim))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                if (victimLocks.isEmpty()) continue;
+                List<RecoveryLock> locks = victimLocks.entrySet().stream().sorted(Map.Entry.comparingByKey())
+                        .map(entry -> new RecoveryLock(entry.getKey(), entry.getValue().owner, entry.getValue().generation)).toList();
+                RecoveryPlan plan = new RecoveryPlan(victim, new ArrayList<>(chain.nodes), locks, snapshotRecoveryWaiters(victim), 0, List.of());
+                String key = recoveryKey(plan);
+                Long prepared = redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_WRITE,
+                        PREPARE_RECOVERY, RScript.ReturnType.INTEGER, List.of(scopedLockKey(key)), encodeRecovery(plan));
+                // A retained plan was already attempted at the start of this scan.
+                if (Long.valueOf(0).equals(prepared)) continue;
+                if (!Long.valueOf(1).equals(prepared)) throw new IllegalStateException("死锁恢复记录未保存");
+                int[] recovered = resumeRecovery(key);
+                counts[0] += recovered[0]; counts[1] += recovered[1];
             } catch (Exception e) {
-                log.error("[handleDeadlockChains] 处理死锁链失败, chain={}, error={}", chain.nodes, e.getMessage(), e);
-                // 处理失败时仍然发送告警，确保运维人员知晓
-                sendDeadlockAlert("循环等待-自动恢复失败",
-                        String.join(" -> ", chain.nodes),
-                        "死锁自动恢复失败: " + e.getMessage());
+                failures.add(new IllegalStateException("循环等待处理失败，租户：" + TenantContext.getTenantId(), e));
             }
         }
+        return counts;
+    }
+
+    private int[] replayPendingRecoveries(List<RuntimeException> failures) {
+        int[] counts = new int[2];
+        try {
+            Collection<String> keys = redisCache.keys(DEADLOCK_RECOVERY_PREFIX + "*");
+            if (keys == null) return counts;
+            for (String physical : keys.stream().sorted().toList()) {
+                try {
+                    int[] recovered = resumeRecovery(logicalRedisKey(physical, DEADLOCK_RECOVERY_PREFIX));
+                    counts[0] += recovered[0]; counts[1] += recovered[1];
+                } catch (RuntimeException failure) { failures.add(new IllegalStateException("未完成死锁恢复接续失败，租户：" + TenantContext.getTenantId(), failure)); }
+            }
+        } catch (RuntimeException failure) { failures.add(new IllegalStateException("未完成死锁恢复读取失败，租户：" + TenantContext.getTenantId(), failure)); }
+        return counts;
+    }
+
+    private int[] resumeRecovery(String key) {
+        int releasedNow = 0;
+        int conflicts = 0;
+        String physical = scopedLockKey(key);
+        while (true) {
+            String before = redissonClient.<String>getBucket(physical, StringCodec.INSTANCE).get();
+            if (before == null) return new int[]{releasedNow, 0};
+            RecoveryPlan plan = decodeRecovery(before);
+            if (!key.equals(recoveryKey(plan))) throw new IllegalStateException("死锁恢复记录身份不一致");
+            if (plan.nextLock() == 0) {
+                if (!recoveryStillRequired(plan)) {
+                    Long cancelled = redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_WRITE,
+                            FINISH_RECOVERY, RScript.ReturnType.INTEGER, List.of(physical), before);
+                    if (Long.valueOf(1).equals(cancelled)) return new int[]{releasedNow, 0};
+                    if (!Long.valueOf(0).equals(cancelled)) throw new IllegalStateException("死锁恢复取消状态无效");
+                    if (++conflicts > 32) throw new IllegalStateException("死锁恢复记录并发更新繁忙");
+                    continue;
+                }
+                sendDeadlockAlert("循环等待", plan.chain().stream().distinct().sorted().collect(Collectors.joining(" -> ")),
+                        "检测到循环等待，巡检将按现有规则尝试解除，请查看任务日志确认处理结果。", recoveryGeneration(plan));
+            }
+            if (plan.nextLock() < plan.locks().size()) {
+                RecoveryLock observed = plan.locks().get(plan.nextLock());
+                List<String> withRelease = new ArrayList<>(plan.released()); withRelease.add(observed.key());
+                RecoveryPlan changed = new RecoveryPlan(plan.victim(), plan.chain(), plan.locks(), plan.waiters(), plan.nextLock() + 1, withRelease);
+                RecoveryPlan skipped = new RecoveryPlan(plan.victim(), plan.chain(), plan.locks(), plan.waiters(), plan.nextLock() + 1, plan.released());
+                String lock = scopedLockKey(observed.key());
+                Long outcome = redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_WRITE,
+                        RELEASE_RECOVERY_LOCK, RScript.ReturnType.INTEGER,
+                        List.of(physical, lock, RedissonObject.prefixName("redisson_lock__channel", lock), scopedLockKey(COMMIT_GATE_PREFIX + plan.victim())),
+                        before, observed.owner(), GENERATION_FIELD, observed.generation(), encodeRecovery(changed), encodeRecovery(skipped));
+                if (Long.valueOf(-1).equals(outcome)) {
+                    if (++conflicts > 32) throw new IllegalStateException("死锁恢复记录并发更新繁忙");
+                } else if (Long.valueOf(-2).equals(outcome)) return new int[]{releasedNow, 0};
+                else if (Long.valueOf(1).equals(outcome)) releasedNow++;
+                else if (!Long.valueOf(0).equals(outcome)) throw new IllegalStateException("死锁恢复释放结果无效");
+                continue;
+            }
+            for (RecoveryLock observed : plan.locks()) {
+                LockInfo info = new LockInfo(plan.victim(), 0, 0); info.owner = observed.owner(); info.generation = observed.generation();
+                removeLockHolder(observed.key(), info);
+            }
+            for (Map.Entry<String, String> waiter : plan.waiters().entrySet()) updateWaiter(waiter.getKey(), plan.victim(), false, waiter.getValue());
+            boolean finished = recordVictimEvent(plan.victim(), new DeadlockChain(plan.chain()), plan.released(),
+                    recoveryGeneration(plan), physical, before);
+            return new int[]{releasedNow, finished ? 1 : 0};
+        }
+    }
+
+    private boolean recoveryStillRequired(RecoveryPlan plan) {
+        Map<String, Set<String>> graph = buildWaitGraph();
+        for (int index = 0; index < plan.chain().size() - 1; index++) {
+            if (!graph.getOrDefault(plan.chain().get(index), Set.of()).contains(plan.chain().get(index + 1))) return false;
+        }
+        for (RecoveryLock observed : plan.locks()) {
+            LockInfo info = new LockInfo(plan.victim(), 0, 0); info.owner = observed.owner(); info.generation = observed.generation();
+            if (!matchesGeneration(observed.key(), info)) return false;
+        }
+        return true;
+    }
+
+    private Map<String, String> snapshotRecoveryWaiters(String victim) {
+        Map<String, String> result = new TreeMap<>();
+        Collection<String> keys = redisCache.keys(LOCK_WAITER_PREFIX + "*");
+        if (keys == null) return result;
+        for (String physical : keys) {
+            String lockKey = logicalRedisKey(physical, LOCK_WAITER_PREFIX).substring(LOCK_WAITER_PREFIX.length());
+            RLock mutex = redissonClient.getLock(scopedLockKey(WAITER_MUTEX_PREFIX + lockKey));
+            boolean acquired = false;
+            try {
+                if (Thread.currentThread().isInterrupted()) throw new InterruptedException("等待快照前已中断");
+                acquired = mutex.tryLock(5, TimeUnit.SECONDS);
+                if (!acquired) throw new IllegalStateException("等待快照锁繁忙");
+                Set<String> waiters = redisCache.getCacheObject(LOCK_WAITER_PREFIX + lockKey);
+                if (waiters != null && waiters.contains(victim)) result.put(lockKey, readWaiterStamp(lockKey));
+            } catch (InterruptedException failure) {
+                Thread.currentThread().interrupt(); throw new IllegalStateException("等待快照被中断", failure);
+            } finally { if (acquired) mutex.unlock(); }
+        }
+        return result;
+    }
+
+    private String recoveryGeneration(RecoveryPlan plan) {
+        return plan.locks().stream().map(lock -> lock.key() + ":" + lock.generation()).sorted().collect(Collectors.joining("\n"));
+    }
+
+    private String recoveryKey(RecoveryPlan plan) {
+        return DEADLOCK_RECOVERY_PREFIX + UUID.nameUUIDFromBytes((plan.victim() + "\n" + recoveryGeneration(plan)).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String encodeRecovery(RecoveryPlan plan) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("victim", plan.victim()); value.put("chain", new ArrayList<>(plan.chain()));
+        value.put("locks", plan.locks().stream().map(lock -> new LinkedHashMap<>(Map.of("key", lock.key(), "owner", lock.owner(), "generation", lock.generation()))).collect(Collectors.toCollection(ArrayList::new)));
+        value.put("waiters", new LinkedHashMap<>(plan.waiters())); value.put("nextLock", plan.nextLock()); value.put("released", new ArrayList<>(plan.released()));
+        return encodeCacheMap(value);
+    }
+
+    private RecoveryPlan decodeRecovery(String encoded) {
+        Map<String, Object> value = decodeCacheMap(encoded);
+        String victim = recoveryText(value.get("victim"));
+        List<String> chain = recoveryStrings(value.get("chain"));
+        if (chain.size() < 2 || !chain.get(0).equals(chain.get(chain.size() - 1)) || !chain.contains(victim)) throw new IllegalStateException("死锁恢复链无效");
+        if (!(value.get("locks") instanceof List<?> entries) || entries.isEmpty()) throw new IllegalStateException("死锁恢复锁清单无效");
+        List<RecoveryLock> locks = new ArrayList<>(); Set<String> names = new HashSet<>();
+        for (Object entry : entries) {
+            if (!(entry instanceof Map<?, ?> lock)) throw new IllegalStateException("死锁恢复锁格式无效");
+            RecoveryLock observed = new RecoveryLock(recoveryText(lock.get("key")), recoveryText(lock.get("owner")), recoveryText(lock.get("generation")));
+            if (!names.add(observed.key())) throw new IllegalStateException("死锁恢复锁重复"); locks.add(observed);
+        }
+        int next = Math.toIntExact(nonnegativeCounter(value.get("nextLock")));
+        List<String> released = recoveryStrings(value.get("released"));
+        Set<String> processed = locks.stream().limit(next).map(RecoveryLock::key).collect(Collectors.toSet());
+        if (next > locks.size() || new HashSet<>(released).size() != released.size() || !processed.containsAll(released)) throw new IllegalStateException("死锁恢复进度无效");
+        if (!(value.get("waiters") instanceof Map<?, ?> stamps)) throw new IllegalStateException("死锁恢复等待快照无效");
+        Map<String, String> waiters = new TreeMap<>();
+        for (Map.Entry<?, ?> stamp : stamps.entrySet()) {
+            if (!(stamp.getValue() instanceof String text)) throw new IllegalStateException("死锁恢复等待代次无效");
+            waiters.put(recoveryText(stamp.getKey()), text);
+        }
+        return new RecoveryPlan(victim, chain, locks, waiters, next, released);
+    }
+
+    private static String recoveryText(Object value) {
+        if (!(value instanceof String text) || text.isBlank()) throw new IllegalStateException("死锁恢复字段无效");
+        return text;
+    }
+
+    private static List<String> recoveryStrings(Object value) {
+        if (!(value instanceof List<?> entries)) throw new IllegalStateException("死锁恢复列表无效");
+        List<String> result = new ArrayList<>(); for (Object entry : entries) result.add(recoveryText(entry)); return result;
     }
 
     /**
@@ -385,7 +822,7 @@ public class DeadlockDetectionService {
             int lockCount = 0;
             long maxHoldTime = 0;
 
-            for (Map.Entry<String, LockInfo> entry : lockHolders.entrySet()) {
+            for (Map.Entry<String, LockInfo> entry : currentLockHolders().entrySet()) {
                 if (entry.getValue().threadId.equals(candidate)) {
                     lockCount++;
                     long holdTime = System.currentTimeMillis() - entry.getValue().acquireTime;
@@ -413,36 +850,28 @@ public class DeadlockDetectionService {
      * @param victimThreadId 牺牲者线程标识
      * @return 被释放的锁 key 列表
      */
-    private List<String> forceReleaseVictimLocks(String victimThreadId) {
+    private List<String> forceReleaseVictimLocks(String victimThreadId, Map<String, LockInfo> observedLocks) {
         List<String> releasedLocks = new ArrayList<>();
 
         // 遍历所有锁持有记录，找到牺牲者持有的锁
-        Iterator<Map.Entry<String, LockInfo>> iterator = lockHolders.entrySet().iterator();
+        List<RuntimeException> failures = new ArrayList<>();
+        Iterator<Map.Entry<String, LockInfo>> iterator = observedLocks.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<String, LockInfo> entry = iterator.next();
             if (entry.getValue().threadId.equals(victimThreadId)) {
                 String lockKey = entry.getKey();
                 try {
-                    // 强制释放 Redisson 分布式锁
-                    RLock lock = redissonClient.getLock(lockKey);
-                    if (lock.isLocked()) {
-                        lock.forceUnlock();
-                        log.warn("[forceReleaseVictimLocks] 强制释放锁, lockKey={}, victim={}", lockKey, victimThreadId);
-                    }
+                    if (releaseGeneration(lockKey, entry.getValue())) releasedLocks.add(lockKey);
 
                     // 清理 Redis 中的锁持有记录
-                    redisCache.deleteObject(LOCK_HOLDER_PREFIX + lockKey);
-
-                    releasedLocks.add(lockKey);
+                    removeLockHolder(lockKey, entry.getValue());
                 } catch (Exception e) {
-                    log.error("[forceReleaseVictimLocks] 释放锁失败, lockKey={}, error={}", lockKey, e.getMessage());
+                    failures.add(new IllegalStateException("循环等待锁释放失败，锁：" + lockKey, e));
                 }
-
-                // 从内存记录中移除
-                iterator.remove();
             }
         }
 
+        throwFailures(failures);
         return releasedLocks;
     }
 
@@ -452,29 +881,21 @@ public class DeadlockDetectionService {
      * @param victimThreadId 牺牲者线程标识
      */
     private void cleanupVictimWaiters(String victimThreadId) {
-        try {
+        List<RuntimeException> failures = new ArrayList<>();
             Collection<String> waiterKeys = redisCache.keys(LOCK_WAITER_PREFIX + "*");
             if (waiterKeys == null) {
                 return;
             }
 
-            for (String key : waiterKeys) {
+            for (String physicalKey : waiterKeys) {
                 try {
-                    Set<String> waiters = redisCache.getCacheObject(key);
-                    if (waiters != null && waiters.remove(victimThreadId)) {
-                        if (waiters.isEmpty()) {
-                            redisCache.deleteObject(key);
-                        } else {
-                            redisCache.setCacheObject(key, waiters, 120, TimeUnit.SECONDS);
-                        }
-                    }
+                    String key = logicalRedisKey(physicalKey, LOCK_WAITER_PREFIX);
+                    removeWaiter(key.substring(LOCK_WAITER_PREFIX.length()), victimThreadId);
                 } catch (Exception e) {
-                    log.warn("[cleanupVictimWaiters] 清理等待记录失败, key={}, error={}", key, e.getMessage());
+                    failures.add(new IllegalStateException("循环等待记录清理失败", e));
                 }
             }
-        } catch (Exception e) {
-            log.warn("[cleanupVictimWaiters] 获取等待记录 keys 失败: {}", e.getMessage());
-        }
+        throwFailures(failures);
     }
 
     /**
@@ -484,59 +905,105 @@ public class DeadlockDetectionService {
      * @param chain 死锁链
      * @param releasedLocks 被释放的锁列表
      */
-    private void recordVictimEvent(String victimThreadId, DeadlockChain chain, List<String> releasedLocks) {
+    private void recordVictimEvent(String victimThreadId, DeadlockChain chain, List<String> releasedLocks, String generation) {
+        recordVictimEvent(victimThreadId, chain, releasedLocks, generation, null, null);
+    }
+
+    private boolean recordVictimEvent(String victimThreadId, DeadlockChain chain, List<String> releasedLocks, String generation,
+            String recoveryPhysicalKey, String recoveryBefore) {
         try {
-            long eventId = victimCounter.incrementAndGet();
-            String eventKey = DEADLOCK_VICTIM_PREFIX + eventId;
+            if (generation == null || generation.isBlank()) throw new IllegalStateException("死锁事件缺少持锁代次");
+            String statsKey = scopedLockKey(DEADLOCK_STATS_KEY);
+            String identity = UUID.nameUUIDFromBytes((victimThreadId + "\n" + generation).getBytes(StandardCharsets.UTF_8)).toString();
+            long minimumId = 0;
+            for (int attempt = 0; attempt < 32; attempt++) {
+                String before = redissonClient.<String>getBucket(statsKey, StringCodec.INSTANCE).get();
+                Map<String, Object> stats = before == null ? new HashMap<>() : decodeCacheMap(before);
+                long totalDeadlocks = nonnegativeCounter(stats.getOrDefault("totalDeadlocks", 0L));
+                long totalVictims = nonnegativeCounter(stats.getOrDefault("totalVictims", 0L));
+                long previousId = stats.containsKey("lastEventId") ? nonnegativeCounter(stats.get("lastEventId"))
+                        : Math.max(totalDeadlocks, largestEventId());
+                long eventId = Math.addExact(Math.max(previousId, minimumId), 1);
+                String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                stats.put("totalDeadlocks", Math.addExact(totalDeadlocks, 1));
+                stats.put("totalVictims", Math.addExact(totalVictims, 1));
+                stats.putIfAbsent("firstOccurrence", now);
+                stats.put("lastOccurrence", now);
+                stats.put("lastEventId", eventId);
 
-            Map<String, Object> event = new HashMap<>();
-            event.put("eventId", eventId);
-            event.put("victimThread", victimThreadId);
-            event.put("deadlockChain", chain.nodes);
-            event.put("releasedLocks", releasedLocks);
-            event.put("releasedLockCount", releasedLocks.size());
-            event.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-            event.put("resolved", true);
-
-            // 牺牲事件保留 7 天
-            redisCache.setCacheObject(eventKey, event, 7 * 24 * 60, TimeUnit.MINUTES);
-
-            // 更新统计计数
-            updateDeadlockStats();
-
-            log.info("[recordVictimEvent] 牺牲事件已记录, eventId={}, victim={}, releasedLocks={}",
-                    eventId, victimThreadId, releasedLocks.size());
+                Map<String, Object> event = new HashMap<>();
+                event.put("eventId", eventId);
+                event.put("victimThread", victimThreadId);
+                event.put("deadlockChain", new ArrayList<>(chain.nodes));
+                event.put("releasedLocks", new ArrayList<>(releasedLocks));
+                event.put("releasedLockCount", releasedLocks.size());
+                event.put("timestamp", now);
+                event.put("resolved", true);
+                long recordedAt = System.currentTimeMillis();
+                List<Object> keys = new ArrayList<>(List.of(scopedLockKey(DEADLOCK_VICTIM_PREFIX + eventId), statsKey,
+                        scopedLockKey(DEADLOCK_IDENTITY_PREFIX + identity)));
+                if (recoveryPhysicalKey != null) keys.add(recoveryPhysicalKey);
+                Long outcome = redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_WRITE,
+                        COMMIT_VICTIM_EVENT, RScript.ReturnType.INTEGER,
+                        keys,
+                        before == null ? "" : before, before == null ? "0" : "1", encodeCacheMap(event), encodeCacheMap(stats),
+                        Long.toString(eventId), Long.toString(recordedAt + TimeUnit.DAYS.toMillis(7)),
+                        Long.toString(recordedAt + TimeUnit.DAYS.toMillis(30)), scopedLockKey(DEADLOCK_VICTIM_PREFIX),
+                        recoveryBefore == null ? "" : recoveryBefore);
+                if (Long.valueOf(3).equals(outcome)) return false;
+                if (Long.valueOf(2).equals(outcome)) return true;
+                if (Long.valueOf(1).equals(outcome)) {
+                    victimCounter.incrementAndGet();
+                    log.info("[recordVictimEvent] 牺牲事件已记录, eventId={}, victim={}, releasedLocks={}", eventId, victimThreadId, releasedLocks.size());
+                    return true;
+                }
+                if (Long.valueOf(-1).equals(outcome)) minimumId = Math.max(minimumId, largestEventId());
+                else if (!Long.valueOf(0).equals(outcome)) throw new IllegalStateException("死锁事件去重记录不完整");
+            }
+            throw new IllegalStateException("死锁事件统计并发更新繁忙");
         } catch (Exception e) {
-            log.warn("[recordVictimEvent] 记录牺牲事件失败: {}", e.getMessage());
+            throw new IllegalStateException("死锁处理事件登记失败", e);
         }
     }
 
-    /**
-     * 更新死锁统计数据
-     */
-    private void updateDeadlockStats() {
-        try {
-            Map<String, Object> stats = redisCache.getCacheObject(DEADLOCK_STATS_KEY);
-            if (stats == null) {
-                stats = new HashMap<>();
-                stats.put("totalDeadlocks", 0L);
-                stats.put("totalVictims", 0L);
-                stats.put("firstOccurrence", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-            }
+    private static long nonnegativeCounter(Object value) {
+        if (!(value instanceof Long || value instanceof Integer || value instanceof Short || value instanceof Byte)
+                || ((Number) value).longValue() < 0) throw new IllegalStateException("死锁事件统计计数无效");
+        return ((Number) value).longValue();
+    }
 
-            // 递增计数
-            long totalDeadlocks = ((Number) stats.getOrDefault("totalDeadlocks", 0L)).longValue() + 1;
-            long totalVictims = ((Number) stats.getOrDefault("totalVictims", 0L)).longValue() + 1;
+    private long largestEventId() {
+        Collection<String> keys = redisCache.keys(DEADLOCK_VICTIM_PREFIX + "*");
+        long largest = 0;
+        if (keys != null) for (String key : keys) largest = Math.max(largest, eventIdFromKey(key));
+        return largest;
+    }
 
-            stats.put("totalDeadlocks", totalDeadlocks);
-            stats.put("totalVictims", totalVictims);
-            stats.put("lastOccurrence", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+    private long eventIdFromKey(String physicalKey) {
+        String logical = logicalRedisKey(physicalKey, DEADLOCK_VICTIM_PREFIX);
+        long id = Long.parseLong(logical.substring(DEADLOCK_VICTIM_PREFIX.length()));
+        if (id <= 0) throw new IllegalStateException("死锁事件编号无效");
+        return id;
+    }
 
-            // 统计数据保留 30 天
-            redisCache.setCacheObject(DEADLOCK_STATS_KEY, stats, 30 * 24 * 60, TimeUnit.MINUTES);
-        } catch (Exception e) {
-            log.warn("[updateDeadlockStats] 更新统计数据失败: {}", e.getMessage());
+    @SuppressWarnings("unchecked")
+    private RedisSerializer<Object> cacheSerializer() {
+        return (RedisSerializer<Object>) Objects.requireNonNull(redisCache.redisTemplate.getValueSerializer());
+    }
+
+    private String encodeCacheMap(Map<String, Object> value) {
+        return new String(Objects.requireNonNull(cacheSerializer().serialize(value)), StandardCharsets.UTF_8);
+    }
+
+    private Map<String, Object> decodeCacheMap(String value) {
+        Object decoded = cacheSerializer().deserialize(value.getBytes(StandardCharsets.UTF_8));
+        if (!(decoded instanceof Map<?, ?> source)) throw new IllegalStateException("死锁事件统计格式无效");
+        Map<String, Object> result = new HashMap<>();
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) throw new IllegalStateException("死锁事件统计字段无效");
+            result.put(key, entry.getValue());
         }
+        return result;
     }
 
     // ==================== 辅助方法 ====================
@@ -544,128 +1011,152 @@ public class DeadlockDetectionService {
     /**
      * 记录锁持有者
      */
-    private void recordLockHolder(String lockKey, String threadId, long leaseTime) {
-        LockInfo info = new LockInfo(threadId, System.currentTimeMillis(), leaseTime);
-        lockHolders.put(lockKey, info);
+    private LockInfo stampLockHolder(String lockKey, String threadId, long leaseTime) {
+        String owner = redissonClient.getId() + ":" + Thread.currentThread().getId();
+        String generation = redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_WRITE,
+                STAMP_GENERATION, RScript.ReturnType.VALUE, List.of(scopedLockKey(lockKey)),
+                owner, GENERATION_FIELD, UUID.randomUUID().toString());
+        if (generation == null) throw new IllegalStateException("锁在持有记录登记前已失效");
+        LockInfo previous = lockHolders.get(scopedLockKey(lockKey));
+        long acquiredAt = previous != null && generation.equals(previous.generation) ? previous.acquireTime : System.currentTimeMillis();
+        LockInfo info = new LockInfo(threadId, acquiredAt, leaseTime);
+        info.owner = owner;
+        info.generation = generation;
+        return info;
+    }
 
-        // 同时记录到 Redis（用于跨实例监控）
-        try {
-            redisCache.setCacheObject(
-                LOCK_HOLDER_PREFIX + lockKey,
-                Map.of("threadId", threadId, "acquireTime", info.acquireTime),
-                (int) leaseTime + 10,
-                TimeUnit.SECONDS
-            );
-        } catch (Exception e) {
-            log.warn("[recordLockHolder] 记录到 Redis 失败: {}", e.getMessage());
-        }
+    private void saveLockHolder(String lockKey, LockInfo info) {
+        redisCache.setCacheObject(LOCK_HOLDER_PREFIX + lockKey,
+                new HashMap<>(Map.of("threadId", info.threadId, "acquireTime", info.acquireTime,
+                        "owner", info.owner, "generation", info.generation, "leaseTime", info.leaseTime)),
+                info.leaseTime + 10, TimeUnit.SECONDS);
     }
 
     /**
      * 移除锁持有者记录
      */
-    private void removeLockHolder(String lockKey, String threadId) {
-        lockHolders.remove(lockKey);
-        try {
-            redisCache.deleteObject(LOCK_HOLDER_PREFIX + lockKey);
-        } catch (Exception e) {
-            // ignore
-        }
+    private void removeLockHolder(String lockKey, LockInfo info) {
+        String scoped = scopedLockKey(lockKey);
+        if (info == null || info.generation == null) return;
+        redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_WRITE,
+                REMOVE_GENERATION_RECORD, RScript.ReturnType.INTEGER, List.of(scopedLockKey(LOCK_HOLDER_PREFIX + lockKey)), info.generation);
+        lockHolders.computeIfPresent(scoped, (key, local) -> Objects.equals(local.generation, info.generation) ? null : local);
     }
 
     /**
      * 记录等待者
      */
     private void recordWaiter(String lockKey, String threadId) {
-        String key = LOCK_WAITER_PREFIX + lockKey;
-        try {
-            Set<String> waiters = redisCache.getCacheObject(key);
-            if (waiters == null) {
-                waiters = new HashSet<>();
-            }
-            waiters.add(threadId);
-            redisCache.setCacheObject(key, waiters, 120, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            log.warn("[recordWaiter] 记录等待者失败: {}", e.getMessage());
-        }
+        updateWaiter(lockKey, threadId, true);
     }
 
     /**
      * 移除等待者记录
      */
     private void removeWaiter(String lockKey, String threadId) {
+        updateWaiter(lockKey, threadId, false);
+    }
+
+    private void updateWaiter(String lockKey, String threadId, boolean add) {
+        updateWaiter(lockKey, threadId, add, null);
+    }
+
+    private String readWaiterStamp(String lockKey) {
+        String value = redissonClient.<String>getBucket(scopedLockKey(WAITER_STAMP_PREFIX + lockKey), StringCodec.INSTANCE).get();
+        return value == null ? "" : value;
+    }
+
+    private void updateWaiter(String lockKey, String threadId, boolean add, String expectedStamp) {
+        // Serialize read-modify-write across clients without changing the existing Set encoding.
+        RLock mutex = redissonClient.getLock(scopedLockKey(WAITER_MUTEX_PREFIX + lockKey));
         String key = LOCK_WAITER_PREFIX + lockKey;
+        boolean acquired = false;
+        RuntimeException failure = null;
         try {
+            if (Thread.currentThread().isInterrupted()) throw new InterruptedException("等待记录更新前已中断");
+            acquired = mutex.tryLock(5, TimeUnit.SECONDS);
+            if (!acquired) throw new IllegalStateException("等待记录更新锁繁忙");
+            String stamp = readWaiterStamp(lockKey);
+            if (expectedStamp != null && !expectedStamp.equals(stamp)) return;
             Set<String> waiters = redisCache.getCacheObject(key);
-            if (waiters != null) {
-                waiters.remove(threadId);
-                if (waiters.isEmpty()) {
-                    redisCache.deleteObject(key);
-                } else {
-                    redisCache.setCacheObject(key, waiters, 120, TimeUnit.SECONDS);
+            if (waiters == null) {
+                if (!add) return;
+                waiters = new HashSet<>();
+            }
+            if (add) waiters.add(threadId); else waiters.remove(threadId);
+            String encoded = waiters.isEmpty() ? "" : new String(Objects.requireNonNull(cacheSerializer().serialize(waiters)), StandardCharsets.UTF_8);
+            Long written = redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_WRITE,
+                    WRITE_WAITER_STATE, RScript.ReturnType.INTEGER, List.of(scopedLockKey(key), scopedLockKey(WAITER_STAMP_PREFIX + lockKey)),
+                    stamp, encoded, UUID.randomUUID().toString());
+            if (!Long.valueOf(1).equals(written)) throw new IllegalStateException("等待记录已变更，请重试");
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            failure = new IllegalStateException("等待记录更新被中断", interrupted);
+            throw failure;
+        } catch (RuntimeException error) {
+            failure = error;
+            throw error;
+        } finally {
+            if (acquired) {
+                try { mutex.unlock(); }
+                catch (RuntimeException cleanup) {
+                    if (failure == null) throw cleanup;
+                    if (cleanup != failure) failure.addSuppressed(cleanup);
                 }
             }
-        } catch (Exception e) {
-            // ignore
         }
     }
 
     /**
      * 清理过期记录
      */
-    private void cleanupExpiredRecords() {
+    private int cleanupExpiredRecords() {
         long now = System.currentTimeMillis();
-        
-        lockHolders.entrySet().removeIf(entry -> {
+        int removed = 0;
+        for (Map.Entry<String, LockInfo> entry : currentLockHolders().entrySet()) {
             LockInfo info = entry.getValue();
             long holdTime = (now - info.acquireTime) / 1000;
-            return holdTime > info.leaseTime + 60; // 超过租约时间 + 缓冲时间
-        });
+            if (info.leaseTime > 0 && holdTime > info.leaseTime + 60 && !redissonClient.getLock(scopedLockKey(entry.getKey())).isLocked()) {
+                removeLockHolder(entry.getKey(), info);
+                removed++;
+            }
+        }
+        return removed;
     }
 
     /**
      * 获取线程标识符
      */
     private String getThreadIdentifier() {
-        return Thread.currentThread().getName() + "-" + Thread.currentThread().getId();
+        return redissonClient.getId() + ":" + Thread.currentThread().getId();
     }
 
     /**
      * 发送死锁告警
      * 集成系统通知服务，发送告警到管理员
      */
-    private void sendDeadlockAlert(String type, String detail, String message) {
-        try {
-            // 记录日志
-            log.error("[死锁告警] type={}, detail={}, message={}", type, detail, message);
-            
-            // 构建告警标题和内容
-            String title = String.format("[死锁告警] %s", type);
-            String content = String.format(
-                "检测到死锁情况：\n" +
-                "类型：%s\n" +
-                "详情：%s\n" +
-                "说明：%s\n" +
-                "时间：%s",
-                type, detail, message,
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-            );
-            
-            // 发送系统通知给管理员（userId=1为系统管理员）
-            // 实际项目中应该从配置或数据库读取管理员列表
-            sysNoticeService.sendNotice(
-                1L,  // 管理员用户ID
-                title,
-                content,
-                "SYSTEM",  // 通知类型：系统通知
-                0L,  // 发送者ID：系统
-                "系统"  // 发送者名称
-            );
-            
-            log.info("[sendDeadlockAlert] 死锁告警已发送, type={}", type);
-        } catch (Exception e) {
-            log.error("[sendDeadlockAlert] 发送告警失败: {}", e.getMessage(), e);
-        }
+    private void sendDeadlockAlert(String type, String detail, String message, String generation) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) throw new IllegalStateException("死锁告警缺少租户上下文");
+        String reference = UUID.nameUUIDFromBytes((type + "\n" + detail + "\n" + generation).getBytes(StandardCharsets.UTF_8)).toString();
+        String title = "[死锁告警] " + type;
+        String content = "检测类型：" + type + "\n详情：" + detail + "\n说明：" + message;
+        transactions.executeWithoutResult(status -> {
+            long afterUserId = 0;
+            int recipients = 0;
+            while (true) {
+                List<Long> admins = users.selectTimerFailureAdminIds(tenantId, afterUserId, 500);
+                for (Long admin : admins) {
+                    sysNoticeService.send(MessageSendRequest.legacy(admin, title, content, "SYSTEM", 0L, "系统")
+                            .toBuilder().bizType("WF_DEADLOCK").bizId(reference)
+                            .deduplicationKey("wf:deadlock:" + reference + ":" + admin).build());
+                    recipients++;
+                }
+                if (admins.size() < 500) break;
+                afterUserId = admins.get(admins.size() - 1);
+            }
+            if (recipients == 0) throw new IllegalStateException("死锁告警缺少有效租户管理员");
+        });
     }
 
     // ==================== 监控接口 ====================
@@ -675,8 +1166,9 @@ public class DeadlockDetectionService {
      */
     public Map<String, Object> getLockStatistics() {
         Map<String, Object> stats = new HashMap<>();
-        stats.put("totalLocks", lockHolders.size());
-        stats.put("locks", lockHolders.entrySet().stream()
+        Map<String, LockInfo> current = currentLockHolders();
+        stats.put("totalLocks", current.size());
+        stats.put("locks", current.entrySet().stream()
             .map(e -> Map.of(
                 "lockKey", e.getKey(),
                 "holder", e.getValue().threadId,
@@ -721,7 +1213,7 @@ public class DeadlockDetectionService {
         } catch (Exception e) {
             result.put("error", "获取统计数据失败: " + e.getMessage());
         }
-        result.put("currentLockCount", lockHolders.size());
+        result.put("currentLockCount", currentLockHolders().size());
         result.put("victimCounterLocal", victimCounter.get());
         return result;
     }
@@ -734,6 +1226,9 @@ public class DeadlockDetectionService {
      */
     public List<Map<String, Object>> getRecentVictimEvents(int limit) {
         List<Map<String, Object>> events = new ArrayList<>();
+        scopedLockKey("");
+        int boundedLimit = Math.min(limit, workflowProperties.getLock().getMaxVictimRecords());
+        if (boundedLimit <= 0) return events;
         try {
             Collection<String> keys = redisCache.keys(DEADLOCK_VICTIM_PREFIX + "*");
             if (keys == null || keys.isEmpty()) {
@@ -742,12 +1237,13 @@ public class DeadlockDetectionService {
 
             // 按 eventId 倒序取最近的记录
             List<String> sortedKeys = keys.stream()
-                    .sorted(Comparator.reverseOrder())
+                    .sorted(Comparator.comparingLong(this::eventIdFromKey).reversed())
                     // 从配置读取最大牺牲记录数（sys.workflow.lock.maxVictimRecords）
-                    .limit(Math.min(limit, workflowProperties.getLock().getMaxVictimRecords()))
+                    .limit(boundedLimit)
                     .collect(Collectors.toList());
 
-            for (String key : sortedKeys) {
+            for (String physicalKey : sortedKeys) {
+                String key = logicalRedisKey(physicalKey, DEADLOCK_VICTIM_PREFIX);
                 Map<String, Object> event = redisCache.getCacheObject(key);
                 if (event != null) {
                     events.add(event);
@@ -761,6 +1257,10 @@ public class DeadlockDetectionService {
 
     // ==================== 内部类 ====================
 
+    private record RecoveryLock(String key, String owner, String generation) { }
+    private record RecoveryPlan(String victim, List<String> chain, List<RecoveryLock> locks,
+                                Map<String, String> waiters, int nextLock, List<String> released) { }
+
     /**
      * 锁信息
      */
@@ -768,6 +1268,8 @@ public class DeadlockDetectionService {
         String threadId;
         long acquireTime;
         long leaseTime;
+        String owner;
+        String generation;
 
         LockInfo(String threadId, long acquireTime, long leaseTime) {
             this.threadId = threadId;

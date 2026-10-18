@@ -79,6 +79,11 @@ mybatis-plus:
 
 # Sa-Token 本地后备配置（Nacos cloudflow-common.yaml 不可用时生效）
 cloudflow:
+  job:
+    internal-auth:
+      keys:
+        cloudflow-auth: ${CLOUDFLOW_JOB_AUTH_KEY:}
+        cloudflow-service-workflow: ${CLOUDFLOW_JOB_WORKFLOW_KEY:}
   encrypt:
     enabled: false
   tenant:
@@ -146,6 +151,8 @@ info:
 
 # 日志配置
 logging:
+  pattern:
+    level: '%5p [traceId=%X{traceId}]'
   level:
     root: INFO
     com.cloudflow: ${LOG_LEVEL_APP:INFO}

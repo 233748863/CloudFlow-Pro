@@ -9,6 +9,7 @@ import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.service.IExportService;
 import com.cloudflow.workflow.service.IVersionService;
+import com.cloudflow.workflow.service.WorkflowTriggerSecrets;
 import com.cloudflow.workflow.util.ExportFormatUtil;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,6 +44,9 @@ public class ExportServiceImpl implements IExportService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private WorkflowTriggerSecrets triggerSecrets;
 
     /**
      * 导出场景追加的敏感字段关键字。
@@ -110,7 +114,7 @@ public class ExportServiceImpl implements IExportService {
             }
 
             // 处理流程定义
-            Object processDefinition = parseDefinition(definition.getModelJson());
+            Object processDefinition = parseDefinition(triggerSecrets.maskModel(definition.getModelJson()));
             if (!includeSensitive) {
                 processDefinition = removeSensitiveData(processDefinition);
             }

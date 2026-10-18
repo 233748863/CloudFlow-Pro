@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfGatewayActivationMapper">
+    <select id="selectTrace" resultType="com.cloudflow.workflow.domain.vo.WorkflowGatewayTrace" useCache="false" flushCache="true">
+        SELECT activation.activation_id AS round_id, activation.gateway_id AS node_key,
+               activation.join_node_key, activation.join_type, activation.expected_count,
+               activation.status, activation.create_time, activation.released_time,
+               (SELECT COUNT(*) FROM wf_parallel_join arrival
+                 WHERE arrival.tenant_id = activation.tenant_id AND arrival.instance_id = activation.instance_id
+                   AND arrival.activation_id = activation.activation_id) AS arrived_count
+          FROM wf_gateway_activation activation
+         WHERE activation.tenant_id = #{tenantId} AND activation.instance_id = #{instanceId}
+         ORDER BY activation.create_time DESC, activation.activation_id
+    </select>
+    <select id="selectForUpdate" resultType="com.cloudflow.workflow.domain.WfGatewayActivation" useCache="false" flushCache="true">
+        SELECT * FROM wf_gateway_activation
+        WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND activation_id = #{activationId}
+        FOR UPDATE
+    </select>
+    <update id="markReleased">
+        UPDATE wf_gateway_activation SET status = 'RELEASED', released_time = NOW(), update_time = NOW(), version = version + 1
+        WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND activation_id = #{activationId}
+          AND status = 'WAITING' AND version = #{version}
+    </update>
+    <update id="markCancelled">
+        UPDATE wf_gateway_activation SET status = 'CANCELLED', update_time = NOW(), version = version + 1
+        WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND status = 'WAITING'
+    </update>
+    <delete id="deleteArchived">
+        DELETE FROM wf_gateway_activation
+        WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId}
+          AND EXISTS (SELECT 1 FROM wf_process_instance
+                      WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND deleted = 1
+                        AND status IN ('PASSED', 'AUTO_PASSED', 'REJECTED', 'TERMINATED', 'INVALIDATED', 'CANCELLED'))
+    </delete>
+</mapper>

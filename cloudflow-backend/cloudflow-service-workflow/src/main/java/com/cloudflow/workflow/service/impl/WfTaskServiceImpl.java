@@ -1,5 +1,12 @@
 package com.cloudflow.workflow.service.impl;
 
+import com.cloudflow.workflow.service.WorkflowBusinessLockService;
+import com.cloudflow.workflow.service.WorkflowBusinessLockService.BusinessLock;
+
+import com.cloudflow.workflow.domain.enums.WfTaskType;
+import com.cloudflow.workflow.model.WorkflowGatewayRewindPlan;
+import com.cloudflow.workflow.service.TaskSemanticContext;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -8,6 +15,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
@@ -28,7 +36,7 @@ import com.cloudflow.workflow.service.*;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.redisson.api.RLock;
+
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +63,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
     private static final Logger log = LoggerFactory.getLogger(WfTaskServiceImpl.class);
 
     @Autowired
+    private WorkflowBusinessLockService businessLocks;
+
+    @Autowired
     private RedissonClient redissonClient;
     @Autowired
     private WfTaskMapper taskMapper;
@@ -71,8 +82,6 @@ public class WfTaskServiceImpl implements IWfTaskService {
     @Autowired
     private WfTaskUrgeMapper taskUrgeMapper;
     @Autowired
-    private WfTaskAddSignMapper wfTaskAddSignMapper;
-    @Autowired
     private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
     @Autowired
     private SysUserMapper sysUserMapper;
@@ -82,10 +91,13 @@ public class WfTaskServiceImpl implements IWfTaskService {
     private RateLimiterService rateLimiterService;
     @Autowired
     private WorkflowAuditService auditService;
+
+    @Autowired
+    private WorkflowFormAccessService formAccess;
     @Autowired
     private WorkflowSecurityUtils securityUtils;
     @Autowired
-    private ISysNoticeService sysNoticeService;
+    private MessageSender sysNoticeService;
     @Autowired
     private ICountersignService countersignService;
     @Autowired
@@ -100,12 +112,53 @@ public class WfTaskServiceImpl implements IWfTaskService {
     private WorkflowGraphModelResolver workflowGraphModelResolver;
     @Autowired
     private TransactionTemplate transactionTemplate;
+    @Autowired
+    private TaskTimeoutNotifications taskTimeoutNotifications;
+    @Autowired
+    private WfCountersignTaskMapper countersignTaskMapper;
+    @Autowired
+    private WorkflowNodePolicy nodePolicy;
+    @Autowired
+    private WorkflowHParticipantPolicy hParticipantPolicy;
+
+    @Autowired
+    private WorkflowAgentService agents;
+    @Autowired
+    private WorkflowDelegationReturnService delegationReturns;
+    @Autowired
+    private WorkflowProcessStateService processStateService;
+
+    @Autowired
+    private WorkflowGatewayService gateways;
+    @Autowired
+    private WorkflowRewindService rewinds;
+    @Autowired
+    private WorkflowHistoryState historyState;
+    @Autowired
+    private WorkflowAddSignService addSignGroups;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Override
     public R<?> completeTask(String taskId, String action, String comment, Map<String, Object> variables, String delegateUserId) {
+        return executeTaskCompletion(taskId, action, comment, variables, delegateUserId, null);
+    }
+
+    @Override
+    public R<?> completeAutomaticTask(String taskId, String action, String comment, Map<String, Object> variables) {
+        String normalizedAction = normalizeCompleteAction(action);
+        if (!"APPROVE".equals(normalizedAction) && !"REJECT".equals(normalizedAction)) {
+            throw WorkflowException.validationError("自动处理仅支持通过或驳回");
+        }
+        String taskType = "APPROVE".equals(normalizedAction)
+                ? WfTaskType.AUTO_PASS.name() : WfTaskType.AUTO_REJECT.name();
+        return WorkflowCompletionContext.automatically(
+                () -> executeTaskCompletion(taskId, normalizedAction, comment, variables, null, taskType));
+    }
+
+    private R<?> executeTaskCompletion(String taskId, String action, String comment,
+                                       Map<String, Object> variables, String delegateUserId, String taskType) {
         Long currentUserId = UserContext.getUserId();
         log.info("[completeTask] 开始处理任务, taskId={}, action={}, userId={}", taskId, action, currentUserId);
 
@@ -127,9 +180,10 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
         // 分布式锁必须覆盖整个事务生命周期（拿锁 → 业务 → 事务提交 → 释放锁）：
         // 若锁在事务内释放，并发请求会在本事务提交前拿到锁并读到旧数据，造成重复审批/重复计票。
-        // 锁不设 leaseTime，走 Redisson watchdog 自动续期，避免业务耗时超过租期导致锁提前失效。
-        RLock taskLock = redissonClient.getLock("lock:task:" + taskId);
-        RLock countersignLock = null;
+        // 锁按当前归属持续续期，并在提交前核验归属，避免已失效请求继续提交。
+        BusinessLock taskLock = businessLocks.getLock("lock:task:" + taskId);
+        BusinessLock countersignLock = null;
+        BusinessLock parentLock = null;
         try {
             if (!taskLock.tryLock(5, TimeUnit.SECONDS)) {
                 throw WorkflowException.invalidState("任务处理中，请勿重复提交");
@@ -142,24 +196,28 @@ public class WfTaskServiceImpl implements IWfTaskService {
             if (countersignService.isCountersignTask(probe)) {
                 String countersignId = countersignService.extractCountersignId(probe);
                 if (StringUtils.hasText(countersignId)) {
-                    countersignLock = redissonClient.getLock("lock:countersign:" + countersignId);
+                    countersignLock = businessLocks.getLock("lock:countersign:" + countersignId);
                     if (!countersignLock.tryLock(5, TimeUnit.SECONDS)) {
                         throw WorkflowException.invalidState("会签处理中，请稍后重试");
                     }
                 }
             }
-            return transactionTemplate.execute(status ->
-                doCompleteTask(taskId, normalizedAction, comment, variables, delegateUserId, currentUserId));
+            if ("REJECT".equals(normalizedAction)) {
+                WfProcessInstance instance = requireTaskInstanceForOperation(probe, "驳回");
+                if (StringUtils.hasText(instance.getParentInstanceId())) {
+                    parentLock = businessLocks.getLock("lock:instance:" + instance.getParentInstanceId());
+                    if (!parentLock.tryLock(5, TimeUnit.SECONDS)) {
+                        throw WorkflowException.invalidState("父流程正在处理中");
+                    }
+                }
+            }
+            return businessLocks.execute(transactionTemplate, status ->
+                doCompleteTask(taskId, normalizedAction, comment, variables, delegateUserId, currentUserId, taskType));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new WorkflowException("SYSTEM_BUSY", "系统繁忙，请稍后重试");
         } finally {
-            if (countersignLock != null && countersignLock.isHeldByCurrentThread()) {
-                countersignLock.unlock();
-            }
-            if (taskLock.isHeldByCurrentThread()) {
-                taskLock.unlock();
-            }
+            businessLocks.close(parentLock, countersignLock, taskLock);
         }
     }
 
@@ -169,14 +227,56 @@ public class WfTaskServiceImpl implements IWfTaskService {
      * 事务由外层 TransactionTemplate 管理，锁在事务提交后才释放。
      */
     private R<?> doCompleteTask(String taskId, String normalizedAction, String comment,
-                                Map<String, Object> variables, String delegateUserId, Long currentUserId) {
-        WfTask task = taskMapper.selectById(taskId);
+                                Map<String, Object> variables, String delegateUserId, Long currentUserId, String taskType) {
+        WfTask task = agents.lockTask(taskId);
         if (task == null) {
             throw WorkflowException.taskNotFound(taskId);
         }
 
+        WorkflowExecutionContext.Frame context = WorkflowExecutionContext.parse(task.getExecutionContext());
+        if (context != null) gateways.assertActive(requireTaskInstanceForOperation(task, "处理"), context);
+        R<?> result = WorkflowExecutionContext.call(context, () -> doCompleteLockedTask(task, normalizedAction, comment,
+                variables, delegateUserId, currentUserId, taskType));
+        if (result != null && result.isSuccess() && WorkflowCompletionContext.isTimeoutTask(taskId)) {
+            taskTimeoutNotifications.completed(task, requireTaskInstanceForOperation(task, "超时处理通知"), normalizedAction);
+        }
+        return result;
+    }
+
+    private R<?> doCompleteLockedTask(WfTask task, String normalizedAction, String comment,
+                                      Map<String, Object> variables, String delegateUserId, Long currentUserId, String taskType) {
+        WorkflowImCompletionContext.require(task, normalizedAction);
+        String taskId = task.getTaskId();
+        WorkflowExecutionContext.assertNoOverrides(variables);
+        if (taskType != null) {
+            task.setTaskType(taskType);
+        }
+
         // 权限校验
         permissionService.checkTaskPermission(task);
+        WfProcessInstance activeInstance = requireTaskInstanceForOperation(task, "处理");
+        hParticipantPolicy.assertTaskAction(task, currentUserId, variables);
+        if (!WfProcessStatus.isActive(activeInstance.getStatus())) {
+            throw WorkflowException.invalidState("当前流程状态不允许处理任务");
+        }
+        if ("APPROVE".equals(normalizedAction) && Set.of("TASK_BACK", "WITHDRAWN", "RESTARTED").contains(activeInstance.getStatus())) {
+            WfNodeConfig activeNode = resolveTaskNode(task, activeInstance);
+            processStateService.transition(activeInstance, activeNode != null && "START".equals(activeNode.getType())
+                    ? WfProcessStatus.RESTARTED : WfProcessStatus.RUNNING);
+        }
+        if ("DELEGATE".equals(normalizedAction)) {
+            nodePolicy.assertTaskAllowed(task, "allowDelegate");
+        }
+        if ("REJECT".equals(normalizedAction) && !countersignService.isCountersignTask(task)
+                && !WorkflowDelegationReturnService.requiresReturn(task)) {
+            WfProcessInstance rejectingInstance = requireTaskInstanceForOperation(task, "驳回");
+            WfNodeConfig rejectingNode = resolveTaskNode(task, rejectingInstance);
+            if (rejectingNode != null && rejectingNode.getRejectStrategy() != null) {
+                String rejectComment = comment;
+                return TaskSemanticContext.callWithType(taskType,
+                        () -> doRejectByStrategy(taskId, null, rejectComment, rejectingNode.getRejectStrategy()));
+            }
+        }
         Map<String, Object> editableVariables = normalizeEditableVariables(task, variables, normalizedAction);
 
         // XSS 过滤
@@ -201,6 +301,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         history.setOperatorName(UserContext.getUserName());
         history.setComment(comment);
         history.setAction(normalizedAction);
+        history.setTaskType(WfTaskType.forAction(normalizedAction, task.getTaskType()));
         history.setCreateTime(LocalDateTime.now());
         applyAdminOverrideMetadata(history, task, currentUserId);
 
@@ -208,12 +309,13 @@ public class WfTaskServiceImpl implements IWfTaskService {
             long durationSeconds = java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds();
             history.setDurationSeconds((int) durationSeconds);
         }
+        historyState.record(activeInstance, task, history);
         taskHistoryMapper.insert(history);
         completeTaskMonitor(task, history.getCreateTime(), normalizedAction);
 
         // 删除当前任务
-        taskMapper.deleteById(taskId);
-        taskReminderJob.cancelReminders(taskId);
+        if (!"APPROVE".equals(normalizedAction) || !addSignGroups.retainOriginal(task)) taskMapper.deleteById(taskId);
+        taskReminderJob.cancelAfterCommit(taskId);
         cleanupTaskReadData(taskId);
 
         WfProcessInstance instance = requireTaskInstanceForOperation(task, "处理");
@@ -226,16 +328,30 @@ public class WfTaskServiceImpl implements IWfTaskService {
             return handleDelegate(task, instance, delegateUserId, comment);
         }
 
+        if (WorkflowDelegationReturnService.requiresReturn(task)) {
+            mergeVariables(instance, editableVariables, task);
+            WfTask original = delegationReturns.restore(task, normalizedAction, comment);
+            WfNodeConfig returnedNode = nodePolicy.resolveNode(instance, original.getNodeKey());
+            taskReminderJob.registerAfterCommit(original.getTaskId(), returnedNode == null ? null : returnedNode.getSlaHours());
+            workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(),
+                    normalizedAction, comment, history.getTaskType());
+            workflowEventPublisher.publishTaskAssigned(instance, original.getTaskId(), original.getNodeKey(), original.getNodeName(),
+                    original.getAssignee(), original.getAssigneeName(), original.getTaskType());
+            return R.ok(Map.of("returnedTaskId", original.getTaskId(), "version", original.getVersion()));
+        }
+
         // 拒绝操作
         if ("REJECT".equals(normalizedAction)) {
             nodeExecutionService.completeInstance(instance, WfProcessStatus.REJECTED.getCode());
+            workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(),
+                    "REJECT", comment, history.getTaskType());
             workflowEventPublisher.publishProcessRejected(instance, task.getNodeName(), comment);
             notifyInitiator(instance, task.getNodeName(), normalizedAction, comment);
             return R.ok();
         }
 
         // 审批通过 - 变量合并
-        Map<String, Object> mergedVariables = mergeVariables(instance, editableVariables);
+        Map<String, Object> mergedVariables = mergeVariables(instance, editableVariables, task);
 
         // 记录变量变更
         if (editableVariables != null && !editableVariables.isEmpty()) {
@@ -248,69 +364,69 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
 
         // 流程流转
-        WfProcessDefinition def = resolveDefinitionByInstance(instance);
-        WfNodeConfig completedNode = null;
-
-        try {
-            if (def != null && StringUtils.hasText(def.getModelJson())) {
-                WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
-                completedNode = nodeExecutionService.findNode(root, task.getNodeKey());
-                nodeExecutionService.advanceAfterNode(instance, completedNode, task.getNodeKey(), mergedVariables, 0, root);
-            } else {
-                nodeExecutionService.completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
-            }
-        } catch (WorkflowException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("[completeTask] 流程流转失败, taskId={}, error={}", taskId, e.getMessage(), e);
-            throw new WorkflowException("TASK_FLOW_FAILED", "流程流转失败: " + e.getMessage(), e);
+        WorkflowAddSignService.Completion completion = addSignGroups.completed(instance, task, history);
+        if (completion == null) {
+            workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(), normalizedAction, comment, history.getTaskType());
+            return R.ok(Map.of("waitingForAddSign", true));
         }
-
-        // 审批后置处理
-        try {
-            if (completedNode != null) {
-                approvalPostProcessor.process(completedNode, instance, normalizedAction, mergedVariables);
-            }
-        } catch (Exception e) {
-            log.warn("[completeTask] 审批后置处理失败, taskId={}: {}", taskId, e.getMessage());
-        }
+        advanceApprovedTask(instance, completion.task(), mergedVariables);
 
         notifyInitiator(instance, task.getNodeName(), normalizedAction, comment);
         auditService.log(WorkflowAuditService.AuditAction.TASK_COMPLETE, taskId,
             "action=" + normalizedAction + ", nodeName=" + task.getNodeName());
-        workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(), normalizedAction, comment);
+        workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(),
+                normalizedAction, comment, history.getTaskType());
 
         return R.ok();
     }
 
     @Override
     public R<?> rejectTask(String taskId, String targetNodeKey, String comment) {
+        return rejectTask(taskId, targetNodeKey, comment, null);
+    }
+
+    @Override
+    public R<?> rejectTask(String taskId, String targetNodeKey, String comment, String strategy) {
         log.info("[rejectTask] 开始驳回任务, taskId={}, targetNodeKey={}", taskId, targetNodeKey);
 
         if (!StringUtils.hasText(taskId)) {
             throw WorkflowException.validationError("任务ID不能为空");
-        }
-        if (!StringUtils.hasText(targetNodeKey)) {
-            throw WorkflowException.validationError("目标节点Key不能为空");
         }
         if (!StringUtils.hasText(comment)) {
             throw WorkflowException.validationError("驳回原因不能为空，请填写驳回理由");
         }
 
         // 同 completeTask：锁覆盖整个事务生命周期，事务提交后才释放锁
-        RLock lock = redissonClient.getLock("lock:task:" + taskId);
+        BusinessLock lock = businessLocks.getLock("lock:task:" + taskId);
+        BusinessLock countersignLock = null;
+        BusinessLock parentLock = null;
         try {
             if (!lock.tryLock(5, TimeUnit.SECONDS)) {
                 throw WorkflowException.invalidState("任务处理中，请勿重复提交");
             }
-            return transactionTemplate.execute(status -> doRejectTask(taskId, targetNodeKey, comment));
+            WfTask probe = taskMapper.selectById(taskId);
+            if (probe == null) {
+                throw WorkflowException.taskNotFound(taskId);
+            }
+            if (countersignService.isCountersignTask(probe)) {
+                countersignLock = businessLocks.getLock("lock:countersign:" + countersignService.extractCountersignId(probe));
+                if (!countersignLock.tryLock(5, TimeUnit.SECONDS)) {
+                    throw WorkflowException.invalidState("会签处理中，请稍后重试");
+                }
+            }
+            WfProcessInstance instance = requireTaskInstanceForOperation(probe, "驳回");
+            if (StringUtils.hasText(instance.getParentInstanceId())) {
+                parentLock = businessLocks.getLock("lock:instance:" + instance.getParentInstanceId());
+                if (!parentLock.tryLock(5, TimeUnit.SECONDS)) {
+                    throw WorkflowException.invalidState("父流程正在处理中");
+                }
+            }
+            return businessLocks.execute(transactionTemplate, status -> doRejectByStrategy(taskId, targetNodeKey, comment, strategy));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new WorkflowException("SYSTEM_BUSY", "系统繁忙，请稍后重试");
         } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
+            businessLocks.close(parentLock, countersignLock, lock);
         }
     }
 
@@ -318,13 +434,26 @@ public class WfTaskServiceImpl implements IWfTaskService {
      * rejectTask 的事务内业务段（外层已持有 lock:task:{taskId}，事务由 TransactionTemplate 管理）
      */
     private R<?> doRejectTask(String taskId, String targetNodeKey, String comment) {
-        WfTask task = taskMapper.selectById(taskId);
+        return doRejectTask(taskId, targetNodeKey, comment, "REJECT");
+    }
+
+    private R<?> doRejectTask(String taskId, String targetNodeKey, String comment, String action) {
+        if (!StringUtils.hasText(targetNodeKey)) {
+            throw WorkflowException.validationError("目标节点Key不能为空");
+        }
+        WfTask task = agents.lockTask(taskId);
         if (task == null) {
             throw WorkflowException.taskNotFound(taskId);
         }
 
         permissionService.checkRejectPermission(task);
         validateRejectTarget(task.getInstanceId(), task.getNodeKey(), targetNodeKey);
+        hParticipantPolicy.assertTaskAction(task, UserContext.getUserId(), null);
+        WfProcessInstance instance = requireTaskInstanceForOperation(task, "驳回");
+        WfProcessDefinition definition = resolveDefinitionByInstance(instance);
+        if (definition == null) throw WorkflowException.processNotFound(instance.getProcessDefKey());
+        WorkflowRuntimeGraph graph = workflowGraphModelResolver.parseRuntimeGraph(definition.getModelJson());
+        WfTaskHistory targetHistory = rewinds.target(instance, graph, task, targetNodeKey);
 
         // 保存驳回历史
         WfTaskHistory history = new WfTaskHistory();
@@ -337,7 +466,8 @@ public class WfTaskServiceImpl implements IWfTaskService {
         history.setOperatorId(UserContext.getUserId());
         history.setOperatorName(UserContext.getUserName());
         history.setComment(comment);
-        history.setAction("REJECT");
+        history.setAction(action);
+        history.setTaskType(TaskSemanticContext.resolve(WfTaskType.REJECT_JUMP.name()));
         history.setCreateTime(LocalDateTime.now());
         applyAdminOverrideMetadata(history, task, UserContext.getUserId());
 
@@ -356,29 +486,25 @@ public class WfTaskServiceImpl implements IWfTaskService {
             long durationSeconds = java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds();
             history.setDurationSeconds((int) durationSeconds);
         }
+        historyState.record(instance, task, history);
         taskHistoryMapper.insert(history);
         completeTaskMonitor(task, history.getCreateTime(), "REJECT");
 
         // 删除当前任务
         taskMapper.deleteById(taskId);
-        taskReminderJob.cancelReminders(taskId);
+        taskReminderJob.cancelAfterCommit(taskId);
         cleanupTaskReadData(taskId);
 
         // 在目标节点创建新任务
-        WfProcessInstance instance = requireTaskInstanceForOperation(task, "驳回");
-
-        WfProcessDefinition def = resolveDefinitionByInstance(instance);
-        if (def == null || !StringUtils.hasText(def.getModelJson())) {
-            throw WorkflowException.processNotFound(instance.getProcessDefKey());
-        }
-
         try {
-            WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
-            WfNodeConfig targetNode = nodeExecutionService.findNode(root, targetNodeKey);
+            WorkflowGatewayRewindPlan plan = rewinds.rewind(instance, graph, WorkflowExecutionContext.current(), targetHistory);
+            WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(definition.getModelJson());
+            WfNodeConfig targetNode = nodeExecutionService.findNode(root, plan.targetKey());
             if (targetNode == null) {
                 throw WorkflowException.validationError("目标节点不存在: " + targetNodeKey);
             }
-            nodeExecutionService.runNode(instance, targetNode, null, 0, root);
+            WorkflowExecutionContext.run(plan.context(), () -> TaskSemanticContext.withType(WfTaskType.REJECT_JUMP.name(),
+                    () -> nodeExecutionService.runNode(instance, targetNode, null, 0, root)));
         } catch (WorkflowException e) {
             throw e;
         } catch (Exception e) {
@@ -386,7 +512,265 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
 
         auditService.log(WorkflowAuditService.AuditAction.TASK_REJECT, taskId, "targetNodeKey=" + targetNodeKey);
+        workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(),
+                action, comment, history.getTaskType());
         return R.ok();
+    }
+
+    private void advanceApprovedTask(WfProcessInstance instance, WfTask task, Map<String, Object> variables) {
+        WfProcessDefinition definition = resolveDefinitionByInstance(instance);
+        if (definition == null || !StringUtils.hasText(definition.getModelJson())) throw WorkflowException.invalidState("实例绑定的流程定义无法读取");
+        WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(definition.getModelJson());
+        WfNodeConfig completed = nodeExecutionService.findNode(root, task.getNodeKey());
+        if (completed == null) throw WorkflowException.invalidState("审批节点不存在");
+        nodeExecutionService.advanceAfterNode(instance, completed, task.getNodeKey(), variables, 0, root);
+        try { approvalPostProcessor.process(completed, instance, "APPROVE", variables); }
+        catch (Exception failure) { log.warn("审批后置处理失败, taskId={}", task.getTaskId(), failure); }
+    }
+
+    @Override
+    @Audit(name = "移除顺序加签人员", highRisk = true)
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> removeOrderedSignatures(String taskId, List<Long> userIds, String reason) {
+        WorkflowAddSignService.Reduction reduction = addSignGroups.remove(taskId, userIds, reason);
+        if (reduction.completion() != null) {
+            WfTask completed = reduction.completion().task();
+            WfProcessInstance instance = processInstanceMapper.selectForExecution(completed.getTenantId(), completed.getInstanceId());
+            if (instance == null || !WorkflowHistoryState.effectiveApproval(instance, reduction.completion().approval())) {
+                throw WorkflowException.invalidState("原审批记录已失效");
+            }
+            WorkflowExecutionContext.run(WorkflowExecutionContext.parse(completed.getExecutionContext()),
+                    () -> advanceApprovedTask(instance, completed, WorkflowWaitState.variables(instance)));
+        }
+        return R.ok(reduction.removed());
+    }
+
+    private WfNodeConfig resolveTaskNode(WfTask task, WfProcessInstance instance) {
+        WfProcessDefinition definition = resolveDefinitionByInstance(instance);
+        if (definition == null || !StringUtils.hasText(definition.getModelJson())) {
+            return null;
+        }
+        return workflowGraphModelResolver.parseRuntimeGraph(definition.getModelJson()).getNode(task.getNodeKey());
+    }
+
+    private R<?> doRejectByStrategy(String taskId, String targetNodeKey, String comment, String requestedStrategy) {
+        WfTask task = agents.lockTask(taskId);
+        if (task == null) {
+            throw WorkflowException.taskNotFound(taskId);
+        }
+        WfProcessInstance instance = requireTaskInstanceForOperation(task, "驳回");
+        WorkflowExecutionContext.Frame context = WorkflowExecutionContext.parse(task.getExecutionContext());
+        gateways.assertActive(instance, context);
+        return WorkflowExecutionContext.call(context, () -> WorkflowDelegationReturnService.requiresReturn(task)
+                ? doCompleteLockedTask(task, "REJECT", comment, null, null, UserContext.getUserId(), null)
+                : doRejectLockedByStrategy(task, instance, targetNodeKey, comment, requestedStrategy));
+    }
+
+    private R<?> doRejectLockedByStrategy(WfTask task, WfProcessInstance instance, String targetNodeKey,
+                                          String comment, String requestedStrategy) {
+        String taskId = task.getTaskId();
+        permissionService.checkRejectPermission(task);
+        hParticipantPolicy.assertTaskAction(task, UserContext.getUserId(), null);
+
+        if (!WfTaskStatus.TODO.getCode().equals(task.getStatus())
+                || !WfProcessStatus.isActive(instance.getStatus())) {
+            throw WorkflowException.invalidState("只有运行中流程的待办任务可以驳回");
+        }
+        processStateService.transition(instance, WfProcessStatus.TASK_BACK);
+        WfNodeConfig node = resolveTaskNode(task, instance);
+        String strategy = WorkflowRejectPolicy.resolve(requestedStrategy, node, targetNodeKey);
+        if (!"TERMINATE".equals(strategy)) {
+            WorkflowNodePolicy.assertAllowed(node, "allowRollback");
+        }
+        if (strategy == null) {
+            return doRejectTask(taskId, targetNodeKey, comment);
+        }
+        if (!StringUtils.hasText(comment)) {
+            throw WorkflowException.validationError("驳回原因不能为空");
+        }
+        String safeComment = securityUtils.sanitizeXss(comment);
+        return switch (strategy) {
+            case "TO_SPECIFIED_NODE" -> {
+                String target = StringUtils.hasText(targetNodeKey) ? targetNodeKey : node == null ? null : node.getRejectToNodeKey();
+                validateRejectTarget(task.getInstanceId(), task.getNodeKey(), target);
+                cancelCountersignPeers(task);
+                yield doRejectTask(taskId, target, safeComment);
+            }
+            case "TO_PREVIOUS_NODE" -> {
+                WfProcessDefinition definition = resolveDefinitionByInstance(instance);
+                if (definition == null) throw WorkflowException.processNotFound(instance.getProcessDefKey());
+                WfTaskHistory previous = rewinds.target(instance, workflowGraphModelResolver.parseRuntimeGraph(definition.getModelJson()), task, null);
+                cancelCountersignPeers(task);
+                yield doRejectTask(taskId, previous.getNodeKey(), safeComment, "REJECT_TO_PREVIOUS");
+            }
+            case "TO_INITIATOR" -> rejectToInitiator(task, instance, safeComment);
+            case "TERMINATE" -> finishByRejection(task, instance, safeComment, "TERMINATE");
+            case "TO_PARENT_NODE" -> rejectToParent(task, instance, safeComment);
+            default -> throw WorkflowException.validationError("未知驳回策略");
+        };
+    }
+
+    private R<?> rejectToInitiator(WfTask task, WfProcessInstance instance, String comment) {
+        WfProcessDefinition definition = resolveDefinitionByInstance(instance);
+        if (definition == null) {
+            throw WorkflowException.processNotFound(instance.getProcessDefKey());
+        }
+        WorkflowRuntimeGraph graph = workflowGraphModelResolver.parseRuntimeGraph(definition.getModelJson());
+        recordStrategyRejection(task, instance, comment, WfTaskType.REJECT.name(), "TO_INITIATOR");
+        rewinds.clear(instance);
+        processStateService.transition(instance, WfProcessStatus.TASK_BACK);
+        WfTask returned = new WfTask();
+        returned.setTaskId(UUID.randomUUID().toString());
+        returned.setTenantId(instance.getTenantId());
+        returned.setInstanceId(instance.getInstanceId());
+        returned.setNodeKey(graph.getStartNodeId());
+        returned.setNodeName("发起人修改");
+        returned.setAssignee(instance.getStartUserId());
+        returned.setAssigneeName(instance.getStartUserName());
+        returned.setAllowEdit(true);
+        returned.setTaskType(WfTaskType.REJECT.name());
+        returned.setStatus(WfTaskStatus.TODO.getCode());
+        returned.setCreateTime(LocalDateTime.now());
+        hParticipantPolicy.assertTaskAssignment(returned, returned.getAssignee());
+        WorkflowExecutionContext.run(null, () -> agents.createTask(returned));
+        createTaskMonitor(instance, returned);
+        workflowEventPublisher.publishTaskAssigned(instance, returned.getTaskId(), returned.getNodeKey(),
+                returned.getNodeName(), returned.getAssignee(), returned.getAssigneeName(), returned.getTaskType());
+        notifyInitiator(instance, task.getNodeName(), "REJECT", comment);
+        return R.ok();
+    }
+
+    private R<?> finishByRejection(WfTask task, WfProcessInstance instance, String comment, String reason) {
+        recordStrategyRejection(task, instance, comment, WfTaskType.REJECT.name(), reason);
+        cancelTasksForRejection(instance, null);
+        nodeExecutionService.completeInstance(instance, WfProcessStatus.REJECTED.getCode());
+        workflowEventPublisher.publishProcessRejected(instance, task.getNodeName(), comment);
+        notifyInitiator(instance, task.getNodeName(), "REJECT", comment);
+        return R.ok();
+    }
+
+    private R<?> rejectToParent(WfTask task, WfProcessInstance instance, String comment) {
+        if (!StringUtils.hasText(instance.getParentInstanceId())) {
+            return rejectToInitiator(task, instance, comment);
+        }
+        WfProcessInstance parent = processInstanceMapper.selectForExecution(instance.getTenantId(), instance.getParentInstanceId());
+        if (parent == null || !WfProcessStatus.isOpen(parent.getStatus())) {
+            return finishByRejection(task, instance, comment, "PARENT_FINISHED_DEGRADE_TO_TERMINATE");
+        }
+        if (!Objects.equals(parent.getTenantId(), instance.getTenantId())) {
+            throw WorkflowException.permissionDenied("跨租户父流程驳回");
+        }
+        WfProcessDefinition parentDefinition = resolveDefinitionByInstance(parent);
+        if (parentDefinition == null) {
+            throw WorkflowException.processNotFound(parent.getProcessDefKey());
+        }
+        WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(parentDefinition.getModelJson());
+        WfNodeConfig parentNode = nodeExecutionService.findNode(root, instance.getParentNodeKey());
+        if (parentNode == null || !"SUBPROCESS".equals(parentNode.getType())) {
+            throw WorkflowException.validationError("父流程子流程调用节点不存在");
+        }
+        WorkflowWaitState.Pending waiting = WorkflowWaitState.find(parent, instance.getInstanceId());
+        if (waiting == null || !"SUBPROCESS".equals(waiting.kind()) || !instance.getParentNodeKey().equals(waiting.nodeKey())) {
+            throw WorkflowException.invalidState("父流程已离开本次子流程等待，无法退回该调用节点");
+        }
+        gateways.assertActive(parent, waiting.context());
+        WorkflowWaitState.finish(parent, null, waiting.waitId());
+        recordStrategyRejection(task, instance, comment, WfTaskType.REJECT_JUMP.name(), "TO_PARENT_NODE");
+        rewinds.clear(instance);
+        nodeExecutionService.completeInstance(instance, WfProcessStatus.REJECTED.getCode());
+        workflowEventPublisher.publishProcessRejected(instance, task.getNodeName(), comment);
+        processStateService.transition(parent, WfProcessStatus.TASK_BACK);
+        WorkflowExecutionContext.run(waiting.context(), () -> TaskSemanticContext.withType(WfTaskType.REJECT_JUMP.name(),
+                () -> nodeExecutionService.runNode(parent, parentNode, WorkflowWaitState.variables(parent), 0, root)));
+        return R.ok();
+    }
+
+    private void recordStrategyRejection(WfTask task, WfProcessInstance instance, String comment,
+                                          String taskType, String strategy) {
+        WfTaskHistory history = new WfTaskHistory();
+        history.setHistoryId(UUID.randomUUID().toString());
+        history.setTenantId(instance.getTenantId());
+        history.setTaskId(task.getTaskId());
+        history.setInstanceId(instance.getInstanceId());
+        history.setNodeKey(task.getNodeKey());
+        history.setNodeName(task.getNodeName());
+        history.setOperatorId(UserContext.getUserId());
+        history.setOperatorName(UserContext.getUserName());
+        history.setTaskType(TaskSemanticContext.resolve(taskType));
+        history.setAction("REJECT");
+        history.setComment(comment);
+        history.setCreateTime(LocalDateTime.now());
+        try {
+            history.setVariablesChanged(mergeHistoryMetadata(null, Map.of("rejectStrategy", strategy)));
+        } catch (Exception exception) {
+            throw new WorkflowException("REJECT_HISTORY_FAILED", "驳回记录保存失败", exception);
+        }
+        applyAdminOverrideMetadata(history, task, UserContext.getUserId());
+        historyState.record(instance, task, history);
+        taskHistoryMapper.insert(history);
+        workflowEventPublisher.publishTaskCompleted(instance, task.getTaskId(), task.getNodeKey(), task.getNodeName(),
+                "REJECT", comment, history.getTaskType());
+        auditService.log(WorkflowAuditService.AuditAction.TASK_REJECT, task.getTaskId(), "strategy=" + strategy);
+    }
+
+    private void cancelCountersignPeers(WfTask task) {
+        if (!countersignService.isCountersignTask(task)) {
+            return;
+        }
+        WfProcessInstance instance = requireTaskInstanceForOperation(task, "驳回");
+        cancelTasksForRejection(instance, task);
+    }
+
+    private void cancelTasksForRejection(WfProcessInstance instance, WfTask retainedTask) {
+        LambdaQueryWrapper<WfTask> query = new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getInstanceId, instance.getInstanceId());
+        if (retainedTask != null) {
+            query.eq(WfTask::getCandidateRoles, retainedTask.getCandidateRoles())
+                    .ne(WfTask::getTaskId, retainedTask.getTaskId());
+        }
+        Set<String> cancelledCountersigns = new HashSet<>();
+        if (retainedTask != null) {
+            cancelledCountersigns.add(countersignService.extractCountersignId(retainedTask));
+        }
+        for (WfTask pendingTask : taskMapper.selectList(query)) {
+            if (countersignService.isCountersignTask(pendingTask)) {
+                cancelledCountersigns.add(countersignService.extractCountersignId(pendingTask));
+            }
+            completeTaskMonitor(pendingTask, LocalDateTime.now(), "REJECT_CANCEL");
+            taskReminderJob.cancelAfterCommit(pendingTask.getTaskId());
+            cleanupTaskReadData(pendingTask.getTaskId());
+            taskMapper.deleteById(pendingTask.getTaskId());
+        }
+        for (String countersignId : cancelledCountersigns) {
+            WfCountersignTask countersign = countersignTaskMapper.selectById(countersignId);
+            if (countersign != null && "VOTING".equals(countersign.getStatus())) {
+                countersign.setStatus("REJECTED");
+                countersign.setCompleteTime(LocalDateTime.now());
+                countersignTaskMapper.updateById(countersign);
+            }
+        }
+    }
+
+    @Override
+    public WfTask getTodoTask(String taskId) {
+        Long tenantId = com.cloudflow.workflow.service.WorkflowLaunchContextService.requireTenant();
+        Long userId = com.cloudflow.workflow.service.WorkflowLaunchContextService.requireUser();
+        if (taskId == null || !taskId.matches("[A-Za-z0-9_-]{1,64}")) throw WorkflowException.permissionDenied("待办链接无效");
+        WfTask task = taskMapper.selectById(taskId);
+        if (task == null || !Objects.equals(task.getTenantId(), tenantId) || !"TODO".equals(task.getStatus())
+                || !Objects.equals(task.getAssignee(), userId) && !agents.canRead(task, userId)) {
+            throw WorkflowException.permissionDenied("任务已处理、已转交或无权查看");
+        }
+        permissionService.checkTaskReadPermission(task);
+        enrichTodoTasks(List.of(task), userId);
+        WfTask current = taskMapper.selectById(taskId);
+        if (current == null || !Objects.equals(current.getTenantId(), tenantId) || !"TODO".equals(current.getStatus())
+                || !Objects.equals(current.getVersion(), task.getVersion()) || !Objects.equals(current.getAssignee(), task.getAssignee())
+                || !Objects.equals(current.getProxyUserId(), task.getProxyUserId())) {
+            throw WorkflowException.permissionDenied("任务已处理、已转交或无权查看");
+        }
+        permissionService.checkTaskReadPermission(current);
+        return task;
     }
 
     @Override
@@ -408,7 +792,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
         if (hasInstanceFilter) {
             LambdaQueryWrapper<WfProcessInstance> instanceWrapper = new LambdaQueryWrapper<>();
-            instanceWrapper.eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode());
+            instanceWrapper.in(WfProcessInstance::getStatus, WfProcessStatus.activeCodes());
             if (currentTenantId != null) {
                 instanceWrapper.eq(WfProcessInstance::getTenantId, currentTenantId);
             }
@@ -431,7 +815,12 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
         Page<WfTask> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfTask> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(WfTask::getAssignee, userId);
+        List<String> receivedTaskIds = Objects.equals(userId, UserContext.getUserId())
+                ? agents.receivedTasks().stream().map(WfTask::getTaskId).toList() : List.of();
+        queryWrapper.and(owner -> {
+            owner.eq(WfTask::getAssignee, userId);
+            if (!receivedTaskIds.isEmpty()) owner.or().in(WfTask::getTaskId, receivedTaskIds);
+        });
         queryWrapper.eq(WfTask::getStatus, WfTaskStatus.TODO.getCode());
         if (currentTenantId != null) {
             queryWrapper.eq(WfTask::getTenantId, currentTenantId);
@@ -458,7 +847,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
         queryWrapper.orderByDesc(WfTask::getCreateTime);
         Page<WfTask> resultPage = taskMapper.selectPage(page, queryWrapper);
-        List<WfTask> tasks = resultPage.getRecords();
+        List<WfTask> tasks = resultPage.getRecords().stream().filter(permissionService::canReadTask).toList();
 
         if (tasks != null && !tasks.isEmpty()) {
             enrichTodoTasks(tasks, userId);
@@ -504,8 +893,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
 
         Page<WfTaskHistory> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
-        LambdaQueryWrapper<WfTaskHistory> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WfTaskHistory::getOperatorId, userId);
+        LambdaQueryWrapper<WfTaskHistory> wrapper = WorkflowHistoryAttribution.completedHistory();
+        wrapper.and(historyOwner -> historyOwner.eq(WfTaskHistory::getOperatorId, userId)
+                .or().eq(WfTaskHistory::getOnBehalfOfUserId, userId));
         if (currentTenantId != null) {
             wrapper.eq(WfTaskHistory::getTenantId, currentTenantId);
         }
@@ -534,6 +924,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void readTask(String taskId, Long userId) {
+        if (!Objects.equals(userId, UserContext.getUserId())) {
+            throw new PermissionDeniedException("只能记录本人的已读状态");
+        }
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) {
             markCompletedTaskReadAsNoop(taskId, userId);
@@ -543,22 +936,14 @@ public class WfTaskServiceImpl implements IWfTaskService {
         if (currentTenantId != null && !Objects.equals(currentTenantId, task.getTenantId())) {
             throw new PermissionDeniedException("无权访问该租户任务");
         }
-        if (task.getAssignee() != null && !task.getAssignee().equals(userId) && !permissionService.isAdmin(userId)) {
-            throw new PermissionDeniedException("您不是此任务的处理人，无法标记已读");
-        }
+        permissionService.checkTaskReadPermission(task);
 
-        Long count = taskReadMapper.selectCount(new LambdaQueryWrapper<WfTaskRead>()
-                .eq(WfTaskRead::getTenantId, task.getTenantId())
-                .eq(WfTaskRead::getTaskId, taskId)
-                .eq(WfTaskRead::getUserId, userId));
-        if (count == 0) {
-            WfTaskRead read = new WfTaskRead();
-            read.setTenantId(task.getTenantId());
-            read.setTaskId(taskId);
-            read.setUserId(userId);
-            read.setReadTime(LocalDateTime.now());
-            taskReadMapper.insert(read);
-        }
+        WfTaskRead read = new WfTaskRead();
+        read.setTenantId(task.getTenantId());
+        read.setTaskId(taskId);
+        read.setUserId(userId);
+        read.setReadTime(LocalDateTime.now());
+        taskReadMapper.insertIfAbsent(read);
     }
 
     private void markCompletedTaskReadAsNoop(String taskId, Long userId) {
@@ -595,6 +980,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         WfProcessInstance instance = requireTaskInstanceForOperation(task, "催办");
 
         permissionService.checkUrgePermission(instance);
+        nodePolicy.assertTaskAllowed(task, "allowUrge");
 
         WfTaskUrge urge = new WfTaskUrge();
         urge.setTenantId(instance.getTenantId());
@@ -605,7 +991,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         urge.setCreateTime(LocalDateTime.now());
         taskUrgeMapper.insert(urge);
 
-        sysNoticeService.sendNotice(task.getAssignee(), "任务催办提醒",
+        sysNoticeService.send(task.getAssignee(), "任务催办提醒",
             "发起人催办了任务: " + task.getNodeName() + "，原因: " + (StringUtils.hasText(reason) ? reason : "无"),
             "2", currentUserId, UserContext.getUserName());
 
@@ -640,28 +1026,30 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.validationError("转办目标用户ID格式非法: " + delegateUserId);
         }
 
-        SysUser delegateUser = sysUserMapper.selectById(delegateId);
-        if (delegateUser == null) {
-            throw WorkflowException.validationError("转办目标用户不存在: " + delegateUserId);
-        }
+        SysUser delegateUser = delegationReturns.target(task, delegateId);
+        hParticipantPolicy.assertParticipantChange(task, List.of(delegateId));
         String delegateUserName = StringUtils.hasText(delegateUser.getNickName())
             ? delegateUser.getNickName()
             : delegateUser.getUserName();
 
         WfTask newTask = new WfTask();
+        newTask.setTaskType(WfTaskType.TRANSFER.name());
         newTask.setTaskId(UUID.randomUUID().toString());
         newTask.setInstanceId(task.getInstanceId());
         newTask.setNodeName(task.getNodeName());
         newTask.setNodeKey(task.getNodeKey());
+        newTask.setCandidateRoles(task.getCandidateRoles());
         newTask.setAssignee(delegateId);
         newTask.setAssigneeName(delegateUserName);
         newTask.setTenantId(task.getTenantId());
         newTask.setStatus(WfTaskStatus.TODO.getCode());
         newTask.setCreateTime(LocalDateTime.now());
-        taskMapper.insert(newTask);
+        hParticipantPolicy.assertTaskAssignment(newTask, newTask.getAssignee());
+        agents.createTask(newTask);
+        addSignGroups.transferred(task, newTask);
         createTaskMonitor(instance, newTask);
 
-        sysNoticeService.sendNotice(delegateId, "任务转办通知",
+        sysNoticeService.send(delegateId, "任务转办通知",
             String.format("您收到一个转办任务: %s (流程: %s)", task.getNodeName(), instance.getTitle()),
             "1", UserContext.getUserId(), UserContext.getUserName());
 
@@ -681,7 +1069,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
         String voteResult = action;
 
-        String countersignResult = countersignService.vote(taskId, currentUserId, userName, voteResult, comment);
+        String countersignResult = countersignService.vote(taskId, task.getAssignee(), task.getAssigneeName(), voteResult, comment);
 
         WfTaskHistory history = new WfTaskHistory();
         history.setHistoryId(UUID.randomUUID().toString());
@@ -694,45 +1082,71 @@ public class WfTaskServiceImpl implements IWfTaskService {
         history.setOperatorName(userName);
         history.setComment(comment);
         history.setAction("COUNTERSIGN_" + voteResult);
+        history.setTaskType(task.getTaskType());
         history.setCreateTime(LocalDateTime.now());
         applyAdminOverrideMetadata(history, task, currentUserId);
         if (task.getCreateTime() != null) {
             history.setDurationSeconds((int) java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds());
         }
+        historyState.record(requireTaskInstanceForOperation(task, "会签记录"), task, history);
         taskHistoryMapper.insert(history);
         completeTaskMonitor(task, history.getCreateTime(), "COUNTERSIGN_" + voteResult);
 
         if ("PASSED".equals(countersignResult) || "REJECTED".equals(countersignResult)) {
+            completeCountersignFlow(task, countersignResult, variables, "COUNTERSIGN_" + voteResult,
+                    comment, history.getTaskType());
+        }
+        return R.ok(countersignResult);
+    }
+
+    private void completeCountersignFlow(WfTask task, String countersignResult, Map<String, Object> variables,
+                                         String action, String comment, String taskType) {
             WfProcessInstance instance = requireTaskInstanceForOperation(task, "会签处理");
             nodeExecutionService.saveProcessSnapshot(instance, task.getNodeKey(), task.getNodeName());
 
             if ("REJECTED".equals(countersignResult)) {
-                nodeExecutionService.completeInstance(instance, WfProcessStatus.REJECTED.getCode());
-                notifyInitiator(instance, task.getNodeName(), "REJECT", "会签未通过");
+                WfNodeConfig node = resolveTaskNode(task, instance);
+                if (node != null && node.getRejectStrategy() != null) {
+                    WfTask rejectionTask = new WfTask();
+                    rejectionTask.setTaskId(UUID.randomUUID().toString());
+                    rejectionTask.setTenantId(task.getTenantId());
+                    rejectionTask.setInstanceId(task.getInstanceId());
+                    rejectionTask.setNodeKey(task.getNodeKey());
+                    rejectionTask.setNodeName(task.getNodeName());
+                    rejectionTask.setAssignee(task.getAssignee());
+                    rejectionTask.setAssigneeName(task.getAssigneeName());
+                    rejectionTask.setProxyUserId(task.getProxyUserId());
+                    rejectionTask.setTaskType(WfTaskType.REJECT.name());
+                    rejectionTask.setStatus(WfTaskStatus.TODO.getCode());
+                    rejectionTask.setCreateTime(LocalDateTime.now());
+                    hParticipantPolicy.assertTaskAssignment(rejectionTask, rejectionTask.getAssignee());
+                    agents.createTask(rejectionTask);
+                    TaskSemanticContext.callWithType(taskType != null && taskType.startsWith("AUTO_") ? taskType : null,
+                            () -> doRejectByStrategy(rejectionTask.getTaskId(), null,
+                                    StringUtils.hasText(comment) ? comment : "会签未通过", node.getRejectStrategy()));
+                } else {
+                    nodeExecutionService.completeInstance(instance, WfProcessStatus.REJECTED.getCode());
+                    workflowEventPublisher.publishProcessRejected(instance, task.getNodeName(), comment);
+                    notifyInitiator(instance, task.getNodeName(), "REJECT", "会签未通过");
+                }
             } else {
-                Map<String, Object> mergedVariables = mergeVariables(instance, variables);
+                Map<String, Object> mergedVariables = mergeVariables(instance, variables, task);
                 WfProcessDefinition def = resolveDefinitionByInstance(instance);
                 try {
                     if (def != null && StringUtils.hasText(def.getModelJson())) {
                         WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
-                        WfNodeConfig nextNode = nodeExecutionService.findNextNode(root, task.getNodeKey());
-                        if (nextNode != null) {
-                            nodeExecutionService.runNode(instance, nextNode, mergedVariables, 0, root);
-                        } else {
-                            nodeExecutionService.completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
-                        }
+                        WfNodeConfig completedNode = nodeExecutionService.findNode(root, task.getNodeKey());
+                        nodeExecutionService.advanceAfterNode(instance, completedNode, task.getNodeKey(), mergedVariables, 0, root);
                     } else {
-                        nodeExecutionService.completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
+                        nodeExecutionService.completeInstance(instance, WfProcessStatus.PASSED.getCode());
                     }
                 } catch (Exception e) {
                     throw new WorkflowException("COUNTERSIGN_FLOW_FAILED", "会签后流程流转失败: " + e.getMessage(), e);
                 }
                 notifyInitiator(instance, task.getNodeName(), "APPROVE", "会签已通过");
             }
-            workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(),
-                "COUNTERSIGN_" + voteResult, comment);
-        }
-        return R.ok(countersignResult);
+            workflowEventPublisher.publishTaskCompleted(instance, task.getTaskId(), task.getNodeKey(), task.getNodeName(),
+                action, comment, taskType);
     }
 
     /**
@@ -761,7 +1175,12 @@ public class WfTaskServiceImpl implements IWfTaskService {
      * 避免后提交方的变量被静默丢弃；重试耗尽则抛异常回滚本次审批。
      */
     private Map<String, Object> mergeVariables(WfProcessInstance instance, Map<String, Object> newVariables) {
-        if (newVariables == null || newVariables.isEmpty()) {
+        return mergeVariables(instance, newVariables, null);
+    }
+
+    private Map<String, Object> mergeVariables(WfProcessInstance instance, Map<String, Object> newVariables, WfTask task) {
+        hParticipantPolicy.assertTaskVariables(instance, newVariables);
+        if (task == null && (newVariables == null || newVariables.isEmpty())) {
             return parseInstanceVariables(instance);
         }
 
@@ -769,11 +1188,15 @@ public class WfTaskServiceImpl implements IWfTaskService {
         WfProcessInstance current = instance;
         for (int attempt = 0; attempt < maxRetries; attempt++) {
             Map<String, Object> instanceVars = parseInstanceVariables(current);
-            for (Map.Entry<String, Object> entry : newVariables.entrySet()) {
+            Map<String, Object> changes = newVariables == null ? Map.of() : newVariables;
+            if (task != null) changes = formAccess.approval(task, current, changes, isTaskNodeAllowEdit(task)).changes();
+            if (changes.isEmpty()) return instanceVars;
+            for (Map.Entry<String, Object> entry : changes.entrySet()) {
                 if (!entry.getKey().startsWith("_")) {
                     instanceVars.put(entry.getKey(), entry.getValue());
                 }
             }
+            hParticipantPolicy.assertRuntimeVariables(current, instanceVars);
             try {
                 current.setVariables(objectMapper.writeValueAsString(instanceVars));
             } catch (Exception e) {
@@ -816,27 +1239,28 @@ public class WfTaskServiceImpl implements IWfTaskService {
      * 仅允许在节点开启 allowEdit 时提交业务变量；系统变量（_前缀）始终忽略。
      */
     private Map<String, Object> normalizeEditableVariables(WfTask task, Map<String, Object> variables, String action) {
-        if (variables == null || variables.isEmpty()) {
-            return Collections.emptyMap();
-        }
         // 仅“同意”动作允许回写变量，拒绝/转办忽略客户端变量，避免误伤历史客户端调用。
         if (!"APPROVE".equalsIgnoreCase(action)) {
             return Collections.emptyMap();
         }
 
         Map<String, Object> editableVariables = new HashMap<>();
-        for (Map.Entry<String, Object> entry : variables.entrySet()) {
+        for (Map.Entry<String, Object> entry : (variables == null ? Map.<String, Object>of() : variables).entrySet()) {
             String key = entry.getKey();
             if (StringUtils.hasText(key) && !key.startsWith("_")) {
                 editableVariables.put(key, entry.getValue());
             }
         }
 
+        WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+        if (instance == null) throw WorkflowException.instanceNotFound(task.getInstanceId());
+        boolean allowEdit = isTaskNodeAllowEdit(task);
+        if (formAccess.approval(task, instance, editableVariables, allowEdit).formBound()) return editableVariables;
         if (editableVariables.isEmpty()) {
             return Collections.emptyMap();
         }
 
-        if (!isTaskNodeAllowEdit(task)) {
+        if (!allowEdit) {
             throw WorkflowException.validationError("当前节点不允许修改表单数据");
         }
 
@@ -888,7 +1312,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 }
                 String content = String.format("您发起的流程「%s」在节点「%s」%s", instance.getTitle(), nodeName, actionText);
                 if (StringUtils.hasText(comment)) content += "，意见：" + comment;
-                sysNoticeService.sendNotice(initiatorId, "审批进度通知", content, "1", currentUserId, UserContext.getUserName());
+                sysNoticeService.send(initiatorId, "审批进度通知", content, "1", currentUserId, UserContext.getUserName());
             }
         } catch (Exception e) {
             log.warn("[notifyInitiator] 通知失败: {}", e.getMessage());
@@ -964,7 +1388,8 @@ public class WfTaskServiceImpl implements IWfTaskService {
         if (history == null || task == null || operatorId == null || task.getAssignee() == null) {
             return;
         }
-        if (Objects.equals(task.getAssignee(), operatorId) || !permissionService.isAdmin(operatorId)) {
+        agents.annotateHistory(history, task, operatorId);
+        if (history.getOnBehalfOfUserId() != null || Objects.equals(task.getAssignee(), operatorId) || !permissionService.isAdmin(operatorId)) {
             return;
         }
         try {
@@ -1054,6 +1479,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         Map<String, WfNodeConfig> rootNodeCache = new HashMap<>();
 
         for (WfTask task : tasks) {
+            if (task.getProxyUserId() != null) agents.canRead(task, task.getProxyUserId());
             WfProcessInstance instance = instanceMap.get(task.getInstanceId());
             if (instance != null) {
                 task.setProcessDefKey(instance.getProcessDefKey());
@@ -1122,6 +1548,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 if (cachedRoot != null && StringUtils.hasText(task.getNodeKey())) {
                     WfNodeConfig currentNode = nodeExecutionService.findNode(cachedRoot, task.getNodeKey());
                     if (currentNode != null) {
+                        task.setNodePermissions(WorkflowNodePolicy.permissions(currentNode));
+                        task.setRejectStrategy(currentNode.getRejectStrategy());
+                        task.setRejectToNodeKey(currentNode.getRejectToNodeKey());
                         List<String> nodeButtons = nodeExecutionService.extractNodeButtons(currentNode);
                         if (nodeButtons != null && !nodeButtons.isEmpty()) {
                             task.setButtonPermissions(nodeButtons);
@@ -1148,13 +1577,19 @@ public class WfTaskServiceImpl implements IWfTaskService {
         List<WfTask> tasks = new ArrayList<>();
         for (WfTaskHistory history : histories) {
             WfTask task = new WfTask();
+            task.setHistoryId(history.getHistoryId());
+            task.setTaskType(history.getTaskType());
             task.setTaskId(history.getTaskId());
             task.setTenantId(history.getTenantId());
             task.setInstanceId(history.getInstanceId());
             task.setNodeKey(history.getNodeKey());
             task.setNodeName(history.getNodeName());
-            task.setAssignee(history.getOperatorId());
-            task.setAssigneeName(history.getOperatorName());
+            task.setAssignee(WorkflowHistoryAttribution.owner(history));
+            task.setAssigneeName(history.getOnBehalfOfUserId() == null ? history.getOperatorName() : history.getOnBehalfOfUserName());
+            task.setOperatorId(history.getOperatorId());
+            task.setOperatorName(history.getOperatorName());
+            task.setOnBehalfOfUserId(history.getOnBehalfOfUserId());
+            task.setOnBehalfOfUserName(history.getOnBehalfOfUserName());
             task.setStatus("REJECT".equalsIgnoreCase(history.getAction()) ? "REJECTED" : "COMPLETED");
             task.setCreateTime(history.getCreateTime());
             task.setIsRead(true);
@@ -1223,6 +1658,13 @@ public class WfTaskServiceImpl implements IWfTaskService {
             if (def != null && StringUtils.hasText(def.getModelJson())) {
                 try {
                     WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
+                    WfTaskHistory history = historiesByInstance.getOrDefault(instance.getInstanceId(), List.of()).stream()
+                            .filter(candidate -> Objects.equals(candidate.getHistoryId(), task.getHistoryId())).findFirst().orElse(null);
+                    WfNodeConfig historyNode = nodeExecutionService.findNode(root, task.getNodeKey());
+                    task.setCanWithdraw(WfProcessStatus.isActive(instance.getStatus()) && history != null
+                            && Objects.equals(history.getOperatorId(), UserContext.getUserId())
+                            && WorkflowHistoryState.effectiveApproval(instance, history) && historyNode != null
+                            && WorkflowNodePolicy.allows(historyNode, "allowRollback"));
                     List<Map<String, String>> steps = nodeExecutionService.extractApprovalSteps(root);
                     if (steps != null && !steps.isEmpty()) {
                         enrichTaskStepInfo(task, steps, historiesByInstance.getOrDefault(task.getInstanceId(), new ArrayList<>()));
@@ -1302,8 +1744,11 @@ public class WfTaskServiceImpl implements IWfTaskService {
     // ==================== 加签/减签功能实现 ====================
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public R<?> addSignature(String taskId, java.util.List<Long> userIds, String comment) {
+        return executeSignatureChange(taskId, () -> doAddSignature(taskId, userIds, comment));
+    }
+
+    private R<?> doAddSignature(String taskId, java.util.List<Long> userIds, String comment) {
         Long currentUserId = UserContext.getUserId();
         log.info("[addSignature] 开始加签, taskId={}, userIds={}, userId={}", taskId, userIds, currentUserId);
 
@@ -1311,14 +1756,16 @@ public class WfTaskServiceImpl implements IWfTaskService {
         if (!StringUtils.hasText(taskId)) {
             throw WorkflowException.validationError("任务ID不能为空");
         }
-        if (userIds == null || userIds.isEmpty()) {
-            throw WorkflowException.validationError("加签人员列表不能为空");
+        if (userIds == null || userIds.isEmpty() || userIds.size() > 100
+                || userIds.stream().anyMatch(userId -> userId == null || userId <= 0)
+                || new HashSet<>(userIds).size() != userIds.size()) {
+            throw WorkflowException.validationError("请选择1至100个不同的加签用户");
         }
         if (!StringUtils.hasText(comment)) {
             throw WorkflowException.validationError("加签说明不能为空");
         }
 
-        WfTask task = taskMapper.selectById(taskId);
+        WfTask task = agents.lockTask(taskId);
         if (task == null) {
             throw WorkflowException.taskNotFound(taskId);
         }
@@ -1328,9 +1775,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
 
         // 权限校验：只有当前任务处理人可以加签
-        if (!Objects.equals(task.getAssignee(), currentUserId) && !permissionService.isAdmin(currentUserId)) {
-            throw new PermissionDeniedException("只有任务处理人可以加签");
-        }
+        permissionService.checkTaskPermission(task);
+        nodePolicy.assertTaskAllowed(task, "allowAddSign");
+        hParticipantPolicy.assertFrozenParticipants(task.getInstanceId());
 
         // 检查是否为会签任务
         if (!countersignService.isCountersignTask(task)) {
@@ -1358,16 +1805,17 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
         // P0修复: 使用与投票相同的分布式锁，确保并发安全
         String countersignId = csTask.getCountersignId();
-        RLock lock = redissonClient.getLock("lock:countersign:" + countersignId);
+        BusinessLock lock = businessLocks.getLock("lock:countersign:" + countersignId);
         try {
-            if (lock.tryLock(5, 10, TimeUnit.SECONDS)) {
+            if (lock.tryLock(5, TimeUnit.SECONDS)) {
                 // 锁内重新查询会签任务，确保数据最新
-                csTask = countersignService.getCountersignTask(task.getInstanceId(), task.getNodeKey());
+                csTask = countersignTaskMapper.selectForUpdate(task.getTenantId(), countersignId);
                 if (csTask == null || !"VOTING".equals(csTask.getStatus())) {
                     throw WorkflowException.invalidState("会签状态已变更，无法加签");
                 }
 
                 int addedCount = 0;
+                WfProcessInstance addSignInstance = requireTaskInstanceForOperation(task, "加签");
                 // 为每个新增人员创建会签任务
                 for (Long userId : userIds) {
                     // 检查用户是否已经是会签人
@@ -1377,17 +1825,19 @@ public class WfTaskServiceImpl implements IWfTaskService {
                             .eq(WfTask::getNodeKey, task.getNodeKey())
                             .eq(WfTask::getAssignee, userId)
                     );
-                    if (existingTaskCount > 0) {
+                    if (existingTaskCount > 0 || countersignService.hasUserVoted(countersignId, userId)) {
                         log.warn("[addSignature] 用户{}已是会签人，跳过", userId);
                         continue;
                     }
 
                     // 创建新的会签任务
                     WfTask newTask = new WfTask();
+                    newTask.setTaskType(WfTaskType.ADD_SIGN.name());
                     newTask.setTaskId(UUID.randomUUID().toString());
                     newTask.setInstanceId(task.getInstanceId());
                     newTask.setNodeName(task.getNodeName());
                     newTask.setNodeKey(task.getNodeKey());
+                    newTask.setExecutionContext(task.getExecutionContext());
                     newTask.setAssignee(userId);
                     newTask.setTenantId(task.getTenantId());
                     newTask.setStatus(WfTaskStatus.TODO.getCode());
@@ -1396,37 +1846,35 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
                     addedCount++;
 
-                    // 记录加签历史
-                    WfTaskAddSign addSign = new WfTaskAddSign();
-                    addSign.setAddSignId(UUID.randomUUID().toString());
-                    addSign.setTenantId(task.getTenantId());
-                    addSign.setTaskId(taskId);
-                    addSign.setInstanceId(task.getInstanceId());
-                    addSign.setSignType("AFTER"); // 后加签
-                    addSign.setInitiatorId(currentUserId);
-                    addSign.setInitiatorName(UserContext.getUserName());
-                    
-                    // 获取被加签人姓名
-                    SysUser toUser = sysUserMapper.selectById(userId);
-                    String toUserName = "";
-                    if (toUser != null) {
-                        toUserName = toUser.getNickName() != null ? toUser.getNickName() : toUser.getUserName();
-                    }
+                    SysUser toUser = delegationReturns.target(task, userId);
+                    String toUserName = WorkflowDelegationReturnService.display(toUser);
                     newTask.setAssigneeName(toUserName);
-                    taskMapper.insert(newTask);
-                    WfProcessInstance addSignInstance = processInstanceMapper.selectById(task.getInstanceId());
+                    hParticipantPolicy.assertTaskAssignment(newTask, newTask.getAssignee());
+                    agents.createTask(newTask);
+                    countersignService.addWeightParticipant(csTask, newTask);
                     createTaskMonitor(addSignInstance, newTask);
-                    
-                    addSign.setSignUserIds(String.valueOf(userId));
-                    addSign.setSignUserNames(toUserName);
-                    addSign.setReason(comment);
-                    addSign.setStatus("PENDING");
-                    addSign.setCreateTime(LocalDateTime.now());
-                    
-                    wfTaskAddSignMapper.insert(addSign);
+                    WfTaskHistory history = new WfTaskHistory();
+                    history.setHistoryId(UUID.randomUUID().toString());
+                    history.setTenantId(task.getTenantId());
+                    history.setTaskId(newTask.getTaskId());
+                    history.setInstanceId(task.getInstanceId());
+                    history.setNodeKey(task.getNodeKey());
+                    history.setNodeName(task.getNodeName());
+                    history.setOperatorId(currentUserId);
+                    history.setOperatorName(UserContext.getUserName());
+                    history.setAction("ADD_SIGN");
+                    history.setTaskType(WfTaskType.ADD_SIGN.name());
+                    history.setComment(comment);
+                    history.setCreateTime(LocalDateTime.now());
+                    agents.annotateHistory(history, task, currentUserId);
+                    historyState.recordDetails(addSignInstance, task, history, Map.of("countersignId", countersignId,
+                            "addedUserId", userId, "addedUserName", toUserName));
+                    if (taskHistoryMapper.insert(history) != 1) throw WorkflowException.invalidState("加签记录保存失败");
+                    workflowEventPublisher.publishTaskAssigned(addSignInstance, newTask.getTaskId(), newTask.getNodeKey(), newTask.getNodeName(),
+                            newTask.getAssignee(), newTask.getAssigneeName(), newTask.getTaskType());
 
                     // 发送通知
-                    sysNoticeService.sendNotice(userId, "加签通知",
+                    sysNoticeService.send(userId, "加签通知",
                         String.format("您被加签到任务: %s (流程: %s)", task.getNodeName(), 
                             getInstanceTitle(task.getInstanceId())),
                         "1", currentUserId, UserContext.getUserName());
@@ -1453,15 +1901,18 @@ public class WfTaskServiceImpl implements IWfTaskService {
             Thread.currentThread().interrupt();
             throw new WorkflowException("SYSTEM_BUSY", "系统繁忙，请稍后重试");
         } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
+            if (lock != null) {
+                lock.close();
             }
         }
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public R<?> reductionSignature(String taskId, java.util.List<Long> userIds, String comment) {
+        return executeSignatureChange(taskId, () -> doReductionSignature(taskId, userIds, comment));
+    }
+
+    private R<?> doReductionSignature(String taskId, java.util.List<Long> userIds, String comment) {
         Long currentUserId = UserContext.getUserId();
         log.info("[reductionSignature] 开始减签, taskId={}, userIds={}, userId={}", taskId, userIds, currentUserId);
 
@@ -1476,7 +1927,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.validationError("减签说明不能为空");
         }
 
-        WfTask task = taskMapper.selectById(taskId);
+        WfTask task = agents.lockTask(taskId);
         if (task == null) {
             throw WorkflowException.taskNotFound(taskId);
         }
@@ -1486,9 +1937,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
 
         // 权限校验：只有当前任务处理人或管理员可以减签
-        if (!Objects.equals(task.getAssignee(), currentUserId) && !permissionService.isAdmin(currentUserId)) {
-            throw new PermissionDeniedException("只有任务处理人或管理员可以减签");
-        }
+        permissionService.checkTaskPermission(task);
+        nodePolicy.assertTaskAllowed(task, "allowReduceSign");
+        hParticipantPolicy.assertFrozenParticipants(task.getInstanceId());
 
         // 检查是否为会签任务
         if (!countersignService.isCountersignTask(task)) {
@@ -1516,11 +1967,11 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
         // P0修复: 使用与投票相同的分布式锁，确保并发安全
         String countersignId = csTask.getCountersignId();
-        RLock lock = redissonClient.getLock("lock:countersign:" + countersignId);
+        BusinessLock lock = businessLocks.getLock("lock:countersign:" + countersignId);
         try {
-            if (lock.tryLock(5, 10, TimeUnit.SECONDS)) {
+            if (lock.tryLock(5, TimeUnit.SECONDS)) {
                 // 锁内重新查询会签任务，确保数据最新
-                csTask = countersignService.getCountersignTask(task.getInstanceId(), task.getNodeKey());
+                csTask = countersignTaskMapper.selectForUpdate(task.getTenantId(), countersignId);
                 if (csTask == null || !"VOTING".equals(csTask.getStatus())) {
                     throw WorkflowException.invalidState("会签状态已变更，无法减签");
                 }
@@ -1528,7 +1979,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 int removedCount = 0;
                 for (Long userId : userIds) {
                     // 不能减签自己
-                    if (userId.equals(currentUserId)) {
+                    if (userId.equals(task.getAssignee())) {
                         log.warn("[reductionSignature] 不能减签自己，跳过");
                         continue;
                     }
@@ -1556,7 +2007,10 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
                     // 删除任务
                     for (WfTask userTask : userTasks) {
-                        taskMapper.deleteById(userTask.getTaskId());
+                        userTask = agents.lockTask(userTask.getTaskId());
+                        countersignService.removeWeightParticipant(csTask, userTask);
+                        agents.completeRelations(userTask);
+                        if (taskMapper.deleteById(userTask.getTaskId()) != 1) throw WorkflowException.invalidState("减签任务已被处理，请重新读取");
                         
                         // 记录减签历史
                         WfTaskHistory history = new WfTaskHistory();
@@ -1568,17 +2022,22 @@ public class WfTaskServiceImpl implements IWfTaskService {
                         history.setNodeKey(task.getNodeKey());
                         history.setOperatorId(currentUserId);
                         history.setOperatorName(UserContext.getUserName());
+                        agents.annotateHistory(history, task, currentUserId);
                         history.setComment("减签: " + comment);
                         history.setAction("REDUCTION_SIGN");
+                        history.setTaskType(WfTaskType.REDUCE_SIGN.name());
                         history.setCreateTime(LocalDateTime.now());
+                        historyState.record(requireTaskInstanceForOperation(task, "减签"), userTask, history);
                         taskHistoryMapper.insert(history);
                         completeTaskMonitor(userTask, history.getCreateTime(), "REDUCTION_SIGN");
+                        taskReminderJob.cancelAfterCommit(userTask.getTaskId());
+                        cleanupTaskReadData(userTask.getTaskId());
 
                         removedCount++;
                     }
 
                     // 发送通知
-                    sysNoticeService.sendNotice(userId, "减签通知",
+                    sysNoticeService.send(userId, "减签通知",
                         String.format("您被移出会签任务: %s (流程: %s)，原因: %s", 
                             task.getNodeName(), getInstanceTitle(task.getInstanceId()), comment),
                         "1", currentUserId, UserContext.getUserName());
@@ -1597,6 +2056,14 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
                 // P1修复: 检查减签后是否满足通过或失败条件
                 countersignService.checkAndCompleteCountersign(csTask);
+                if ("WEIGHT".equals(csTask.getSignType()) && !"VOTING".equals(csTask.getStatus())) {
+                    String result = csTask.getStatus();
+                    String semantic = "PASSED".equals(result) ? "AUTO_PASS" : "AUTO_REJECT";
+                    WorkflowCompletionContext.automatically(() -> {
+                        completeCountersignFlow(task, result, Map.of(), semantic, "减签后票签达到结束条件", semantic);
+                        return null;
+                    });
+                }
 
                 // 记录审计日志
                 auditService.log(WorkflowAuditService.AuditAction.TASK_REDUCTION_SIGN, taskId,
@@ -1611,9 +2078,33 @@ public class WfTaskServiceImpl implements IWfTaskService {
             Thread.currentThread().interrupt();
             throw new WorkflowException("SYSTEM_BUSY", "系统繁忙，请稍后重试");
         } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
+            if (lock != null) {
+                lock.close();
             }
+        }
+    }
+
+    private R<?> executeSignatureChange(String taskId, java.util.function.Supplier<R<?>> operation) {
+        if (!StringUtils.hasText(taskId)) throw WorkflowException.validationError("任务ID不能为空");
+        WfTask probe = taskMapper.selectById(taskId);
+        if (probe == null) throw WorkflowException.taskNotFound(taskId);
+        if (!Objects.equals(UserContext.getTenantId(), probe.getTenantId())) throw new PermissionDeniedException("无权访问该租户任务");
+        if (!countersignService.isCountersignTask(probe)) throw WorkflowException.validationError("只有会签节点支持加减签操作");
+        String countersignId = countersignService.extractCountersignId(probe);
+        BusinessLock lock = businessLocks.getLock("lock:countersign:" + countersignId);
+        try {
+            if (!lock.tryLock(5, TimeUnit.SECONDS)) throw WorkflowException.invalidState("会签正在处理中，请稍后重试");
+            return businessLocks.execute(transactionTemplate, status -> {
+                WfTask locked = agents.lockTask(taskId);
+                WorkflowExecutionContext.Frame context = WorkflowExecutionContext.parse(locked.getExecutionContext());
+                gateways.assertActive(requireTaskInstanceForOperation(locked, "加减签"), context);
+                return WorkflowExecutionContext.call(context, operation);
+            });
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new WorkflowException("SYSTEM_BUSY", "系统繁忙，请稍后重试");
+        } finally {
+            if (lock != null) lock.close();
         }
     }
 
@@ -1625,7 +2116,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.validationError("任务缺少关联的流程实例信息");
         }
 
-        WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+        WfProcessInstance instance = processInstanceMapper.selectForExecution(task.getTenantId(), task.getInstanceId());
         if (instance == null) {
             throw WorkflowException.instanceNotFound(task.getInstanceId());
         }
@@ -1644,6 +2135,8 @@ public class WfTaskServiceImpl implements IWfTaskService {
     }
 
     private void createTaskMonitor(WfProcessInstance instance, WfTask task) {
+        WfNodeConfig node = nodePolicy.resolveNode(instance, task.getNodeKey());
+        taskReminderJob.registerAfterCommit(task.getTaskId(), node == null ? null : node.getSlaHours());
         try {
             if (instance != null) {
                 processMonitorService.incrementTaskCount(instance.getInstanceId());
@@ -1673,6 +2166,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
     }
 
     private void completeTaskMonitor(WfTask task, LocalDateTime completeTime, String action) {
+        agents.completeRelations(task);
         try {
             TaskMonitor monitor = taskMonitorMapper.selectByTaskId(task.getTaskId());
             if (monitor == null) {
@@ -1686,7 +2180,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 monitor.setTotalDuration(totalDuration);
                 monitor.setHandleDuration(totalDuration);
             }
-            monitor.setStatus("COMPLETED");
+            monitor.setStatus("REDUCTION_SIGN".equals(action) ? "CANCELLED" : "COMPLETED");
             monitor.setAction(action);
             monitor.setUpdateTime(LocalDateTime.now());
             taskMonitorMapper.updateById(monitor);

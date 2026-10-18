@@ -13,4 +13,5 @@ public class ProcessRejectRequest {
     private String targetNodeKey;
 
     private String comment;
+    private String strategy;
 }

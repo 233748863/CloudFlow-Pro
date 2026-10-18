@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WorkflowBusinessSearchMapper">
+    <select id="proxyTasks" resultType="com.cloudflow.workflow.domain.WfTask" timeout="2">
+        SELECT task.* FROM wf_task task
+        INNER JOIN wf_process_instance instance ON instance.instance_id = task.instance_id
+            AND instance.tenant_id = task.tenant_id AND instance.deleted = 0
+        WHERE task.tenant_id = #{tenantId} AND task.proxy_user_id = #{userId} AND task.status = 'TODO'
+            AND (instance.title LIKE #{pattern} ESCAPE '!' OR instance.process_no LIKE #{pattern} ESCAPE '!')
+    </select>
+    <select id="instances" resultType="com.cloudflow.common.core.search.BusinessSearchRow" timeout="2">
+        SELECT instance.instance_id AS id, instance.title, instance.process_no AS number, instance.status
+        FROM wf_process_instance instance
+        WHERE instance.tenant_id = #{tenantId} AND instance.deleted = 0
+            AND (instance.title LIKE #{pattern} ESCAPE '!' OR instance.process_no LIKE #{pattern} ESCAPE '!')
+        <if test="!admin">
+            AND (instance.start_user_id = #{userId}
+                OR EXISTS(SELECT 1 FROM wf_task task WHERE task.tenant_id = instance.tenant_id
+                    AND task.instance_id = instance.instance_id AND task.assignee = #{userId})
+                OR EXISTS(SELECT 1 FROM wf_task_history history WHERE history.tenant_id = instance.tenant_id
+                    AND history.instance_id = instance.instance_id
+                    AND (history.operator_id = #{userId} OR history.on_behalf_of_user_id = #{userId}))
+                OR EXISTS(SELECT 1 FROM wf_process_copy copy WHERE copy.tenant_id = instance.tenant_id
+                    AND copy.instance_id = instance.instance_id COLLATE utf8mb4_general_ci AND copy.user_id = #{userId})
+                <if test="agentInstances != null and !agentInstances.isEmpty()">
+                    OR instance.instance_id IN <foreach collection="agentInstances" item="instanceId" open="(" separator="," close=")">#{instanceId}</foreach>
+                </if>
+            )
+        </if>
+    </select>
+</mapper>

@@ -7,17 +7,6 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/**
- * 并行网关汇聚到达记录
- *
- * 每个并行分支到达汇聚点时插入一行（与审批/流转同事务，事务回滚记录自动撤销），
- * 到达行数等于分支总数时汇聚放行并清理记录。
- * 替代原 Redis increment 计数（Redis 计数不随事务回滚且有过期错位问题）。
- *
- * 唯一键 (instance_id, gateway_id, branch_key) 防止同一分支重复计数。
- *
- * @author CloudFlow
- */
 @TableName("wf_parallel_join")
 public class WfParallelJoin implements Serializable {
 
@@ -36,8 +25,18 @@ public class WfParallelJoin implements Serializable {
     /** 并行网关节点ID */
     private String gatewayId;
 
-    /** 到达汇聚点的分支标识（汇聚点直接前驱节点ID） */
     private String branchKey;
+
+    private String activationId;
+    private String joinType;
+    private Integer expectedCount;
+
+    public String getActivationId() { return activationId; }
+    public void setActivationId(String activationId) { this.activationId = activationId; }
+    public String getJoinType() { return joinType; }
+    public void setJoinType(String joinType) { this.joinType = joinType; }
+    public Integer getExpectedCount() { return expectedCount; }
+    public void setExpectedCount(Integer expectedCount) { this.expectedCount = expectedCount; }
 
     /** 到达时间 */
     private LocalDateTime createTime;

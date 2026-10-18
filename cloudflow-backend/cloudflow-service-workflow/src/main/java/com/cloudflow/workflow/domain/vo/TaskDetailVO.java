@@ -20,6 +20,8 @@ public class TaskDetailVO {
      */
     private String taskId;
 
+    private String taskType;
+
     /**
      * 任务名称
      */

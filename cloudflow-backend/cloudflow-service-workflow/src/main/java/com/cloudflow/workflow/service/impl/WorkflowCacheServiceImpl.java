@@ -119,7 +119,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
         // P2-fix-2: 缓存未命中，计数+1
         formMissCount.incrementAndGet();
         log.debug("从数据库查询表单定义: {}", formId);
-        WfFormDefinition form = formMapper.selectById(formId);
+        WfFormDefinition form = formMapper.selectLatest(com.cloudflow.workflow.service.WorkflowLaunchContextService.requireTenant(), formId);
         if (form == null) {
             redisTemplate.opsForValue().set(nullKey, "1", 30, TimeUnit.SECONDS);
         }
@@ -199,6 +199,12 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
     @CacheEvict(value = FORM_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getTenantId() + ':' + #formId")
     public void evictForm(String formId) {
         log.info("失效表单定义缓存: {}", formId);
+        String missingKey = nullKey(FORM_CACHE, formId);
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                @Override public void afterCommit() { redisTemplate.delete(missingKey); }
+            });
+        } else redisTemplate.delete(missingKey);
     }
 
     /**

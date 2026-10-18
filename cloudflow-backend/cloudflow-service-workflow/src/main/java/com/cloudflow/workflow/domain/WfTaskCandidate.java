@@ -19,6 +19,8 @@ public class WfTaskCandidate {
     private Long tenantId;
     private String taskId;
     private String instanceId;
+    private String nodeKey;
+    private String source;
     private Long userId;
     private String userName;
     /** 候选类型: USER, ROLE, DEPT */

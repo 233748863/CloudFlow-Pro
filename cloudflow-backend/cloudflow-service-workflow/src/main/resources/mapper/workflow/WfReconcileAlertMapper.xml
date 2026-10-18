@@ -13,7 +13,7 @@
       外层把 biz.tenant_id 选回 WfReconcileAlert.tenantId（Stage 2 给 wf_reconcile_alert 加列后入库）。
     -->
     <select id="selectInconsistentRecords" resultType="com.cloudflow.workflow.domain.WfReconcileAlert">
-        SELECT
+        SELECT DISTINCT
             biz.tenant_id AS tenantId,
             biz.biz_module AS bizModule,
             biz.business_id AS bizId,
@@ -28,6 +28,12 @@
                 '${bt.module}' AS biz_module,
                 ${bt.idField} AS business_id,
                 ${bt.statusField} AS actual_status,
+                CASE WHEN ${bt.statusField} IN
+                    <foreach collection="bt.pendingStatuses" item="pending" open="(" separator="," close=")">#{pending}</foreach>
+                    THEN 1 ELSE 0 END AS approval_pending,
+                CASE WHEN ${bt.statusField} IN
+                    <foreach collection="bt.finishedStatuses" item="finished" open="(" separator="," close=")">#{finished}</foreach>
+                    THEN 1 ELSE 0 END AS approval_finished,
                 ${bt.businessTable}.tenant_id AS tenant_id
             FROM ${bt.businessTable}
             WHERE ${bt.processInstanceIdField} IS NOT NULL
@@ -36,9 +42,9 @@
         ) biz ON pi.instance_id = biz.process_instance_id
               AND pi.tenant_id = biz.tenant_id
         WHERE (
-            (biz.actual_status IN ('PENDING_APPROVAL','PENDING','APPROVING','IN_APPROVAL') AND pi.status IN ('COMPLETED','CANCELLED'))
+            (biz.approval_pending = 1 AND pi.status IN ('PASSED','AUTO_PASSED','REJECTED','CANCELLED','INVALIDATED','TERMINATED'))
             OR
-            (pi.status = 'RUNNING' AND biz.actual_status IN ('APPROVED','REJECTED','COMPLETED','CANCELLED'))
+            (pi.status IN ('RUNNING','WITHDRAWN','TASK_BACK','RESTARTED','PENDING') AND biz.approval_finished = 1)
         )
           AND COALESCE(pi.end_time, pi.start_time, pi.create_time) >= DATE_SUB(NOW(), INTERVAL #{windowDays} DAY)
     </select>

@@ -62,6 +62,7 @@ public class WfProcessInstance implements Serializable {
 
     /** 流程定义ID (版本锁定) */
     private String definitionId;
+    private Integer formVersion;
     
     /** 部门ID - 数据权限 */
     private Long deptId;
@@ -192,6 +193,10 @@ public class WfProcessInstance implements Serializable {
     public void setFormId(String formId) {
         this.formId = formId;
     }
+
+    public Integer getFormVersion() { return formVersion; }
+
+    public void setFormVersion(Integer formVersion) { this.formVersion = formVersion; }
 
     public String getTaskId() {
         return taskId;

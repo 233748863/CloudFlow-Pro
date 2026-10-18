@@ -3,10 +3,23 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.workflow.mapper.WfTaskHistoryMapper">
+    <select id="selectTaskForUpdate" resultType="com.cloudflow.workflow.domain.WfTaskHistory" useCache="false" flushCache="true">
+        SELECT * FROM wf_task_history WHERE tenant_id = #{tenantId} AND task_id = #{taskId} FOR UPDATE
+    </select>
+
+    <select id="selectLatestTaskAction" resultType="java.lang.String" useCache="false" flushCache="true">
+        SELECT action FROM wf_task_history WHERE tenant_id = #{tenantId} AND task_id = #{taskId}
+        ORDER BY create_time DESC,
+            CASE WHEN JSON_VALID(variables_changed)
+                THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(variables_changed, '$._wf_execution.sequence')) AS UNSIGNED)
+                ELSE 0 END DESC, history_id DESC
+        LIMIT 1
+    </select>
 
     <select id="selectBatchByInstanceIds" resultType="com.cloudflow.workflow.domain.vo.TaskDetailVO">
         SELECT
             h.task_id AS taskId,
+            h.task_type AS taskType,
             h.node_name AS taskName,
             h.instance_id AS instanceId,
             i.process_def_key AS processDefKey,

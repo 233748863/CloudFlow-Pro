@@ -13,6 +13,10 @@ import java.util.List;
 @Mapper
 public interface WfTaskCandidateMapper extends BaseMapper<WfTaskCandidate> {
 
+    List<WfTaskCandidate> selectPendingForTaskForUpdate(@Param("tenantId") Long tenantId, @Param("taskId") String taskId);
+
+    int cancelPendingForUser(@Param("tenantId") Long tenantId, @Param("taskId") String taskId, @Param("userId") Long userId);
+
     /**
      * 批量查询任务候选人
      *

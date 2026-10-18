@@ -17,6 +17,7 @@ import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.ITemplateService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
+import com.cloudflow.workflow.service.WorkflowTriggerSecrets;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,6 +60,9 @@ public class TemplateServiceImpl implements ITemplateService {
     private IWfDefinitionService wfDefinitionService;
     @Autowired
     private WorkflowGraphModelResolver workflowGraphModelResolver;
+
+    @Autowired
+    private WorkflowTriggerSecrets triggerSecrets;
 
     /**
      * 分页查询模板列表（支持多条件筛选）
@@ -163,7 +167,7 @@ public class TemplateServiceImpl implements ITemplateService {
         template.setDescription(request.getDescription());
         template.setCategoryId(request.getCategoryId());
         template.setTags(convertTagsToJson(request.getTags()));
-        template.setDefinition(definitionJson);
+        template.setDefinition(triggerSecrets.protectModel(definitionJson, null));
         template.setPreviewImage(request.getPreviewImage());
 
         // 设置创建者ID（转换为String）
@@ -206,7 +210,7 @@ public class TemplateServiceImpl implements ITemplateService {
             if (!validateTemplateStructure(definitionJson)) {
                 throw new WorkflowException("模板结构无效");
             }
-            template.setDefinition(definitionJson);
+            template.setDefinition(triggerSecrets.protectModel(definitionJson, template.getDefinition()));
         }
 
         // 更新字段
@@ -423,7 +427,7 @@ public class TemplateServiceImpl implements ITemplateService {
 
         // 转换流程定义
         if (StringUtils.hasText(template.getDefinition())) {
-            dto.setDefinition(convertJsonToObject(template.getDefinition()));
+            dto.setDefinition(convertJsonToObject(triggerSecrets.maskModel(template.getDefinition())));
         }
 
         // 转换系统模板标志
@@ -547,6 +551,7 @@ public class TemplateServiceImpl implements ITemplateService {
             incrementUsageCount(templateId);
 
             log.info("从模板创建流程成功 - 流程ID:{}, 模板ID:{}", definition.getDefinitionId(), templateId);
+            definition.setModelJson(triggerSecrets.maskModel(definition.getModelJson()));
             return definition;
 
         } catch (Exception e) {

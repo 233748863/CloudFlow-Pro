@@ -7,8 +7,7 @@ package com.cloudflow.workflow.domain;
  * - WfTaskCandidate.java - P4.6: 候选人记录
  * - WfTaskAttachment.java - P4.9: 任务附件
  * - WfDeployRecord.java - P4.22: 发布记录
- * - WfNotificationConfig.java - P4.28: 通知配置
- * - WfNotificationLog.java - P4.28: 通知日志
+ * - P4.28 通知配置与日志使用统一消息中心的数据模型
  * - WfUrgeEffect.java - P4.27: 催办效果记录
  * 
  * 注意：WfTask 和 WfProcessInstance 的扩展字段通过 ALTER TABLE 添加

@@ -4,6 +4,60 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.workflow.mapper.WfProcessInstanceMapper">
 
+    <select id="selectLatestProcessNumber" resultType="java.lang.String" useCache="false" flushCache="true">
+        SELECT process_no FROM wf_process_instance
+        WHERE tenant_id = #{tenantId} AND process_no LIKE CONCAT(#{prefix}, '%')
+          AND SUBSTRING(process_no, CHAR_LENGTH(#{prefix}) + 1) REGEXP '^[0-9]{6,19}$'
+        ORDER BY CAST(SUBSTRING(process_no, CHAR_LENGTH(#{prefix}) + 1) AS DECIMAL(20,0)) DESC
+        LIMIT 1
+    </select>
+
+    <select id="findProcessNumberCurrent" resultType="java.lang.String" useCache="false" flushCache="true">
+        SELECT instance_id FROM wf_process_instance
+        WHERE tenant_id = #{tenantId} AND process_no = #{processNo}
+        FOR UPDATE
+    </select>
+
+    <select id="selectForExecution" resultType="com.cloudflow.workflow.domain.WfProcessInstance" useCache="false" flushCache="true">
+        SELECT * FROM wf_process_instance
+        WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND deleted = 0
+        FOR UPDATE
+    </select>
+
+    <select id="findBusinessInstanceCurrent" resultType="com.cloudflow.workflow.domain.WfProcessInstance"
+            useCache="false" flushCache="true">
+        SELECT * FROM wf_process_instance
+        WHERE tenant_id = #{tenantId} AND business_key = #{businessKey} AND deleted = 0
+        LIMIT 1 FOR UPDATE
+    </select>
+
+    <select id="selectWaitingInstances" resultType="com.cloudflow.workflow.domain.WfProcessInstance" useCache="false">
+        SELECT * FROM wf_process_instance
+        WHERE tenant_id = #{tenantId} AND deleted = 0 AND instance_id &gt; #{afterId}
+          AND status IN ('RUNNING', 'RESTARTED', 'TASK_BACK', 'WITHDRAWN', 'PENDING', 'PAUSED', 'FAILED')
+          AND JSON_CONTAINS_PATH(variables, 'one', '$._wf_waits') = 1
+        ORDER BY instance_id LIMIT #{limit}
+    </select>
+
+    <select id="selectArchivedForCleanup" resultType="com.cloudflow.workflow.domain.WfProcessInstance" useCache="false" flushCache="true">
+        SELECT * FROM wf_process_instance
+        WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND deleted = 1
+          AND status IN ('PASSED', 'AUTO_PASSED', 'REJECTED', 'TERMINATED', 'INVALIDATED', 'CANCELLED')
+        FOR UPDATE
+    </select>
+
+    <select id="selectArchivedGatewayInstances" resultType="java.lang.String">
+        SELECT archived_instance.instance_id FROM wf_process_instance archived_instance
+        WHERE archived_instance.tenant_id = #{tenantId} AND archived_instance.deleted = 1
+          AND archived_instance.instance_id &gt; #{afterId}
+          AND archived_instance.status IN ('PASSED', 'AUTO_PASSED', 'REJECTED', 'TERMINATED', 'INVALIDATED', 'CANCELLED')
+          AND (EXISTS (SELECT 1 FROM wf_gateway_activation activation
+                       WHERE activation.tenant_id = archived_instance.tenant_id AND activation.instance_id = archived_instance.instance_id)
+               OR EXISTS (SELECT 1 FROM wf_parallel_join arrival
+                          WHERE arrival.tenant_id = archived_instance.tenant_id AND arrival.instance_id = archived_instance.instance_id))
+        ORDER BY archived_instance.instance_id LIMIT #{limit}
+    </select>
+
     <select id="selectBatchWithDefinition" resultType="com.cloudflow.workflow.domain.vo.ProcessInstanceVO">
         SELECT
             i.instance_id AS instanceId,

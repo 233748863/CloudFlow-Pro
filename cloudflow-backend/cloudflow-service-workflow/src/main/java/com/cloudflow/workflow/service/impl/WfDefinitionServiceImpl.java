@@ -2,29 +2,30 @@ package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.time.LocalDateTime;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.workflow.domain.WfFormDefinition;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
+import com.cloudflow.workflow.domain.vo.StartableDefinitionVO;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfDeployRecordMapper;
-import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
+import com.cloudflow.workflow.model.WorkflowNodeConfigValidator;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
 import com.cloudflow.workflow.service.ScriptExecutionPolicy;
 import com.cloudflow.workflow.service.WorkflowAuditService;
+import com.cloudflow.workflow.service.WorkflowConfigurationLockService;
+import com.cloudflow.workflow.service.WorkflowConfigurationLockService.LockedConfiguration;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -32,6 +33,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +53,9 @@ import java.util.*;
 @Service
 public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowTriggerSecrets triggerSecrets;
+
     private static final Logger log = LoggerFactory.getLogger(WfDefinitionServiceImpl.class);
 
     @Autowired
@@ -60,11 +65,14 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     @Autowired
     private WfDeployRecordMapper deployRecordMapper;
     @Autowired
-    private WfFormDefinitionMapper formDefinitionMapper;
+    private WorkflowConfigurationLockService configurationLocks;
     @Autowired
     private WorkflowPermissionService permissionService;
     @Autowired
     private WorkflowAuditService auditService;
+
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowDefinitionConfigService definitionConfigurations;
     @Autowired
     private WorkflowSecurityUtils securityUtils;
     @Autowired
@@ -96,12 +104,9 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
         // JSON 结构校验 + P0-5: 递归 XSS 过滤 modelJson 内所有节点文本字段
         if (StringUtils.hasText(definition.getModelJson())) {
-            if (!workflowGraphModelResolver.validateGraphModel(definition.getModelJson())) {
-                throw WorkflowException.validationError("流程定义图模型校验失败");
-            }
+            WorkflowNodeConfigValidator.validateForSave(workflowGraphModelResolver.parseRuntimeGraph(definition.getModelJson()));
             validateModelIntegrity(definition.getModelJson());
             // P0-5: 对 modelJson 内部节点字段做 XSS 过滤
-            definition.setModelJson(sanitizeModelJson(definition.getModelJson()));
         }
 
         // 权限校验
@@ -114,17 +119,24 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                 throw new PermissionDeniedException("无权保存其他租户流程定义");
             }
         }
-        validateBoundFormTenant(definition.getFormId(), definition.getTenantId(), "保存");
+        LockedConfiguration locked = configurationLocks.lockForSave(
+                definition.getDefinitionId(), definition.getProcessKey(), definition.getFormId());
+        locked.requireBoundForm(definition.getFormId());
+        WfProcessDefinition previousDefinition = StringUtils.hasText(definition.getDefinitionId())
+                ? locked.requireDefinition(definition.getDefinitionId()) : null;
+        if (previousDefinition != null) ensureDefinitionTenantAccess(previousDefinition.getTenantId(), "保存");
+        definition.setModelJson(triggerSecrets.protectModel(definition.getModelJson(),
+                previousDefinition == null ? null : previousDefinition.getModelJson()));
+        if (StringUtils.hasText(definition.getModelJson())) {
+            definition.setModelJson(sanitizeModelJson(definition.getModelJson()));
+        }
 
         String currentUserId = UserContext.getUserId() != null ? UserContext.getUserId().toString() : "system";
         LocalDateTime now = LocalDateTime.now();
 
         // 已有草稿：原地更新，避免前端编辑草稿时 definitionId 漂移。
         if (StringUtils.hasText(definition.getDefinitionId())) {
-            WfProcessDefinition existing = processDefinitionMapper.selectById(definition.getDefinitionId());
-            if (existing == null) {
-                throw WorkflowException.processNotFound(definition.getDefinitionId());
-            }
+            WfProcessDefinition existing = previousDefinition;
 
             ensureDefinitionTenantAccess(existing.getTenantId(), "保存");
 
@@ -136,14 +148,16 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                 }
 
                 assertProcessVersionSlotAvailable(
+                        locked,
                         definition.getProcessKey(),
                         Optional.ofNullable(existing.getVersion()).orElse(1),
-                        existing.getTenantId(),
                         existing.getDefinitionId()
                 );
 
                 mergeDraftDefinition(existing, definition, now, currentUserId);
-                processDefinitionMapper.updateById(existing);
+                if (processDefinitionMapper.updateById(existing) != 1) {
+                    throw WorkflowException.invalidState("流程定义更新失败，请刷新后重试");
+                }
                 log.info("[saveProcessDefinition] 草稿原地更新成功, definitionId={}, version={}",
                         existing.getDefinitionId(), existing.getVersion());
 
@@ -168,14 +182,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
 
         // 查找当前Key的最大版本
-        LambdaQueryWrapper<WfProcessDefinition> lastDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
-            .eq(WfProcessDefinition::getProcessKey, definition.getProcessKey())
-            .orderByDesc(WfProcessDefinition::getVersion);
-        if (definition.getTenantId() != null) {
-            lastDefQuery.eq(WfProcessDefinition::getTenantId, definition.getTenantId());
-        }
-        WfProcessDefinition lastDef = processDefinitionMapper.selectPage(new Page<>(1, 1, false), lastDefQuery)
-                .getRecords().stream().findFirst().orElse(null);
+        WfProcessDefinition lastDef = locked.latest(definition.getProcessKey());
 
         // 乐观锁冲突检测
         if (lastDef != null && definition.getVersionLock() != null) {
@@ -188,7 +195,9 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (lastDef != null) {
             version = lastDef.getVersion() + 1;
             lastDef.setIsLatest(0);
-            processDefinitionMapper.updateById(lastDef);
+            if (processDefinitionMapper.updateById(lastDef) != 1) {
+                throw WorkflowException.invalidState("流程版本指针更新失败，请刷新后重试");
+            }
         }
 
         definition.setDefinitionId(UUID.randomUUID().toString());
@@ -199,8 +208,11 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         definition.setCreateTime(now);
         definition.setUpdateTime(now);
 
-        processDefinitionMapper.insert(definition);
+        if (processDefinitionMapper.insert(definition) != 1) {
+            throw WorkflowException.invalidState("流程定义创建失败");
+        }
         log.info("[saveProcessDefinition] 流程定义保存成功, definitionId={}, version={}", definition.getDefinitionId(), version);
+        definitionConfigurations.copyFieldPermissions(previousDefinition, definition, locked.form(definition.getFormId()));
         
         // 自动创建版本记录（强一致性：失败则回滚，不再静默吞异常）
         String changeLog = "保存流程定义，版本 " + version;
@@ -230,10 +242,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
         permissionService.checkDefinitionPermission("发布");
 
-        WfProcessDefinition def = processDefinitionMapper.selectById(definitionId);
-        if (def == null) {
-            throw WorkflowException.processNotFound(definitionId);
-        }
+        LockedConfiguration locked = configurationLocks.lockDefinition(definitionId);
+        WfProcessDefinition def = locked.requireDefinition(definitionId);
         ensureDefinitionTenantAccess(def.getTenantId(), "发布");
         if ("PUBLISHED".equals(def.getStatus())) {
             throw WorkflowException.invalidState("流程定义已发布，无需重复发布");
@@ -241,30 +251,27 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (!StringUtils.hasText(def.getModelJson())) {
             throw WorkflowException.validationError("流程定义模型为空，无法发布");
         }
-        validateBoundFormTenant(def.getFormId(), def.getTenantId(), "发布");
+        locked.requireBoundForm(def.getFormId());
 
-        if (!workflowGraphModelResolver.validateGraphModel(def.getModelJson())) {
-            throw WorkflowException.validationError("流程定义图模型校验失败");
-        }
+        workflowGraphModelResolver.parseRuntimeGraph(def.getModelJson());
         scriptExecutionPolicy.assertModelDeployable(def.getModelJson());
 
         // 更新状态
         def.setStatus("PUBLISHED");
         int updatedRows = processDefinitionMapper.updateById(def);
-        if (updatedRows <= 0) {
+        if (updatedRows != 1) {
             throw WorkflowException.invalidState("流程定义发布失败，请刷新后重试");
         }
 
         // 旧版本归档
-        LambdaUpdateWrapper<WfProcessDefinition> archiveOldVersions = new LambdaUpdateWrapper<WfProcessDefinition>()
-            .eq(WfProcessDefinition::getProcessKey, def.getProcessKey())
-            .ne(WfProcessDefinition::getDefinitionId, definitionId)
-            .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-            .set(WfProcessDefinition::getStatus, "ARCHIVED");
-        if (def.getTenantId() != null) {
-            archiveOldVersions.eq(WfProcessDefinition::getTenantId, def.getTenantId());
+        for (WfProcessDefinition previous : locked.versions(def.getProcessKey())) {
+            if (!definitionId.equals(previous.getDefinitionId()) && "PUBLISHED".equals(previous.getStatus())) {
+                previous.setStatus("ARCHIVED");
+                if (processDefinitionMapper.updateById(previous) != 1) {
+                    throw WorkflowException.invalidState("旧流程版本归档失败，请刷新后重试");
+                }
+            }
         }
-        processDefinitionMapper.update(null, archiveOldVersions);
 
         // 创建发布记录
         Long userId = UserContext.getUserId();
@@ -276,7 +283,9 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         deployRecord.setDeployBy(userId != null ? userId : 1L);
         deployRecord.setDeployTime(java.time.LocalDateTime.now());
         deployRecord.setCanRollback(true);
-        deployRecordMapper.insert(deployRecord);
+        if (deployRecordMapper.insert(deployRecord) != 1) {
+            throw WorkflowException.invalidState("流程发布记录创建失败");
+        }
 
         // C6: 版本体系统一后不再单独写发布快照——definition 版本行自身即完整快照，
         // 回滚直接引用历史版本行（见 VersionServiceImpl.rollbackToVersion）
@@ -295,10 +304,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
         permissionService.checkDefinitionPermission("删除");
 
-        WfProcessDefinition def = processDefinitionMapper.selectById(definitionId);
-        if (def == null) {
-            throw WorkflowException.processNotFound(definitionId);
-        }
+        WfProcessDefinition def = configurationLocks.lockDefinition(definitionId).requireDefinition(definitionId);
         ensureDefinitionTenantAccess(def.getTenantId(), "删除");
 
         // 在线版本不允许从删除入口下线，否则会绕过发布状态机（同 key 唯一在线版本约束被破坏）
@@ -307,28 +313,25 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
 
         // 检查运行中的实例（严格按本版本 definitionId，避免误伤同 key 其他版本的判断）
-        Long runningCount = processInstanceMapper.selectCount(
-            new LambdaQueryWrapper<WfProcessInstance>()
-                .eq(WfProcessInstance::getDefinitionId, definitionId)
-                .eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode()));
-        if (runningCount != null && runningCount > 0) {
+        long runningCount = configurationLocks.countDefinitionInstances(def, WfProcessStatus.activeCodes());
+        if (runningCount > 0) {
             throw WorkflowException.invalidState("该流程定义有 " + runningCount + " 个运行中的实例，无法删除");
         }
 
         // 检查历史实例（按本版本 definitionId）
-        Long totalCount = processInstanceMapper.selectCount(
-            new LambdaQueryWrapper<WfProcessInstance>()
-                .eq(WfProcessInstance::getDefinitionId, definitionId));
-        if (totalCount != null && totalCount > 0) {
+        long totalCount = configurationLocks.countDefinitionInstances(def, null);
+        if (totalCount > 0) {
             def.setStatus("ARCHIVED");
-            if (processDefinitionMapper.updateById(def) <= 0) {
+            if (processDefinitionMapper.updateById(def) != 1) {
                 throw WorkflowException.invalidState("流程定义归档失败，请刷新后重试");
             }
             auditService.log(WorkflowAuditService.AuditAction.DEFINITION_DELETE, definitionId, "ARCHIVED");
             return R.ok("流程定义已归档（存在历史实例，无法物理删除）");
         }
 
-        processDefinitionMapper.deleteById(definitionId);
+        if (processDefinitionMapper.deleteById(definitionId) != 1) {
+            throw WorkflowException.invalidState("流程定义删除失败，请刷新后重试");
+        }
         auditService.log(WorkflowAuditService.AuditAction.DEFINITION_DELETE, definitionId, "DELETE");
         return R.ok();
     }
@@ -340,6 +343,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             throw new WorkflowException("DEFINITION_NOT_FOUND", "流程定义不存在: " + definitionId);
         }
         checkDefinitionReadPermission(def);
+        def.setModelJson(triggerSecrets.maskModel(def.getModelJson()));
         return def;
     }
 
@@ -393,7 +397,57 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         queryWrapper.orderByDesc(WfProcessDefinition::getCreateTime);
 
         Page<WfProcessDefinition> resultPage = processDefinitionMapper.selectPage(page, queryWrapper);
+        resultPage.getRecords().forEach(definition -> definition.setModelJson(triggerSecrets.maskModel(definition.getModelJson())));
         return new PageResult<>(resultPage.getRecords(), resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
+    }
+
+    @Override
+    public PageResult<StartableDefinitionVO> listStartableDefinitions(PageQuery pageQuery) {
+        Long tenantId = UserContext.getTenantId();
+        Long userId = UserContext.getUserId();
+        if (tenantId == null || userId == null) {
+            throw new PermissionDeniedException("登录身份及租户不能为空");
+        }
+        LambdaQueryWrapper<WfProcessDefinition> query = new LambdaQueryWrapper<WfProcessDefinition>()
+                .eq(WfProcessDefinition::getTenantId, tenantId)
+                .eq(WfProcessDefinition::getStatus, "PUBLISHED")
+                .and(archive -> archive.isNull(WfProcessDefinition::getIsArchived)
+                        .or().eq(WfProcessDefinition::getIsArchived, 0))
+                .orderByDesc(WfProcessDefinition::getVersion)
+                .orderByDesc(WfProcessDefinition::getCreateTime);
+        Map<String, WfProcessDefinition> latest = new LinkedHashMap<>();
+        for (WfProcessDefinition definition : processDefinitionMapper.selectList(query)) {
+            if (Objects.equals(tenantId, definition.getTenantId())
+                    && "PUBLISHED".equals(definition.getStatus())
+                    && (definition.getIsArchived() == null || definition.getIsArchived() == 0)
+                    && StringUtils.hasText(definition.getProcessKey())) {
+                latest.merge(definition.getProcessKey(), definition,
+                        (previous, candidate) -> Objects.requireNonNullElse(candidate.getVersion(), 0)
+                                > Objects.requireNonNullElse(previous.getVersion(), 0) ? candidate : previous);
+            }
+        }
+        List<StartableDefinitionVO> visible = latest.values().stream()
+                .filter(definition -> permissionService.canStartProcess(userId,
+                        definition.getStartPermissionType(), definition.getStartPermissionValue()))
+                .map(definition -> new StartableDefinitionVO(definition.getDefinitionId(), definition.getProcessKey(),
+                        definition.getProcessName(), definition.getVersion(), definition.getFormId(),
+                        definition.getCategory(), definition.getTags(), definition.getDescription(),
+                        hasValidCatalogModel(definition.getModelJson())))
+                .toList();
+        Page<StartableDefinitionVO> page = pageQuery.build();
+        long current = Math.max(1, page.getCurrent());
+        int from = (int) Math.min(visible.size(), (current - 1) * page.getSize());
+        int to = (int) Math.min(visible.size(), from + page.getSize());
+        return new PageResult<>(visible.subList(from, to), visible.size(), current, page.getSize());
+    }
+
+    private boolean hasValidCatalogModel(String modelJson) {
+        if (!StringUtils.hasText(modelJson)) return false;
+        try {
+            return workflowGraphModelResolver.isGraphModel(objectMapper.readTree(modelJson));
+        } catch (JsonProcessingException exception) {
+            return false;
+        }
     }
 
     // ==================== P1-6: 流程图结构（定义级别） ====================
@@ -495,7 +549,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
     /**
      * 递归清理 modelJson 中所有节点的文本字段，防止存储型 XSS
-     * 清理范围：title、condition、description 以及 props 中的所有字符串值
+     * 文本展示字段清理，图标识和条件表达式保持原值
      */
     private String sanitizeModelJson(String modelJson) {
         try {
@@ -528,7 +582,17 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> entry = fields.next();
-                objectNode.set(entry.getKey(), sanitizeJsonNode(entry.getValue()));
+                if (Set.of("id", "source", "target", "from", "to", "joinNodeKey", "condition").contains(entry.getKey())) {
+                    objectNode.set(entry.getKey(), entry.getValue().deepCopy());
+                } else if ("props".equals(entry.getKey()) && "SCRIPT".equals(node.path("type").asText()) && entry.getValue().isObject()) {
+                    ObjectNode properties = objectMapper.createObjectNode();
+                    entry.getValue().fields().forEachRemaining(property -> properties.set(property.getKey(),
+                            Set.of("actionUrl", "actionMethod", "actionHeaders", "actionBody").contains(property.getKey())
+                                    ? property.getValue().deepCopy() : sanitizeJsonNode(property.getValue())));
+                    objectNode.set(entry.getKey(), properties);
+                } else {
+                    objectNode.set(entry.getKey(), sanitizeJsonNode(entry.getValue()));
+                }
             }
             return objectNode;
         }
@@ -536,19 +600,6 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     }
 
     // ==================== 私有方法 ====================
-
-    private void validateBoundFormTenant(String formId, Long definitionTenantId, String operation) {
-        if (!StringUtils.hasText(formId)) {
-            return;
-        }
-        WfFormDefinition boundForm = formDefinitionMapper.selectById(formId);
-        if (boundForm == null) {
-            throw WorkflowException.validationError("绑定表单不存在: " + formId);
-        }
-        if (definitionTenantId != null && !Objects.equals(definitionTenantId, boundForm.getTenantId())) {
-            throw WorkflowException.validationError("绑定表单不属于当前租户，无法" + operation + "流程定义");
-        }
-    }
 
     /**
      * 读取流程定义时的最小权限校验：
@@ -607,22 +658,14 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
      * 草稿允许改 processKey，但不能占用其他流程版本已存在的 (processKey, version, tenant) 唯一槽位。
      */
     private void assertProcessVersionSlotAvailable(
+            LockedConfiguration locked,
             String processKey,
             Integer version,
-            Long tenantId,
             String excludeDefinitionId
     ) {
-        LambdaQueryWrapper<WfProcessDefinition> wrapper = new LambdaQueryWrapper<WfProcessDefinition>()
-                .eq(WfProcessDefinition::getProcessKey, processKey)
-                .eq(WfProcessDefinition::getVersion, version);
-        if (tenantId != null) {
-            wrapper.eq(WfProcessDefinition::getTenantId, tenantId);
-        }
-        if (StringUtils.hasText(excludeDefinitionId)) {
-            wrapper.ne(WfProcessDefinition::getDefinitionId, excludeDefinitionId);
-        }
-        Long count = processDefinitionMapper.selectCount(wrapper);
-        if (count != null && count > 0) {
+        if (locked.definitions().stream().anyMatch(definition -> Objects.equals(processKey, definition.getProcessKey())
+                && Objects.equals(version, definition.getVersion())
+                && !Objects.equals(excludeDefinitionId, definition.getDefinitionId()))) {
             throw WorkflowException.validationError("当前流程Key已存在相同版本定义，请修改流程Key后重试");
         }
     }
@@ -680,9 +723,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             // P0-3: PARALLEL 节点会签模式与分支互斥校验（图模型：分支 = 多条外连线）
             for (Map.Entry<String, JsonNode> entry : nodeMap.entrySet()) {
                 JsonNode node = entry.getValue();
-                // B21: CONDITION 节点必须配置触发条件（节点自身 condition 或任一入边 condition），与前端校验对齐；
-                // 空条件在运行时恒为 false 只能走默认分支，属无效配置
                 if ("CONDITION".equalsIgnoreCase(jsonText(node, "type"))
+                        && outgoingCount.getOrDefault(entry.getKey(), 0) <= 1
                         && !StringUtils.hasText(jsonText(node, "condition"))
                         && !Boolean.TRUE.equals(incomingHasCondition.get(entry.getKey()))) {
                     throw WorkflowException.validationError(
@@ -764,13 +806,15 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
     /**
      * B21: 该审批方式是否需要配置具体审批人（与前端 validateApprover 规则对齐）。
-     * DIRECT_LEADER/DEPT_MANAGER/INITIATOR 按身份在运行时推导，无需 approverValue。
+     * 身份及多级主管在运行时推导，发起人自选使用独立选人上下文，无需 approverValue。
      */
     private boolean requiresConcreteApprover(String approverType) {
         return StringUtils.hasText(approverType)
                 && !"DIRECT_LEADER".equals(approverType)
                 && !"DEPT_MANAGER".equals(approverType)
-                && !"INITIATOR".equals(approverType);
+                && !"INITIATOR".equals(approverType)
+                && !"INITIATOR_SELECTED".equals(approverType)
+                && !"MULTI_LEVEL_MANAGER".equals(approverType);
     }
 
     private void validateNodeModel(JsonNode node) {
@@ -798,10 +842,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         // P1-5: COPY（抄送）节点校验 — 必须配置抄送人
         if ("COPY".equalsIgnoreCase(nodeType)) {
             boolean hasApproverType = StringUtils.hasText(approverType);
-            boolean requiresApproverValue = hasApproverType
-                    && !"DIRECT_LEADER".equals(approverType)
-                    && !"DEPT_MANAGER".equals(approverType)
-                    && !"INITIATOR".equals(approverType);
+            boolean requiresApproverValue = requiresConcreteApprover(approverType);
             boolean hasApproverValue = StringUtils.hasText(approverValue);
 
             boolean validByApprover = hasApproverType && (!requiresApproverValue || hasApproverValue);
@@ -839,7 +880,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             }
         }
 
-        if ("SCRIPT".equalsIgnoreCase(nodeType)) {
+        if ("SCRIPT".equalsIgnoreCase(nodeType) && !node.path("props").hasNonNull("triggerType")) {
             JsonNode propsNode = node.path("props");
             String scriptType = firstNotBlank(jsonText(propsNode, "scriptType"), "API");
             if ("JAVASCRIPT".equals(scriptType)) {
@@ -857,7 +898,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if ("TIMER".equalsIgnoreCase(nodeType)) {
             JsonNode propsNode = node.path("props");
             String timerType = firstNotBlank(jsonText(propsNode, "timerType"), "DELAY");
-            if ("DELAY".equals(timerType)) {
+            if ("DELAY".equals(timerType) && !propsNode.hasNonNull("delayValue")) {
                 JsonNode delayNode = propsNode.path("delayMinutes");
                 int delayMinutes = delayNode.isNumber() ? delayNode.asInt() : 0;
                 if (delayMinutes <= 0) {

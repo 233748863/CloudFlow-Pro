@@ -18,7 +18,9 @@ public class WfFormDefinition implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /** 表单ID */
-    @TableId
+    @TableId(type = com.baomidou.mybatisplus.annotation.IdType.AUTO)
+    private Long id;
+
     private String formId;
 
     /** 租户ID */
@@ -40,12 +42,24 @@ public class WfFormDefinition implements Serializable {
     private Integer version;
 
     /** 乐观锁版本号 */
-    @TableField("lock_version")
+    @TableField("version_lock")
     @Version
     private Integer versionLock;
 
     /** 是否最新版本 (1=是, 0=否) */
     private Integer isLatest;
+
+    private String checksum;
+    private String changeLog;
+    private String changeType;
+    private Integer isRollback;
+    private Integer rollbackFromVersion;
+
+    @TableField(exist = false)
+    private String createBy;
+
+    @TableField(exist = false)
+    private Boolean versionUnknownFlag;
 
     /** 状态 (DRAFT, PUBLISHED, ARCHIVED) */
     private String status;

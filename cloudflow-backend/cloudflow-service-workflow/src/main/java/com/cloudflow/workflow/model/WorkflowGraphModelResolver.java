@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 工作流图模型解析器。
@@ -30,7 +32,7 @@ public class WorkflowGraphModelResolver {
     private static final TypeReference<Map<String, String>> STRING_MAP_TYPE = new TypeReference<>() {};
     private static final TypeReference<Map<String, Object>> OBJECT_MAP_TYPE = new TypeReference<>() {};
     private static final String RUNTIME_GRAPH_PROP_KEY = "__runtimeGraph";
-    private static final Set<String> PARALLEL_SIGN_MODES = Set.of("ALL", "ANY", "PERCENT", "SEQUENTIAL");
+    private static final Set<String> PARALLEL_SIGN_MODES = Set.of("ALL", "ANY", "PERCENT", "SEQUENTIAL", "WEIGHT");
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -161,6 +163,9 @@ public class WorkflowGraphModelResolver {
             if (!StringUtils.hasText(nodeId)) {
                 throw WorkflowException.validationError("存在未配置 id 的流程节点");
             }
+            if (nodeId.length() > 64) {
+                throw WorkflowException.validationError("流程节点ID不能超过64字符");
+            }
             if (nodeMap.containsKey(nodeId)) {
                 throw WorkflowException.validationError("流程图存在重复节点ID: " + nodeId);
             }
@@ -174,6 +179,8 @@ public class WorkflowGraphModelResolver {
 
         Map<String, List<EdgeLink>> outgoing = new LinkedHashMap<>();
         Map<String, List<EdgeLink>> incoming = new LinkedHashMap<>();
+        Set<String> edgeIds = new HashSet<>();
+        int edgeIndex = 0;
         for (JsonNode edge : edgesNode) {
             String source = text(edge, "source");
             String target = text(edge, "target");
@@ -183,7 +190,15 @@ public class WorkflowGraphModelResolver {
             if (!nodeMap.containsKey(source) || !nodeMap.containsKey(target)) {
                 throw WorkflowException.validationError("流程图连线引用了不存在的节点: " + source + " -> " + target);
             }
-            EdgeLink edgeLink = EdgeLink.of(source, target, text(edge, "condition"), parseEdgeDefault(edge));
+            String edgeId = text(edge, "id");
+            if (edgeId == null) {
+                edgeId = UUID.nameUUIDFromBytes((source + ":" + target + ":" + edgeIndex).getBytes(StandardCharsets.UTF_8)).toString();
+            }
+            edgeIndex++;
+            if (edgeId.length() > 64 || !edgeIds.add(edgeId)) {
+                throw WorkflowException.validationError("连线ID必须唯一且不超过64字符: " + edgeId);
+            }
+            EdgeLink edgeLink = new EdgeLink(edgeId, source, target, text(edge, "condition"), parseEdgeDefault(edge));
             outgoing.computeIfAbsent(source, k -> new ArrayList<>()).add(edgeLink);
             incoming.computeIfAbsent(target, k -> new ArrayList<>()).add(edgeLink);
             incomingCount.put(target, incomingCount.getOrDefault(target, 0) + 1);
@@ -205,6 +220,8 @@ public class WorkflowGraphModelResolver {
             }
             JsonNode targetNode = nodeMap.get(nodeId);
             if (!"END".equalsIgnoreCase(text(targetNode, "type"))
+                    && !isGatewayControlNode(targetNode)
+                    && !isPairedJoinNode(nodeId, nodeMap, outgoing)
                     && !isLegalBranchMergeNode(nodeId, nodeMap, incoming, outgoing)) {
                 throw WorkflowException.validationError("暂不支持多入边汇聚节点，请先拆分节点: " + nodeId);
             }
@@ -234,6 +251,11 @@ public class WorkflowGraphModelResolver {
             // CONDITION 单出边作为"分支标签"使用——其上游必须是真正的多出边路由节点
             if (isRouterByType && !isRouterByOutgoing) {
                 String upperType = textUpper(node, "type");
+                if (!outs.isEmpty() && (isGatewayControlNode(node)
+                        || ("GATEWAY".equals(upperType) && isPairedJoinNode(nodeId, nodeMap, outgoing)
+                            && !StringUtils.hasText(outs.get(0).condition())))) {
+                    continue;
+                }
                 if ("CONDITION".equals(upperType)) {
                     if (!isConditionLabelDownstreamOfRouter(nodeId, incoming, outgoing)) {
                         throw WorkflowException.validationError(
@@ -250,7 +272,7 @@ public class WorkflowGraphModelResolver {
             }
             // R9：必须恰好 1 条 isDefault=true（兜底分支）
             long defaultCount = outs.stream().filter(EdgeLink::isDefault).count();
-            if (defaultCount == 0) {
+            if (defaultCount == 0 && !allowsNoDefault(node)) {
                 throw WorkflowException.validationError("多分支路由节点缺少默认分支(isDefault=true): " + nodeId);
             }
             if (defaultCount > 1) {
@@ -259,7 +281,7 @@ public class WorkflowGraphModelResolver {
             // R10：非默认分支不得直连结束节点(END)，必须先经过中间业务节点
             // （默认分支保留"兜底直接结束"的合法业务语义）
             for (EdgeLink edge : outs) {
-                if (edge.isDefault()) {
+                if (edge.isDefault() || isGatewayControlNode(node)) {
                     continue;
                 }
                 JsonNode targetNode = nodeMap.get(edge.targetId());
@@ -296,13 +318,16 @@ public class WorkflowGraphModelResolver {
         Map<String, List<WorkflowRuntimeGraph.EdgeLink>> incomingIndex = convertEdgeIndex(parsed.incoming());
 
         String firstExecutableNodeId = resolveFirstExecutableNodeId(parsed.startNodeId(), parsed.outgoing());
-        return new WorkflowRuntimeGraph(
+        WorkflowRuntimeGraph graph = new WorkflowRuntimeGraph(
                 parsed.startNodeId(),
                 firstExecutableNodeId,
                 nodeIndex,
                 outgoingIndex,
                 incomingIndex
         );
+        WorkflowNodeConfigValidator.validate(graph);
+        WorkflowGatewayTopology.validate(graph);
+        return graph;
     }
 
     private Map<String, List<WorkflowRuntimeGraph.EdgeLink>> convertEdgeIndex(Map<String, List<EdgeLink>> edgeIndex) {
@@ -311,6 +336,7 @@ public class WorkflowGraphModelResolver {
             List<WorkflowRuntimeGraph.EdgeLink> links = new ArrayList<>();
             for (EdgeLink edge : entry.getValue()) {
                 links.add(new WorkflowRuntimeGraph.EdgeLink(
+                        edge.id(),
                         edge.sourceId(),
                         edge.targetId(),
                         edge.condition(),
@@ -388,9 +414,45 @@ public class WorkflowGraphModelResolver {
         config.setDescription(text(node, "description"));
         config.setApproverType(text(node, "approverType"));
         config.setApproverValue(text(node, "approverValue"));
-        config.setBranchStrategy(text(node, "branchStrategy"));
+        config.setDirectorFallback(text(node, "directorFallback"));
+        config.setRejectStrategy(text(node, "rejectStrategy"));
+        config.setRejectToNodeKey(text(node, "rejectToNodeKey"));
+        config.setApproveSelf(text(node, "approveSelf"));
+        config.setAllowAddSign(nullableBoolean(node, "allowAddSign"));
+        config.setAllowReduceSign(nullableBoolean(node, "allowReduceSign"));
+        config.setAllowDelegate(nullableBoolean(node, "allowDelegate"));
+        config.setAllowAgent(nullableBoolean(node, "allowAgent"));
+        config.setAllowUrge(nullableBoolean(node, "allowUrge"));
+        config.setAllowRollback(nullableBoolean(node, "allowRollback"));
+        config.setAllowCc(nullableBoolean(node, "allowCc"));
+        config.setAllowSelection(nullableBoolean(node, "allowSelection"));
+        if (node.hasNonNull("directorLevel")) {
+            config.setDirectorLevel(node.get("directorLevel").asInt());
+        }
+        if (node.hasNonNull("selectableScope")) {
+            config.setSelectableScope(objectMapper.convertValue(node.get("selectableScope"), OBJECT_MAP_TYPE));
+        }
+        String branchStrategy = text(node, "branchStrategy");
+        if ("INCLUSIVE".equals(config.getType()) || "ROUTE".equals(config.getType())) {
+            // 旧设计器曾遗漏策略或写入 EXCLUSIVE，按已有节点类型恢复实际语义。
+            if (StringUtils.hasText(branchStrategy) && !"EXCLUSIVE".equals(branchStrategy)
+                    && !config.getType().equals(branchStrategy)) {
+                throw WorkflowException.validationError("网关分支策略与节点类型不匹配: " + config.getId());
+            }
+            branchStrategy = config.getType();
+        }
+        config.setBranchStrategy(branchStrategy);
+        config.setJoinNodeKey(text(node, "joinNodeKey"));
         config.setCondition(text(node, "condition"));
         config.setSignType(text(node, "signType"));
+        config.setWeightSource(text(node, "weightSource"));
+        if (node.hasNonNull("passWeight")) {
+            config.setPassWeight(new java.math.BigDecimal(node.get("passWeight").asText()));
+        }
+        if (node.hasNonNull("assigneeWeights")) {
+            config.setAssigneeWeights(objectMapper.convertValue(node.get("assigneeWeights"),
+                    new TypeReference<List<Map<String, Object>>>() {}));
+        }
         config.setSlaAction(text(node, "slaAction"));
 
         if (node.hasNonNull("allowEdit")) {
@@ -406,10 +468,12 @@ public class WorkflowGraphModelResolver {
         JsonNode inputs = node.get("inputs");
         if (inputs != null && inputs.isObject()) {
             config.setInputs(objectMapper.convertValue(inputs, STRING_MAP_TYPE));
+            validateDataMapping(config.getInputs());
         }
         JsonNode outputs = node.get("outputs");
         if (outputs != null && outputs.isObject()) {
             config.setOutputs(objectMapper.convertValue(outputs, STRING_MAP_TYPE));
+            validateDataMapping(config.getOutputs());
         }
         JsonNode props = node.get("props");
         if (props != null && props.isObject()) {
@@ -420,6 +484,23 @@ public class WorkflowGraphModelResolver {
             config.setRetry(objectMapper.convertValue(retry, OBJECT_MAP_TYPE));
         }
         return config;
+    }
+
+    private void validateDataMapping(Map<String, String> mapping) {
+        com.cloudflow.workflow.service.WorkflowExecutionContext.assertNoOverrides(mapping);
+        if (mapping.values().stream().anyMatch(value -> value != null && value.startsWith("_wf_"))) {
+            throw WorkflowException.validationError("数据映射不能引用流程执行记录或等待状态");
+        }
+    }
+
+    private Boolean nullableBoolean(JsonNode node, String field) {
+        if (!node.hasNonNull(field)) {
+            return null;
+        }
+        if (!node.get(field).isBoolean()) {
+            throw WorkflowException.validationError("节点开关必须是布尔值: " + field);
+        }
+        return node.get(field).booleanValue();
     }
 
     private String text(JsonNode node, String field) {
@@ -550,7 +631,7 @@ public class WorkflowGraphModelResolver {
             return false;
         }
         String upperType = type.toUpperCase(Locale.ROOT);
-        if ("CONDITION".equals(upperType) || "GATEWAY".equals(upperType)) {
+        if (Set.of("CONDITION", "GATEWAY", "INCLUSIVE", "ROUTE").contains(upperType)) {
             return true;
         }
         if ("PARALLEL".equals(upperType)) {
@@ -558,6 +639,32 @@ public class WorkflowGraphModelResolver {
             // 分支模式：signType 缺失或不属于合规会签模式
             return signType == null
                     || !PARALLEL_SIGN_MODES.contains(signType.trim().toUpperCase(Locale.ROOT));
+        }
+        return false;
+    }
+
+    private boolean isGatewayControlNode(JsonNode node) {
+        String type = textUpper(node, "type");
+        return "INCLUSIVE".equals(type) || "ROUTE".equals(type)
+                || ("PARALLEL".equals(type) && isMultiBranchDecisionNode(node));
+    }
+
+    private boolean allowsNoDefault(JsonNode node) {
+        String type = textUpper(node, "type");
+        return "INCLUSIVE".equals(type) || "ROUTE".equals(type)
+                || ("PARALLEL".equals(type) && StringUtils.hasText(text(node, "joinNodeKey")));
+    }
+
+    private boolean isPairedJoinNode(String nodeId, Map<String, JsonNode> nodes, Map<String, List<EdgeLink>> outgoing) {
+        for (Map.Entry<String, JsonNode> entry : nodes.entrySet()) {
+            String type = textUpper(entry.getValue(), "type");
+            if (!"INCLUSIVE".equals(type) && !("PARALLEL".equals(type) && isMultiBranchDecisionNode(entry.getValue()))) continue;
+            String joinId = text(entry.getValue(), "joinNodeKey");
+            if (joinId == null && "PARALLEL".equals(type)) {
+                EdgeLink pointer = resolveDefaultEdge(entry.getKey(), outgoing.getOrDefault(entry.getKey(), List.of()));
+                joinId = pointer == null ? null : pointer.targetId();
+            }
+            if (nodeId.equals(joinId)) return true;
         }
         return false;
     }
@@ -610,9 +717,6 @@ public class WorkflowGraphModelResolver {
                                     String startNodeId) {
     }
 
-    private record EdgeLink(String sourceId, String targetId, String condition, boolean isDefault) {
-        private static EdgeLink of(String sourceId, String targetId, String condition, boolean isDefault) {
-            return new EdgeLink(sourceId, targetId, condition, isDefault);
-        }
+    private record EdgeLink(String id, String sourceId, String targetId, String condition, boolean isDefault) {
     }
 }

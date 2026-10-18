@@ -13,5 +13,10 @@ public class SimulationNodeDetail {
     private Boolean conditionResult;
     private List<String> resolvedAssignees = new ArrayList<>();
     private String branchTaken;
+    private String joinNodeKey;
+    private Integer expectedCount;
+    private String defaultBranch;
+    private List<String> branchOrder = new ArrayList<>();
+    private List<String> activatedBranches = new ArrayList<>();
     private List<String> warnings = new ArrayList<>();
 }

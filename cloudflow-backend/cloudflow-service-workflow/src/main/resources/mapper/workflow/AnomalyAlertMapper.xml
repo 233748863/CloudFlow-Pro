@@ -47,6 +47,23 @@
         aa.update_time
     </sql>
 
+    <select id="selectForNotification" resultMap="AnomalyAlertResult">
+        SELECT <include refid="AnomalyAlertColumns"/>
+        FROM wf_anomaly_alert aa
+        WHERE aa.tenant_id = #{tenantId} AND aa.id = #{id}
+        FOR UPDATE
+    </select>
+
+    <select id="selectUnresolvedForEvent" resultMap="AnomalyAlertResult">
+        SELECT <include refid="AnomalyAlertColumns"/>
+        FROM wf_anomaly_alert aa
+        WHERE aa.tenant_id = #{tenantId} AND aa.instance_id = #{instanceId}
+          AND aa.anomaly_type = #{anomalyType} AND aa.resolved = 'N'
+        <if test="taskId != null">AND aa.task_id = #{taskId}</if>
+        <!-- 调用方已锁定来源任务或监控记录，无需排序；避免租户解析器将 FOR UPDATE 移到 ORDER BY 前。 -->
+        FOR UPDATE
+    </select>
+
     <!-- 根据日期统计数量 -->
     <select id="countByDate" resultType="java.lang.Integer">
         SELECT COUNT(*)

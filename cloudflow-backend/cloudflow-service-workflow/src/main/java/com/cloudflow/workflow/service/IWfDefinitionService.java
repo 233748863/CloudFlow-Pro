@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
+import com.cloudflow.workflow.domain.vo.StartableDefinitionVO;
 
 /**
  * 流程定义管理服务接口
@@ -55,6 +56,8 @@ public interface IWfDefinitionService {
      * @return 流程定义列表
      */
     PageResult<WfProcessDefinition> listProcessDefinitions(PageQuery pageQuery);
+
+    PageResult<StartableDefinitionVO> listStartableDefinitions(PageQuery pageQuery);
 
     /**
      * P1-6: 获取流程定义的流程图结构

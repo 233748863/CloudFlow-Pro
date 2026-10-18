@@ -15,6 +15,9 @@ import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.IVersionService;
+import com.cloudflow.workflow.service.WorkflowConfigurationLockService;
+import com.cloudflow.workflow.service.WorkflowConfigurationLockService.LockedConfiguration;
+import com.cloudflow.workflow.service.WorkflowTriggerSecrets;
 import com.cloudflow.workflow.util.VersionNumberGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +30,7 @@ import org.springframework.util.StringUtils;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +67,12 @@ public class VersionServiceImpl implements IVersionService {
     @Autowired
     private SysUserMapper sysUserMapper;
 
+    @Autowired
+    private WorkflowTriggerSecrets triggerSecrets;
+
+    @Autowired
+    private WorkflowConfigurationLockService configurationLocks;
+
     /**
      * 为指定版本行填充版本元数据（语义化版本号、变更类型、变更说明、校验和）。
      * 保存链路在 definition 行落库后调用，与保存同事务；失败抛异常整体回滚。
@@ -71,10 +81,11 @@ public class VersionServiceImpl implements IVersionService {
     @Transactional(rollbackFor = Exception.class)
     public WorkflowVersion createVersion(String workflowId, String definition, String changeLog, String createdBy) {
         log.info("填充流程版本元数据, definitionId={}, createdBy={}", workflowId, createdBy);
-        WfProcessDefinition row = requireWorkflowAndTenantAccess(workflowId, "创建流程版本");
+        LockedConfiguration locked = configurationLocks.lockDefinition(workflowId);
+        WfProcessDefinition row = locked.requireDefinition(workflowId);
 
         // 上一版本 = 同 key 下 version 小于本行的最新行
-        WfProcessDefinition previous = findPreviousVersionRow(row);
+        WfProcessDefinition previous = findPreviousVersionRow(locked, row);
 
         String newVersionNumber;
         VersionNumberGenerator.ChangeType changeType;
@@ -97,7 +108,7 @@ public class VersionServiceImpl implements IVersionService {
             row.setUpdateBy(createdBy);
         }
         int updated = definitionMapper.updateById(row);
-        if (updated <= 0) {
+        if (updated != 1) {
             throw new WorkflowException("填充版本元数据失败, definitionId=" + workflowId);
         }
 
@@ -173,12 +184,9 @@ public class VersionServiceImpl implements IVersionService {
                                             Boolean forceRollback, String operatorId) {
         log.info("开始回滚流程版本, definitionId={}, targetDefinitionId={}, operatorId={}",
             workflowId, targetVersionId, operatorId);
-        WfProcessDefinition current = requireWorkflowAndTenantAccess(workflowId, "回滚流程版本");
-
-        WfProcessDefinition target = definitionMapper.selectById(targetVersionId);
-        if (target == null) {
-            throw new WorkflowException("目标版本不存在: " + targetVersionId);
-        }
+        LockedConfiguration locked = configurationLocks.lockDefinition(workflowId);
+        WfProcessDefinition current = locked.requireDefinition(workflowId);
+        WfProcessDefinition target = locked.requireDefinition(targetVersionId);
         if (!Objects.equals(current.getProcessKey(), target.getProcessKey())) {
             throw new WorkflowException("版本不属于该流程");
         }
@@ -188,15 +196,15 @@ public class VersionServiceImpl implements IVersionService {
         if (!StringUtils.hasText(target.getModelJson())) {
             throw new WorkflowException("目标版本缺少流程模型，无法回滚");
         }
+        locked.requireBoundForm(target.getFormId());
 
-        if (!Boolean.TRUE.equals(forceRollback) && hasRunningInstances(workflowId)) {
+        if (!Boolean.TRUE.equals(forceRollback) && configurationLocks.countProcessInstances(current,
+                com.cloudflow.workflow.domain.enums.WfProcessStatus.openCodes()) > 0) {
             throw new WorkflowException("该流程有正在运行的实例，请先处理或使用强制回滚");
         }
 
         // 当前最新版本行（版本号基准）
-        WfProcessDefinition latest = definitionMapper.selectPage(new Page<>(1, 1, false),
-                versionRowsQuery(current.getProcessKey(), current.getTenantId()))
-                .getRecords().stream().findFirst().orElse(null);
+        WfProcessDefinition latest = locked.latest(current.getProcessKey());
         if (latest == null) {
             throw new WorkflowException("流程没有当前版本");
         }
@@ -208,14 +216,19 @@ public class VersionServiceImpl implements IVersionService {
 
         // 旧 is_latest 指针清零
         latest.setIsLatest(0);
-        definitionMapper.updateById(latest);
+        if (definitionMapper.updateById(latest) != 1) {
+            throw WorkflowException.invalidState("流程版本指针更新失败，请刷新后重试");
+        }
 
         // 同 key 在线版本归档（保持"同 key 唯一 PUBLISHED"约束）
-        definitionMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<WfProcessDefinition>()
-                .eq(WfProcessDefinition::getProcessKey, current.getProcessKey())
-                .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                .eq(current.getTenantId() != null, WfProcessDefinition::getTenantId, current.getTenantId())
-                .set(WfProcessDefinition::getStatus, "ARCHIVED"));
+        for (WfProcessDefinition previous : locked.versions(current.getProcessKey())) {
+            if ("PUBLISHED".equals(previous.getStatus())) {
+                previous.setStatus("ARCHIVED");
+                if (definitionMapper.updateById(previous) != 1) {
+                    throw WorkflowException.invalidState("旧流程版本归档失败，请刷新后重试");
+                }
+            }
+        }
 
         // 基于目标版本行生成新版本行
         WfProcessDefinition rollbackRow = new WfProcessDefinition();
@@ -238,7 +251,9 @@ public class VersionServiceImpl implements IVersionService {
             rollbackRow.setCreateBy(operatorId);
             rollbackRow.setUpdateBy(operatorId);
         }
-        definitionMapper.insert(rollbackRow);
+        if (definitionMapper.insert(rollbackRow) != 1) {
+            throw WorkflowException.invalidState("回滚流程版本创建失败");
+        }
 
         log.info("版本回滚成功, 新版本行={}, 版本号={}, 回滚自={}",
                 rollbackRow.getDefinitionId(), newVersionNumber, target.getCurrentVersion());
@@ -257,7 +272,7 @@ public class VersionServiceImpl implements IVersionService {
         WfProcessDefinition row = requireWorkflowAndTenantAccess(workflowId, "查询运行中实例");
         LambdaQueryWrapper<WfProcessInstance> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WfProcessInstance::getProcessDefKey, row.getProcessKey())
-               .in(WfProcessInstance::getStatus, "RUNNING", "SUSPENDED");
+               .in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.openCodes());
         if (row.getTenantId() != null) {
             wrapper.eq(WfProcessInstance::getTenantId, row.getTenantId());
         }
@@ -288,14 +303,13 @@ public class VersionServiceImpl implements IVersionService {
     }
 
     /** 上一版本行：同 key 下 version 小于指定行的最新行 */
-    private WfProcessDefinition findPreviousVersionRow(WfProcessDefinition row) {
+    private WfProcessDefinition findPreviousVersionRow(LockedConfiguration locked, WfProcessDefinition row) {
         if (row.getVersion() == null) {
             return null;
         }
-        LambdaQueryWrapper<WfProcessDefinition> wrapper = versionRowsQuery(row.getProcessKey(), row.getTenantId())
-                .lt(WfProcessDefinition::getVersion, row.getVersion());
-        return definitionMapper.selectPage(new Page<>(1, 1, false), wrapper)
-                .getRecords().stream().findFirst().orElse(null);
+        return locked.versions(row.getProcessKey()).stream()
+                .filter(previous -> previous.getVersion() != null && previous.getVersion() < row.getVersion())
+                .max(Comparator.comparingInt(WfProcessDefinition::getVersion)).orElse(null);
     }
 
     /** definition 版本行 → 版本 VO（保持既有 API 字段结构） */
@@ -304,7 +318,7 @@ public class VersionServiceImpl implements IVersionService {
         vo.setId(row.getDefinitionId());
         vo.setWorkflowId(row.getDefinitionId());
         vo.setVersionNumber(StringUtils.hasText(row.getCurrentVersion()) ? row.getCurrentVersion() : "1.0.0");
-        vo.setDefinition(row.getModelJson());
+        vo.setDefinition(triggerSecrets.maskModel(row.getModelJson()));
         vo.setChangeLog(row.getChangeLog());
         vo.setChangeType(row.getChangeType());
         vo.setCreatedBy(StringUtils.hasText(row.getUpdateBy()) ? row.getUpdateBy() : row.getCreateBy());

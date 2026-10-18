@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WorkflowFormReferenceMapper">
+    <select id="findDictionaryValues" resultType="java.lang.String">
+        SELECT dictionary_data.dict_value
+        FROM sys_dict_data dictionary_data
+        JOIN sys_dict_type dictionary_type ON dictionary_type.dict_type = dictionary_data.dict_type
+            AND dictionary_type.tenant_id = dictionary_data.tenant_id AND dictionary_type.status = '0'
+        WHERE dictionary_data.tenant_id = #{tenantId} AND dictionary_data.dict_type = #{dictType}
+            AND dictionary_data.status = '0'
+        ORDER BY dictionary_data.dict_sort, dictionary_data.dict_code
+    </select>
+    <select id="findOwnedFormFile" resultType="java.util.LinkedHashMap">
+        SELECT file_size AS size, file_type AS extension
+        FROM sys_file
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND deleted = 0
+            AND biz_type = 'WORKFLOW_FORM' AND access_type = 'PRIVATE'
+            AND JSON_UNQUOTE(JSON_EXTRACT(remark, '$.d')) = #{definitionId}
+            AND JSON_UNQUOTE(JSON_EXTRACT(remark, '$.f')) = #{fieldPath}
+            <if test="userName != null">AND create_by = #{userName}</if>
+            <choose>
+                <when test="instanceId != null">
+                    AND biz_id = #{instanceId} AND JSON_UNQUOTE(JSON_EXTRACT(remark, '$.i')) = #{instanceId}
+                </when>
+                <otherwise>
+                    AND biz_id = #{definitionId} AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(remark, '$.i')), 'null') IS NULL
+                </otherwise>
+            </choose>
+    </select>
+    <resultMap id="referenceOption" type="com.cloudflow.workflow.domain.vo.WorkflowFormReferenceVO">
+        <constructor>
+            <arg column="id" javaType="java.lang.String"/>
+            <arg column="label" javaType="java.lang.String"/>
+            <arg column="department_id" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+    <select id="pageReferences" resultMap="referenceOption">
+        <choose>
+            <when test="type == 'EMPLOYEE'">
+                SELECT CAST(employee_row.id AS CHAR) AS id, employee_row.name AS label, CAST(employee_row.dept_id AS CHAR) AS department_id
+                FROM hr_employee employee_row
+                LEFT JOIN sys_dept department_row ON department_row.tenant_id = employee_row.tenant_id
+                    AND department_row.dept_id = employee_row.dept_id AND department_row.deleted = 0
+                WHERE employee_row.tenant_id = #{tenantId} AND employee_row.deleted = 0
+                <if test="onlyActive">AND employee_row.employee_status NOT IN ('RESIGNED','LEFT','TERMINATED','SUSPENDED')</if>
+                <if test="scopeDeptId != null">AND (employee_row.dept_id = #{scopeDeptId} OR FIND_IN_SET(#{scopeDeptId}, department_row.ancestors) > 0)</if>
+                ORDER BY employee_row.id
+            </when>
+            <when test="type == 'USER_MULTI'">
+                SELECT CAST(user_row.user_id AS CHAR) AS id, user_row.nick_name AS label, CAST(user_row.dept_id AS CHAR) AS department_id
+                FROM sys_user user_row
+                LEFT JOIN sys_dept department_row ON department_row.tenant_id = user_row.tenant_id
+                    AND department_row.dept_id = user_row.dept_id AND department_row.deleted = 0
+                WHERE user_row.tenant_id = #{tenantId} AND user_row.deleted = 0
+                <if test="onlyActive">AND user_row.status = '0'</if>
+                <if test="scopeDeptId != null">AND (user_row.dept_id = #{scopeDeptId} OR FIND_IN_SET(#{scopeDeptId}, department_row.ancestors) > 0)</if>
+                ORDER BY user_row.user_id
+            </when>
+            <when test="type == 'DEPT' or type == 'DEPT_MULTI'">
+                SELECT CAST(dept_id AS CHAR) AS id, dept_name AS label, NULL AS department_id
+                FROM sys_dept WHERE tenant_id = #{tenantId} AND deleted = 0
+                <if test="onlyActive">AND status = '0'</if>
+                <if test="scopeDeptId != null">AND (dept_id = #{scopeDeptId} OR FIND_IN_SET(#{scopeDeptId}, ancestors) > 0)</if>
+                ORDER BY dept_id
+            </when>
+            <when test="type == 'POST'">
+                SELECT CAST(post_id AS CHAR) AS id, post_name AS label, NULL AS department_id
+                FROM sys_post WHERE tenant_id = #{tenantId}
+                <if test="onlyActive">AND status = '0'</if>
+                ORDER BY post_id
+            </when>
+            <when test="type == 'POSITION'">
+                SELECT CAST(id AS CHAR) AS id, position_name AS label, NULL AS department_id
+                FROM hr_position WHERE tenant_id = #{tenantId}
+                <if test="onlyActive">AND status = 1</if>
+                ORDER BY id
+            </when>
+            <when test="type == 'DICT_SELECT'">
+                SELECT dictionary_data.dict_value AS id, dictionary_data.dict_label AS label, NULL AS department_id
+                FROM sys_dict_data dictionary_data
+                JOIN sys_dict_type dictionary_type ON dictionary_type.tenant_id = dictionary_data.tenant_id
+                    AND dictionary_type.dict_type = dictionary_data.dict_type AND dictionary_type.status = '0'
+                WHERE dictionary_data.tenant_id = #{tenantId} AND dictionary_data.dict_type = #{dictType}
+                    AND dictionary_data.status = '0'
+                ORDER BY dictionary_data.dict_sort, dictionary_data.dict_code
+            </when>
+            <otherwise>SELECT NULL AS id, NULL AS label, NULL AS department_id WHERE 1 = 0</otherwise>
+        </choose>
+    </select>
+    <select id="findReference" resultType="java.util.LinkedHashMap">
+        <choose>
+            <when test="type == 'EMPLOYEE'">
+                SELECT employee_row.id, employee_row.name, employee_row.employee_no AS employeeNo,
+                    employee_row.dept_id AS deptId, department_row.dept_name AS deptName, department_row.ancestors AS deptAncestors,
+                    employee_row.post_id AS postId, post_row.post_name AS postName,
+                    employee_row.position_id AS positionId, position_row.position_name AS positionName
+                FROM hr_employee employee_row
+                LEFT JOIN sys_dept department_row ON department_row.dept_id = employee_row.dept_id
+                    AND department_row.tenant_id = employee_row.tenant_id AND department_row.deleted = 0
+                LEFT JOIN sys_post post_row ON post_row.post_id = employee_row.post_id AND post_row.tenant_id = employee_row.tenant_id
+                LEFT JOIN hr_position position_row ON position_row.id = employee_row.position_id AND position_row.tenant_id = employee_row.tenant_id
+                WHERE employee_row.tenant_id = #{tenantId} AND employee_row.id = #{referenceId} AND employee_row.deleted = 0
+                <if test="onlyActive">AND employee_row.employee_status NOT IN ('RESIGNED','LEFT','TERMINATED','SUSPENDED')</if>
+            </when>
+            <when test="type == 'USER_MULTI'">
+                SELECT user_row.user_id AS id, user_row.nick_name AS name, user_row.dept_id AS deptId,
+                    department_row.dept_name AS deptName, department_row.ancestors AS deptAncestors
+                FROM sys_user user_row
+                LEFT JOIN sys_dept department_row ON department_row.dept_id = user_row.dept_id
+                    AND department_row.tenant_id = user_row.tenant_id AND department_row.deleted = 0
+                WHERE user_row.tenant_id = #{tenantId} AND user_row.user_id = #{referenceId} AND user_row.deleted = 0
+                <if test="onlyActive">AND user_row.status = '0'</if>
+            </when>
+            <when test="type == 'DEPT' or type == 'DEPT_MULTI'">
+                SELECT dept_id AS id, dept_id AS deptId, dept_name AS deptName, dept_name AS name, ancestors AS deptAncestors
+                FROM sys_dept WHERE tenant_id = #{tenantId} AND dept_id = #{referenceId} AND deleted = 0
+                <if test="onlyActive">AND status = '0'</if>
+            </when>
+            <when test="type == 'POST'">
+                SELECT post_id AS id, post_id AS postId, post_name AS postName, post_name AS name, post_code AS postCode
+                FROM sys_post WHERE tenant_id = #{tenantId} AND post_id = #{referenceId}
+                <if test="onlyActive">AND status = '0'</if>
+            </when>
+            <when test="type == 'POSITION'">
+                SELECT position_row.id, position_row.id AS positionId, position_row.position_name AS positionName,
+                    position_row.position_name AS name, position_row.post_id AS postId, post_row.post_name AS postName
+                FROM hr_position position_row
+                LEFT JOIN sys_post post_row ON post_row.post_id = position_row.post_id AND post_row.tenant_id = position_row.tenant_id
+                WHERE position_row.tenant_id = #{tenantId} AND position_row.id = #{referenceId}
+                <if test="onlyActive">AND position_row.status = 1</if>
+            </when>
+            <otherwise>SELECT NULL AS id WHERE 1 = 0</otherwise>
+        </choose>
+    </select>
+</mapper>

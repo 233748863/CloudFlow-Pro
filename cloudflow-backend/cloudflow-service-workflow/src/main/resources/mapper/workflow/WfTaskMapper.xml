@@ -3,10 +3,25 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.workflow.mapper.WfTaskMapper">
+    <resultMap id="TaskResult" type="com.cloudflow.workflow.domain.WfTask" autoMapping="true">
+        <id column="task_id" property="taskId"/>
+        <result column="lock_version" property="version"/>
+    </resultMap>
+    <select id="selectForUpdate" resultMap="TaskResult">
+        SELECT * FROM wf_task WHERE tenant_id = #{tenantId} AND task_id = #{taskId} FOR UPDATE
+    </select>
+    <select id="selectInstanceForUpdate" resultMap="TaskResult" useCache="false" flushCache="true">
+        SELECT * FROM wf_task WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} FOR UPDATE
+    </select>
+    <select id="selectSignMembersForUpdate" resultMap="TaskResult" useCache="false" flushCache="true">
+        SELECT * FROM wf_task WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId}
+          AND candidate_roles = #{reference} FOR UPDATE
+    </select>
 
     <select id="selectBatchByIds" resultType="com.cloudflow.workflow.domain.vo.TaskDetailVO">
         SELECT
             t.task_id AS taskId,
+            t.task_type AS taskType,
             t.node_name AS taskName,
             t.instance_id AS instanceId,
             i.process_def_key AS processDefKey,

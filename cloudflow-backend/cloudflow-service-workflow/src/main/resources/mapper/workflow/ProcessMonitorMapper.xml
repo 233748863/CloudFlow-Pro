@@ -2,6 +2,18 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.workflow.mapper.ProcessMonitorMapper">
 
+    <select id="selectAnomalyScanIds" resultType="java.lang.Long">
+        SELECT id FROM wf_process_monitor
+        WHERE tenant_id = #{tenantId} AND status = 'RUNNING' AND id &gt; #{afterId}
+        ORDER BY id LIMIT #{limit}
+    </select>
+
+    <select id="lockForAnomalyScan" resultMap="ProcessMonitorResult">
+        SELECT p.*, p.process_def_name AS process_name
+        FROM wf_process_monitor p WHERE p.tenant_id = #{tenantId} AND p.id = #{id}
+        FOR UPDATE
+    </select>
+
     <resultMap id="ProcessMonitorResult" type="com.cloudflow.workflow.domain.monitor.ProcessMonitor">
         <id property="id" column="id"/>
         <result property="tenantId" column="tenant_id"/>
@@ -10,17 +22,24 @@
         <result property="processDefKey" column="process_def_key"/>
         <result property="processDefName" column="process_name"/>
         <result property="processName" column="process_name"/>
+        <result property="businessKey" column="business_key"/>
         <result property="status" column="status"/>
         <result property="startTime" column="start_time"/>
         <result property="endTime" column="end_time"/>
         <result property="durationMs" column="duration_ms"/>
+        <result property="duration" column="duration"/>
+        <result property="nodeCount" column="node_count"/>
         <result property="taskCount" column="task_count"/>
         <result property="completedTaskCount" column="completed_task_count"/>
         <result property="startUserId" column="start_user_id"/>
+        <result property="startUserName" column="start_user_name"/>
         <result property="deptId" column="dept_id"/>
         <result property="initiator" column="initiator"/>
         <result property="initiatorName" column="initiator_name"/>
         <result property="createTime" column="create_time"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="version" column="version"/>
+        <result property="updateTime" column="update_time"/>
     </resultMap>
 
     <resultMap id="ProcessTrendResult" type="com.cloudflow.workflow.domain.monitor.ProcessTrend">
@@ -63,7 +82,7 @@
     <select id="getAvgCompletionTime" resultType="java.lang.Long">
         SELECT AVG(duration)
         FROM wf_process_monitor
-        WHERE status = 'COMPLETED'
+        WHERE status IN ('PASSED', 'AUTO_PASSED')
         AND end_time IS NOT NULL
         AND tenant_id = #{tenantId}
     </select>
@@ -72,11 +91,11 @@
     <select id="getSuccessRate" resultType="java.lang.Double">
         SELECT
             CASE WHEN COUNT(*) > 0 THEN
-                CAST(SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS DECIMAL(10,2)) /
+                CAST(SUM(CASE WHEN status IN ('PASSED', 'AUTO_PASSED') THEN 1 ELSE 0 END) AS DECIMAL(10,2)) /
                 CAST(COUNT(*) AS DECIMAL(10,2)) * 100
             ELSE 0 END
         FROM wf_process_monitor
-        WHERE status IN ('COMPLETED', 'FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED')
+        WHERE status IN ('PASSED', 'AUTO_PASSED', 'FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED', 'CANCELLED')
         AND tenant_id = #{tenantId}
     </select>
 
@@ -86,8 +105,8 @@
             SELECT 
                 DATE_FORMAT(p.start_time, '%Y-%m-%d') as date,
                 COUNT(*) as started,
-                SUM(CASE WHEN p.status = 'COMPLETED' THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN p.status = 'RUNNING' THEN 1 ELSE 0 END) as running,
+                SUM(CASE WHEN p.status IN ('PASSED', 'AUTO_PASSED') THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN p.status IN ('RUNNING', 'WITHDRAWN', 'TASK_BACK', 'RESTARTED', 'PENDING') THEN 1 ELSE 0 END) as running,
                 p.tenant_id as tenant_id
             FROM wf_process_monitor p
             WHERE p.start_time >= #{startDate}
@@ -192,6 +211,14 @@
             p.id,
             p.tenant_id,
             p.instance_id,
+            p.business_key,
+            p.duration,
+            p.node_count,
+            p.start_user_id,
+            p.start_user_name,
+            p.error_message,
+            p.version,
+            p.update_time,
             p.process_def_id,
             p.process_def_key,
             p.process_def_name as process_name,
@@ -242,12 +269,12 @@
     <select id="selectStatistics" resultType="java.util.Map">
         SELECT 
             COUNT(*) as totalCount,
-            SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completedCount,
-            SUM(CASE WHEN status = 'RUNNING' THEN 1 ELSE 0 END) as runningCount,
+            SUM(CASE WHEN status IN ('PASSED', 'AUTO_PASSED') THEN 1 ELSE 0 END) as completedCount,
+            SUM(CASE WHEN status IN ('RUNNING', 'WITHDRAWN', 'TASK_BACK', 'RESTARTED', 'PENDING') THEN 1 ELSE 0 END) as runningCount,
             SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) as failedCount,
-            AVG(CASE WHEN status = 'COMPLETED' AND duration IS NOT NULL THEN duration ELSE NULL END) as avgDuration,
-            MAX(CASE WHEN status = 'COMPLETED' AND duration IS NOT NULL THEN duration ELSE NULL END) as maxDuration,
-            MIN(CASE WHEN status = 'COMPLETED' AND duration IS NOT NULL THEN duration ELSE NULL END) as minDuration
+            AVG(CASE WHEN status IN ('PASSED', 'AUTO_PASSED') AND duration IS NOT NULL THEN duration ELSE NULL END) as avgDuration,
+            MAX(CASE WHEN status IN ('PASSED', 'AUTO_PASSED') AND duration IS NOT NULL THEN duration ELSE NULL END) as maxDuration,
+            MIN(CASE WHEN status IN ('PASSED', 'AUTO_PASSED') AND duration IS NOT NULL THEN duration ELSE NULL END) as minDuration
         FROM wf_process_monitor
         WHERE tenant_id = #{tenantId}
         <if test="processDefKey != null and processDefKey != ''">
@@ -280,7 +307,7 @@
             p.start_user_name as initiator_name,
             p.create_time
         FROM wf_process_monitor p
-        WHERE p.status = 'RUNNING'
+        WHERE p.status IN ('RUNNING', 'WITHDRAWN', 'TASK_BACK', 'RESTARTED', 'PENDING')
         AND p.tenant_id = #{tenantId}
         ORDER BY p.start_time DESC
     </select>

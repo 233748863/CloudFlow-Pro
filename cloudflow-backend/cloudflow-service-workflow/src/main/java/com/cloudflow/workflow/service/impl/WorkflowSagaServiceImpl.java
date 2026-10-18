@@ -41,6 +41,8 @@ public class WorkflowSagaServiceImpl implements IWorkflowSagaService {
 
     @Autowired
     private RedisCache redisCache;
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowProcessStateService processStateService;
 
     /**
      * 记录 Saga 步骤（用于后续补偿）
@@ -85,9 +87,7 @@ public class WorkflowSagaServiceImpl implements IWorkflowSagaService {
             // 2. 更新实例状态为 FAILED
             WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
             if (instance != null) {
-                instance.setStatus("FAILED");
-                instance.setEndTime(LocalDateTime.now());
-                processInstanceMapper.updateById(instance);
+                processStateService.transition(instance, com.cloudflow.workflow.domain.enums.WfProcessStatus.FAILED);
                 log.info("[compensate] 实例状态已更新为FAILED, instanceId={}", instanceId);
             }
 
@@ -153,7 +153,7 @@ public class WorkflowSagaServiceImpl implements IWorkflowSagaService {
             return false;
         }
         // 如果实例处于 RUNNING 状态但没有活动任务，可能需要补偿
-        if ("RUNNING".equals(instance.getStatus())) {
+        if (com.cloudflow.workflow.domain.enums.WfProcessStatus.isActive(instance.getStatus())) {
             Long activeTaskCount = taskMapper.selectCount(
                 new LambdaQueryWrapper<WfTask>().eq(WfTask::getInstanceId, instanceId)
             );

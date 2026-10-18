@@ -1,9 +1,13 @@
 package com.cloudflow.workflow.service.impl;
 
+import com.cloudflow.workflow.domain.enums.WfTaskType;
+import com.cloudflow.workflow.service.TaskSemanticContext;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.time.LocalDateTime;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.workflow.config.properties.WorkflowProperties;
 import com.cloudflow.workflow.domain.*;
@@ -26,6 +30,7 @@ import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
+import com.cloudflow.workflow.model.WorkflowGatewayTopology;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.*;
 import com.cloudflow.workflow.listener.GlobalListenerDispatcher;
@@ -56,9 +61,6 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
     private static final Logger log = LoggerFactory.getLogger(NodeExecutionServiceImpl.class);
 
-    /** 流转时传递"到达来源节点"的临时变量名（runNode 入口消费，不落库） */
-    private static final String JOIN_ARRIVAL_SOURCE_VARIABLE = "_joinArrivalFrom";
-
     @Autowired
     private RedissonClient redissonClient;
     @Autowired
@@ -66,9 +68,11 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     @Autowired
     private WfProcessInstanceMapper processInstanceMapper;
     @Autowired
-    private WfParallelJoinMapper parallelJoinMapper;
+    private WorkflowGatewayService gateways;
     @Autowired
     private WfTaskMapper taskMapper;
+    @Autowired
+    private WfTaskHistoryMapper taskHistoryMapper;
     @Autowired
     private TaskMonitorMapper taskMonitorMapper;
     @Autowired
@@ -82,7 +86,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     @Autowired
     private SysDeptMapper sysDeptMapper;
     @Autowired
-    private ISysNoticeService sysNoticeService;
+    private MessageSender sysNoticeService;
     @Autowired
     private WorkflowProperties workflowProperties;
     @Autowired
@@ -107,6 +111,17 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     private com.cloudflow.workflow.service.monitor.IAnomalyDetectionService anomalyDetectionService;
     @Autowired
     private WorkflowGraphModelResolver workflowGraphModelResolver;
+    @Autowired
+    private SelfApprovalPolicy selfApprovalPolicy;
+    @Autowired
+    private WorkflowHParticipantPolicy hParticipantPolicy;
+
+    @Autowired
+    private WorkflowAgentService agents;
+    @Autowired
+    private WfNodeRecordMapper nodeRecordMapper;
+    @Autowired
+    private WorkflowProcessStateService processStateService;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -115,6 +130,8 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
     @Override
     public void runNode(WfProcessInstance instance, WfNodeConfig node, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
+        Map<String, Object> runtimeVariables = variables == null ? WorkflowWaitState.variables(instance) : variables;
+        hParticipantPolicy.assertNodeExecution(instance, node, runtimeVariables);
         // 深度限制检查
         int maxDepth = workflowProperties.getEngine().getMaxDepth();
         if (depth > maxDepth) {
@@ -122,64 +139,20 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         }
 
         if (node == null) {
+            if (WorkflowExecutionContext.current() != null) throw WorkflowExecutionContext.invalid();
             // 流程结束
-            completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
+            completeInstance(instance, WfProcessStatus.PASSED.getCode());
             return;
         }
 
-        // 消费"到达来源"标识（advanceAfterNode 在流转到下一节点前写入），仅汇聚判定使用
-        Object arrivalSourceObj = variables != null ? variables.remove(JOIN_ARRIVAL_SOURCE_VARIABLE) : null;
+        boolean pairedJoin = rootNode != null && WorkflowGatewayTopology.isJoin(requireRuntimeGraph(rootNode), node.getId());
+        WorkflowGatewayService.Arrival arrival = WorkflowExecutionContext.current() != null || pairedJoin
+                ? gateways.arrive(instance, node.getId(), pairedJoin) : new WorkflowGatewayService.Arrival(true, null);
+        if (!arrival.proceed()) return;
+        WorkflowExecutionContext.run(arrival.context(), () -> executeNode(instance, node, runtimeVariables, depth, rootNode));
+    }
 
-        // 并行汇聚检查：到达记录写 DB（与本次流转同事务，回滚自动撤销），Redis 锁仅做并发互斥。
-        // 读取到达行使用 FOR UPDATE 当前读：并发分支的未提交到达行会阻塞本次读取直到对方提交，保证不漏数。
-        if (rootNode != null) {
-            WfNodeConfig gateway = findParentGateway(rootNode, node.getId());
-            if (gateway != null) {
-                String branchKey = arrivalSourceObj instanceof String && StringUtils.hasText((String) arrivalSourceObj)
-                        ? (String) arrivalSourceObj
-                        : "unknown:" + UUID.randomUUID();
-                RLock joinLock = redissonClient.getLock("lock:join:" + instance.getInstanceId() + ":" + gateway.getId());
-                try {
-                    // watchdog 模式（不设 leaseTime，自动续期），避免业务耗时超过租期导致互斥失效
-                    if (!joinLock.tryLock(10, TimeUnit.SECONDS)) {
-                        throw WorkflowException.invalidState("获取并行网关汇聚锁超时，请稍后重试");
-                    }
-                    try {
-                        // 记录本分支到达（唯一键冲突 = 同一分支重复到达，幂等忽略）
-                        try {
-                            WfParallelJoin arrival = new WfParallelJoin();
-                            arrival.setTenantId(instance.getTenantId());
-                            arrival.setInstanceId(instance.getInstanceId());
-                            arrival.setGatewayId(gateway.getId());
-                            arrival.setBranchKey(branchKey);
-                            arrival.setCreateTime(LocalDateTime.now());
-                            parallelJoinMapper.insert(arrival);
-                        } catch (org.springframework.dao.DuplicateKeyException e) {
-                            log.warn("[runNode] 并行分支重复到达汇聚点，忽略: instanceId={}, gatewayId={}, branchKey={}",
-                                    instance.getInstanceId(), gateway.getId(), branchKey);
-                        }
-                        int arrived = parallelJoinMapper.selectIdsForUpdate(instance.getInstanceId(), gateway.getId()).size();
-                        int totalBranches = resolveBranchRouting(gateway, rootNode).branches().size();
-                        if (arrived < totalBranches) {
-                            log.info("[runNode] 并行汇聚等待其他分支: instanceId={}, gatewayId={}, arrived={}/{}",
-                                    instance.getInstanceId(), gateway.getId(), arrived, totalBranches);
-                            return; // 等待其他分支（本分支到达记录随本事务提交）
-                        }
-                        // 全部到达：同事务清理到达记录后继续执行汇聚点
-                        parallelJoinMapper.delete(new LambdaQueryWrapper<WfParallelJoin>()
-                                .eq(WfParallelJoin::getInstanceId, instance.getInstanceId())
-                                .eq(WfParallelJoin::getGatewayId, gateway.getId()));
-                    } finally {
-                        if (joinLock.isHeldByCurrentThread()) {
-                            joinLock.unlock();
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw WorkflowException.invalidState("并行网关汇聚处理被中断");
-                }
-            }
-        }
+    private void executeNode(WfProcessInstance instance, WfNodeConfig node, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
 
         // P2-10: inputs 数据流映射 — 节点执行前，从流程变量提取到节点局部作用域
         // inputs 配置格式: {"localVar": "processVar"} — 将流程变量 processVar 的值映射为节点可见的 localVar
@@ -187,11 +160,12 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
         // 全局监听器 — 节点开始执行前回调
         globalListenerDispatcher.fireStart(instance, node, variables);
+        hParticipantPolicy.assertNodeExecution(instance, node, variables);
         workflowEventPublisher.publishNodeStarted(instance, node);
 
         // 按节点类型分发处理
-        if ("APPROVAL".equals(node.getType())) {
-            handleApprovalNode(node, instance, variables);
+        if ("APPROVAL".equals(node.getType()) || ("PARALLEL".equals(node.getType()) && StringUtils.hasText(node.getSignType()))) {
+            handleApprovalNode(node, instance, variables, depth, rootNode);
         } else if (nodeHandlerFactory.supports(node.getType())) {
             // 通过节点处理器工厂分发（NOTIFICATION/SCRIPT/COPY/TIMER/SUBPROCESS/MANUAL 等）
             // P2-9: 节点级重试 — 读取 node.getRetry() 配置，失败时自动重试
@@ -201,18 +175,31 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 applyOutputsMapping(node, variables, instance);
                 // 全局监听器 — 非审批节点执行完成后回调
                 globalListenerDispatcher.fireFinish(instance, node, variables);
-                workflowEventPublisher.publishNodeCompleted(instance, node);
-                advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
+                Object triggerCompletion = variables == null ? null
+                        : variables.remove(com.cloudflow.workflow.service.WorkflowTriggerService.COMPLETION_PREFIX + node.getId());
+                if (triggerCompletion instanceof String semantic) {
+                    TaskSemanticContext.withType(semantic, () -> workflowEventPublisher.publishNodeCompleted(instance, node));
+                    com.cloudflow.workflow.service.WorkflowCompletionContext.automatically(() -> {
+                        advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
+                        return null;
+                    });
+                } else {
+                    workflowEventPublisher.publishNodeCompleted(instance, node);
+                    advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
+                }
             }
+        } else if ("ROUTE".equals(node.getType())) {
+            handleRouteGateway(node, instance, variables, depth, rootNode);
+            workflowEventPublisher.publishNodeCompleted(instance, node);
         } else if ("CONDITION".equals(node.getType()) || "GATEWAY".equals(node.getType())) {
             handleConditionGateway(node, instance, variables, depth, rootNode);
             workflowEventPublisher.publishNodeCompleted(instance, node);
-        } else if ("PARALLEL".equals(node.getType())) {
+        } else if (WorkflowGatewayTopology.isSplit(node)) {
             handleParallelGateway(node, instance, variables, depth, rootNode);
             workflowEventPublisher.publishNodeCompleted(instance, node);
         } else if ("END".equals(node.getType())) {
             workflowEventPublisher.publishNodeCompleted(instance, node);
-            completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
+            completeInstance(instance, WfProcessStatus.PASSED.getCode());
         } else if ("START".equals(node.getType())) {
             // 开始节点直接继续
             workflowEventPublisher.publishNodeCompleted(instance, node);
@@ -230,7 +217,13 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     /**
      * 处理审批节点：创建审批任务或会签任务
      */
-    private void handleApprovalNode(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables) {
+    private void handleApprovalNode(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables,
+                                    int depth, WfNodeConfig rootNode) {
+        if ("MULTI_LEVEL_MANAGER".equals(node.getApproverType()) && "SKIP".equals(node.getDirectorFallback())
+                && resolveAssignee(node, instance) == null) {
+            skipApprovalNode(node, instance, variables, depth, rootNode, "主管层级不足，按配置跳过");
+            return;
+        }
         // 检查是否为会签节点
         String signType = node.getSignType();
         if (signType != null && !signType.isEmpty()) {
@@ -246,14 +239,21 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 assigneeIds.add(singleAssignee);
             }
 
+            hParticipantPolicy.assertAssignees(instance, node, assigneeIds);
+            assigneeIds = applySelfApprovalToGroup(node, instance, assigneeIds);
+            hParticipantPolicy.assertAssignees(instance, node, assigneeIds);
+            if (assigneeIds.isEmpty()) {
+                skipApprovalNode(node, instance, variables, depth, rootNode, "自审策略自动跳过");
+                return;
+            }
             Integer passPercent = node.getPassPercent();
             countersignService.createCountersignTask(
                 instance.getInstanceId(), node.getId(), node.getTitle(),
-                signType, passPercent, assigneeIds
+                signType, passPercent, assigneeIds, node
             );
 
             for (Long assigneeId : assigneeIds) {
-                sysNoticeService.sendNotice(assigneeId, "会签任务通知",
+                sysNoticeService.send(assigneeId, "会签任务通知",
                     "您有一个新的会签任务: " + node.getTitle() + " (流程: " + instance.getTitle() + ")",
                     "1", UserContext.getUserId(), UserContext.getUserName());
             }
@@ -263,6 +263,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
         // 普通审批模式：创建单个用户任务
         WfTask task = new WfTask();
+        task.setTaskType(TaskSemanticContext.resolve(WfTaskType.forNode(node)));
         task.setTaskId(UUID.randomUUID().toString());
         task.setTenantId(instance.getTenantId());
         task.setInstanceId(instance.getInstanceId());
@@ -270,6 +271,16 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         task.setNodeKey(node.getId());
 
         Long assigneeId = resolveAssignee(node, instance);
+        hParticipantPolicy.assertAssignees(instance, node, Collections.singletonList(assigneeId));
+        SelfApprovalPolicy.Resolution selfResolution = selfApprovalPolicy.resolve(assigneeId, node, instance);
+        if (selfResolution.skipped()) {
+            skipApprovalNode(node, instance, variables, depth, rootNode, selfResolution.note());
+            return;
+        }
+        assigneeId = selfResolution.assignee();
+        if (selfResolution.note() != null) {
+            recordNodePolicyNote(node, instance, WfTaskType.APPROVAL.name(), "RUNNING", selfResolution.note());
+        }
         if (assigneeId == null) {
             throw WorkflowException.validationError(String.format(
                 "审批节点[%s]无法解析到审批人，请检查流程定义的审批人配置", node.getTitle()));
@@ -279,27 +290,104 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         task.setAllowEdit(Boolean.TRUE.equals(node.getAllowEdit()));
         task.setStatus(WfTaskStatus.TODO.getCode());
         task.setCreateTime(LocalDateTime.now());
-        taskMapper.insert(task);
+        hParticipantPolicy.assertTaskAssignment(task, task.getAssignee());
+        agents.createTask(task);
         recordTaskMonitor(instance, task);
 
         // P2-9: 全局监听器 — 审批任务分配后回调
         globalListenerDispatcher.fireAssignment(instance, task, node);
 
         // 发送通知
-        sysNoticeService.sendNotice(task.getAssignee(), "待办任务通知",
+        sysNoticeService.send(task.getAssignee(), "待办任务通知",
             "您有一个新的待办任务: " + node.getTitle() + " (流程: " + instance.getTitle() + ")",
             "1", UserContext.getUserId(), UserContext.getUserName());
 
         // SLA 超时注册
         if (node.getSlaHours() != null && node.getSlaHours() > 0) {
-            long expireTime = System.currentTimeMillis() + node.getSlaHours() * 3600 * 1000L;
-            redisCache.setCacheZSet("sys:task:timeouts", task.getTaskId(), (double) expireTime);
-            taskReminderJob.registerReminders(task.getTaskId(), node.getSlaHours());
+            taskReminderJob.registerAfterCommit(task.getTaskId(), node.getSlaHours());
         }
 
         // 发布任务分配事件
         String assigneeName = task.getAssigneeName();
-        workflowEventPublisher.publishTaskAssigned(instance, task.getTaskId(), node.getId(), node.getTitle(), task.getAssignee(), assigneeName);
+        workflowEventPublisher.publishTaskAssigned(instance, task.getTaskId(), node.getId(), node.getTitle(), task.getAssignee(), assigneeName, task.getTaskType());
+    }
+
+    private void skipApprovalNode(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables,
+                                  int depth, WfNodeConfig rootNode, String reason) {
+        hParticipantPolicy.assertNoAutomaticSkip(instance);
+        WfTaskHistory history = recordSkippedApproval(node, instance, reason);
+        workflowEventPublisher.publishTaskCompleted(instance, history.getTaskId(), node.getId(), node.getTitle(),
+                "AUTO_SKIP", reason, WfTaskType.AUTO_SKIP.name());
+        applyOutputsMapping(node, variables, instance);
+        globalListenerDispatcher.fireFinish(instance, node, variables);
+        TaskSemanticContext.withType(WfTaskType.AUTO_SKIP.name(), () -> workflowEventPublisher.publishNodeCompleted(instance, node));
+        advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
+    }
+
+    private WfTaskHistory recordSkippedApproval(WfNodeConfig node, WfProcessInstance instance, String reason) {
+        WfTaskHistory history = new WfTaskHistory();
+        history.setHistoryId(UUID.randomUUID().toString());
+        history.setTaskId(UUID.randomUUID().toString());
+        history.setTenantId(instance.getTenantId());
+        history.setInstanceId(instance.getInstanceId());
+        history.setNodeKey(node.getId());
+        history.setNodeName(node.getTitle());
+        history.setOperatorId(0L);
+        history.setOperatorName("系统");
+        history.setAction("AUTO_SKIP");
+        history.setTaskType(WfTaskType.AUTO_SKIP.name());
+        history.setComment(reason);
+        history.setCreateTime(LocalDateTime.now());
+        taskHistoryMapper.insert(history);
+        return history;
+    }
+
+    private List<Long> applySelfApprovalToGroup(WfNodeConfig node, WfProcessInstance instance, List<Long> assignees) {
+        if (node.getApproveSelf() == null || "ALLOW".equals(node.getApproveSelf())) {
+            return assignees;
+        }
+        Set<Long> remaining = new LinkedHashSet<>();
+        boolean skippedStarter = false;
+        for (Long assignee : assignees) {
+            SelfApprovalPolicy.Resolution resolution = selfApprovalPolicy.resolve(assignee, node, instance);
+            if (resolution.skipped()) {
+                skippedStarter = true;
+            } else {
+                remaining.add(resolution.assignee());
+                if (resolution.note() != null) {
+                    recordNodePolicyNote(node, instance, WfTaskType.APPROVAL.name(), "RUNNING", resolution.note());
+                }
+            }
+        }
+        if (skippedStarter && !remaining.isEmpty()) {
+            String reason = "会签中的发起人按自审策略自动跳过，其余人员继续审批";
+            recordSkippedApproval(node, instance, reason);
+            recordNodePolicyNote(node, instance, WfTaskType.AUTO_SKIP.name(), "SKIPPED", reason);
+        }
+        return new ArrayList<>(remaining);
+    }
+
+    private void recordNodePolicyNote(WfNodeConfig node, WfProcessInstance instance, String taskType,
+                                      String status, String note) {
+        WfNodeRecord record = new WfNodeRecord();
+        record.setInstanceId(instance.getInstanceId());
+        record.setProcessDefKey(instance.getProcessDefKey());
+        record.setNodeKey(node.getId());
+        record.setNodeName(node.getTitle());
+        record.setNodeType(node.getType());
+        record.setStatus(status);
+        record.setEventType(taskType);
+        record.setExecutorId(instance.getStartUserId());
+        record.setExecutorName(instance.getStartUserName());
+        record.setEventTime(LocalDateTime.now());
+        record.setStartTime(LocalDateTime.now());
+        record.setCreateTime(LocalDateTime.now());
+        try {
+            record.setExtraData(objectMapper.writeValueAsString(Map.of("policyNote", note)));
+        } catch (Exception exception) {
+            throw new WorkflowException("POLICY_RECORD_FAILED", "自审策略留痕失败", exception);
+        }
+        nodeRecordMapper.insert(record);
     }
 
     private void recordTaskMonitor(WfProcessInstance instance, WfTask task) {
@@ -370,8 +458,8 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 List<String> conditions = branches.stream()
                     .map(b -> b.getCondition() != null ? b.getCondition() : "(空)")
                     .collect(Collectors.toList());
-                log.warn("[handleConditionGateway] 排他网关 '{}' (id={}) 所有分支条件均不满足，将走默认出边(default)。 instanceId={}, 分支条件={}, 当前变量={}",
-                    node.getTitle(), node.getId(), instance.getInstanceId(), conditions, variables);
+                log.warn("[handleConditionGateway] 排他网关 '{}' (id={}) 所有分支条件均不满足，将走默认出边(default)。 instanceId={}, 分支条件={}",
+                    node.getTitle(), node.getId(), instance.getInstanceId(), conditions);
             }
             runNode(instance, routing.defaultNext(), variables, depth + 1, rootNode);
         }
@@ -387,20 +475,28 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
      * 因此这里对 CONDITION 类型的分支头节点做特殊处理：跳过条件评估，直接执行其 next 链。
      */
     private void handleParallelGateway(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
-        BranchRouting routing = resolveBranchRouting(node, rootNode);
-        List<WfNodeConfig> branches = routing.branches();
-        if (branches != null) {
-            for (WfNodeConfig branch : branches) {
-                WfNodeConfig branchEntry = resolveParallelBranchEntry(branch, rootNode);
-                if (branchEntry == null) {
-                    throw WorkflowException.validationError(String.format(
-                        "并行分支节点 %s(%s) 未配置有效后继节点",
-                        branch.getTitle(),
-                        branch.getId()));
-                }
-                runNode(instance, branchEntry, variables, depth + 1, rootNode);
-            }
+        WorkflowRuntimeGraph graph = requireRuntimeGraph(rootNode);
+        WorkflowGatewayTopology.Split split = WorkflowGatewayTopology.split(graph, node);
+        List<WorkflowRuntimeGraph.EdgeLink> selected = com.cloudflow.workflow.model.WorkflowGatewayRouting.select(
+                graph, node, expression -> evaluateCondition(expression, variables));
+        if (selected.isEmpty()) throw gateways.noMatch(instance, node);
+        WfGatewayActivation activation = gateways.activate(instance, split, selected.stream().map(WorkflowRuntimeGraph.EdgeLink::getId).toList());
+        WorkflowExecutionContext.Frame parent = WorkflowExecutionContext.current();
+        for (WorkflowRuntimeGraph.EdgeLink edge : selected) {
+            WfNodeConfig entry = resolveParallelBranchEntry(graph.getNode(edge.getTargetId()), rootNode);
+            if (entry == null) throw WorkflowExecutionContext.invalid();
+            Map<String, Object> branchVariables = WorkflowExecutionContext.copyVariables(variables);
+            WorkflowExecutionContext.run(new WorkflowExecutionContext.Frame(activation.getActivationId(), edge.getId(), parent),
+                    () -> runNode(instance, entry, branchVariables, depth + 1, rootNode));
         }
+    }
+
+    private void handleRouteGateway(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
+        WorkflowRuntimeGraph graph = requireRuntimeGraph(rootNode);
+        List<WorkflowRuntimeGraph.EdgeLink> selected = com.cloudflow.workflow.model.WorkflowGatewayRouting.select(
+                graph, node, expression -> evaluateCondition(expression, variables));
+        if (selected.isEmpty()) throw gateways.noMatch(instance, node);
+        runNode(instance, resolveExclusiveBranchEntry(graph.getNode(selected.get(0).getTargetId()), rootNode), variables, depth + 1, rootNode);
     }
 
     private WorkflowRuntimeGraph resolveRuntimeGraph(WfNodeConfig rootNode) {
@@ -420,6 +516,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
      */
     private BranchRouting resolveBranchRouting(WfNodeConfig currentNode, WfNodeConfig rootNode) {
         if (currentNode == null) {
+            if (WorkflowExecutionContext.current() != null) throw WorkflowExecutionContext.invalid();
             return BranchRouting.empty();
         }
 
@@ -534,8 +631,10 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     @Override
     public void advanceAfterNode(WfProcessInstance instance, WfNodeConfig currentNode, String currentNodeKey,
                                   Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
+        hParticipantPolicy.assertRuntimeVariables(instance, variables);
         if (currentNode == null) {
-            completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
+            if (WorkflowExecutionContext.current() != null) throw WorkflowExecutionContext.invalid();
+            completeInstance(instance, WfProcessStatus.PASSED.getCode());
             return;
         }
 
@@ -561,16 +660,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             }
 
             if ("PARALLEL".equals(strategy)) {
-                for (WfNodeConfig branch : branches) {
-                    WfNodeConfig branchEntry = resolveParallelBranchEntry(branch, rootNode);
-                    if (branchEntry == null) {
-                        throw WorkflowException.validationError(String.format(
-                            "并行分支节点 %s(%s) 未配置有效后继节点",
-                            branch.getTitle(),
-                            branch.getId()));
-                    }
-                    runNode(instance, branchEntry, variables, depth + 1, rootNode);
-                }
+                handleParallelGateway(currentNode, instance, variables, depth, rootNode);
                 return;
             }
 
@@ -595,51 +685,28 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 List<String> conditions = branches.stream()
                     .map(b -> b.getCondition() != null ? b.getCondition() : "(空)")
                     .collect(Collectors.toList());
-                log.warn("[advanceAfterNode] 排他网关 '{}' (id={}) 所有分支条件均不满足，将走默认出边(default)。 instanceId={}, 分支条件={}, 当前变量={}",
-                    currentNode.getTitle(), currentNode.getId(), instance.getInstanceId(), conditions, variables);
+                log.warn("[advanceAfterNode] 排他网关 '{}' (id={}) 所有分支条件均不满足，将走默认出边(default)。 instanceId={}, 分支条件={}",
+                    currentNode.getTitle(), currentNode.getId(), instance.getInstanceId(), conditions);
             }
         }
 
         WfNodeConfig nextNode = routing.defaultNext();
 
         if (nextNode != null) {
-            // 记录到达来源（若下一节点是并行汇聚点，用于分支到达标识）
-            if (variables != null) {
-                variables.put(JOIN_ARRIVAL_SOURCE_VARIABLE, currentNodeKey);
-            }
             runNode(instance, nextNode, variables, depth + 1, rootNode);
         } else {
-            WfNodeConfig parallelJoinNode = findParallelJoinNodeForBranch(rootNode, currentNode.getId());
-            if (parallelJoinNode != null) {
-                if (variables != null) {
-                    variables.put(JOIN_ARRIVAL_SOURCE_VARIABLE, currentNodeKey);
-                }
-                runNode(instance, parallelJoinNode, variables, depth + 1, rootNode);
-            } else {
-                completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
-            }
+            if (WorkflowExecutionContext.current() != null) throw WorkflowExecutionContext.invalid();
+            completeInstance(instance, WfProcessStatus.PASSED.getCode());
         }
     }
 
     @Override
     public void completeInstance(WfProcessInstance instance, String status) {
-        List<WfTask> remainingTasks = taskMapper.selectList(
-                new LambdaQueryWrapper<WfTask>()
-                        .eq(WfTask::getInstanceId, instance.getInstanceId())
-                        .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-        );
-        if (remainingTasks != null && !remainingTasks.isEmpty()) {
-            for (WfTask task : remainingTasks) {
-                if (StringUtils.hasText(task.getTaskId())) {
-                    taskReminderJob.cancelReminders(task.getTaskId());
-                    cleanupTaskArtifacts(task.getTaskId());
-                }
-            }
+        hParticipantPolicy.assertCompletion(instance, status);
+        if (WfProcessStatus.PASSED.getCode().equals(status) && WorkflowCompletionContext.isAutomatic()) {
+            status = WfProcessStatus.AUTO_PASSED.getCode();
         }
-
-        instance.setStatus(status);
-        instance.setEndTime(LocalDateTime.now());
-        processInstanceMapper.updateById(instance);
+        processStateService.transition(instance, WfProcessStatus.fromCode(status));
 
         // 记录流程结束监控
         try {
@@ -652,7 +719,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             log.warn("[completeInstance] 记录流程结束监控失败: {}", e.getMessage());
         }
 
-        if (WfProcessStatus.COMPLETED.getCode().equals(status)) {
+        if (WfProcessStatus.isSuccess(status)) {
             workflowEventPublisher.publishProcessCompleted(instance);
         }
 
@@ -704,128 +771,34 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         return nextNode;
     }
 
-    private WfNodeConfig findParentGateway(WfNodeConfig root, String targetNodeId) {
-        if (root == null || !StringUtils.hasText(targetNodeId)) {
-            return null;
-        }
-
-        WorkflowRuntimeGraph runtimeGraph = requireRuntimeGraph(root);
-        for (String nodeId : runtimeGraph.getNodeIds()) {
-            WfNodeConfig candidate = runtimeGraph.getNode(nodeId);
-            if (candidate == null || !"PARALLEL".equals(candidate.getType())) {
-                continue;
-            }
-            WorkflowRuntimeGraph.EdgeLink defaultEdge = null;
-            for (WorkflowRuntimeGraph.EdgeLink edge : runtimeGraph.getOutgoingEdges(nodeId)) {
-                if (edge.isDefault()) {
-                    defaultEdge = edge;
-                    break;
-                }
-            }
-            if (defaultEdge != null && targetNodeId.equals(defaultEdge.getTargetId())) {
-                return candidate;
-            }
-        }
-        return null;
-    }
-
-    // ==================== 条件评估 ====================
-
-    private WfNodeConfig findParallelJoinNodeForBranch(WfNodeConfig root, String currentNodeId) {
-        if (root == null || !StringUtils.hasText(currentNodeId)) {
-            return null;
-        }
-
-        WorkflowRuntimeGraph runtimeGraph = requireRuntimeGraph(root);
-        for (String nodeId : runtimeGraph.getNodeIds()) {
-            WfNodeConfig candidate = runtimeGraph.getNode(nodeId);
-            if (candidate == null || !"PARALLEL".equals(candidate.getType())) {
-                continue;
-            }
-
-            WorkflowRuntimeGraph.EdgeLink defaultEdge = null;
-            List<WorkflowRuntimeGraph.EdgeLink> outgoingEdges = runtimeGraph.getOutgoingEdges(nodeId);
-            for (WorkflowRuntimeGraph.EdgeLink edge : outgoingEdges) {
-                if (edge.isDefault()) {
-                    defaultEdge = edge;
-                    break;
-                }
-            }
-            if (defaultEdge == null) {
-                continue;
-            }
-
-            for (WorkflowRuntimeGraph.EdgeLink edge : outgoingEdges) {
-                if (edge == defaultEdge) {
-                    continue;
-                }
-                if (isReachableInBranch(runtimeGraph, edge.getTargetId(), currentNodeId, new HashSet<>())) {
-                    return runtimeGraph.getNode(defaultEdge.getTargetId());
-                }
-            }
-        }
-        return null;
-    }
-
-    private boolean isReachableInBranch(WorkflowRuntimeGraph runtimeGraph,
-                                        String fromNodeId,
-                                        String targetNodeId,
-                                        Set<String> visited) {
-        if (!StringUtils.hasText(fromNodeId) || !visited.add(fromNodeId)) {
-            return false;
-        }
-        if (fromNodeId.equals(targetNodeId)) {
-            return true;
-        }
-        List<WorkflowRuntimeGraph.EdgeLink> outgoingEdges = runtimeGraph.getOutgoingEdges(fromNodeId);
-        if (outgoingEdges == null || outgoingEdges.isEmpty()) {
-            return false;
-        }
-        for (WorkflowRuntimeGraph.EdgeLink edge : outgoingEdges) {
-            if (isReachableInBranch(runtimeGraph, edge.getTargetId(), targetNodeId, visited)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Override
     public boolean evaluateCondition(String condition, Map<String, Object> variables) {
         if (!StringUtils.hasText(condition)) return true;
-        String decodedCondition = decodeHtmlEntities(condition);
-        String trimmed = decodedCondition.trim();
+        String trimmed = condition.trim();
         if (!trimmed.startsWith("{")) {
             try {
-                securityUtils.validateSpelExpression(decodedCondition);
+                securityUtils.validateSpelExpression(condition);
             } catch (Exception e) {
                 log.warn("[evaluateCondition] SpEL 表达式安全校验失败: {}", e.getMessage());
                 return false;
             }
         }
-        return conditionExpressionEngine.evaluate(decodedCondition, variables);
+        return conditionExpressionEngine.evaluate(condition, variables);
     }
 
     // ==================== 人员分配 ====================
 
-    private String decodeHtmlEntities(String source) {
-        if (!StringUtils.hasText(source)) {
-            return source;
-        }
-        return source
-                .replace("&quot;", "\"")
-                .replace("&#39;", "'")
-                .replace("&lt;", "<")
-                .replace("&gt;", ">")
-                .replace("&amp;", "&");
-    }
-
     @Override
     public Long resolveAssignee(WfNodeConfig node, WfProcessInstance instance) {
+        List<Long> frozen = hParticipantPolicy.resolveFrozenAssignees(instance, node);
+        if (frozen != null) return frozen.get(0);
         return assignUserStrategyFactory.resolve(node, instance);
     }
 
     @Override
     public List<Long> resolveMultipleAssignees(WfNodeConfig node, WfProcessInstance instance) {
+        List<Long> frozen = hParticipantPolicy.resolveFrozenAssignees(instance, node);
+        if (frozen != null) return frozen;
         return assignUserStrategyFactory.resolveMultiple(node, instance);
     }
 
@@ -941,14 +914,6 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
         if (routing.defaultNext() != null && StringUtils.hasText(routing.defaultNext().getId())) {
             collectApprovalStepsByGraph(root, routing.defaultNext().getId(), steps, visited);
-        }
-    }
-
-    private void cleanupTaskArtifacts(String taskId) {
-        try {
-            taskMapper.deleteById(taskId);
-        } catch (Exception e) {
-            log.warn("[cleanupTaskArtifacts] 删除残留任务失败, taskId={}, error={}", taskId, e.getMessage());
         }
     }
 
@@ -1295,6 +1260,11 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 }
                 return result;
             } catch (Exception e) {
+                // 管理员禁止的操作须直接拒绝并回滚，不能按可恢复故障重试或旁路放行。
+                if (e instanceof WorkflowException workflowException
+                        && "NODE_ACTION_FORBIDDEN".equals(workflowException.getCode())) {
+                    throw workflowException;
+                }
                 lastException = e;
                 log.warn("[executeWithRetry] 节点 '{}' (id={}) 执行失败 (第 {}/{} 次), instanceId={}: {}",
                         node.getTitle(), node.getId(), attempt + 1, maxRetries + 1,
@@ -1358,18 +1328,18 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 vars = objectMapper.readValue(instance.getVariables(), Map.class);
             }
             vars.put(FAILED_NODE_KEY_VARIABLE, nodeKey);
+            vars.put(WorkflowWaitState.FAILED_CONTEXT, WorkflowExecutionContext.capture());
             instance.setVariables(objectMapper.writeValueAsString(vars));
         } catch (Exception e) {
             log.error("[suspendInstanceForNodeFailure] 记录失败节点变量失败, instanceId={}: {}",
                     instance.getInstanceId(), e.getMessage());
         }
-        instance.setStatus(WfProcessStatus.SUSPENDED.getCode());
-        processInstanceMapper.updateById(instance);
+        processStateService.transition(instance, WfProcessStatus.PAUSED);
         log.error("[suspendInstanceForNodeFailure] 节点执行失败，流程已挂起, instanceId={}, nodeKey={}, 原因: {}",
                 instance.getInstanceId(), nodeKey, reason);
 
         try {
-            sysNoticeService.sendNotice(instance.getStartUserId(), "流程已挂起",
+            sysNoticeService.send(instance.getStartUserId(), "流程已挂起",
                 "流程 [" + instance.getTitle() + "] 的节点 [" + nodeTitle + "] 执行失败，流程已挂起，请联系管理员处理后恢复流程",
                 "1", UserContext.getUserId(), UserContext.getUserName());
         } catch (Exception e) {
@@ -1409,7 +1379,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             Object value = resolveNestedValue(variables, sourceKey);
             if (value != null) {
                 variables.put(localKey, value);
-                log.debug("[applyInputsMapping] 节点 '{}': {} <- {} = {}", node.getId(), localKey, sourceKey, value);
+                log.debug("[applyInputsMapping] 节点 '{}': {} <- {}", node.getId(), localKey, sourceKey);
             }
         }
     }
@@ -1444,14 +1414,15 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             if (value != null) {
                 variables.put(targetKey, value);
                 changed = true;
-                log.debug("[applyOutputsMapping] 节点 '{}': {} <- {} = {}", node.getId(), targetKey, sourceKey, value);
+                log.debug("[applyOutputsMapping] 节点 '{}': {} <- {}", node.getId(), targetKey, sourceKey);
             }
         }
 
         // 如果有变量变更，持久化到流程实例
         if (changed) {
+            hParticipantPolicy.assertRuntimeVariables(instance, variables);
             try {
-                instance.setVariables(objectMapper.writeValueAsString(variables));
+                WorkflowWaitState.save(instance, variables);
                 processInstanceMapper.updateById(instance);
             } catch (Exception e) {
                 log.warn("[applyOutputsMapping] 持久化流程变量失败: {}", e.getMessage());

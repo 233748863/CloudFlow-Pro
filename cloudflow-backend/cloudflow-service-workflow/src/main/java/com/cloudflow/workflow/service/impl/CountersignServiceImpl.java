@@ -1,10 +1,23 @@
 package com.cloudflow.workflow.service.impl;
 
+import com.cloudflow.workflow.service.WorkflowBusinessLockService;
+import com.cloudflow.workflow.service.WorkflowBusinessLockService.BusinessLock;
+
+import com.cloudflow.workflow.domain.enums.WfTaskType;
+import com.cloudflow.workflow.service.TaskSemanticContext;
+import com.cloudflow.workflow.service.CountersignWeightService;
+import com.cloudflow.workflow.service.WorkflowNodePolicy;
+import com.cloudflow.workflow.service.WorkflowAgentService;
+import com.cloudflow.workflow.service.WorkflowPermissionService;
+import com.cloudflow.common.core.context.UserContext;
+
 import com.cloudflow.workflow.service.ICountersignService;
 import com.cloudflow.common.audit.annotation.Audit;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
@@ -17,7 +30,7 @@ import com.cloudflow.workflow.service.monitor.IProcessMonitorService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.workflow.config.properties.WorkflowProperties;
-import org.redisson.api.RLock;
+
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +67,26 @@ public class CountersignServiceImpl implements ICountersignService {
     private WfCountersignVoteMapper countersignVoteMapper;
 
     @Autowired
+    private WfTaskHistoryMapper taskHistoryMapper;
+
+    @Autowired
+    private WfNodeRecordMapper nodeRecordMapper;
+
+    @Autowired
+    private CountersignWeightService weightService;
+
+    @Autowired
+    private WorkflowNodePolicy nodePolicy;
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowHParticipantPolicy hParticipantPolicy;
+
+    @Autowired
+    private WorkflowAgentService agents;
+
+    @Autowired
+    private WorkflowPermissionService permissionService;
+
+    @Autowired
     private WfTaskMapper taskMapper;
 
     @Autowired
@@ -69,6 +102,9 @@ public class CountersignServiceImpl implements ICountersignService {
     private SysUserMapper sysUserMapper;
 
     @Autowired
+    private WorkflowBusinessLockService businessLocks;
+
+    @Autowired
     private RedissonClient redissonClient;
 
     @Autowired
@@ -77,7 +113,7 @@ public class CountersignServiceImpl implements ICountersignService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
-    private com.cloudflow.workflow.service.ISysNoticeService sysNoticeService;
+    private com.cloudflow.common.message.api.MessageSender sysNoticeService;
 
     @Autowired
     private com.cloudflow.workflow.job.TaskReminderJob taskReminderJob;
@@ -96,6 +132,16 @@ public class CountersignServiceImpl implements ICountersignService {
     @Transactional(rollbackFor = Exception.class)
     public String createCountersignTask(String instanceId, String nodeKey, String nodeName,
                                          String signType, Integer passPercent, List<Long> assigneeIds) {
+        WfNodeConfig node = "WEIGHT".equals(signType)
+                ? nodePolicy.resolveNode(processInstanceMapper.selectById(instanceId), nodeKey) : null;
+        return createCountersignTask(instanceId, nodeKey, nodeName, signType, passPercent, assigneeIds, node);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public String createCountersignTask(String instanceId, String nodeKey, String nodeName,
+                                        String signType, Integer passPercent, List<Long> assigneeIds,
+                                        WfNodeConfig node) {
         log.info("[createCountersignTask] 创建会签任务, instanceId={}, nodeKey={}, signType={}, assignees={}",
                 instanceId, nodeKey, signType, assigneeIds == null ? 0 : assigneeIds.size());
 
@@ -104,8 +150,9 @@ public class CountersignServiceImpl implements ICountersignService {
         }
 
         // 校验会签类型
-        if (!"ALL".equals(signType) && !"ANY".equals(signType) && !"PERCENT".equals(signType) && !"SEQUENTIAL".equals(signType)) {
-            throw WorkflowException.validationError("无效的会签类型: " + signType + "，支持: ALL/ANY/PERCENT/SEQUENTIAL");
+        if (!"ALL".equals(signType) && !"ANY".equals(signType) && !"PERCENT".equals(signType)
+                && !"SEQUENTIAL".equals(signType) && !"WEIGHT".equals(signType)) {
+            throw WorkflowException.validationError("无效的会签类型: " + signType + "，支持: ALL/ANY/PERCENT/SEQUENTIAL/WEIGHT");
         }
 
         if ("PERCENT".equals(signType) && (passPercent == null || passPercent < 1 || passPercent > 100)) {
@@ -116,6 +163,7 @@ public class CountersignServiceImpl implements ICountersignService {
         if (instance == null) {
             throw WorkflowException.instanceNotFound(instanceId);
         }
+        hParticipantPolicy.assertAssignees(instance, node, assigneeIds);
 
         // 1. 创建会签主记录
         WfCountersignTask csTask = new WfCountersignTask();
@@ -143,6 +191,18 @@ public class CountersignServiceImpl implements ICountersignService {
             csTask.setCurrentIndex(0);
         }
 
+        Map<Long, BigDecimal> weights = Map.of();
+        if ("WEIGHT".equals(signType)) {
+            if (node == null) {
+                throw WorkflowException.validationError("票签节点缺少权重配置");
+            }
+            weights = weightService.resolve(node, instance, assigneeIds);
+            csTask.setPassWeight(node.getPassWeight());
+            csTask.setTotalWeight(CountersignWeightService.total(weights, node.getPassWeight()));
+            csTask.setApproveWeight(BigDecimal.ZERO);
+            csTask.setRejectWeight(BigDecimal.ZERO);
+            csTask.setVersion(0);
+        }
         countersignTaskMapper.insert(csTask);
 
         // 2. 创建审批任务
@@ -151,7 +211,7 @@ public class CountersignServiceImpl implements ICountersignService {
             Long firstAssignee = assigneeIds.get(0);
             WfTask task = buildCountersignTask(instance, csTask, firstAssignee,
                     nodeName + " (顺序签署 1/" + assigneeIds.size() + ")");
-            taskMapper.insert(task);
+            agents.createTask(task);
             createTaskMonitor(instance, task);
 
             log.info("[createCountersignTask] 顺序签署任务创建成功, countersignId={}, 第1个签署人={}, 共{}人",
@@ -160,7 +220,10 @@ public class CountersignServiceImpl implements ICountersignService {
             // ALL/ANY/PERCENT：为每个参与人同时创建独立的任务
             for (Long assigneeId : assigneeIds) {
                 WfTask task = buildCountersignTask(instance, csTask, assigneeId, nodeName + " (会签)");
-                taskMapper.insert(task);
+                agents.createTask(task);
+                if ("WEIGHT".equals(signType)) {
+                    insertWeightSnapshot(csTask, task, weights.get(assigneeId));
+                }
                 createTaskMonitor(instance, task);
             }
 
@@ -183,7 +246,7 @@ public class CountersignServiceImpl implements ICountersignService {
      * @param comment    投票意见
      * @return 会签结果: VOTING(继续投票) / PASSED(通过) / REJECTED(拒绝)
      */
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY, rollbackFor = Exception.class)
     public String vote(String taskId, Long voterId, String voterName, String voteResult, String comment) {
         log.info("[vote] 会签投票, taskId={}, voterId={}, voteResult={}", taskId, voterId, voteResult);
 
@@ -193,7 +256,7 @@ public class CountersignServiceImpl implements ICountersignService {
         }
 
         // 2. 查询任务，获取会签ID
-        WfTask task = taskMapper.selectById(taskId);
+        WfTask task = agents.lockTask(taskId);
         if (task == null) {
             throw WorkflowException.taskNotFound(taskId);
         }
@@ -202,16 +265,26 @@ public class CountersignServiceImpl implements ICountersignService {
         if (candidateRoles == null || !candidateRoles.startsWith("CS:")) {
             throw WorkflowException.validationError("该任务不是会签任务");
         }
+        hParticipantPolicy.assertTaskAction(task, UserContext.getUserId(), null);
+        permissionService.checkTaskPermission(task);
+        if (!Objects.equals(voterId, task.getAssignee())) throw new WorkflowException("AGENT_FORBIDDEN", "会签只能使用任务原负责人的一个席位");
+        if (Objects.equals(task.getProxyUserId(), UserContext.getUserId())
+                && !Objects.equals(task.getAssignee(), UserContext.getUserId())) {
+            agents.assertAgentAction(task, UserContext.getUserId());
+            if (!Objects.equals(voterId, task.getAssignee())) {
+                throw new WorkflowException("AGENT_FORBIDDEN", "代理会签必须使用原负责人的一个席位");
+            }
+        }
 
         String countersignId = candidateRoles.substring(3);
 
         // 3. 使用分布式锁保证投票原子性
         String lockKey = LOCK_PREFIX + countersignId;
-        RLock lock = redissonClient.getLock(lockKey);
+        BusinessLock lock = businessLocks.getLock(lockKey);
 
         try {
             // 从配置读取锁等待时间（sys.workflow.lock.countersignWait）；
-            // 不设 leaseTime，走 Redisson watchdog 自动续期，避免计票耗时超过租期导致锁提前失效。
+            // 按当前归属持续续期；计票与外层审批共同接受事务提交保护。
             // completeTask 外层已持有同一把锁时此处为可重入加锁。
             long waitSeconds = workflowProperties.getLock().getCountersignWait();
             if (!lock.tryLock(waitSeconds, TimeUnit.SECONDS)) {
@@ -221,7 +294,7 @@ public class CountersignServiceImpl implements ICountersignService {
             // === 锁内操作开始 ===
 
             // 4. 重新查询会签任务（锁内查询确保数据最新）
-            WfCountersignTask csTask = countersignTaskMapper.selectById(countersignId);
+            WfCountersignTask csTask = countersignTaskMapper.selectForUpdate(task.getTenantId(), countersignId);
             if (csTask == null) {
                 throw WorkflowException.validationError("会签任务不存在: " + countersignId);
             }
@@ -240,14 +313,21 @@ public class CountersignServiceImpl implements ICountersignService {
                 new LambdaQueryWrapper<WfCountersignVote>()
                     .eq(WfCountersignVote::getCountersignId, countersignId)
                     .eq(WfCountersignVote::getVoterId, voterId)
+                    .in("WEIGHT".equals(csTask.getSignType()), WfCountersignVote::getVoteResult, "APPROVE", "REJECT")
             );
             if (existingVoteCount != null && existingVoteCount > 0) {
                 throw WorkflowException.invalidState("您已经投过票了，不能重复投票");
             }
 
             // 7. 记录投票（B6: uk(countersign_id, voter_id) 为锁失效场景的最后防线，冲突即重复投票）
-            WfCountersignVote vote = new WfCountersignVote();
-            vote.setVoteId(UUID.randomUUID().toString());
+            WfCountersignVote vote;
+            if ("WEIGHT".equals(csTask.getSignType())) {
+                vote = pendingWeightSnapshot(csTask, task);
+            } else {
+                vote = new WfCountersignVote();
+                vote.setVoteId(UUID.randomUUID().toString());
+                vote.setVoteWeight(BigDecimal.ONE);
+            }
             vote.setTenantId(csTask.getTenantId() != null ? csTask.getTenantId() : task.getTenantId());
             vote.setCountersignId(countersignId);
             vote.setTaskId(taskId);
@@ -257,7 +337,16 @@ public class CountersignServiceImpl implements ICountersignService {
             vote.setComment(comment);
             vote.setVoteTime(LocalDateTime.now());
             try {
-                countersignVoteMapper.insert(vote);
+                if ("WEIGHT".equals(csTask.getSignType())) {
+                    int changed = countersignVoteMapper.update(vote, new LambdaUpdateWrapper<WfCountersignVote>()
+                            .eq(WfCountersignVote::getVoteId, vote.getVoteId())
+                            .eq(WfCountersignVote::getVoteResult, "PENDING"));
+                    if (changed != 1) {
+                        throw WorkflowException.invalidState("票权记录已变更，请刷新后重试");
+                    }
+                } else {
+                    countersignVoteMapper.insert(vote);
+                }
             } catch (org.springframework.dao.DuplicateKeyException e) {
                 throw WorkflowException.invalidState("您已经投过票了，不能重复投票");
             }
@@ -269,9 +358,17 @@ public class CountersignServiceImpl implements ICountersignService {
             } else {
                 csTask.setRejectCount(csTask.getRejectCount() + 1);
             }
+            if ("WEIGHT".equals(csTask.getSignType())) {
+                if ("APPROVE".equals(voteResult)) {
+                    csTask.setApproveWeight(csTask.getApproveWeight().add(vote.getVoteWeight()));
+                } else {
+                    csTask.setRejectWeight(csTask.getRejectWeight().add(vote.getVoteWeight()));
+                }
+            }
 
             // 9. 判定会签结果
-            String result = evaluateCountersignResult(csTask);
+            String refundDecision = hParticipantPolicy.refundDecision(task, voteResult);
+            String result = refundDecision == null ? evaluateCountersignResult(csTask) : refundDecision;
             csTask.setStatus(result);
 
             if (!"VOTING".equals(result)) {
@@ -281,11 +378,11 @@ public class CountersignServiceImpl implements ICountersignService {
                         csTask.getRejectCount(), csTask.getTotalCount());
             }
 
-            countersignTaskMapper.updateById(csTask);
+            updateChecked(csTask);
 
             // P2修复: 取消任务提醒
             try {
-                taskReminderJob.cancelReminders(taskId);
+                taskReminderJob.cancelAfterCommit(taskId);
             } catch (Exception e) {
                 log.warn("[vote] 取消任务提醒失败, taskId={}: {}", taskId, e.getMessage());
             }
@@ -301,7 +398,7 @@ public class CountersignServiceImpl implements ICountersignService {
 
             // 12. 如果会签已结束，清理剩余未投票的任务
             if (!"VOTING".equals(result)) {
-                cleanupRemainingTasks(countersignId);
+                cleanupRemainingTasks(csTask);
             }
 
             // === 锁内操作结束 ===
@@ -312,6 +409,8 @@ public class CountersignServiceImpl implements ICountersignService {
 
         } catch (WorkflowException e) {
             throw e;
+        } catch (org.springframework.dao.PessimisticLockingFailureException conflict) {
+            throw conflict;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new WorkflowException("SYSTEM_BUSY", "系统繁忙，请稍后重试");
@@ -319,8 +418,8 @@ public class CountersignServiceImpl implements ICountersignService {
             log.error("[vote] 会签投票异常, taskId={}, error={}", taskId, e.getMessage(), e);
             throw new WorkflowException("VOTE_FAILED", "投票失败: " + e.getMessage(), e);
         } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
+            if (lock != null) {
+                lock.close();
             }
         }
     }
@@ -395,6 +494,16 @@ public class CountersignServiceImpl implements ICountersignService {
                 }
                 return "VOTING";
 
+            case "WEIGHT":
+                if (csTask.getApproveWeight().compareTo(csTask.getPassWeight()) >= 0) {
+                    return "PASSED";
+                }
+                if (csTask.getRejectWeight().compareTo(csTask.getTotalWeight().subtract(csTask.getPassWeight())) > 0
+                        || remaining == 0) {
+                    return "REJECTED";
+                }
+                return "VOTING";
+
             default:
                 log.warn("[evaluateCountersignResult] 未知的会签类型: {}", signType);
                 return "VOTING";
@@ -429,12 +538,12 @@ public class CountersignServiceImpl implements ICountersignService {
             WfTask task = buildCountersignTask(instance, csTask, nextAssignee,
                     csTask.getNodeName().replace(" (会签)", "")
                             + " (顺序签署 " + (nextIndex + 1) + "/" + csTask.getTotalCount() + ")");
-            taskMapper.insert(task);
+            agents.createTask(task);
             createTaskMonitor(instance, task);
 
             // 发送通知给下一个签署人
             try {
-                sysNoticeService.sendNotice(
+                sysNoticeService.send(
                     nextAssignee,
                     "顺序签署任务通知",
                     "您有一个新的顺序签署任务: " + csTask.getNodeName()
@@ -461,7 +570,12 @@ public class CountersignServiceImpl implements ICountersignService {
     /**
      * 清理会签结束后剩余的未投票任务
      */
-    private void cleanupRemainingTasks(String countersignId) {
+    private void cleanupRemainingTasks(WfCountersignTask countersign) {
+        if ("WEIGHT".equals(countersign.getSignType())) {
+            cleanupWeightedTasks(countersign);
+            return;
+        }
+        String countersignId = countersign.getCountersignId();
         try {
             List<WfTask> remainingTasks = taskMapper.selectList(
                 new LambdaQueryWrapper<WfTask>()
@@ -507,6 +621,10 @@ public class CountersignServiceImpl implements ICountersignService {
         progress.put("nodeName", csTask.getNodeName());
         progress.put("signType", csTask.getSignType());
         progress.put("passPercent", csTask.getPassPercent());
+        progress.put("passWeight", csTask.getPassWeight());
+        progress.put("totalWeight", csTask.getTotalWeight());
+        progress.put("approveWeight", csTask.getApproveWeight());
+        progress.put("rejectWeight", csTask.getRejectWeight());
         progress.put("totalCount", csTask.getTotalCount());
         progress.put("votedCount", csTask.getVotedCount());
         progress.put("approveCount", csTask.getApproveCount());
@@ -522,6 +640,7 @@ public class CountersignServiceImpl implements ICountersignService {
             detail.put("voterId", v.getVoterId());
             detail.put("voterName", v.getVoterName());
             detail.put("voteResult", v.getVoteResult());
+            detail.put("voteWeight", v.getVoteWeight());
             detail.put("comment", v.getComment());
             detail.put("voteTime", v.getVoteTime());
             voteDetails.add(detail);
@@ -592,7 +711,8 @@ public class CountersignServiceImpl implements ICountersignService {
         if (csTask == null || csTask.getCountersignId() == null) {
             throw WorkflowException.validationError("会签任务信息不能为空");
         }
-        countersignTaskMapper.updateById(csTask);
+        hParticipantPolicy.assertFrozenParticipants(csTask.getInstanceId());
+        updateChecked(csTask);
         log.info("[updateCountersignTask] 会签任务已更新, countersignId={}, totalCount={}",
                 csTask.getCountersignId(), csTask.getTotalCount());
     }
@@ -609,6 +729,7 @@ public class CountersignServiceImpl implements ICountersignService {
             new LambdaQueryWrapper<WfCountersignVote>()
                 .eq(WfCountersignVote::getCountersignId, countersignId)
                 .eq(WfCountersignVote::getVoterId, userId)
+                .in(WfCountersignVote::getVoteResult, "APPROVE", "REJECT")
         );
         return count != null && count > 0;
     }
@@ -626,6 +747,7 @@ public class CountersignServiceImpl implements ICountersignService {
         if (csTask == null) {
             return;
         }
+        hParticipantPolicy.assertFrozenParticipants(csTask.getInstanceId());
 
         // 只有投票中的会签才需要检查
         if (!"VOTING".equals(csTask.getStatus())) {
@@ -642,10 +764,10 @@ public class CountersignServiceImpl implements ICountersignService {
         if (!"VOTING".equals(result)) {
             csTask.setStatus(result);
             csTask.setCompleteTime(LocalDateTime.now());
-            countersignTaskMapper.updateById(csTask);
+            updateChecked(csTask);
 
             // 清理剩余未投票的任务
-            cleanupRemainingTasks(csTask.getCountersignId());
+            cleanupRemainingTasks(csTask);
 
             log.info("[checkAndCompleteCountersign] 会签已自动完成, countersignId={}, result={}, approve={}/{}, reject={}/{}",
                     csTask.getCountersignId(), result, csTask.getApproveCount(), csTask.getTotalCount(),
@@ -656,9 +778,131 @@ public class CountersignServiceImpl implements ICountersignService {
         }
     }
 
+    private void updateChecked(WfCountersignTask countersign) {
+        int changed = countersignTaskMapper.updateById(countersign);
+        if ("WEIGHT".equals(countersign.getSignType()) && changed != 1) {
+            throw WorkflowException.invalidState("会签记录已变更，请刷新后重试");
+        }
+    }
+
+    private void insertWeightSnapshot(WfCountersignTask countersign, WfTask task, BigDecimal weight) {
+        WfCountersignVote snapshot = new WfCountersignVote();
+        snapshot.setVoteId(UUID.randomUUID().toString());
+        snapshot.setTenantId(countersign.getTenantId());
+        snapshot.setCountersignId(countersign.getCountersignId());
+        snapshot.setTaskId(task.getTaskId());
+        snapshot.setVoterId(task.getAssignee());
+        snapshot.setVoterName(task.getAssigneeName());
+        snapshot.setVoteResult("PENDING");
+        snapshot.setVoteWeight(weight);
+        countersignVoteMapper.insert(snapshot);
+    }
+
+    private WfCountersignVote pendingWeightSnapshot(WfCountersignTask countersign, WfTask task) {
+        WfCountersignVote snapshot = countersignVoteMapper.selectOne(new LambdaQueryWrapper<WfCountersignVote>()
+                .eq(WfCountersignVote::getCountersignId, countersign.getCountersignId())
+                .eq(WfCountersignVote::getTaskId, task.getTaskId())
+                .eq(WfCountersignVote::getVoteResult, "PENDING"));
+        if (snapshot == null || snapshot.getVoteWeight() == null) {
+            throw WorkflowException.invalidState("待投票权重快照不存在");
+        }
+        return snapshot;
+    }
+
+    @Override
+    public void addWeightParticipant(WfCountersignTask countersign, WfTask task) {
+        if (!"WEIGHT".equals(countersign.getSignType())) {
+            return;
+        }
+        hParticipantPolicy.assertFrozenParticipants(countersign.getInstanceId());
+        WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+        WfNodeConfig node = nodePolicy.resolveNode(instance, task.getNodeKey());
+        BigDecimal weight = weightService.resolve(node, instance, List.of(task.getAssignee())).get(task.getAssignee());
+        WfCountersignVote existing = countersignVoteMapper.selectOne(new LambdaQueryWrapper<WfCountersignVote>()
+                .eq(WfCountersignVote::getCountersignId, countersign.getCountersignId())
+                .eq(WfCountersignVote::getVoterId, task.getAssignee()));
+        if (existing != null) {
+            if (!"REMOVED".equals(existing.getVoteResult())) {
+                throw WorkflowException.validationError("该人员已参与票签，不能重复加签");
+            }
+            countersignVoteMapper.deleteById(existing.getVoteId());
+        }
+        insertWeightSnapshot(countersign, task, weight);
+        BigDecimal total = countersign.getTotalWeight().add(weight);
+        if (total.compareTo(new BigDecimal("99999999.99")) > 0) {
+            throw WorkflowException.validationError("票签总权重超出99999999.99");
+        }
+        countersign.setTotalWeight(total);
+    }
+
+    @Override
+    @Audit(name = "票签减签", highRisk = true)
+    public void removeWeightParticipant(WfCountersignTask countersign, WfTask task) {
+        if (!"WEIGHT".equals(countersign.getSignType())) {
+            return;
+        }
+        hParticipantPolicy.assertFrozenParticipants(countersign.getInstanceId());
+        WfCountersignVote snapshot = pendingWeightSnapshot(countersign, task);
+        int changed = countersignVoteMapper.update(null, new LambdaUpdateWrapper<WfCountersignVote>()
+                .eq(WfCountersignVote::getVoteId, snapshot.getVoteId())
+                .eq(WfCountersignVote::getVoteResult, "PENDING")
+                .set(WfCountersignVote::getVoteResult, "REMOVED"));
+        if (changed != 1) {
+            throw WorkflowException.invalidState("票权记录已变更，无法减签");
+        }
+        countersign.setTotalWeight(countersign.getTotalWeight().subtract(snapshot.getVoteWeight()));
+    }
+
+    private void cleanupWeightedTasks(WfCountersignTask countersign) {
+        List<WfTask> remaining = taskMapper.selectList(new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getCandidateRoles, "CS:" + countersign.getCountersignId()));
+        String semantic = "PASSED".equals(countersign.getStatus()) ? "AUTO_PASS" : "AUTO_REJECT";
+        LocalDateTime now = LocalDateTime.now();
+        for (WfTask task : remaining) {
+            WfTaskHistory history = new WfTaskHistory();
+            history.setHistoryId(UUID.randomUUID().toString());
+            history.setTenantId(task.getTenantId());
+            history.setInstanceId(task.getInstanceId());
+            history.setTaskId(task.getTaskId());
+            history.setNodeKey(task.getNodeKey());
+            history.setNodeName(task.getNodeName());
+            history.setOperatorName("系统");
+            history.setTaskType(semantic);
+            history.setAction("PASSED".equals(countersign.getStatus()) ? "APPROVE" : "REJECT");
+            history.setComment("票签已达到结束条件，自动结束未投票任务");
+            history.setCreateTime(now);
+            taskHistoryMapper.insert(history);
+            WfNodeRecord record = new WfNodeRecord();
+            record.setInstanceId(task.getInstanceId());
+            record.setNodeKey(task.getNodeKey());
+            record.setNodeName(task.getNodeName());
+            record.setNodeType("APPROVAL");
+            record.setStatus("COMPLETED");
+            record.setEventType(semantic);
+            record.setEventTime(now);
+            record.setStartTime(task.getCreateTime());
+            record.setEndTime(now);
+            record.setExecutorName("系统");
+            record.setCreateTime(now);
+            nodeRecordMapper.insert(record);
+            WfCountersignVote snapshot = pendingWeightSnapshot(countersign, task);
+            countersignVoteMapper.update(null, new LambdaUpdateWrapper<WfCountersignVote>()
+                    .eq(WfCountersignVote::getVoteId, snapshot.getVoteId())
+                    .eq(WfCountersignVote::getVoteResult, "PENDING")
+                    .set(WfCountersignVote::getVoteResult, semantic)
+                    .set(WfCountersignVote::getVoteTime, now));
+            taskReminderJob.cancelAfterCommit(task.getTaskId());
+            completeTaskMonitor(task, now, semantic);
+            if (taskMapper.deleteById(task.getTaskId()) != 1) {
+                throw WorkflowException.invalidState("未投票任务已变更，请重试");
+            }
+        }
+    }
+
     private WfTask buildCountersignTask(WfProcessInstance instance, WfCountersignTask csTask,
                                         Long assigneeId, String taskName) {
         WfTask task = new WfTask();
+        task.setTaskType(TaskSemanticContext.resolve(WfTaskType.forSignType(csTask.getSignType())));
         task.setTaskId(UUID.randomUUID().toString());
         task.setTenantId(csTask.getTenantId() != null
                 ? csTask.getTenantId()
@@ -671,6 +915,7 @@ public class CountersignServiceImpl implements ICountersignService {
         task.setStatus("TODO");
         task.setCreateTime(LocalDateTime.now());
         task.setCandidateRoles("CS:" + csTask.getCountersignId());
+        hParticipantPolicy.assertTaskAssignment(task, assigneeId);
         return task;
     }
 
@@ -703,6 +948,7 @@ public class CountersignServiceImpl implements ICountersignService {
     }
 
     private void completeTaskMonitor(WfTask task, LocalDateTime completeTime, String action) {
+        agents.completeRelations(task);
         try {
             TaskMonitor monitor = taskMonitorMapper.selectByTaskId(task.getTaskId());
             if (monitor == null) {

@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.monitor;
 
 import com.cloudflow.workflow.domain.monitor.AnomalyAlert;
+import com.cloudflow.common.job.model.JobResult;
 
 /**
  * 异常检测服务接口
@@ -24,7 +25,7 @@ public interface IAnomalyDetectionService {
      * 检测死锁
      * 定时任务调用，检测可能的死锁情况
      */
-    void detectDeadlock();
+    JobResult detectDeadlock();
 
     /**
      * 检测无候选人
@@ -40,7 +41,7 @@ public interface IAnomalyDetectionService {
      * 检测数据不一致
      * 定时任务调用，检测数据一致性问题
      */
-    void detectDataInconsistency();
+    JobResult detectDataInconsistency();
 
     /**
      * 发送异常告警

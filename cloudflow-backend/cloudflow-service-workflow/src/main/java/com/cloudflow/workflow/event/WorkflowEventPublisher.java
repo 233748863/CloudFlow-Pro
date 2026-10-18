@@ -1,5 +1,8 @@
 package com.cloudflow.workflow.event;
 
+import com.cloudflow.workflow.domain.enums.WfTaskType;
+import com.cloudflow.workflow.service.TaskSemanticContext;
+
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfNodeConfig;
@@ -177,14 +180,16 @@ public class WorkflowEventPublisher {
      */
     public void publishNodeStarted(WfProcessInstance instance, WfNodeConfig node) {
         if (node == null) return;
-        publish(new NodeStartedEvent(
+        NodeStartedEvent event = new NodeStartedEvent(
                 this,
                 instance.getInstanceId(),
                 instance.getProcessDefKey(),
                 node.getId(),
                 node.getTitle(),
                 node.getType()
-        ));
+        );
+        event.setTaskType(TaskSemanticContext.resolve(WfTaskType.forNode(node)));
+        publish(event);
     }
 
     /**
@@ -192,7 +197,10 @@ public class WorkflowEventPublisher {
      */
     public void publishNodeCompleted(WfProcessInstance instance, WfNodeConfig node) {
         if (node == null) return;
-        publishNodeCompleted(instance, node.getId(), node.getTitle(), node.getType(), 0L);
+        NodeCompletedEvent event = new NodeCompletedEvent(this, instance.getInstanceId(),
+                instance.getProcessDefKey(), node.getId(), node.getTitle(), node.getType(), 0L);
+        event.setTaskType(TaskSemanticContext.resolve(WfTaskType.forNode(node)));
+        publish(event);
     }
 
     /**
@@ -213,7 +221,7 @@ public class WorkflowEventPublisher {
      */
     public void publishNodeCompleted(WfProcessInstance instance, String nodeKey,
                                       String nodeName, String nodeType, long durationMs) {
-        publish(new NodeCompletedEvent(
+        NodeCompletedEvent event = new NodeCompletedEvent(
                 this,
                 instance.getInstanceId(),
                 instance.getProcessDefKey(),
@@ -221,7 +229,9 @@ public class WorkflowEventPublisher {
                 nodeName,
                 nodeType,
                 durationMs
-        ));
+        );
+        event.setTaskType(TaskSemanticContext.resolve(WfTaskType.forNode(nodeType, null)));
+        publish(event);
     }
 
     // ==================== 任务级事件 ====================
@@ -232,7 +242,14 @@ public class WorkflowEventPublisher {
     public void publishTaskAssigned(WfProcessInstance instance, String taskId,
                                      String nodeKey, String nodeName,
                                      Long assigneeId, String assigneeName) {
-        publish(new TaskAssignedEvent(
+        publishTaskAssigned(instance, taskId, nodeKey, nodeName, assigneeId, assigneeName,
+                TaskSemanticContext.resolve(WfTaskType.APPROVAL.name()));
+    }
+
+    public void publishTaskAssigned(WfProcessInstance instance, String taskId,
+                                    String nodeKey, String nodeName,
+                                    Long assigneeId, String assigneeName, String taskType) {
+        TaskAssignedEvent event = new TaskAssignedEvent(
                 this,
                 instance.getInstanceId(),
                 instance.getProcessDefKey(),
@@ -241,7 +258,9 @@ public class WorkflowEventPublisher {
                 nodeName,
                 assigneeId,
                 assigneeName
-        ));
+        );
+        event.setTaskType(taskType);
+        publish(event);
     }
 
     /**
@@ -250,17 +269,8 @@ public class WorkflowEventPublisher {
     public void publishTaskAssigned(WfProcessInstance instance, String taskId,
                                      String nodeKey, String nodeName, String nodeType,
                                      Long assigneeId, String assigneeName) {
-        // nodeType 信息已包含在节点配置中，TaskAssignedEvent 聚焦于任务分配本身
-        publish(new TaskAssignedEvent(
-                this,
-                instance.getInstanceId(),
-                instance.getProcessDefKey(),
-                taskId,
-                nodeKey,
-                nodeName,
-                assigneeId,
-                assigneeName
-        ));
+        publishTaskAssigned(instance, taskId, nodeKey, nodeName, assigneeId, assigneeName,
+                TaskSemanticContext.resolve(WfTaskType.forNode(nodeType, null)));
     }
 
     /**
@@ -276,7 +286,14 @@ public class WorkflowEventPublisher {
     public void publishTaskCompleted(WfProcessInstance instance, String taskId,
                                       String nodeKey, String nodeName,
                                       String action, String comment) {
-        publish(new TaskCompletedEvent(
+        publishTaskCompleted(instance, taskId, nodeKey, nodeName, action, comment,
+                WfTaskType.forAction(action, WfTaskType.APPROVAL.name()));
+    }
+
+    public void publishTaskCompleted(WfProcessInstance instance, String taskId,
+                                     String nodeKey, String nodeName,
+                                     String action, String comment, String taskType) {
+        TaskCompletedEvent event = new TaskCompletedEvent(
                 this,
                 instance.getInstanceId(),
                 instance.getProcessDefKey(),
@@ -287,7 +304,9 @@ public class WorkflowEventPublisher {
                 UserContext.getUserName(),
                 action,
                 comment
-        ));
+        );
+        event.setTaskType(taskType);
+        publish(event);
     }
 
     // ==================== 变量变更事件（暂保留日志记录） ====================

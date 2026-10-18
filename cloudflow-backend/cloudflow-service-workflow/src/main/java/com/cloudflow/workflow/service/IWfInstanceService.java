@@ -7,6 +7,7 @@ import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 
 import java.util.Map;
+import java.util.List;
 
 /**
  * 流程实例管理服务接口
@@ -28,8 +29,18 @@ public interface IWfInstanceService {
      */
     R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables);
 
+    R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables,
+                      Map<String, List<Long>> nodeAssignees);
+
+    R<?> startProcessFromDraft(String expectedDefinitionId, String processDefKey, String businessKey,
+                               Map<String, Object> variables, Map<String, List<Long>> nodeAssignees);
+
     R<?> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
                               String startUserName, Map<String, Object> variables);
+
+    R<?> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
+                              String startUserName, Map<String, Object> variables,
+                              Map<String, List<Long>> nodeAssignees);
 
     /**
      * 撤回流程
@@ -87,7 +98,9 @@ public interface IWfInstanceService {
      * @param nodeKey    定时节点Key
      * @param variables  定时任务中保存的流程变量
      */
-    void continueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables);
+    boolean continueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables);
+
+    void finishTimerNode(String instanceId, String nodeKey, String reason);
 
     /**
      * 处理子流程结束（在实例锁 + 事务保护下执行，按 childInstanceId 幂等）：

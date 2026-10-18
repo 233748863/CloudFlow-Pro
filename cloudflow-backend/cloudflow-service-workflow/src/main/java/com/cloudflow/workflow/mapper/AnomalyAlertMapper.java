@@ -19,6 +19,12 @@ import java.util.List;
 @Mapper
 public interface AnomalyAlertMapper extends BaseMapper<AnomalyAlert> {
 
+    AnomalyAlert selectForNotification(@Param("tenantId") Long tenantId, @Param("id") Long id);
+
+    List<AnomalyAlert> selectUnresolvedForEvent(@Param("tenantId") Long tenantId,
+            @Param("instanceId") String instanceId, @Param("anomalyType") String anomalyType,
+            @Param("taskId") String taskId);
+
     /**
      * 根据日期统计数量
      */

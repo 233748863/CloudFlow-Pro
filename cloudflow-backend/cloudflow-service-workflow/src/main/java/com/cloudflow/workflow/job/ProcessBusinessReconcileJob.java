@@ -1,5 +1,10 @@
 package com.cloudflow.workflow.job;
 
+import com.cloudflow.common.job.annotation.JobHandler;
+import com.cloudflow.common.job.model.JobResult;
+import com.cloudflow.common.message.api.MessageSendRequest;
+import com.cloudflow.common.message.api.MessageSender;
+
 import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeDef;
@@ -12,17 +17,18 @@ import com.cloudflow.workflow.mapper.WfReconcileAlertMapper;
 import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
-import com.cloudflow.workflow.service.INotificationService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -41,10 +47,11 @@ public class ProcessBusinessReconcileJob {
     private final WfReconcileAlertMapper reconcileAlertMapper;
     private final BusinessTypeRegistry businessTypeRegistry;
     private final JdbcTemplate jdbcTemplate;
-    private final INotificationService notificationService;
+    private final MessageSender messageSender;
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
     private final SysUserMapper sysUserMapper;
+    private final TransactionTemplate transactionTemplate;
 
     /**
      * 当前运行库中可参与对账的业务类型缓存。
@@ -56,71 +63,70 @@ public class ProcessBusinessReconcileJob {
     private final Set<String> queryableBusinessTypeCache = ConcurrentHashMap.newKeySet();
     private final Set<String> skippedBusinessTypeCache = ConcurrentHashMap.newKeySet();
 
-    @Scheduled(cron = "0 */30 * * * ?")
+    @JobHandler(value = "processBusinessReconcile", desc = "流程业务对账")
     @DistributedJob(name = "processBusinessReconcile", lockTime = 240)
-    public void reconcile() {
-        // 平台级跨租户对账：扫描所有租户的流程-业务表一致性，
-        // 必须跳过 MP 租户过滤，否则只能扫到 null 租户的记录。
-        TenantBroker.runWithoutTenant(() -> {
+    public JobResult reconcile() {
+        List<RuntimeException> failures = new ArrayList<>();
+        List<BusinessTypeDef> queryableTypes = new ArrayList<>();
+        for (BusinessTypeDef definition : businessTypeRegistry.all()) {
             try {
-                if (businessTypeRegistry.size() == 0) {
-                    log.warn("[对账] BusinessTypeRegistry 为空，本次跳过");
-                    return;
+                if (isQueryableBusinessType(definition)) queryableTypes.add(definition);
+            } catch (RuntimeException exception) {
+                failures.add(new IllegalStateException("对账业务表检查失败：" + definition.getCode(), exception));
+            }
+        }
+        // 仅发现差异时跨租户读取；告警和消息必须在业务行所属租户共同提交。
+        List<WfReconcileAlert> inconsistent = queryableTypes.isEmpty() ? List.of()
+                : TenantBroker.applyWithoutTenant(ignored -> reconcileAlertMapper.selectInconsistentRecords(7, queryableTypes));
+        int created = 0;
+        for (WfReconcileAlert alert : inconsistent) {
+            try {
+                if (alert.getTenantId() == null || alert.getTenantId() <= 0) {
+                    throw new IllegalStateException("对账差异缺少有效租户");
                 }
-                List<BusinessTypeDef> queryableTypes = businessTypeRegistry.all().stream()
-                        .filter(this::isQueryableBusinessType)
-                        .toList();
-                if (queryableTypes.isEmpty()) {
-                    log.warn("[对账] 当前库无可查询业务表，本次跳过: registrySize={}", businessTypeRegistry.size());
-                    return;
-                }
-                List<WfReconcileAlert> inconsistent = reconcileAlertMapper.selectInconsistentRecords(
-                        7, queryableTypes);
-                if (inconsistent.isEmpty()) return;
-                for (WfReconcileAlert alert : inconsistent) {
+                Integer count = TenantBroker.applyAs(alert.getTenantId(), tenantId -> transactionTemplate.execute(status -> {
+                    alert.setId(null);
                     alert.setDetectedAt(LocalDateTime.now());
                     alert.setCreateTime(LocalDateTime.now());
                     try {
-                        reconcileAlertMapper.insert(alert);
-                        log.warn("[对账] 发现不一致: wfInstanceId={}, bizModule={}, bizId={}, tenantId={}, bizStatus={}, wfStatus={}",
-                                alert.getWfInstanceId(), alert.getBizModule(), alert.getBizId(),
-                                alert.getTenantId(), alert.getBizStatus(), alert.getWfStatus());
-                        notifyReconcileAlert(alert);
-                    } catch (Exception e) {
-                        // uk_instance 唯一键冲突时忽略（已记录过）
-                        log.debug("[对账] 跳过已存在记录: wfInstanceId={}, bizModule={}, bizId={}",
-                                alert.getWfInstanceId(), alert.getBizModule(), alert.getBizId());
+                        if (reconcileAlertMapper.insert(alert) != 1) throw new IllegalStateException("对账告警未成功保存");
+                    } catch (DuplicateKeyException duplicate) {
+                        // 只忽略告警自身 uk_reconcile_open 冲突，通知阶段的异常仍须回滚和上报。
+                        status.setRollbackOnly();
+                        return 0;
                     }
-                }
-            } catch (Exception e) {
-                log.error("[对账] 对账 Job 执行失败", e);
+                    notifyReconcileAlert(alert);
+                    return 1;
+                }));
+                created += count == null ? 0 : count;
+            } catch (RuntimeException exception) {
+                failures.add(new IllegalStateException("对账告警处理失败，租户：" + alert.getTenantId()
+                        + "，流程：" + alert.getWfInstanceId(), exception));
             }
-        });
+        }
+        if (!failures.isEmpty()) {
+            IllegalStateException failure = new IllegalStateException("流程业务对账存在失败项：" + failures.size() + "项");
+            failures.forEach(failure::addSuppressed);
+            throw failure;
+        }
+        return JobResult.success(created, "流程业务对账完成：新增" + created + "条告警");
     }
 
     private void notifyReconcileAlert(WfReconcileAlert alert) {
-        try {
-            Set<Long> recipients = resolveNotificationRecipients(alert);
-            if (recipients.isEmpty()) {
-                log.warn("[对账] 未找到告警通知接收人: wfInstanceId={}, bizModule={}, tenantId={}",
-                        alert.getWfInstanceId(), alert.getBizModule(), alert.getTenantId());
-                return;
-            }
-            String title = "流程业务状态对账告警";
-            String content = "流程实例 %s 与 %s 单据 %s 状态不一致：业务=%s，流程=%s，请在对账告警中人工处理。"
-                    .formatted(alert.getWfInstanceId(), alert.getBizModule(), alert.getBizId(),
-                            alert.getBizStatus(), alert.getWfStatus());
-            for (Long recipient : recipients) {
-                try {
-                    notificationService.sendNotification(recipient, title, content, EVENT_RECONCILE_ALERT);
-                } catch (Exception e) {
-                    log.warn("[对账] 告警通知发送失败: userId={}, wfInstanceId={}, error={}",
-                            recipient, alert.getWfInstanceId(), e.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            log.warn("[对账] 告警通知处理失败: wfInstanceId={}, error={}",
-                    alert == null ? null : alert.getWfInstanceId(), e.getMessage());
+        Set<Long> recipients = resolveNotificationRecipients(alert);
+        if (recipients.isEmpty()) {
+            log.warn("[对账] 未找到告警通知接收人: wfInstanceId={}, bizModule={}, tenantId={}",
+                    alert.getWfInstanceId(), alert.getBizModule(), alert.getTenantId());
+            return;
+        }
+        String title = "流程业务状态对账告警";
+        String content = "流程实例 %s 与 %s 单据 %s 状态不一致：业务=%s，流程=%s，请在对账告警中人工处理。"
+                .formatted(alert.getWfInstanceId(), alert.getBizModule(), alert.getBizId(),
+                        alert.getBizStatus(), alert.getWfStatus());
+        for (Long recipient : recipients) {
+            messageSender.send(MessageSendRequest.legacy(recipient, title, content, "1", null, "系统").toBuilder()
+                    .bizType(EVENT_RECONCILE_ALERT).bizId(String.valueOf(alert.getId()))
+                    .deduplicationKey("wf:reconcile:" + alert.getId() + ":" + recipient).build());
         }
     }
 
@@ -224,8 +230,7 @@ public class ProcessBusinessReconcileJob {
                 || isBlank(def.getProcessInstanceIdField())) {
             return false;
         }
-        try {
-            Integer count = jdbcTemplate.queryForObject("""
+        Integer count = jdbcTemplate.queryForObject("""
                     SELECT COUNT(DISTINCT COLUMN_NAME)
                     FROM information_schema.COLUMNS
                     WHERE TABLE_SCHEMA = DATABASE()
@@ -237,12 +242,7 @@ public class ProcessBusinessReconcileJob {
                     def.getIdField(),
                     def.getStatusField(),
                     def.getProcessInstanceIdField());
-            return Objects.requireNonNullElse(count, 0) == 4;
-        } catch (Exception e) {
-            log.warn("[对账] 检查业务表失败: code={}, table={}, error={}",
-                    def.getCode(), def.getBusinessTable(), e.getMessage());
-            return false;
-        }
+        return Objects.requireNonNullElse(count, 0) == 4;
     }
 
     private boolean isBlank(String value) {

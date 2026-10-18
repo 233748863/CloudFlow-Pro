@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfTransactionMessageMapper">
+    <select id="selectRetryCandidates" resultType="com.cloudflow.workflow.domain.WfTransactionMessage">
+        SELECT * FROM wf_transaction_message
+        WHERE status = 'PENDING' AND next_retry_time &lt;= #{observedAt}
+          AND create_time &lt;= #{observedAt} AND message_id &gt; #{afterId}
+        ORDER BY message_id LIMIT #{limit}
+    </select>
+
+    <select id="selectForRetry" resultType="com.cloudflow.workflow.domain.WfTransactionMessage">
+        SELECT * FROM wf_transaction_message
+        WHERE tenant_id = #{tenantId} AND message_id = #{messageId}
+        FOR UPDATE
+    </select>
+</mapper>

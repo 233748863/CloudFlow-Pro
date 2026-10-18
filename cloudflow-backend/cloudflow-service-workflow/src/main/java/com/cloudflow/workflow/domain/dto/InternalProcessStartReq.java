@@ -3,6 +3,7 @@ package com.cloudflow.workflow.domain.dto;
 import lombok.Data;
 
 import java.util.Map;
+import java.util.List;
 
 @Data
 public class InternalProcessStartReq {
@@ -18,4 +19,5 @@ public class InternalProcessStartReq {
     private String startUserName;
 
     private Map<String, Object> variables;
+    private Map<String, List<Long>> nodeAssignees;
 }

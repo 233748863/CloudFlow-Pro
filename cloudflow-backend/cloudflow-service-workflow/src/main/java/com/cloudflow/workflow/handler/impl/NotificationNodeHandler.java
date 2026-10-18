@@ -13,7 +13,7 @@ import com.cloudflow.workflow.mapper.system.SysDeptMapper;
 import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
-import com.cloudflow.workflow.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +39,7 @@ public class NotificationNodeHandler implements INodeHandler {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationNodeHandler.class);
 
-    private final ISysNoticeService sysNoticeService;
+    private final MessageSender sysNoticeService;
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
     private final SysUserMapper sysUserMapper;
@@ -82,7 +82,7 @@ public class NotificationNodeHandler implements INodeHandler {
 
             // 发送通知
             for (Long recipientId : recipientIds) {
-                sysNoticeService.sendNotice(recipientId, noticeTitle, noticeContent, noticeType,
+                sysNoticeService.send(recipientId, noticeTitle, noticeContent, noticeType,
                         UserContext.getUserId(), UserContext.getUserName());
             }
 

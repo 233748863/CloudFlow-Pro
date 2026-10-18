@@ -72,6 +72,11 @@ public class WfNodeRecord {
     /** 附加信息（JSON 格式，如审批意见、脚本执行结果、变量变更等） */
     private String extraData;
 
+    private String eventType;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime eventTime;
+
     /** 创建时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

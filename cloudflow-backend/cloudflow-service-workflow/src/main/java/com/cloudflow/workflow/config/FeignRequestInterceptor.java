@@ -4,6 +4,11 @@ import com.cloudflow.common.core.constant.SecurityConstants;
 import com.cloudflow.common.core.context.UserContext;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
+import java.util.concurrent.ExecutorService;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cloud.circuitbreaker.resilience4j.Resilience4JCircuitBreakerFactory;
+import org.springframework.cloud.client.circuitbreaker.Customizer;
+import org.springframework.context.annotation.Bean;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -24,10 +29,27 @@ public class FeignRequestInterceptor implements RequestInterceptor {
         this.applicationName = applicationName;
     }
 
+    @Bean
+    public Customizer<Resilience4JCircuitBreakerFactory> feignCircuitBreakerContext(
+            @Qualifier("feignContextExecutor") ExecutorService executor) {
+        return factory -> factory.configureExecutorService(executor);
+    }
+
     @Override
     public void apply(RequestTemplate template) {
+        template.removeHeader(com.cloudflow.common.core.context.TraceContext.HEADER);
+        template.header(com.cloudflow.common.core.context.TraceContext.HEADER, com.cloudflow.common.core.context.TraceContext.currentOrCreate());
         template.header(SecurityConstants.INNER_CALL_HEADER, SecurityConstants.INNER_CALL_VALUE);
         template.header(SecurityConstants.FROM_SERVICE_HEADER, applicationName);
+
+        if (template.path().equals("/inner/auth/im-callback/verify") || template.path().equals("/inner/auth/im-todo/verify")) {
+            template.removeHeader("Authorization");
+            template.removeHeader("Cookie");
+            template.removeHeader("X-User-Id");
+            template.removeHeader(SecurityConstants.TENANT_ID_HEADER);
+            if (UserContext.getTenantId() != null) template.header(SecurityConstants.TENANT_ID_HEADER, UserContext.getTenantId().toString());
+            return;
+        }
 
         String authToken = UserContext.getAuthToken();
         if (StringUtils.hasText(authToken)) {

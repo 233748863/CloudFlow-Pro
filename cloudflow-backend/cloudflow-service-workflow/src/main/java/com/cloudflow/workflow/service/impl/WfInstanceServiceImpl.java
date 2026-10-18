@@ -1,6 +1,11 @@
 package com.cloudflow.workflow.service.impl;
 
+import com.cloudflow.workflow.service.WorkflowBusinessLockService;
+import com.cloudflow.workflow.service.WorkflowBusinessLockService.BusinessLock;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.workflow.domain.vo.DraftLaunchContextVO;
+import com.cloudflow.workflow.domain.vo.WorkflowGatewayTrace;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -8,9 +13,11 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
+import com.cloudflow.workflow.domain.enums.WfTaskType;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 import com.cloudflow.workflow.domain.vo.UserBriefVO;
 import com.cloudflow.workflow.event.WorkflowEventPublisher;
@@ -54,9 +61,12 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     private static final Logger log = LoggerFactory.getLogger(WfInstanceServiceImpl.class);
 
     @Autowired
+    private WorkflowBusinessLockService businessLocks;
+
+    @Autowired
     private RedissonClient redissonClient;
     @Autowired
-    private com.cloudflow.common.redis.core.RedisCache redisCache;
+    private WorkflowProcessNumberService processNumbers;
     @Autowired
     private WfProcessInstanceMapper processInstanceMapper;
     @Autowired
@@ -78,7 +88,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @Autowired
     private WorkflowSecurityUtils securityUtils;
     @Autowired
-    private ISysNoticeService sysNoticeService;
+    private MessageSender sysNoticeService;
     @Autowired
     private INodeExecutionService nodeExecutionService;
     @Autowired
@@ -101,6 +111,25 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
     @Autowired
     private TransactionTemplate transactionTemplate;
+    @Autowired
+    private InitiatorSelectionService initiatorSelectionService;
+    @Autowired
+    private com.cloudflow.workflow.mapper.WfFormDraftMapper formDraftMapper;
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowLaunchContextService launchContexts;
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowFormInputService formInputs;
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowFormFileService formFiles;
+    @Autowired
+    private WorkflowProcessStateService processStateService;
+    @Autowired
+    private WorkflowGatewayService gateways;
+    @Autowired
+    private WorkflowHParticipantPolicy hParticipantPolicy;
+    @Autowired
+    @org.springframework.context.annotation.Lazy
+    private IWfTaskService timerTaskService;
 
     /** 父流程变量中记录"已处理的子流程结束事件"的幂等标记前缀（值为子流程实例ID） */
     private static final String SUBPROCESS_DONE_VARIABLE_PREFIX = "_subprocessDone_";
@@ -111,14 +140,46 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables) {
+        return startProcess(processDefKey, businessKey, variables, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables,
+                             Map<String, List<Long>> nodeAssignees) {
+        if (businessKey != null && businessKey.startsWith("WF_DRAFT:")) {
+            throw WorkflowException.validationError("该业务键前缀仅供草稿提交使用");
+        }
+        if (variables != null && variables.keySet().stream().anyMatch(key -> key.startsWith("_") && !"_title".equals(key))) {
+            throw WorkflowException.validationError("流程发起不能携带服务端保留变量");
+        }
         return doStartProcess(processDefKey, businessKey, UserContext.getUserId(), UserContext.getUserName(),
-                UserContext.getTenantId(), variables, false);
+                UserContext.getTenantId(), variables, true, nodeAssignees, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> startProcessFromDraft(String expectedDefinitionId, String processDefKey, String businessKey,
+                                      Map<String, Object> variables, Map<String, List<Long>> nodeAssignees) {
+        if (!StringUtils.hasText(expectedDefinitionId) || businessKey == null || !businessKey.startsWith("WF_DRAFT:")) {
+            throw WorkflowException.validationError("草稿启动上下文无效");
+        }
+        return doStartProcess(processDefKey, businessKey, UserContext.getUserId(), UserContext.getUserName(),
+                UserContext.getTenantId(), variables, true, nodeAssignees, expectedDefinitionId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public R<?> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
                                      String startUserName, Map<String, Object> variables) {
+        return startProcessInternal(tenantId, processDefKey, businessKey, startUserId, startUserName, variables, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
+                                     String startUserName, Map<String, Object> variables,
+                                     Map<String, List<Long>> nodeAssignees) {
         if (tenantId == null) {
             throw WorkflowException.validationError("tenantId不能为空");
         }
@@ -133,7 +194,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 : user != null && StringUtils.hasText(user.getNickName()) ? user.getNickName()
                 : user != null ? user.getUsername() : null;
         return doStartProcess(processDefKey, businessKey, effectiveUserId, effectiveUserName, tenantId,
-                variables, false);
+                variables, false, nodeAssignees, null);
     }
 
     @Override
@@ -150,7 +211,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         // 只有发起人或管理员可以撤回
         permissionService.checkRecallPermission(instance);
 
-        if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
+        if (!WfProcessStatus.isActive(instance.getStatus())) {
             throw WorkflowException.invalidState("只有运行中的流程可以撤回");
         }
 
@@ -164,20 +225,13 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             throw WorkflowException.invalidState("流程已有审批记录，无法撤回");
         }
 
-        // 删除所有待办任务
-        taskMapper.delete(new LambdaQueryWrapper<WfTask>().eq(WfTask::getInstanceId, instanceId));
-
         // 更新实例状态（乐观锁：0 行说明与审批等操作并发冲突，回滚并提示重试）
-        instance.setStatus(WfProcessStatus.REVOKED.getCode());
-        instance.setEndTime(LocalDateTime.now());
-        if (processInstanceMapper.updateById(instance) <= 0) {
-            throw WorkflowException.invalidState("流程状态已被其他操作变更，撤回失败，请刷新后重试");
-        }
+        processStateService.transition(instance, WfProcessStatus.CANCELLED);
 
         // 撤回后发布事件，驱动 OA 业务状态同步回写。
         workflowEventPublisher.publishProcessRevoked(instance);
         // 若本实例是子流程，通知父流程按终态决策（异常终态将挂起父流程）
-        workflowEventPublisher.publishSubprocessFinishedIfChild(instance, WfProcessStatus.REVOKED.getCode());
+        workflowEventPublisher.publishSubprocessFinishedIfChild(instance, WfProcessStatus.CANCELLED.getCode());
 
         auditService.log(WorkflowAuditService.AuditAction.PROCESS_RECALL, instanceId, "");
         return R.ok();
@@ -195,14 +249,11 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             throw WorkflowException.instanceNotFound(instanceId);
         }
         checkInstanceTenantAccess(instance, "暂停");
-        if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
+        if (!WfProcessStatus.isActive(instance.getStatus())) {
             throw WorkflowException.invalidState("只有运行中的流程可以暂停");
         }
 
-        instance.setStatus(WfProcessStatus.SUSPENDED.getCode());
-        if (processInstanceMapper.updateById(instance) <= 0) {
-            throw WorkflowException.invalidState("流程状态已被其他操作变更，暂停失败，请刷新后重试");
-        }
+        processStateService.transition(instance, WfProcessStatus.PAUSED);
 
         auditService.log(WorkflowAuditService.AuditAction.PROCESS_PAUSE, instanceId, "");
         return R.ok();
@@ -215,17 +266,19 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
         permissionService.checkDefinitionPermission("恢复流程");
 
-        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        WfProcessInstance instance = processInstanceMapper.selectForExecution(UserContext.getTenantId(), instanceId);
         if (instance == null) {
             throw WorkflowException.instanceNotFound(instanceId);
         }
         checkInstanceTenantAccess(instance, "恢复");
-        if (!WfProcessStatus.SUSPENDED.getCode().equals(instance.getStatus())) {
+        if (!WfProcessStatus.PAUSED.getCode().equals(instance.getStatus())
+                && !WfProcessStatus.FAILED.getCode().equals(instance.getStatus())) {
             throw WorkflowException.invalidState("只有暂停中的流程可以恢复");
         }
 
         // 若因自动节点执行失败被挂起，恢复时清除失败标记并从失败节点重跑
         String failedNodeKey = null;
+        WorkflowExecutionContext.Frame failedContext = null;
         Map<String, Object> variables = new HashMap<>();
         if (StringUtils.hasText(instance.getVariables())) {
             try {
@@ -233,17 +286,15 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 Object failed = variables.remove(INodeExecutionService.FAILED_NODE_KEY_VARIABLE);
                 if (failed instanceof String && StringUtils.hasText((String) failed)) {
                     failedNodeKey = (String) failed;
+                    failedContext = WorkflowExecutionContext.parse((String) variables.remove(WorkflowWaitState.FAILED_CONTEXT));
                     instance.setVariables(objectMapper.writeValueAsString(variables));
                 }
             } catch (Exception e) {
-                log.warn("[resumeProcess] 解析流程变量失败, instanceId={}: {}", instanceId, e.getMessage());
+                throw WorkflowException.invalidState("流程恢复记录无效，请核对持久执行状态");
             }
         }
 
-        instance.setStatus(WfProcessStatus.RUNNING.getCode());
-        if (processInstanceMapper.updateById(instance) <= 0) {
-            throw WorkflowException.invalidState("流程状态已被其他操作变更，恢复失败，请刷新后重试");
-        }
+        processStateService.transition(instance, WfProcessStatus.RUNNING);
 
         if (failedNodeKey != null) {
             WfProcessDefinition def = resolveDefinitionByInstance(instance);
@@ -257,7 +308,9 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                     "恢复流程失败：流程定义中找不到失败节点 " + failedNodeKey);
             }
             log.info("[resumeProcess] 从失败节点重跑, instanceId={}, nodeKey={}", instanceId, failedNodeKey);
-            nodeExecutionService.runNode(instance, failedNode, variables, 0, root);
+            gateways.assertActive(instance, failedContext);
+            Map<String, Object> resumedVariables = variables;
+            WorkflowExecutionContext.run(failedContext, () -> nodeExecutionService.runNode(instance, failedNode, resumedVariables, 0, root));
         }
 
         auditService.log(WorkflowAuditService.AuditAction.PROCESS_RESUME, instanceId, "");
@@ -318,6 +371,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         // 构建活动任务详情（统一聚合：人工任务、自动节点与网关节点都进入 trace）
         List<Map<String, Object>> activeDetails = buildTraceActiveDetails(
             activeTasks, nodeRecords, instance.getStatus());
+        List<WorkflowGatewayTrace> gatewayRounds = gateways.trace(instance);
 
         // 构建步骤详情
         List<Map<String, Object>> stepsDetail = null;
@@ -326,6 +380,15 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             if (def != null && StringUtils.hasText(def.getModelJson())) {
                 WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
                 List<Map<String, String>> steps = nodeExecutionService.extractApprovalSteps(root);
+                for (WorkflowGatewayTrace round : gatewayRounds) {
+                    WfNodeConfig gatewayNode = nodeExecutionService.findNode(root, round.getNodeKey());
+                    round.setNodeName(gatewayNode == null ? round.getNodeKey() : gatewayNode.getTitle());
+                }
+                for (Map<String, Object> detail : activeDetails) {
+                    WfNodeConfig activeNode = nodeExecutionService.findNode(root, String.valueOf(detail.get("nodeKey")));
+                    detail.put("allowUrge", com.cloudflow.workflow.service.WorkflowNodePolicy.allows(activeNode, "allowUrge"));
+                    if (activeNode != null) detail.put("nodeType", activeNode.getType());
+                }
                 Set<String> stepNodeKeys = steps.stream()
                     .map(step -> step.get("nodeKey"))
                     .filter(StringUtils::hasText)
@@ -364,6 +427,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         result.put("historyDetails", historyDetails);
         result.put("activeDetails", activeDetails);
         result.put("parallelBranches", parallelBranches);
+        result.put("gatewayRounds", gatewayRounds);
         if (stepsDetail != null) {
             result.put("stepsDetail", stepsDetail);
         }
@@ -376,6 +440,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         Set<String> finishedNodeKeys = new LinkedHashSet<>();
         if (histories != null) {
             histories.stream()
+                .filter(com.cloudflow.workflow.service.WorkflowHistoryAttribution::countsAsCompletion)
                 .map(WfTaskHistory::getNodeKey)
                 .filter(StringUtils::hasText)
                 .forEach(finishedNodeKeys::add);
@@ -421,11 +486,16 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (histories != null) {
             for (WfTaskHistory history : histories) {
                 Map<String, Object> detail = new HashMap<>();
+                detail.put("historyId", history.getHistoryId());
+                detail.put("taskId", history.getTaskId());
                 detail.put("nodeKey", history.getNodeKey());
                 detail.put("nodeName", history.getNodeName());
                 detail.put("operatorId", history.getOperatorId());
                 detail.put("operatorName", history.getOperatorName());
+                detail.put("onBehalfOfUserId", history.getOnBehalfOfUserId());
+                detail.put("onBehalfOfUserName", history.getOnBehalfOfUserName());
                 detail.put("action", history.getAction());
+                detail.put("taskType", history.getTaskType());
                 detail.put("comment", history.getComment());
                 detail.put("createTime", history.getCreateTime());
                 detail.put("completeTime", history.getCreateTime());
@@ -445,6 +515,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 detail.put("operatorId", record.getExecutorId());
                 detail.put("operatorName", firstNotBlank(record.getExecutorName(), resolveSystemNodeActor(record)));
                 detail.put("action", "COMPLETE");
+                detail.put("taskType", record.getEventType());
                 detail.put("createTime", record.getStartTime());
                 detail.put("completeTime", record.getEndTime() != null ? record.getEndTime() : record.getStartTime());
                 detail.put("durationSeconds", record.getDurationMs() != null ? record.getDurationMs() / 1000 : null);
@@ -492,6 +563,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 }
                 Map<String, Object> detail = new HashMap<>();
                 detail.put("taskId", task.getTaskId());
+                detail.put("taskType", task.getTaskType());
                 detail.put("nodeKey", task.getNodeKey());
                 detail.put("nodeName", task.getNodeName());
                 detail.put("assignee", task.getAssignee());
@@ -553,8 +625,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     }
 
     private boolean isDisplayActiveProcess(String processStatus) {
-        return WfProcessStatus.RUNNING.getCode().equals(processStatus)
-            || WfProcessStatus.SUSPENDED.getCode().equals(processStatus);
+        return WfProcessStatus.isOpen(processStatus);
     }
 
     private String resolveSystemNodeActor(WfNodeRecord record) {
@@ -678,34 +749,76 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     }
 
     @Override
-    public void continueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables) {
+    public boolean continueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables) {
+        return executeTimerContinuation(instanceId, nodeKey, variables, false, null);
+    }
+
+    @Override
+    public void finishTimerNode(String instanceId, String nodeKey, String reason) {
+        if (!permissionService.isAdmin(UserContext.getUserId())) {
+            throw WorkflowException.permissionDenied("仅管理员可提前结束定时节点");
+        }
+        if (!StringUtils.hasText(reason) || reason.length() > 500) {
+            throw WorkflowException.validationError("提前结束原因必填且不能超过500字");
+        }
+        executeTimerContinuation(instanceId, nodeKey, Map.of(), true, reason);
+    }
+
+    private boolean executeTimerContinuation(String instanceId, String nodeKey, Map<String, Object> variables,
+                                           boolean manual, String reason) {
         log.info("[continueFromTimerNode] 定时节点到期, instanceId={}, nodeKey={}", instanceId, nodeKey);
 
+        BusinessLock instanceLock = businessLocks.getLock("lock:instance:" + instanceId);
         RLock lock = redissonClient.getLock("lock:timer:" + instanceId + ":" + nodeKey);
         try {
+            if (!instanceLock.tryLock(5, TimeUnit.SECONDS)) {
+                throw WorkflowException.invalidState("流程实例正在处理，请稍后重试");
+            }
             // watchdog 模式（不设 leaseTime），锁覆盖整个事务生命周期，提交后才释放。
             if (!lock.tryLock(5, TimeUnit.SECONDS)) {
                 throw WorkflowException.invalidState("定时节点正在处理，请稍后重试: " + instanceId + "/" + nodeKey);
             }
-            transactionTemplate.executeWithoutResult(status ->
-                    doContinueFromTimerNode(instanceId, nodeKey, variables));
+            return Boolean.TRUE.equals(businessLocks.execute(transactionTemplate, status ->
+                    doContinueFromTimerNode(instanceId, nodeKey, variables, manual, reason)));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.error("[continueFromTimerNode] 被中断", e);
             throw WorkflowException.invalidState("定时节点处理被中断: " + instanceId + "/" + nodeKey);
         } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
+            try { if (lock.isHeldByCurrentThread()) lock.unlock(); }
+            finally { instanceLock.close(); }
         }
     }
 
-    private void doContinueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables) {
-        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
-        if (instance == null || !WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
-            log.warn("[continueFromTimerNode] 实例不存在或非运行状态, instanceId={}", instanceId);
-            return;
+    private boolean doContinueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables,
+                                         boolean manual, String reason) {
+        WfProcessInstance instance = processInstanceMapper.selectForExecution(UserContext.getTenantId(), instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
         }
+        if (!Objects.equals(instance.getTenantId(), UserContext.getTenantId())) {
+            throw WorkflowException.permissionDenied("无权操作其他租户的定时节点");
+        }
+        if (!WfProcessStatus.isActive(instance.getStatus())) {
+            throw WorkflowException.invalidState("当前流程状态不能结束定时等待");
+        }
+        List<WorkflowWaitState.Pending> candidates = WorkflowWaitState.list(instance, "TIMER").stream()
+                .filter(pending -> nodeKey.equals(pending.nodeKey())).toList();
+        WorkflowWaitState.Pending pending;
+        if (manual) {
+            if (candidates.size() != 1) throw WorkflowException.invalidState("该节点没有唯一的待处理定时等待，请重新读取流程状态");
+            pending = candidates.get(0);
+        } else {
+            String waitId = variables == null ? null : (String) variables.get("waitId");
+            pending = candidates.stream().filter(candidate -> candidate.waitId().equals(waitId)).findFirst().orElse(null);
+            if (pending == null) return false;
+            if (!Objects.equals(pending.executionContext(), variables.get("executionContext"))) throw WorkflowExecutionContext.invalid();
+            if (Boolean.TRUE.equals(pending.payload().get("blocked")) || Boolean.TRUE.equals(pending.payload().get("notified"))) return false;
+            Number expireAt = (Number) pending.payload().getOrDefault("nextRetryAt", pending.payload().get("expireAt"));
+            if (expireAt == null || expireAt.longValue() > System.currentTimeMillis()) return false;
+        }
+        gateways.assertActive(instance, pending.context());
+        Map<String, Object> mergedVariables = WorkflowWaitState.variables(instance);
 
         WfProcessDefinition def = resolveDefinitionByInstance(instance);
         if (def == null || !StringUtils.hasText(def.getModelJson())) {
@@ -714,13 +827,60 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
         WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
         WfNodeConfig timerNode = nodeExecutionService.findNode(root, nodeKey);
-        if (timerNode == null) {
+        if (timerNode == null || !"TIMER".equals(timerNode.getType())) {
             throw WorkflowException.validationError("定时节点不存在: " + nodeKey);
         }
-
-        // 定时节点真正完成的时刻发生在续跑触发时，不能在注册 timer 时提前记 completed。
-        workflowEventPublisher.publishNodeCompleted(instance, timerNode);
-        nodeExecutionService.advanceAfterNode(instance, timerNode, nodeKey, variables, 0, root);
+        String timerAction = manual ? "AUTO_PASS" : String.valueOf(pending.payload().getOrDefault("timerAction", "AUTO_PASS"));
+        if ("NOTIFY_ONLY".equals(timerAction)) {
+            if (!Boolean.TRUE.equals(pending.payload().get("notified"))) {
+                sysNoticeService.send(instance.getStartUserId(), "定时节点已到期",
+                        "流程「" + instance.getTitle() + "」的「" + timerNode.getTitle() + "」已到期，等待管理员结束等待",
+                        "1", 0L, "系统定时任务");
+                Map<String, Object> payload = new HashMap<>(pending.payload());
+                payload.put("notified", true);
+                WorkflowWaitState.change(instance, mergedVariables, pending, payload);
+                processStateService.transition(instance, WfProcessStatus.PENDING);
+            }
+            timerSchedulerService.completeAfterCommit(instanceId, pending);
+            return true;
+        }
+        if (!"AUTO_PASS".equals(timerAction) && !"AUTO_REJECT".equals(timerAction)) {
+            throw WorkflowException.validationError("未知定时到期动作");
+        }
+        WorkflowWaitState.finish(instance, mergedVariables, pending.waitId());
+        processStateService.transition(instance, WfProcessStatus.RUNNING);
+        WfTask timerTask = new WfTask();
+        timerTask.setTaskId(UUID.randomUUID().toString());
+        timerTask.setTenantId(instance.getTenantId());
+        timerTask.setInstanceId(instanceId);
+        timerTask.setNodeKey(nodeKey);
+        timerTask.setNodeName(timerNode.getTitle());
+        timerTask.setExecutionContext(pending.executionContext());
+        timerTask.setTaskType(manual ? WfTaskType.MANUAL.name() : timerAction);
+        timerTask.setAssignee(UserContext.getUserId());
+        timerTask.setAssigneeName(UserContext.getUserName());
+        timerTask.setStatus(WfTaskStatus.TODO.getCode());
+        timerTask.setCreateTime(LocalDateTime.now());
+        taskMapper.insert(timerTask);
+        String action = "AUTO_REJECT".equals(timerAction) ? "REJECT" : "APPROVE";
+        R<?> result = manual
+                ? timerTaskService.completeTask(timerTask.getTaskId(), action, "管理员提前结束等待: " + reason, Map.of(), null)
+                : timerTaskService.completeAutomaticTask(timerTask.getTaskId(), action, "定时节点到期自动处理", Map.of());
+        if (result == null || result.getCode() != 200) {
+            throw WorkflowException.invalidState("定时节点完成失败");
+        }
+        if (manual) {
+            auditService.log(WorkflowAuditService.AuditAction.TIMER_FINISH, instanceId, "nodeKey=" + nodeKey + ", reason=" + reason);
+        } else if (instance.getStartUserId() != null) {
+            // 到期处理与成功通知共同提交，登记失败时保留等待记录供扫描重试。
+            String content = "SCHEDULE".equals(pending.payload().get("timerType"))
+                    ? String.format("您发起的流程「%s」中的定时节点已到达预定时间（%s），流程已继续流转。",
+                            instance.getTitle(), pending.payload().getOrDefault("scheduleTime", ""))
+                    : String.format("您发起的流程「%s」中的延迟节点已到期，流程已继续流转。", instance.getTitle());
+            sysNoticeService.send(instance.getStartUserId(), "定时节点触发通知", content, "1", 0L, "系统定时任务");
+        }
+        timerSchedulerService.completeAfterCommit(instanceId, pending);
+        return true;
     }
 
     @Override
@@ -729,18 +889,26 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         log.info("[handleSubprocessFinished] 子流程结束, parentInstanceId={}, parentNodeKey={}, childInstanceId={}, childStatus={}",
                 parentInstanceId, parentNodeKey, childInstanceId, childStatus);
 
-        RLock lock = redissonClient.getLock("lock:instance:" + parentInstanceId);
+        BusinessLock lock = businessLocks.getLock("lock:instance:" + parentInstanceId);
         try {
-            // watchdog 模式（不设 leaseTime，自动续期），锁覆盖整个事务，提交后释放
+            // 按原归属持续续期，锁覆盖整个事务并核验提交，完成后释放
             if (!lock.tryLock(10, TimeUnit.SECONDS)) {
                 throw WorkflowException.invalidState("父流程正在被其他操作处理，请稍后重试: " + parentInstanceId);
             }
             try {
-                transactionTemplate.executeWithoutResult(txStatus ->
-                        doHandleSubprocessFinished(parentInstanceId, parentNodeKey, childInstanceId, childStatus));
+                businessLocks.executeWithoutResult(transactionTemplate, txStatus -> {
+                    if (WfProcessStatus.AUTO_PASSED.getCode().equals(childStatus)) {
+                        WorkflowCompletionContext.automatically(() -> {
+                            doHandleSubprocessFinished(parentInstanceId, parentNodeKey, childInstanceId, childStatus);
+                            return null;
+                        });
+                    } else {
+                        doHandleSubprocessFinished(parentInstanceId, parentNodeKey, childInstanceId, childStatus);
+                    }
+                });
             } finally {
-                if (lock.isHeldByCurrentThread()) {
-                    lock.unlock();
+                if (lock != null) {
+                    lock.close();
                 }
             }
         } catch (InterruptedException e) {
@@ -755,26 +923,37 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @SuppressWarnings("unchecked")
     private void doHandleSubprocessFinished(String parentInstanceId, String parentNodeKey,
                                             String childInstanceId, String childStatus) {
-        WfProcessInstance parentInstance = processInstanceMapper.selectById(parentInstanceId);
+        WfProcessInstance parentInstance = processInstanceMapper.selectForExecution(UserContext.getTenantId(), parentInstanceId);
         if (parentInstance == null) {
             log.warn("[handleSubprocessFinished] 父流程实例不存在, parentInstanceId={}", parentInstanceId);
             return;
         }
-        if (!WfProcessStatus.RUNNING.getCode().equals(parentInstance.getStatus())) {
+        if (!WfProcessStatus.isActive(parentInstance.getStatus())) {
             log.warn("[handleSubprocessFinished] 父流程不在运行状态, parentInstanceId={}, status={}",
                     parentInstanceId, parentInstance.getStatus());
             return;
         }
 
-        // 幂等：同一子流程实例的结束事件只处理一次（标记与流转同事务，回滚时一并撤销）
-        Map<String, Object> variables = new HashMap<>();
-        if (StringUtils.hasText(parentInstance.getVariables())) {
-            try {
-                variables = objectMapper.readValue(parentInstance.getVariables(), Map.class);
-            } catch (Exception e) {
-                log.warn("[handleSubprocessFinished] 解析父流程变量失败: {}", e.getMessage());
-            }
+        WorkflowWaitState.Pending pending = WorkflowWaitState.find(parentInstance, childInstanceId);
+        if (pending == null) return;
+        WfProcessInstance child = processInstanceMapper.selectById(childInstanceId);
+        if (!"SUBPROCESS".equals(pending.kind()) || !parentNodeKey.equals(pending.nodeKey()) || child == null
+                || !Objects.equals(child.getTenantId(), parentInstance.getTenantId())
+                || !parentInstanceId.equals(child.getParentInstanceId()) || !parentNodeKey.equals(child.getParentNodeKey())
+                || !Objects.equals(childStatus, child.getStatus()) || !WfProcessStatus.fromCode(childStatus).isTerminal()) {
+            throw WorkflowExecutionContext.invalid();
         }
+        if (!gateways.isActive(parentInstance, pending.context())) {
+            WorkflowWaitState.finish(parentInstance, null, childInstanceId);
+            if (processInstanceMapper.updateById(parentInstance) != 1) throw WorkflowExecutionContext.invalid();
+            return;
+        }
+        WorkflowExecutionContext.run(pending.context(), () -> resumeSubprocess(parentInstance, parentNodeKey, childInstanceId, childStatus));
+    }
+
+    private void resumeSubprocess(WfProcessInstance parentInstance, String parentNodeKey, String childInstanceId, String childStatus) {
+        String parentInstanceId = parentInstance.getInstanceId();
+        Map<String, Object> variables = WorkflowWaitState.variables(parentInstance);
         String idempotentKey = SUBPROCESS_DONE_VARIABLE_PREFIX + parentNodeKey;
         String idempotentValue = StringUtils.hasText(childInstanceId) ? childInstanceId : String.valueOf(childStatus);
         if (idempotentValue.equals(String.valueOf(variables.get(idempotentKey)))) {
@@ -784,7 +963,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         }
 
         // 子流程异常终态（驳回/撤回/作废/终止）：挂起父流程，人工处理后可恢复重跑子流程节点
-        if (!WfProcessStatus.COMPLETED.getCode().equals(childStatus)) {
+        if (!WfProcessStatus.isSuccess(childStatus)) {
+            WorkflowWaitState.finish(parentInstance, variables, childInstanceId);
             markSubprocessEventHandled(parentInstance, variables, idempotentKey, idempotentValue);
             nodeExecutionService.suspendInstanceForNodeFailure(parentInstance, parentNodeKey,
                     "子流程", "子流程 " + childInstanceId + " 以状态 " + childStatus + " 结束");
@@ -813,6 +993,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         }
 
         // 记录幂等标记后继续流转（同事务）
+        WorkflowWaitState.finish(parentInstance, variables, childInstanceId);
         markSubprocessEventHandled(parentInstance, variables, idempotentKey, idempotentValue);
 
         // 子流程节点在等待模式下此前未发布 NodeCompleted，真正完成时刻在此补发
@@ -827,7 +1008,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                                             String idempotentValue) {
         variables.put(idempotentKey, idempotentValue);
         try {
-            parentInstance.setVariables(objectMapper.writeValueAsString(variables));
+            WorkflowWaitState.save(parentInstance, variables);
             if (processInstanceMapper.updateById(parentInstance) <= 0) {
                 throw WorkflowException.invalidState("子流程结束幂等标记写入失败，请稍后重试");
             }
@@ -931,6 +1112,11 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 if (StringUtils.hasText(jsonText(node, "approverType"))) {
                     nodeData.put("approverType", jsonText(node, "approverType"));
                 }
+                for (String displayField : List.of("signType", "joinNodeKey")) {
+                    if (StringUtils.hasText(jsonText(node, displayField))) {
+                        nodeData.put(displayField, jsonText(node, displayField));
+                    }
+                }
                 nodes.add(nodeData);
                 index++;
             }
@@ -945,6 +1131,10 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 edgeData.put("id", firstNotBlank(jsonText(edge, "id"), source + "->" + target));
                 edgeData.put("source", source);
                 edgeData.put("target", target);
+                if (edge.hasNonNull("isDefault")) {
+                    edgeData.put("isDefault", Set.of("true", "1", "yes", "y")
+                            .contains(jsonText(edge, "isDefault").toLowerCase(java.util.Locale.ROOT)));
+                }
 
                 String targetStatus = nodeStatus.getOrDefault(target, "pending");
                 edgeData.put("status", ("completed".equals(targetStatus) || "active".equals(targetStatus)) ? "active" : "pending");
@@ -983,7 +1173,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (activeNodeKeys.contains(nodeId)) {
             return "active";
         }
-        if ("END".equalsIgnoreCase(nodeType) && "COMPLETED".equals(processStatus)) {
+        if ("END".equalsIgnoreCase(nodeType) && WfProcessStatus.isSuccess(processStatus)) {
             return "completed";
         }
         if ("START".equalsIgnoreCase(nodeType)) {
@@ -1049,6 +1239,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             throw new PermissionDeniedException("无权作废该租户流程实例");
         }
         checkBusinessBinding(instance, businessType, businessId);
+        if (WfProcessStatus.fromCode(instance.getStatus()).isTerminal()) return R.ok();
         return doInvalidateProcess(instanceId, StringUtils.hasText(reason) ? reason : "业务单据撤销");
     }
 
@@ -1067,8 +1258,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
         // 只有运行中或暂停中的流程可以作废
         String currentStatus = instance.getStatus();
-        if (!WfProcessStatus.RUNNING.getCode().equals(currentStatus)
-                && !WfProcessStatus.SUSPENDED.getCode().equals(currentStatus)) {
+        if (!WfProcessStatus.isOpen(currentStatus)) {
             throw WorkflowException.invalidState("只有运行中或暂停中的流程可以作废，当前状态: " + currentStatus);
         }
 
@@ -1093,19 +1283,14 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             h.setOperatorId(UserContext.getUserId());
             h.setOperatorName(UserContext.getUserName());
             h.setAction("INVALIDATE");
+            h.setTaskType(task.getTaskType());
             h.setComment("流程作废: " + sanitizedReason);
             h.setCreateTime(LocalDateTime.now());
             taskHistoryMapper.insert(h);
-
-            taskMapper.deleteById(task.getTaskId());
         }
 
         // 2. 更新实例状态为INVALIDATED（乐观锁：0 行说明与审批等操作并发冲突，回滚并提示重试）
-        instance.setStatus(WfProcessStatus.INVALIDATED.getCode());
-        instance.setEndTime(LocalDateTime.now());
-        if (processInstanceMapper.updateById(instance) <= 0) {
-            throw WorkflowException.invalidState("流程状态已被其他操作变更，作废失败，请刷新后重试");
-        }
+        processStateService.transition(instance, WfProcessStatus.INVALIDATED);
 
         // 3. 记录审计日志
         auditService.log(WorkflowAuditService.AuditAction.PROCESS_INVALIDATE, instanceId,
@@ -1121,7 +1306,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             Long adminUserId = UserContext.getUserId();
             String adminUserName = UserContext.getUserName();
             try {
-                sysNoticeService.sendNotice(instance.getStartUserId(), "流程作废通知",
+                sysNoticeService.send(instance.getStartUserId(), "流程作废通知",
                     String.format("您发起的流程 [%s] 已被管理员作废，原因：%s", instance.getTitle(), sanitizedReason),
                     "SYSTEM", adminUserId != null ? adminUserId : 0L, adminUserName != null ? adminUserName : "系统");
             } catch (Exception ex) {
@@ -1144,13 +1329,13 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
     private R<?> doStartProcess(String processDefKey, String businessKey, Long currentUserId,
                                 String currentUserName, Long currentTenantId, Map<String, Object> variables,
-                                boolean skipPermissionCheck) {
+                                boolean externalRequest, Map<String, List<Long>> nodeAssignees, String expectedDefinitionId) {
         log.info("[startProcess] 开始发起流程, processDefKey={}, userId={}", processDefKey, currentUserId);
 
-        if (!StringUtils.hasText(processDefKey)) {
+        if (!StringUtils.hasText(processDefKey) || processDefKey.length() > 100) {
             throw WorkflowException.validationError("流程定义Key不能为空");
         }
-        if (!StringUtils.hasText(businessKey)) {
+        if (!StringUtils.hasText(businessKey) || businessKey.length() > 64) {
             throw WorkflowException.validationError("业务主键不能为空");
         }
         if (currentUserId == null) {
@@ -1160,26 +1345,39 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             throw WorkflowException.validationError("tenantId不能为空");
         }
 
+        if ("crm_refund_review".equals(processDefKey)) {
+            if (externalRequest || variables == null || !"crm_refund".equals(variables.get("businessType"))
+                    || !Objects.equals(businessKey, "crm_refund:" + variables.get("businessId"))
+                    || !(variables.get("refundApproval") instanceof Map<?, ?>)) {
+                throw WorkflowException.permissionDenied("退款审批只能从财务原收款页面发起，必须携带原申请的冻结依据");
+            }
+        } else if (variables != null && "crm_refund".equals(variables.get("businessType"))) {
+            throw WorkflowException.permissionDenied("退款申请不能更换审批流程");
+        }
+
         rateLimiterService.checkStartProcessLimit(currentUserId);
 
-        LambdaQueryWrapper<WfProcessDefinition> startDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
-                .eq(WfProcessDefinition::getProcessKey, processDefKey)
-                .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                .eq(WfProcessDefinition::getTenantId, currentTenantId)
-                .orderByDesc(WfProcessDefinition::getVersion);
-        WfProcessDefinition def = processDefinitionMapper.selectPage(new Page<>(1, 1, false), startDefQuery)
-                .getRecords().stream().findFirst().orElse(null);
+        WfProcessDefinition def = formDraftMapper.lockDefinitions(currentTenantId, processDefKey).stream()
+                .filter(definition -> "PUBLISHED".equals(definition.getStatus())
+                        && !Integer.valueOf(1).equals(definition.getDeleted())
+                        && !Integer.valueOf(1).equals(definition.getIsArchived()))
+                .max(java.util.Comparator.comparing(definition -> definition.getVersion() == null ? 0 : definition.getVersion()))
+                .orElse(null);
         if (def == null) {
             throw WorkflowException.processNotFound(processDefKey);
         }
 
-        if (!skipPermissionCheck
-                && !permissionService.canStartProcess(currentUserId, def.getStartPermissionType(), def.getStartPermissionValue())) {
+        if (expectedDefinitionId != null && !expectedDefinitionId.equals(def.getDefinitionId())) {
+            throw new WorkflowException("DRAFT_STALE", "流程已发布新版本，请重新填写申请");
+        }
+
+        if (!permissionService.canStartProcess(currentUserId, def.getStartPermissionType(), def.getStartPermissionValue())) {
             throw new PermissionDeniedException("您没有权限发起该流程");
         }
 
+        WfFormDefinition boundForm = null;
         if (StringUtils.hasText(def.getFormId())) {
-            WfFormDefinition boundForm = formDefinitionMapper.selectById(def.getFormId());
+            boundForm = formDraftMapper.lockForm(currentTenantId, def.getFormId());
             if (boundForm == null) {
                 throw WorkflowException.validationError("流程绑定的表单不存在或已被删除，无法发起");
             }
@@ -1193,15 +1391,42 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
         WfProcessInstance existing = findExistingBusinessInstance(currentTenantId, businessKey);
         if (existing != null) {
-            log.info("[startProcess] 流程实例已存在，直接返回, businessKey={}, instanceId={}",
-                    businessKey, existing.getInstanceId());
+            checkExistingStart(existing, currentUserId, processDefKey);
             return R.ok(buildStartResult(existing));
+        }
+
+        if (externalRequest) {
+            if (Set.of("overtime_request", "hr_shift_request", "oa_consumable_request", "oa_meeting_booking").contains(processDefKey)) {
+                throw WorkflowException.permissionDenied("请从对应业务申请页面发起审批");
+            }
+            DraftLaunchContextVO context = launchContexts.context(def.getDefinitionId());
+            Map<String, Object> supplied = new LinkedHashMap<>(variables == null ? Map.of() : variables);
+            Object title = supplied.remove("_title");
+            Object draftVersion = supplied.remove("_draftVersion");
+            Map<String, Object> checked = new LinkedHashMap<>(formInputs.validate(context, supplied, true));
+            launchContexts.checkAssignees(context, nodeAssignees, true);
+            if (title != null) {
+                if (!(title instanceof String) || ((String) title).length() > 200) {
+                    throw WorkflowException.validationError("申请标题必须是最多200字符的文本");
+                }
+                checked.put("_title", title);
+            }
+            if (expectedDefinitionId != null) checked.put("_draftVersion", draftVersion);
+            variables = checked;
+        }
+        if (!externalRequest) {
+            hParticipantPolicy.assertStart(currentTenantId, currentUserId, variables, nodeAssignees);
+        }
+
+        if (!externalRequest) {
+            variables = hParticipantPolicy.freezeStartDefinition(currentTenantId, currentUserId, variables, def);
         }
 
         WfProcessInstance instance = new WfProcessInstance();
         instance.setInstanceId(UUID.randomUUID().toString());
         instance.setProcessDefKey(processDefKey);
         instance.setDefinitionId(def.getDefinitionId());
+        instance.setFormVersion(boundForm == null ? null : boundForm.getVersion());
         instance.setBusinessKey(businessKey);
         instance.setStartUserId(currentUserId);
         instance.setStartUserName(StringUtils.hasText(currentUserName) ? currentUserName : String.valueOf(currentUserId));
@@ -1210,8 +1435,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         instance.setStatus(WfProcessStatus.RUNNING.getCode());
         instance.setStartTime(LocalDateTime.now());
 
-        String processNo = generateProcessNo(processDefKey);
-        instance.setProcessNo(processNo);
+        instance.setProcessNo(processNumbers.next(currentTenantId, processDefKey));
 
         String title = def.getProcessName();
         if (variables != null && variables.containsKey("_title")) {
@@ -1222,22 +1446,32 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (variables != null && !variables.isEmpty()) {
             try {
                 instance.setVariables(objectMapper.writeValueAsString(variables));
-            } catch (Exception e) {
-                log.warn("[startProcess] 序列化变量失败: {}", e.getMessage());
+            } catch (Exception invalidVariables) {
+                throw WorkflowException.validationError("流程变量无法安全保存");
             }
         }
 
-        try {
-            processInstanceMapper.insert(instance);
-        } catch (DuplicateKeyException e) {
-            WfProcessInstance duplicate = findExistingBusinessInstance(currentTenantId, businessKey);
-            if (duplicate != null) {
-                log.info("[startProcess] 并发启动命中唯一键，返回已有实例, businessKey={}, instanceId={}",
-                        businessKey, duplicate.getInstanceId());
-                return R.ok(buildStartResult(duplicate));
+        for (int attempt = 0; ; attempt++) {
+            try {
+                processInstanceMapper.insert(instance);
+                break;
+            } catch (DuplicateKeyException duplicateKey) {
+                WfProcessInstance duplicate = processInstanceMapper.findBusinessInstanceCurrent(currentTenantId, businessKey);
+                if (duplicate != null) {
+                    checkExistingStart(duplicate, currentUserId, processDefKey);
+                    log.info("[startProcess] 并发启动命中唯一键，返回已有实例, businessKey={}, instanceId={}",
+                            businessKey, duplicate.getInstanceId());
+                    return R.ok(buildStartResult(duplicate));
+                }
+                if (attempt >= 2 || processInstanceMapper.findProcessNumberCurrent(currentTenantId, instance.getProcessNo()) == null) {
+                    throw duplicateKey;
+                }
+                instance.setProcessNo(processNumbers.next(currentTenantId, processDefKey));
             }
-            throw e;
         }
+        String processNo = instance.getProcessNo();
+
+        if (externalRequest) formFiles.bindStart(instance);
 
         try {
             processMonitorService.recordProcessStart(
@@ -1249,19 +1483,27 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                     currentUserId,
                     instance.getStartUserName()
             );
-        } catch (Exception e) {
-            log.warn("[startProcess] 记录流程监控失败: {}", e.getMessage());
+        } catch (Exception monitorFailure) {
+            throw new WorkflowException("START_FAILED", "流程监控记录创建失败");
         }
 
+        initiatorSelectionService.saveSelections(instance, def.getModelJson(), nodeAssignees);
+        Map<String, Object> startVariables = variables;
         withWorkflowUserContext(currentUserId, instance.getStartUserName(), instance.getTenantId(), () -> {
             workflowEventPublisher.publishProcessStarted(instance);
-            globalListenerDispatcher.fireCreate(instance, variables);
-            runFirstNode(def, instance, variables);
+            globalListenerDispatcher.fireCreate(instance, startVariables);
+            runFirstNode(def, instance, startVariables);
             auditService.log(WorkflowAuditService.AuditAction.PROCESS_START, instance.getInstanceId(),
                     "processDefKey=" + processDefKey + ", processNo=" + processNo);
         });
 
         return R.ok(buildStartResult(instance));
+    }
+
+    private void checkExistingStart(WfProcessInstance instance, Long userId, String processKey) {
+        if (!Objects.equals(instance.getStartUserId(), userId) || !Objects.equals(instance.getProcessDefKey(), processKey)) {
+            throw WorkflowException.permissionDenied("业务键已被其他流程申请使用");
+        }
     }
 
     private WfProcessInstance findExistingBusinessInstance(Long tenantId, String businessKey) {
@@ -1303,8 +1545,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         } catch (WorkflowException e) {
             throw e;
         } catch (Exception e) {
-            log.error("[startProcess] 流程启动失败: {}", e.getMessage(), e);
-            throw new WorkflowException("START_FAILED", "流程启动失败: " + e.getMessage(), e);
+            log.error("[startProcess] 流程启动失败, instanceId={}, errorType={}", instance.getInstanceId(), e.getClass().getSimpleName());
+            throw new WorkflowException("START_FAILED", "流程启动失败，请检查流程配置");
         }
     }
 
@@ -1481,23 +1723,6 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         }
     }
 
-    /**
-     * 生成流程编号
-     */
-    private String generateProcessNo(String processDefKey) {
-        String prefix = processDefKey.toUpperCase().replaceAll("[^A-Z0-9]", "");
-        if (prefix.length() > 6) prefix = prefix.substring(0, 6);
-        String datePart = DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDateTime.now());
-        // B11: Redis 序列号保证同 key 同日单号唯一（原 4 位随机数约 118 单即 50% 概率碰撞）；
-        // DB 侧另有 uk(tenant_id, process_no) 兜底
-        String seqKey = "sys:wf:pno:" + prefix + ":" + datePart;
-        long seq = redisCache.increment(seqKey);
-        if (seq == 1) {
-            redisCache.expire(seqKey, 48, TimeUnit.HOURS);
-        }
-        return prefix + datePart + String.format("%06d", seq);
-    }
-
     // ==================== P1-3: 终止流程 ====================
 
     @Override
@@ -1523,19 +1748,19 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         // XSS过滤
         String sanitizedReason = securityUtils.sanitizeXss(reason);
 
-        // 3. 分布式锁（watchdog 自动续期，不设 leaseTime）；锁覆盖整个事务，提交后才释放，
+        // 3. 分布式锁按原归属续期并保护提交；锁覆盖整个事务，完成后才释放，
         //    避免锁在事务提交前释放导致并发方读到未提交数据（同 A4 修复模式）
-        RLock lock = redissonClient.getLock("lock:instance:" + instanceId);
+        BusinessLock lock = businessLocks.getLock("lock:instance:" + instanceId);
         try {
             if (!lock.tryLock(5, TimeUnit.SECONDS)) {
                 return R.fail("系统繁忙，请稍后重试");
             }
             try {
-                return transactionTemplate.execute(txStatus ->
+                return businessLocks.execute(transactionTemplate, txStatus ->
                         doTerminateProcess(instanceId, sanitizedReason, currentUserId));
             } finally {
-                if (lock.isHeldByCurrentThread()) {
-                    lock.unlock();
+                if (lock != null) {
+                    lock.close();
                 }
             }
         } catch (InterruptedException e) {
@@ -1555,7 +1780,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
      */
     private R<?> doTerminateProcess(String instanceId, String reason, Long currentUserId) {
         // 锁内重读实例，避免拿锁前读到的快照已过期
-        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        WfProcessInstance instance = processInstanceMapper.selectForExecution(UserContext.getTenantId(), instanceId);
         if (instance == null) {
             return R.fail("流程实例不存在");
         }
@@ -1566,14 +1791,13 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         }
 
         // 状态校验
-        if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus()) &&
-            !WfProcessStatus.SUSPENDED.getCode().equals(instance.getStatus())) {
+        if (!WfProcessStatus.isOpen(instance.getStatus())) {
             return R.fail("只能终止运行中或已暂停的流程，当前状态: " + instance.getStatus());
         }
 
-        // P1修复: 删除所有未完成的任务（包括SUSPENDED状态）
-        int deletedTasks = taskMapper.delete(
+        long deletedTasks = taskMapper.selectCount(
             new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getTenantId, instance.getTenantId())
                 .eq(WfTask::getInstanceId, instanceId)
                 .in(WfTask::getStatus,
                     WfTaskStatus.TODO.getCode(),
@@ -1581,52 +1805,9 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                     WfTaskStatus.SUSPENDED.getCode())
         );
 
-        log.info("终止流程，删除待办任务: instanceId={}, count={}", instanceId, deletedTasks);
-
-        // P1修复: 清理会签相关数据
-        try {
-            List<WfCountersignTask> csTasks = countersignTaskMapper.selectList(
-                new LambdaQueryWrapper<WfCountersignTask>()
-                    .eq(WfCountersignTask::getInstanceId, instanceId)
-                    .eq(WfCountersignTask::getStatus, "VOTING")
-            );
-
-            for (WfCountersignTask csTask : csTasks) {
-                // 删除会签投票记录
-                countersignVoteMapper.delete(
-                    new LambdaQueryWrapper<WfCountersignVote>()
-                        .eq(WfCountersignVote::getCountersignId, csTask.getCountersignId())
-                );
-
-                // 更新会签任务状态为已终止
-                csTask.setStatus("TERMINATED");
-                csTask.setCompleteTime(LocalDateTime.now());
-                countersignTaskMapper.updateById(csTask);
-            }
-
-            if (!csTasks.isEmpty()) {
-                log.info("终止流程，清理会签数据: instanceId={}, count={}", instanceId, csTasks.size());
-            }
-        } catch (Exception e) {
-            log.warn("清理会签数据失败: instanceId={}, error={}", instanceId, e.getMessage());
-        }
-
-        // P1修复: 取消定时器任务
-        try {
-            if (timerSchedulerService != null) {
-                timerSchedulerService.cancelTimersForInstance(instanceId);
-                log.info("终止流程，取消定时器: instanceId={}", instanceId);
-            }
-        } catch (Exception e) {
-            log.warn("取消定时器失败: instanceId={}, error={}", instanceId, e.getMessage());
-        }
-
         // 7. 更新流程实例状态（乐观锁：0 行说明与其他操作并发冲突，回滚整个终止事务）
-        instance.setStatus("TERMINATED");
-        instance.setEndTime(LocalDateTime.now());
-        if (processInstanceMapper.updateById(instance) <= 0) {
-            throw WorkflowException.invalidState("流程状态已被其他操作变更，终止失败，请刷新后重试");
-        }
+        processStateService.transition(instance, WfProcessStatus.TERMINATED);
+        log.info("终止流程，删除待办任务: instanceId={}, count={}", instanceId, deletedTasks);
 
         // P1修复: 更新流程监控状态
         try {
@@ -1659,7 +1840,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         // 10. 发送通知
         try {
             if (instance.getStartUserId() != null) {
-                sysNoticeService.sendNotice(instance.getStartUserId(), "流程终止通知",
+                sysNoticeService.send(instance.getStartUserId(), "流程终止通知",
                     String.format("您发起的流程 [%s] 已被管理员终止，原因：%s", instance.getTitle(), reason),
                     "SYSTEM", currentUserId, UserContext.getUserName());
             }

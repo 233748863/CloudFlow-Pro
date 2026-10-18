@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WorkflowImTodoScanMapper">
+    <select id="pending" resultType="com.cloudflow.workflow.domain.WfTask">
+        SELECT task.task_id, task.tenant_id, task.instance_id, task.node_key, task.task_type, task.assignee,
+            task.proxy_user_id, task.agent_setting_id, task.status, task.lock_version AS version
+        FROM wf_task task
+        INNER JOIN wf_process_instance instance ON instance.instance_id = task.instance_id AND instance.tenant_id = task.tenant_id
+        WHERE task.task_id &gt; #{afterTaskId} AND task.status = 'TODO' AND task.assignee IS NOT NULL
+          AND instance.status = 'RUNNING' AND instance.deleted = 0
+        ORDER BY task.task_id LIMIT 100
+    </select>
+</mapper>

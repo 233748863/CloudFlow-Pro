@@ -36,7 +36,7 @@ public class ImportValidator {
      * 系统支持的节点类型
      */
     private static final Set<String> SUPPORTED_NODE_TYPES = new HashSet<>(Arrays.asList(
-        "START", "END", "APPROVAL", "CONDITION", "PARALLEL", "GATEWAY",
+        "START", "END", "APPROVAL", "CONDITION", "PARALLEL", "GATEWAY", "INCLUSIVE", "ROUTE",
         "SUBPROCESS", "NOTIFICATION", "SCRIPT", "TIMER", "MANUAL", "COPY",
         "USERTASK", "SERVICETASK", "SCRIPTTASK", "MESSAGE"
     ));

@@ -14,8 +14,10 @@ import com.cloudflow.workflow.mapper.*;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.service.IDeployEnhancementService;
-import com.cloudflow.workflow.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.workflow.service.ScriptExecutionPolicy;
+import com.cloudflow.workflow.service.WorkflowConfigurationLockService;
+import com.cloudflow.workflow.service.WorkflowConfigurationLockService.LockedConfiguration;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -83,7 +85,13 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     private ScriptExecutionPolicy scriptExecutionPolicy;
 
     @Autowired
-    private ISysNoticeService sysNoticeService;
+    private WorkflowConfigurationLockService configurationLocks;
+
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowTriggerSecrets triggerSecrets;
+
+    @Autowired
+    private MessageSender sysNoticeService;
 
     @Autowired
     private SysUserMapper sysUserMapper;
@@ -308,7 +316,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             throw WorkflowException.validationError("未解析到通知接收人");
         }
         for (Long recipientId : recipientIds) {
-            sysNoticeService.sendNotice(
+            sysNoticeService.send(
                     recipientId,
                     notification.getNotificationTitle(),
                     notification.getNotificationContent(),
@@ -401,7 +409,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     // ==================== 回滚机制 ====================
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public R<?> rollbackDeploy(RollbackRequestDTO dto) {
         Long deployId = dto.getDeployId();
         Integer targetVersion = dto.getTargetVersion();
@@ -416,14 +424,14 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         assertTenantAccess(deployRecord.getTenantId(), "执行版本回滚");
 
         String processDefId = deployRecord.getProcessDefId();
-        WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
-        if (definition == null) {
-            return R.fail("流程定义不存在");
-        }
+        LockedConfiguration locked = configurationLocks.lockDefinition(processDefId);
+        WfProcessDefinition definition = locked.requireDefinition(processDefId);
         assertTenantAccess(definition.getTenantId(), "执行版本回滚");
 
         // 2. C6: 目标版本 = 同 key 下 version=targetVersion 的定义版本行（版本行自身即完整快照）
-        WfProcessDefinition targetRow = findVersionRow(definition, targetVersion);
+        WfProcessDefinition targetRow = locked.versions(definition.getProcessKey()).stream()
+                .filter(version -> targetVersion != null && targetVersion.equals(version.getVersion()))
+                .findFirst().orElse(null);
         if (targetRow == null) {
             return R.fail("目标版本 " + targetVersion + " 不存在，无法回滚");
         }
@@ -444,8 +452,8 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
                 reason,
                 dto.getForceRollback(),
                 userId != null ? String.valueOf(userId) : "system");
-        WfProcessDefinition rollbackRow = processDefinitionMapper.selectById(newVersion.getId());
-        int nextVersion = rollbackRow != null && rollbackRow.getVersion() != null ? rollbackRow.getVersion() : 0;
+        WfProcessDefinition rollbackRow = configurationLocks.lockDefinition(newVersion.getId()).requireDefinition(newVersion.getId());
+        int nextVersion = rollbackRow.getVersion() != null ? rollbackRow.getVersion() : 0;
 
         // 5. 创建新的发布记录（指向回滚生成的新版本行）
         WfDeployRecord rollbackRecord = new WfDeployRecord();
@@ -460,7 +468,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         rollbackRecord.setRollbackReason(reason);
         rollbackRecord.setRollbackBy(userId);
         rollbackRecord.setRollbackTime(LocalDateTime.now());
-        deployRecordMapper.insert(rollbackRecord);
+        if (deployRecordMapper.insert(rollbackRecord) != 1) {
+            throw WorkflowException.invalidState("回滚发布记录创建失败");
+        }
 
         // 6. 记录回滚历史
         WfDeployRollbackHistory history = new WfDeployRollbackHistory();
@@ -475,7 +485,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         history.setRollbackStatus(RollbackStatus.SUCCESS.getCode());
         history.setRollbackBy(userId);
         history.setRollbackTime(LocalDateTime.now());
-        rollbackHistoryMapper.insert(history);
+        if (rollbackHistoryMapper.insert(history) != 1) {
+            throw WorkflowException.invalidState("回滚历史记录创建失败");
+        }
 
         log.info("流程定义 {} 已从版本 {} 回滚到版本 {} 的内容，并生成新版本行 {}(v{})",
                 processDefId, deployRecord.getVersion(), targetVersion, newVersion.getId(), nextVersion);
@@ -503,7 +515,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         vo.setProcessDefId(row.getDefinitionId());
         vo.setProcessKey(row.getProcessKey());
         vo.setVersion(row.getVersion());
-        vo.setSnapshotData(row.getModelJson());
+        vo.setSnapshotData(triggerSecrets.maskModel(row.getModelJson()));
         vo.setFormConfig(row.getFormId());
         vo.setCreatedTime(row.getCreateTime());
         return vo;
@@ -588,7 +600,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         // 1. 分析运行中的实例
         LambdaQueryWrapper<WfProcessInstance> instanceWrapper = new LambdaQueryWrapper<>();
         instanceWrapper.eq(WfProcessInstance::getDefinitionId, processDefId)
-                .eq(WfProcessInstance::getStatus, "RUNNING");
+                .in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.activeCodes());
         if (currentTenantId != null) {
             instanceWrapper.eq(WfProcessInstance::getTenantId, currentTenantId);
         }
@@ -605,7 +617,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         // 2. 分析待办任务
         LambdaQueryWrapper<WfProcessInstance> taskInstanceWrapper = new LambdaQueryWrapper<>();
         taskInstanceWrapper.eq(WfProcessInstance::getDefinitionId, processDefId)
-                .eq(WfProcessInstance::getStatus, "RUNNING");
+                .in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.activeCodes());
         if (currentTenantId != null) {
             taskInstanceWrapper.eq(WfProcessInstance::getTenantId, currentTenantId);
         }
@@ -646,13 +658,12 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     // ==================== 发布审批流 ====================
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public R<?> submitDeployApproval(String definitionId, DeployApprovalDTO dto) {
         Long userId = UserContext.getUserId();
-        WfProcessDefinition definition = processDefinitionMapper.selectById(definitionId);
-        if (definition == null) {
-            return R.fail("流程定义不存在");
-        }
+        LockedConfiguration locked = configurationLocks.lockDefinition(definitionId);
+        WfProcessDefinition definition = locked.requireDefinition(definitionId);
+        locked.requireBoundForm(definition.getFormId());
         assertTenantAccess(definition.getTenantId(), "提交发布审批");
         scriptExecutionPolicy.assertModelDeployable(definition.getModelJson());
         Long tenantId = resolveTenantId(definition.getTenantId());
@@ -714,7 +725,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public R<?> approveDeployRequest(Long approvalId, Long stepId, String action, String comment) {
         Long userId = UserContext.getUserId();
 
@@ -724,6 +735,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             return R.fail("审批记录不存在");
         }
         assertTenantAccess(approval.getTenantId(), "审批发布请求");
+        LockedConfiguration locked = configurationLocks.lockDefinition(approval.getProcessDefId());
         if (!ApprovalStatus.PENDING.getCode().equals(approval.getApprovalStatus())) {
             return R.fail("该审批已完成，无法操作");
         }
@@ -755,7 +767,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             if (nextStep == null) {
                 // 所有步骤都已通过，审批完成
                 // 自动执行发布
-                autoDeployAfterApproval(approval);
+                autoDeployAfterApproval(approval, locked);
                 approval.setApprovalStatus(ApprovalStatus.APPROVED.getCode());
                 approval.setCompleteTime(LocalDateTime.now());
                 deployApprovalMapper.updateById(approval);
@@ -785,51 +797,44 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     /**
      * 审批通过后自动执行发布
      */
-    private void autoDeployAfterApproval(WfDeployApproval approval) {
-        try {
-            String processDefId = approval.getProcessDefId();
-            WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
-            if (definition != null) {
-                assertTenantAccess(definition.getTenantId(), "审批通过自动发布");
-                scriptExecutionPolicy.assertModelDeployable(definition.getModelJson());
-                // 创建发布记录
-                WfDeployRecord record = new WfDeployRecord();
-                record.setTenantId(resolveTenantId(approval.getTenantId()));
-                // C6: 与 deployProcessDefinition 状态机一致——版本行不原地递增 version，
-                // 仅 DRAFT→PUBLISHED，同 key 其他在线版本归档；版本行自身即快照，无需另存
-                record.setProcessDefId(processDefId);
-                record.setProcessKey(definition.getProcessKey());
-                record.setVersion(definition.getVersion() != null ? definition.getVersion() : 1);
-                record.setDeployStatus("SUCCESS");
-                record.setDeployBy(approval.getSubmitterId());
-                record.setDeployTime(LocalDateTime.now());
-                record.setApprovalId(approval.getId());
-                deployRecordMapper.insert(record);
-
-                // 更新审批记录的发布ID
-                approval.setDeployId(record.getId());
-                deployApprovalMapper.updateById(approval);
-
-                // 更新流程定义状态并归档同 key 其他在线版本
-                definition.setStatus("PUBLISHED");
-                processDefinitionMapper.updateById(definition);
-                com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<WfProcessDefinition> archiveOthers =
-                        new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<WfProcessDefinition>()
-                                .eq(WfProcessDefinition::getProcessKey, definition.getProcessKey())
-                                .ne(WfProcessDefinition::getDefinitionId, processDefId)
-                                .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                                .set(WfProcessDefinition::getStatus, "ARCHIVED");
-                if (definition.getTenantId() != null) {
-                    archiveOthers.eq(WfProcessDefinition::getTenantId, definition.getTenantId());
-                }
-                processDefinitionMapper.update(null, archiveOthers);
-
-                log.info("流程定义 {} 审批通过后自动发布成功，版本: {}", processDefId, record.getVersion());
-            }
-        } catch (Exception e) {
-            log.error("审批通过后自动发布失败", e);
-            throw WorkflowException.validationError("审批通过后自动发布失败: " + e.getMessage());
+    private void autoDeployAfterApproval(WfDeployApproval approval, LockedConfiguration locked) {
+        String processDefId = approval.getProcessDefId();
+        WfProcessDefinition definition = locked.requireDefinition(processDefId);
+        locked.requireBoundForm(definition.getFormId());
+        if ("PUBLISHED".equals(definition.getStatus())) {
+            throw WorkflowException.invalidState("流程定义已发布，无需重复发布");
         }
+        assertTenantAccess(definition.getTenantId(), "审批通过自动发布");
+        scriptExecutionPolicy.assertModelDeployable(definition.getModelJson());
+        WfDeployRecord record = new WfDeployRecord();
+        record.setTenantId(resolveTenantId(approval.getTenantId()));
+        record.setProcessDefId(processDefId);
+        record.setProcessKey(definition.getProcessKey());
+        record.setVersion(definition.getVersion() != null ? definition.getVersion() : 1);
+        record.setDeployStatus("SUCCESS");
+        record.setDeployBy(approval.getSubmitterId());
+        record.setDeployTime(LocalDateTime.now());
+        record.setApprovalId(approval.getId());
+        if (deployRecordMapper.insert(record) != 1) {
+            throw WorkflowException.invalidState("流程发布记录创建失败");
+        }
+        approval.setDeployId(record.getId());
+        if (deployApprovalMapper.updateById(approval) != 1) {
+            throw WorkflowException.invalidState("发布审批记录更新失败");
+        }
+        definition.setStatus("PUBLISHED");
+        if (processDefinitionMapper.updateById(definition) != 1) {
+            throw WorkflowException.invalidState("流程定义发布失败，请刷新后重试");
+        }
+        for (WfProcessDefinition previous : locked.versions(definition.getProcessKey())) {
+            if (!processDefId.equals(previous.getDefinitionId()) && "PUBLISHED".equals(previous.getStatus())) {
+                previous.setStatus("ARCHIVED");
+                if (processDefinitionMapper.updateById(previous) != 1) {
+                    throw WorkflowException.invalidState("旧流程版本归档失败，请刷新后重试");
+                }
+            }
+        }
+        log.info("流程定义 {} 审批通过后自动发布成功，版本: {}", processDefId, record.getVersion());
     }
 
     @Override

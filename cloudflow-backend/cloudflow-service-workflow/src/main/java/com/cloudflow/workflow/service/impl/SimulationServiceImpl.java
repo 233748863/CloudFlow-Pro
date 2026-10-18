@@ -7,10 +7,13 @@ import com.cloudflow.workflow.domain.dto.SimulationRequest;
 import com.cloudflow.workflow.domain.dto.SimulationResult;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
+import com.cloudflow.workflow.model.WorkflowGatewayRouting;
+import com.cloudflow.workflow.model.WorkflowGatewayTopology;
 import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
 import com.cloudflow.workflow.service.INodeExecutionService;
 import com.cloudflow.workflow.service.ISimulationService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
+import com.cloudflow.workflow.service.WorkflowExecutionContext;
 import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -56,7 +59,8 @@ public class SimulationServiceImpl implements ISimulationService {
             return result;
         }
 
-        Map<String, Object> variables = request.getVariables() != null ? request.getVariables() : new HashMap<>();
+        WorkflowExecutionContext.assertNoOverrides(request.getVariables());
+        Map<String, Object> variables = WorkflowExecutionContext.copyVariables(request.getVariables());
         int maxDepth = request.getMaxDepth() > 0 ? request.getMaxDepth() : 50;
 
         Set<String> allNodeIds = graph.getNodeIds();
@@ -70,17 +74,26 @@ public class SimulationServiceImpl implements ISimulationService {
             detail.setNodeType(node != null ? node.getType() : "UNKNOWN");
             detail.setTitle(node != null ? node.getTitle() : "");
             detail.setReached(false);
+            if (node != null && (WorkflowGatewayTopology.isSplit(node)
+                    || Set.of("CONDITION", "GATEWAY", "ROUTE").contains(node.getType()))) {
+                List<WorkflowRuntimeGraph.EdgeLink> outgoing = WorkflowGatewayRouting.outgoing(graph, node);
+                detail.setBranchOrder(outgoing.stream().map(WorkflowRuntimeGraph.EdgeLink::getId).toList());
+                detail.setDefaultBranch(outgoing.stream().filter(WorkflowRuntimeGraph.EdgeLink::isDefault)
+                        .map(WorkflowRuntimeGraph.EdgeLink::getId).findFirst().orElse(null));
+                if (WorkflowGatewayTopology.isSplit(node)) detail.setJoinNodeKey(WorkflowGatewayTopology.split(graph, node).joinNodeKey());
+            }
             detailMap.put(nodeId, detail);
         }
 
         List<SimulationResult.SimulationPath> paths = new ArrayList<>();
+        result.setPaths(paths);
         String startNodeId = graph.getStartNodeId();
 
         if (request.isSimulateAllBranches()) {
             simulateAllBranches(graph, startNodeId, variables, maxDepth, detailMap, paths, new ArrayList<>(), new HashSet<>(), result);
         } else {
             SimulationResult.SimulationPath path = new SimulationResult.SimulationPath();
-            simulatePath(graph, startNodeId, variables, maxDepth, 0, detailMap, path, new HashSet<>(), result);
+            simulatePath(graph, startNodeId, variables, maxDepth, 0, detailMap, path, new HashSet<>(), result, null);
             paths.add(path);
         }
 
@@ -191,7 +204,11 @@ public class SimulationServiceImpl implements ISimulationService {
                               Map<String, Object> variables, int maxDepth, int depth,
                               Map<String, SimulationNodeDetail> detailMap,
                               SimulationResult.SimulationPath path,
-                              Set<String> visited, SimulationResult result) {
+                              Set<String> visited, SimulationResult result, String stopNodeId) {
+        if (stopNodeId != null && stopNodeId.equals(nodeId)) {
+            path.setTerminationType("JOINED");
+            return;
+        }
         if (depth > maxDepth) {
             result.getWarnings().add("模拟达到最大深度限制 (" + maxDepth + ")，可能存在环路");
             path.setTerminationType("MAX_DEPTH");
@@ -224,87 +241,64 @@ public class SimulationServiceImpl implements ISimulationService {
         path.getNodeIds().add(nodeId);
         path.getNodeTitles().add(node.getTitle() != null ? node.getTitle() : node.getType());
 
-        String nodeType = node.getType();
-
-        switch (nodeType) {
-            case "END":
-                path.setTerminationType("COMPLETED");
-                return;
-
-            case "START":
-                advanceToNext(graph, nodeId, variables, maxDepth, depth, detailMap, path, visited, result);
-                break;
-
-            case "CONDITION":
-                handleConditionNode(graph, node, nodeId, variables, maxDepth, depth, detailMap, path, visited, result);
-                break;
-
-            case "APPROVAL":
-            case "MANUAL":
-                handleApprovalNode(node, detail, result);
-                advanceToNext(graph, nodeId, variables, maxDepth, depth, detailMap, path, visited, result);
-                break;
-
-            case "PARALLEL":
-                handleParallelNode(graph, nodeId, variables, maxDepth, depth, detailMap, path, visited, result);
-                break;
-
-            default:
-                advanceToNext(graph, nodeId, variables, maxDepth, depth, detailMap, path, visited, result);
-                break;
+        if ("END".equals(node.getType())) {
+            path.setTerminationType("COMPLETED");
+            return;
         }
+        if ("APPROVAL".equals(node.getType()) || "MANUAL".equals(node.getType())
+                || ("PARALLEL".equals(node.getType()) && StringUtils.hasText(node.getSignType()))) {
+            handleApprovalNode(node, detail, result);
+        }
+        if (WorkflowGatewayTopology.isSplit(node)) {
+            WorkflowGatewayTopology.Split split = WorkflowGatewayTopology.split(graph, node);
+            List<WorkflowRuntimeGraph.EdgeLink> selected = WorkflowGatewayRouting.select(graph, node,
+                    expression -> nodeExecutionService.evaluateCondition(expression, variables));
+            detail.setExpectedCount(selected.size());
+            detail.setActivatedBranches(selected.stream().map(WorkflowRuntimeGraph.EdgeLink::getId).toList());
+            if (selected.isEmpty()) {
+                noMatchingBranch(node, path, result);
+                return;
+            }
+            boolean allArrived = true;
+            for (WorkflowRuntimeGraph.EdgeLink branch : selected) {
+                SimulationResult.SimulationPath branchPath = buildPath(path.getNodeIds(), graph);
+                simulatePath(graph, branch.getTargetId(), WorkflowExecutionContext.copyVariables(variables), maxDepth,
+                        depth + 1, detailMap, branchPath, new HashSet<>(visited), result, split.joinNodeKey());
+                result.getPaths().add(branchPath);
+                allArrived &= "JOINED".equals(branchPath.getTerminationType());
+            }
+            if (!allArrived) {
+                path.setTerminationType("WAITING_FOR_BRANCHES");
+                return;
+            }
+            simulatePath(graph, split.joinNodeKey(), variables, maxDepth, depth + 1, detailMap, path, visited, result, stopNodeId);
+            return;
+        }
+        List<WorkflowRuntimeGraph.EdgeLink> outgoing = graph.getOutgoingEdges(nodeId);
+        if (outgoing.isEmpty()) {
+            path.setTerminationType("DEAD_END");
+            result.getErrors().add("节点 [" + node.getTitle() + "] 没有后继");
+            return;
+        }
+        WorkflowRuntimeGraph.EdgeLink next = outgoing.get(0);
+        if (outgoing.size() > 1 || "ROUTE".equals(node.getType())) {
+            List<WorkflowRuntimeGraph.EdgeLink> selected = WorkflowGatewayRouting.select(graph, node,
+                    expression -> nodeExecutionService.evaluateCondition(expression, variables));
+            if (selected.isEmpty()) {
+                noMatchingBranch(node, path, result);
+                return;
+            }
+            next = selected.get(0);
+            detail.setBranchTaken(next.getTargetId());
+            detail.setActivatedBranches(List.of(next.getId()));
+            detail.setConditionResult(!next.isDefault());
+        }
+        simulatePath(graph, next.getTargetId(), variables, maxDepth, depth + 1, detailMap, path, visited, result, stopNodeId);
     }
 
-    private void handleConditionNode(WorkflowRuntimeGraph graph, WfNodeConfig node, String nodeId,
-                                     Map<String, Object> variables, int maxDepth, int depth,
-                                     Map<String, SimulationNodeDetail> detailMap,
-                                     SimulationResult.SimulationPath path,
-                                     Set<String> visited, SimulationResult result) {
-        SimulationNodeDetail detail = detailMap.get(nodeId);
-        List<WorkflowRuntimeGraph.EdgeLink> outgoing = graph.getOutgoingEdges(nodeId);
-
-        String nextNodeId = null;
-        for (WorkflowRuntimeGraph.EdgeLink edge : outgoing) {
-            if (StringUtils.hasText(edge.getCondition())) {
-                try {
-                    boolean condResult = nodeExecutionService.evaluateCondition(edge.getCondition(), variables);
-                    if (condResult) {
-                        nextNodeId = edge.getTargetId();
-                        if (detail != null) {
-                            detail.setConditionResult(true);
-                            detail.setBranchTaken(edge.getTargetId());
-                        }
-                        break;
-                    }
-                } catch (Exception e) {
-                    result.getWarnings().add("条件评估异常 [" + node.getTitle() + "]: " + e.getMessage());
-                }
-            }
-        }
-
-        if (nextNodeId == null) {
-            WorkflowRuntimeGraph.EdgeLink defaultEdge = graph.findDefaultOrFirstOutgoingEdge(nodeId);
-            if (defaultEdge != null) {
-                nextNodeId = defaultEdge.getTargetId();
-                if (detail != null) {
-                    detail.setConditionResult(false);
-                    detail.setBranchTaken(defaultEdge.getTargetId());
-                }
-            } else if (!outgoing.isEmpty()) {
-                nextNodeId = outgoing.get(0).getTargetId();
-                if (detail != null) {
-                    detail.setBranchTaken(nextNodeId);
-                }
-                result.getWarnings().add("条件节点 [" + node.getTitle() + "] 无条件匹配且无默认分支，使用第一条出边");
-            }
-        }
-
-        if (nextNodeId != null) {
-            simulatePath(graph, nextNodeId, variables, maxDepth, depth + 1, detailMap, path, visited, result);
-        } else {
-            result.getErrors().add("条件节点 [" + node.getTitle() + "] 无法确定下一步");
-            path.setTerminationType("DEAD_END");
-        }
+    private void noMatchingBranch(WfNodeConfig node, SimulationResult.SimulationPath path, SimulationResult result) {
+        path.setTerminationType("GATEWAY_NO_MATCH");
+        result.getErrors().add("网关 [" + node.getTitle() + "] 没有命中出口且未配置默认出口");
     }
 
     private void handleApprovalNode(WfNodeConfig node, SimulationNodeDetail detail, SimulationResult result) {
@@ -320,45 +314,6 @@ public class SimulationServiceImpl implements ISimulationService {
 
         if (!StringUtils.hasText(node.getApproverType())) {
             detail.getWarnings().add("未配置审批人");
-        }
-    }
-
-    private void handleParallelNode(WorkflowRuntimeGraph graph, String nodeId,
-                                    Map<String, Object> variables, int maxDepth, int depth,
-                                    Map<String, SimulationNodeDetail> detailMap,
-                                    SimulationResult.SimulationPath path,
-                                    Set<String> visited, SimulationResult result) {
-        List<WorkflowRuntimeGraph.EdgeLink> outgoing = graph.getOutgoingEdges(nodeId);
-        if (outgoing.isEmpty()) {
-            path.setTerminationType("DEAD_END");
-            return;
-        }
-        // 模拟第一条分支作为主路径，其余分支标记为已到达
-        for (int i = 0; i < outgoing.size(); i++) {
-            String targetId = outgoing.get(i).getTargetId();
-            if (i == 0) {
-                simulatePath(graph, targetId, variables, maxDepth, depth + 1, detailMap, path, visited, result);
-            } else {
-                markReachable(graph, targetId, detailMap);
-            }
-        }
-    }
-
-    private void advanceToNext(WorkflowRuntimeGraph graph, String nodeId,
-                               Map<String, Object> variables, int maxDepth, int depth,
-                               Map<String, SimulationNodeDetail> detailMap,
-                               SimulationResult.SimulationPath path,
-                               Set<String> visited, SimulationResult result) {
-        WorkflowRuntimeGraph.EdgeLink edge = graph.findDefaultOrFirstOutgoingEdge(nodeId);
-        if (edge != null) {
-            simulatePath(graph, edge.getTargetId(), variables, maxDepth, depth + 1, detailMap, path, visited, result);
-        } else {
-            List<WorkflowRuntimeGraph.EdgeLink> outgoing = graph.getOutgoingEdges(nodeId);
-            if (!outgoing.isEmpty()) {
-                simulatePath(graph, outgoing.get(0).getTargetId(), variables, maxDepth, depth + 1, detailMap, path, visited, result);
-            } else {
-                path.setTerminationType("DEAD_END");
-            }
         }
     }
 
@@ -403,7 +358,7 @@ public class SimulationServiceImpl implements ISimulationService {
             path.setTerminationType("COMPLETED");
             paths.add(path);
         } else {
-            List<WorkflowRuntimeGraph.EdgeLink> outgoing = graph.getOutgoingEdges(startNodeId);
+            List<WorkflowRuntimeGraph.EdgeLink> outgoing = WorkflowGatewayRouting.outgoing(graph, node);
             if (outgoing.isEmpty()) {
                 SimulationResult.SimulationPath path = buildPath(currentPath, graph);
                 path.setTerminationType("DEAD_END");
@@ -427,14 +382,6 @@ public class SimulationServiceImpl implements ISimulationService {
         }
         path.setNodeTitles(titles);
         return path;
-    }
-
-    private void markReachable(WorkflowRuntimeGraph graph, String nodeId, Map<String, SimulationNodeDetail> detailMap) {
-        if (!StringUtils.hasText(nodeId)) return;
-        SimulationNodeDetail detail = detailMap.get(nodeId);
-        if (detail != null && !detail.isReached()) {
-            detail.setReached(true);
-        }
     }
 
     private void dfsReachability(WorkflowRuntimeGraph graph, String nodeId, Set<String> visited) {

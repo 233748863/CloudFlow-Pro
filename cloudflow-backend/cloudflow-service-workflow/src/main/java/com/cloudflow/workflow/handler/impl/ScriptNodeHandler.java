@@ -31,6 +31,8 @@ public class ScriptNodeHandler implements INodeHandler {
     private final ScriptExecutionService scriptExecutionService;
     private final ScriptExecutionPolicy scriptExecutionPolicy;
     private final HttpClientService httpClientService;
+    private final com.cloudflow.workflow.service.WorkflowTriggerService triggers;
+    private final com.cloudflow.workflow.service.WorkflowTriggerSecrets secrets;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -50,6 +52,10 @@ public class ScriptNodeHandler implements INodeHandler {
             }
 
             String scriptType = scriptExecutionPolicy.normalizeScriptType((String) props.get("scriptType"));
+            if (props.containsKey("triggerType") || ("API".equals(scriptType)
+                    && (props.containsKey("failStrategy") || props.containsKey("callAsync") || props.containsKey("retryCount") || props.containsKey("timeoutSeconds")))) {
+                return triggers.handle(node, instance, variables);
+            }
             switch (scriptType) {
                 case "API":
                     handleApiCall(node, props, variables);
@@ -83,26 +89,15 @@ public class ScriptNodeHandler implements INodeHandler {
     }
 
     private void handleApiCall(WfNodeConfig node, Map<String, Object> props, Map<String, Object> variables) {
-        String apiUrl = (String) props.get("apiUrl");
+        String apiUrl = decodeHtmlEntities((String) props.get("apiUrl"));
         String apiMethod = (String) props.getOrDefault("apiMethod", "POST");
         if (!StringUtils.hasText(apiUrl)) {
             return;
         }
 
-        log.info("[ScriptNodeHandler] 执行 API 调用, url={}, method={}", apiUrl, apiMethod);
+        log.info("[ScriptNodeHandler] 执行 API 调用, nodeKey={}, method={}", node.getId(), apiMethod);
 
-        Map<String, String> headers = new HashMap<>();
-        if (props.containsKey("apiHeaders")) {
-            try {
-                @SuppressWarnings("unchecked")
-                Map<String, String> configHeaders = (Map<String, String>) props.get("apiHeaders");
-                if (configHeaders != null) {
-                    headers.putAll(configHeaders);
-                }
-            } catch (Exception e) {
-                log.warn("[ScriptNodeHandler] 解析请求头失败: {}", e.getMessage());
-            }
-        }
+        Map<String, String> headers = new HashMap<>(secrets.headers(props, "apiHeaders"));
         headers.putIfAbsent("Content-Type", "application/json");
 
         Map<String, Object> requestBody = buildApiRequestBody(props.get("apiBody"), variables);
@@ -130,7 +125,7 @@ public class ScriptNodeHandler implements INodeHandler {
         }
         Object result = scriptExecutionService.executeGroovyScript(scriptContent, variables);
         storeScriptResult(node, variables, result);
-        log.info("[ScriptNodeHandler] Groovy 脚本执行完成, result={}", result);
+        log.info("[ScriptNodeHandler] Groovy 脚本执行完成");
     }
 
     private void handleJavaScript(WfNodeConfig node, Map<String, Object> props, Map<String, Object> variables) {
@@ -140,7 +135,7 @@ public class ScriptNodeHandler implements INodeHandler {
         }
         Object result = scriptExecutionService.executeJavaScript(scriptContent, variables);
         storeScriptResult(node, variables, result);
-        log.info("[ScriptNodeHandler] JavaScript 脚本执行完成, result={}", result);
+        log.info("[ScriptNodeHandler] JavaScript 脚本执行完成");
     }
 
     private Map<String, Object> buildApiRequestBody(Object rawApiBody, Map<String, Object> variables) {

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WorkflowReportMapper">
+    <select id="proxyTasks" resultType="com.cloudflow.workflow.domain.WfTask" timeout="5">
+        SELECT task.* FROM wf_task task
+        INNER JOIN wf_process_instance instance ON instance.instance_id = task.instance_id
+            AND instance.tenant_id = task.tenant_id AND instance.deleted = 0
+        WHERE task.tenant_id = #{tenantId} AND task.proxy_user_id = #{userId} AND task.status = 'TODO'
+        <choose>
+            <when test="instanceMode">AND instance.start_time &gt;= #{query.startDate} AND instance.start_time &lt; DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)</when>
+            <otherwise>AND task.create_time &gt;= #{query.startDate} AND task.create_time &lt; DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)</otherwise>
+        </choose>
+    </select>
+    <select id="instances" resultType="com.cloudflow.common.core.report.ReportRow" timeout="5">
+        SELECT <include refid="com.cloudflow.common.report.ReportSqlMapper.projection"/>
+        FROM (
+            SELECT COALESCE(instance.definition_id, instance.process_def_key) AS definition,
+                COALESCE(definition.process_name, instance.process_def_key) AS definition_name,
+                instance.status, DATE(instance.start_time) AS business_date, instance.dept_id AS department,
+                department.dept_name AS department_name, instance.instance_id AS instance_count,
+                CASE WHEN instance.status IN ('PASSED', 'AUTO_PASSED', 'REJECTED', 'TERMINATED', 'INVALIDATED', 'CANCELLED')
+                    AND instance.end_time &gt;= instance.start_time THEN TIMESTAMPDIFF(SECOND, instance.start_time, instance.end_time)
+                    ELSE NULL END AS duration_seconds, 0 AS integrity_error
+            FROM wf_process_instance instance
+            LEFT JOIN wf_process_definition definition ON definition.definition_id = instance.definition_id AND definition.tenant_id = instance.tenant_id
+            LEFT JOIN sys_dept department ON department.dept_id = instance.dept_id AND department.tenant_id = instance.tenant_id
+            WHERE instance.tenant_id = #{tenantId} AND instance.deleted = 0
+                AND instance.start_time &gt;= #{query.startDate} AND instance.start_time &lt; DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)
+            <if test="!admin">
+                AND (instance.start_user_id = #{userId}
+                    OR EXISTS(SELECT 1 FROM wf_task task WHERE task.tenant_id = instance.tenant_id
+                        AND task.instance_id = instance.instance_id AND task.assignee = #{userId})
+                    OR EXISTS(SELECT 1 FROM wf_task_history history WHERE history.tenant_id = instance.tenant_id
+                        AND history.instance_id = instance.instance_id AND (history.operator_id = #{userId} OR history.on_behalf_of_user_id = #{userId}))
+                    OR EXISTS(SELECT 1 FROM wf_process_copy copy WHERE copy.tenant_id = instance.tenant_id
+                        AND copy.instance_id = instance.instance_id COLLATE utf8mb4_general_ci AND copy.user_id = #{userId})
+                    <if test="!agentInstances.isEmpty()">OR instance.instance_id IN <foreach collection="agentInstances" item="instanceId" open="(" separator="," close=")">#{instanceId}</foreach></if>
+                )
+            </if>
+        ) fact
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.filters"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.grouping"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.ordering"/>
+    </select>
+    <select id="tasks" resultType="com.cloudflow.common.core.report.ReportRow" timeout="5">
+        SELECT <include refid="com.cloudflow.common.report.ReportSqlMapper.projection"/>
+        FROM (
+            SELECT COALESCE(instance.definition_id, instance.process_def_key) AS definition,
+                COALESCE(definition.process_name, instance.process_def_key) AS definition_name,
+                task.node_key AS node, task.node_name, task.assignee AS handler, task.assignee_name AS handler_name,
+                DATE(task.create_time) AS business_date, 'TODO' AS fact_type, task.task_id AS todo_count,
+                NULL AS handled_count, NULL AS duration_seconds, 0 AS integrity_error
+            FROM wf_task task
+            INNER JOIN wf_process_instance instance ON instance.instance_id = task.instance_id AND instance.tenant_id = task.tenant_id AND instance.deleted = 0
+            LEFT JOIN wf_process_definition definition ON definition.definition_id = instance.definition_id AND definition.tenant_id = instance.tenant_id
+            WHERE task.tenant_id = #{tenantId} AND task.status = 'TODO'
+                AND task.create_time &gt;= #{query.startDate} AND task.create_time &lt; DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)
+                AND #{allowTodo} = TRUE
+            <if test="!admin">
+                AND (task.assignee = #{userId}
+                    <if test="!agentTasks.isEmpty()">OR task.task_id IN <foreach collection="agentTasks" item="taskId" open="(" separator="," close=")">#{taskId}</foreach></if>
+                )
+            </if>
+            UNION ALL
+            SELECT COALESCE(instance.definition_id, instance.process_def_key), COALESCE(definition.process_name, instance.process_def_key),
+                history.node_key, history.node_name, COALESCE(history.on_behalf_of_user_id, history.operator_id),
+                CASE WHEN history.on_behalf_of_user_id IS NOT NULL THEN history.on_behalf_of_user_name ELSE history.operator_name END,
+                DATE(history.create_time), 'HANDLED', NULL, history.history_id,
+                CASE WHEN history.duration_seconds &gt;= 0 THEN history.duration_seconds ELSE NULL END, 0
+            FROM wf_task_history history
+            INNER JOIN wf_process_instance instance ON instance.instance_id = history.instance_id AND instance.tenant_id = history.tenant_id AND instance.deleted = 0
+            LEFT JOIN wf_process_definition definition ON definition.definition_id = instance.definition_id AND definition.tenant_id = instance.tenant_id
+            WHERE history.tenant_id = #{tenantId} AND history.action IN ('APPROVE', 'REJECT', 'COUNTERSIGN_APPROVE', 'COUNTERSIGN_REJECT')
+                AND history.create_time &gt;= #{query.startDate} AND history.create_time &lt; DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)
+                AND #{allowHandled} = TRUE
+            <if test="!admin">AND (history.operator_id = #{userId} OR history.on_behalf_of_user_id = #{userId})</if>
+        ) fact
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.filters"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.grouping"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.ordering"/>
+    </select>
+</mapper>

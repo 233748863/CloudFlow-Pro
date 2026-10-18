@@ -16,6 +16,14 @@ public interface ICountersignService {
     String createCountersignTask(String instanceId, String nodeKey, String nodeName,
                                   String signType, Integer passPercent, List<Long> assigneeIds);
 
+    String createCountersignTask(String instanceId, String nodeKey, String nodeName,
+                                 String signType, Integer passPercent, List<Long> assigneeIds,
+                                 com.cloudflow.workflow.domain.WfNodeConfig node);
+
+    void addWeightParticipant(WfCountersignTask countersign, WfTask task);
+
+    void removeWeightParticipant(WfCountersignTask countersign, WfTask task);
+
     /** 会签投票（核心并发控制方法） */
     String vote(String taskId, Long voterId, String voterName, String voteResult, String comment);
 

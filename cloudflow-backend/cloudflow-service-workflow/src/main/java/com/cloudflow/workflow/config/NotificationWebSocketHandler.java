@@ -39,9 +39,10 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     private static final String MSG_AUTH_OK = "{\"type\":\"AUTH_OK\"}";
     private static final String MSG_AUTH_FAIL = "{\"type\":\"AUTH_FAIL\"}";
 
-    private static final Map<Long, WebSocketSession> userSessions = new ConcurrentHashMap<>();
+    private final Map<Long, Map<String, WebSocketSession>> userSessions = new ConcurrentHashMap<>();
     private final Map<String, Boolean> authenticated = new ConcurrentHashMap<>();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    private ObjectMapper objectMapper;
     private final ScheduledExecutorService authTimer = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "ws-auth-timeout");
         t.setDaemon(true);
@@ -64,7 +65,6 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         Long handshakeUserId = toLong(session.getAttributes().get("userId"));
         if (handshakeUserId != null && Boolean.TRUE.equals(session.getAttributes().get("handshakeAuthenticated"))) {
             registerAuthenticatedSession(session, handshakeUserId);
-            sendQuietly(session, MSG_AUTH_OK);
             return;
         }
 
@@ -119,7 +119,6 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
             registerAuthenticatedSession(session, userId);
-            sendQuietly(session, MSG_AUTH_OK);
             return;
         }
 
@@ -130,20 +129,40 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         authenticated.remove(session.getId());
-        Long userId = (Long) session.getAttributes().get("userId");
+        Long userId = toLong(session.getAttributes().get("userId"));
         if (userId != null) {
-            userSessions.remove(userId);
+            userSessions.computeIfPresent(userId, (key, sessions) -> {
+                sessions.remove(session.getId(), session);
+                return sessions.isEmpty() ? null : sessions;
+            });
         }
     }
 
     public void sendMessage(Long userId, Object message) {
-        WebSocketSession session = userSessions.get(userId);
-        if (session != null && session.isOpen()) {
+        if (userId == null) {
+            return;
+        }
+        Map<String, WebSocketSession> sessions = userSessions.get(userId);
+        if (sessions == null || sessions.isEmpty()) {
+            return;
+        }
+        String json;
+        try {
+            json = objectMapper.writeValueAsString(message);
+        } catch (IOException e) {
+            log.warn("[WS] 消息序列化失败: userId={}, error={}", userId, e.getMessage());
+            return;
+        }
+        for (WebSocketSession session : sessions.values()) {
             try {
-                String json = objectMapper.writeValueAsString(message);
-                session.sendMessage(new TextMessage(json));
-            } catch (IOException e) {
-                log.warn("[WS] 发送消息失败: userId={}, error={}", userId, e.getMessage());
+                synchronized (session) {
+                    if (session.isOpen()) {
+                        session.sendMessage(new TextMessage(json));
+                    }
+                }
+            } catch (IOException | IllegalStateException e) {
+                log.warn("[WS] 发送消息失败: userId={}, sid={}, error={}",
+                        userId, session.getId(), e.getMessage());
             }
         }
     }
@@ -166,9 +185,17 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void registerAuthenticatedSession(WebSocketSession session, Long userId) {
-        session.getAttributes().put("userId", userId);
-        userSessions.put(userId, session);
-        authenticated.put(session.getId(), Boolean.TRUE);
+        // 同一账号的多个设备或标签页分别登记；鉴权确认先于该连接的业务消息。
+        synchronized (session) {
+            session.getAttributes().put("userId", userId);
+            authenticated.put(session.getId(), Boolean.TRUE);
+            userSessions.compute(userId, (key, sessions) -> {
+                Map<String, WebSocketSession> active = sessions == null ? new ConcurrentHashMap<>() : sessions;
+                active.put(session.getId(), session);
+                return active;
+            });
+            sendQuietly(session, MSG_AUTH_OK);
+        }
     }
 
     private Long toLong(Object value) {
@@ -190,8 +217,10 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     private void sendQuietly(WebSocketSession session, String payload) {
         try {
-            if (session.isOpen()) {
-                session.sendMessage(new TextMessage(payload));
+            synchronized (session) {
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(payload));
+                }
             }
         } catch (IOException ignored) {
         }

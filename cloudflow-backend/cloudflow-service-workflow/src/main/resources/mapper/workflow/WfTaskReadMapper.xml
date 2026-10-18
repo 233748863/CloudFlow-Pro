@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfTaskReadMapper">
+    <insert id="insertIfAbsent">
+        INSERT INTO wf_task_read (tenant_id, task_id, user_id, read_time)
+        VALUES (#{read.tenantId}, #{read.taskId}, #{read.userId}, #{read.readTime})
+        ON DUPLICATE KEY UPDATE id = wf_task_read.id
+    </insert>
+</mapper>

@@ -91,6 +91,11 @@ public interface ProcessMonitorMapper extends BaseMapper<ProcessMonitor> {
      * 查询正在运行的流程
      */
     List<ProcessMonitor> selectRunningProcesses(@Param("tenantId") Long tenantId);
+
+    List<Long> selectAnomalyScanIds(@Param("tenantId") Long tenantId, @Param("afterId") long afterId,
+                                   @Param("limit") int limit);
+
+    ProcessMonitor lockForAnomalyScan(@Param("tenantId") Long tenantId, @Param("id") Long id);
     
     /**
      * 根据时间范围查询

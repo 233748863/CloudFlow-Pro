@@ -1,11 +1,15 @@
 package com.cloudflow.workflow.domain;
 
 import java.util.Map;
+import java.util.List;
+import java.math.BigDecimal;
 import java.io.Serializable;
 
 /**
  * 工作流节点配置（从前端 JSON 映射）
  */
+@lombok.Getter
+@lombok.Setter
 public class WfNodeConfig implements Serializable {
     private String id;
     private String type; // 节点类型：START, APPROVAL, CONDITION, PARALLEL, END, NOTIFICATION, SCRIPT, TIMER, SUBPROCESS, MANUAL
@@ -13,7 +17,22 @@ public class WfNodeConfig implements Serializable {
     private String description;
     private String approverType; // 审批人类型：USER, USERS(USER_LIST), ROLE, DEPT, DEPT_MANAGER, DIRECT_LEADER
     private String approverValue;
-    private String branchStrategy; // 分支策略：PARALLEL, EXCLUSIVE
+    private Integer directorLevel;
+    private String directorFallback;
+    private Map<String, Object> selectableScope;
+    private String rejectStrategy;
+    private String rejectToNodeKey;
+    private String approveSelf;
+    private Boolean allowAddSign;
+    private Boolean allowReduceSign;
+    private Boolean allowDelegate;
+    private Boolean allowAgent;
+    private Boolean allowUrge;
+    private Boolean allowRollback;
+    private Boolean allowCc;
+    private Boolean allowSelection;
+    private String branchStrategy; // 分支策略：PARALLEL, EXCLUSIVE, INCLUSIVE, ROUTE
+    private String joinNodeKey;
     private String condition;
     private Boolean allowEdit;
     
@@ -26,6 +45,9 @@ public class WfNodeConfig implements Serializable {
     // 会签字段
     private String signType; // 会签类型：ALL / ANY / PERCENT
     private Integer passPercent; // 通过百分比（signType=PERCENT时使用）
+    private BigDecimal passWeight;
+    private String weightSource;
+    private List<Map<String, Object>> assigneeWeights;
 
     // SLA 字段
     private Integer slaHours;

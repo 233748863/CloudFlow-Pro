@@ -1,6 +1,27 @@
 package com.cloudflow.workflow.service.impl;
 
+import com.cloudflow.workflow.domain.enums.WfTaskType;
+
+import com.cloudflow.workflow.model.WorkflowGatewayRewindPlan;
+import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
 import com.cloudflow.workflow.service.IWorkflowP4Service;
+import com.cloudflow.workflow.service.WorkflowNodePolicy;
+import com.cloudflow.workflow.service.WorkflowHParticipantPolicy;
+import com.cloudflow.workflow.service.WorkflowAgentService;
+import com.cloudflow.workflow.service.WorkflowAddSignService;
+import com.cloudflow.workflow.service.WorkflowDelegationReturnService;
+import com.cloudflow.workflow.service.WorkflowPermissionService;
+import com.cloudflow.workflow.service.WorkflowHistoryAttribution;
+import com.cloudflow.workflow.domain.dto.AgentSettingRequest;
+import com.cloudflow.workflow.service.TaskSemanticContext;
+import com.cloudflow.workflow.service.WorkflowProcessStateService;
+import com.cloudflow.workflow.service.WorkflowHistoryState;
+import com.cloudflow.workflow.service.WorkflowRewindService;
+import com.cloudflow.workflow.service.WorkflowExecutionContext;
+import com.cloudflow.workflow.service.IWfTaskService;
+import com.cloudflow.workflow.service.INodeExecutionService;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
+import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.common.audit.annotation.Audit;
 
 import java.time.LocalDateTime;
@@ -25,6 +46,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
@@ -41,6 +64,10 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     private static final Logger log = LoggerFactory.getLogger(WorkflowP4ServiceImpl.class);
 
     @Autowired private WfTaskMapper taskMapper;
+    @Autowired private WorkflowAgentService agents;
+    @Autowired private WorkflowAddSignService addSignGroups;
+    @Autowired private WorkflowDelegationReturnService delegationReturns;
+    @Autowired private WorkflowPermissionService permissionService;
     @Autowired private WfTaskHistoryMapper taskHistoryMapper;
     @Autowired private WfProcessInstanceMapper processInstanceMapper;
     @Autowired private WfProcessDefinitionMapper processDefinitionMapper;
@@ -57,6 +84,17 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Autowired private RedissonClient redissonClient;
     @Autowired private WorkflowTaskSecurityProperties taskSecurityProperties;
     @Autowired private com.cloudflow.common.redis.core.SysDictHelper sysDictHelper;
+    @Autowired private WorkflowNodePolicy nodePolicy;
+    @Autowired private WorkflowHParticipantPolicy hParticipantPolicy;
+    @Autowired private WorkflowProcessStateService processStateService;
+    @Autowired private com.cloudflow.workflow.service.WorkflowTriggerSecrets triggerSecrets;
+    @Autowired private com.cloudflow.workflow.event.WorkflowEventPublisher workflowEventPublisher;
+    @Autowired private WorkflowRewindService rewinds;
+    @Autowired private WorkflowHistoryState historyState;
+    @Autowired private WorkflowGraphModelResolver graphs;
+    @Autowired @Lazy private IWfTaskService taskOperations;
+    @Autowired @Lazy private INodeExecutionService nodeExecution;
+    @Autowired private com.cloudflow.workflow.job.TaskReminderJob taskReminders;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -65,10 +103,13 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Transactional(rollbackFor = Exception.class)
     public R<?> delegateTask(String taskId, Long toUserId, String toUserName, String reason) {
         log.info("[delegateTask] 转办任务, taskId={}, toUserId={}", taskId, toUserId);
-        WfTask task = taskMapper.selectById(taskId);
+        WfTask task = agents.lockTask(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
         Long operatorId = resolveOperatorId(null, "delegateTask");
         assertTaskAccess(task, operatorId, "delegateTask");
+        nodePolicy.assertTaskAllowed(task, "allowDelegate");
+        hParticipantPolicy.assertParticipantChange(task, Collections.singletonList(toUserId));
+        toUserName = WorkflowDelegationReturnService.display(delegationReturns.target(task, toUserId));
         Long taskTenantId = resolveTaskTenantId(task);
 
         Long fromUserId = task.getAssignee();
@@ -91,7 +132,9 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
         task.setAssignee(toUserId);
         task.setAssigneeName(toUserName);
-        taskMapper.updateById(task);
+        task.setTaskType(WfTaskType.TRANSFER.name());
+        if (taskMapper.updateById(task) != 1) throw new WorkflowException("TASK_VERSION_CONFLICT", "任务已变更，请重新读取");
+        agents.refreshAssignment(task);
         updateTaskMonitorAssignee(task, null, "DELEGATE", null);
 
         sendNotification("TASK_DELEGATE", toUserId, "任务转办通知",
@@ -104,10 +147,13 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Transactional(rollbackFor = Exception.class)
     public R<?> delegateWithReturn(String taskId, Long toUserId, String toUserName, String reason) {
         log.info("[delegateWithReturn] 委派任务, taskId={}, toUserId={}", taskId, toUserId);
-        WfTask task = taskMapper.selectById(taskId);
+        WfTask task = agents.lockTask(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
         Long operatorId = resolveOperatorId(null, "delegateWithReturn");
         assertTaskAccess(task, operatorId, "delegateWithReturn");
+        nodePolicy.assertTaskAllowed(task, "allowDelegate");
+        hParticipantPolicy.assertParticipantChange(task, Collections.singletonList(toUserId));
+        toUserName = WorkflowDelegationReturnService.display(delegationReturns.target(task, toUserId));
         Long taskTenantId = resolveTaskTenantId(task);
 
         Long fromUserId = task.getAssignee();
@@ -130,17 +176,18 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         delegation.setCreateTime(LocalDateTime.now());
         delegationMapper.insert(delegation);
 
-        // 2. 将原任务挂起，记录委派信息到candidateRoles字段
         task.setStatus("DELEGATED");
-        task.setCandidateRoles("DELEGATE_RETURN:" + delegation.getDelegationId());
-        taskMapper.updateById(task);
-        completeTaskMonitor(task, LocalDateTime.now(), "DELEGATE_WITH_RETURN");
+        if (taskMapper.updateById(task) != 1) throw new WorkflowException("TASK_VERSION_CONFLICT", "任务已变更，请重新读取");
+        taskReminders.cancelAfterCommit(task.getTaskId());
+        updateTaskMonitorAssignee(task, "DELEGATED", "DELEGATE_WITH_RETURN", null);
 
         // 3. 创建新任务给被委派人
         WfTask delegatedTask = new WfTask();
+        delegatedTask.setTaskType(WfTaskType.DELEGATE.name());
         delegatedTask.setTaskId(UUID.randomUUID().toString());
         delegatedTask.setInstanceId(task.getInstanceId());
         delegatedTask.setNodeKey(task.getNodeKey());
+        delegatedTask.setExecutionContext(task.getExecutionContext());
         delegatedTask.setNodeName(task.getNodeName() + "(委派)");
         delegatedTask.setAssignee(toUserId);
         delegatedTask.setAssigneeName(toUserName);
@@ -150,7 +197,8 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         delegatedTask.setCreateTime(LocalDateTime.now());
         // 关联原任务，被委派人完成后用于回溯
         delegatedTask.setCandidateRoles("DELEGATE_FROM:" + taskId + ":" + delegation.getDelegationId());
-        taskMapper.insert(delegatedTask);
+        hParticipantPolicy.assertTaskAssignment(delegatedTask, delegatedTask.getAssignee());
+        agents.createTask(delegatedTask);
         createTaskMonitor(delegatedTask);
 
         // 4. 记录历史
@@ -160,13 +208,20 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         h.setInstanceId(task.getInstanceId());
         h.setNodeKey(task.getNodeKey());
         h.setNodeName(task.getNodeName());
-        h.setOperatorId(fromUserId);
-        h.setOperatorName(fromUserName);
+        h.setOperatorId(operatorId);
+        h.setOperatorName(UserContext.getUserName());
+        agents.annotateHistory(h, task, operatorId);
         h.setAction("DELEGATE_WITH_RETURN");
+        h.setTaskType(WfTaskType.DELEGATE.name());
         h.setComment("委派给 " + toUserName + "，原因：" + (reason != null ? reason : ""));
         h.setTenantId(resolveTaskTenantId(task));
         h.setCreateTime(LocalDateTime.now());
+        WfProcessInstance instance = processInstanceMapper.selectForExecution(task.getTenantId(), task.getInstanceId());
+        historyState.record(instance, task, h);
         taskHistoryMapper.insert(h);
+        agents.detachAssignment(task);
+        workflowEventPublisher.publishTaskAssigned(instance, delegatedTask.getTaskId(), delegatedTask.getNodeKey(), delegatedTask.getNodeName(),
+                delegatedTask.getAssignee(), delegatedTask.getAssigneeName(), delegatedTask.getTaskType());
 
         // 5. 通知被委派人
         sendNotification("TASK_DELEGATE", toUserId, "委派任务通知",
@@ -180,58 +235,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> addSign(String taskId, List<Long> userIds, List<String> userNames, String signType, String reason) {
-        log.info("[addSign] 加签任务, taskId={}, signType={}", taskId, signType);
-        WfTask originalTask = taskMapper.selectById(taskId);
-        if (originalTask == null) { throw WorkflowException.taskNotFound(taskId); }
-        Long operatorId = resolveOperatorId(null, "addSign");
-        assertTaskAccess(originalTask, operatorId, "addSign");
-        Long taskTenantId = resolveTaskTenantId(originalTask);
-        if (CollectionUtils.isEmpty(userIds)) { throw WorkflowException.validationError("加签用户不能为空"); }
-
-        WfTaskAddSign addSign = new WfTaskAddSign();
-        addSign.setAddSignId(UUID.randomUUID().toString());
-        addSign.setTenantId(taskTenantId);
-        addSign.setTaskId(taskId);
-        addSign.setInstanceId(originalTask.getInstanceId());
-        addSign.setSignType(signType);
-        addSign.setSignUserIds(userIds.stream().map(String::valueOf).collect(Collectors.joining(",")));
-        addSign.setSignUserNames(userNames != null ? String.join(",", userNames) : "");
-        addSign.setInitiatorId(originalTask.getAssignee());
-        addSign.setReason(reason);
-        addSign.setStatus("PENDING");
-        addSign.setCreateTime(LocalDateTime.now());
-        addSignMapper.insert(addSign);
-
-        if ("BEFORE".equals(signType)) {
-            originalTask.setStatus("SUSPENDED");
-            taskMapper.updateById(originalTask);
-            createAddSignTasks(originalTask, userIds, userNames, "前加签");
-        } else if ("AFTER".equals(signType)) {
-            originalTask.setCandidateRoles("ADDSIGN_AFTER:" + addSign.getAddSignId());
-            taskMapper.updateById(originalTask);
-        } else if ("PARALLEL".equals(signType)) {
-            createAddSignTasks(originalTask, userIds, userNames, "并行加签");
-        }
-        return R.ok(addSign.getAddSignId());
-    }
-
-    private void createAddSignTasks(WfTask original, List<Long> userIds, List<String> userNames, String label) {
-        Long taskTenantId = resolveTaskTenantId(original);
-        for (int i = 0; i < userIds.size(); i++) {
-            WfTask t = new WfTask();
-            t.setTaskId(UUID.randomUUID().toString());
-            t.setInstanceId(original.getInstanceId());
-            t.setNodeKey(original.getNodeKey() + "_addsign");
-            t.setNodeName(original.getNodeName() + "(" + label + ")");
-            t.setAssignee(userIds.get(i));
-            t.setAssigneeName(userNames != null && i < userNames.size() ? userNames.get(i) : "");
-            t.setStatus("TODO");
-            t.setTenantId(taskTenantId);
-            t.setCreateTime(LocalDateTime.now());
-            taskMapper.insert(t);
-            createTaskMonitor(t);
-            sendNotification("TASK_ASSIGN", userIds.get(i), "加签任务", "您收到" + label + "任务");
-        }
+        return R.ok(addSignGroups.create(taskId, userIds, signType, reason));
     }
 
     // ==================== P4.5: 审批代理 ====================
@@ -239,67 +243,16 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Transactional(rollbackFor = Exception.class)
     public R<?> setProxy(Long userId, String userName, Long proxyUserId, String proxyUserName,
                          LocalDateTime startTime, LocalDateTime endTime, String reason) {
-        Long effectiveUserId = resolveOperatorId(userId, "setProxy");
-        log.info("[setProxy] 设置审批代理, userId={}, proxyUserId={}", userId, proxyUserId);
-        Long currentTenantId = UserContext.getTenantId();
-        LambdaQueryWrapper<WfTaskDelegation> activeProxyQuery = new LambdaQueryWrapper<WfTaskDelegation>()
-                .eq(WfTaskDelegation::getFromUserId, effectiveUserId)
-                .eq(WfTaskDelegation::getDelegationType, "PROXY")
-                .eq(WfTaskDelegation::getStatus, "ACTIVE");
-        if (currentTenantId != null) {
-            activeProxyQuery.eq(WfTaskDelegation::getTenantId, currentTenantId);
-        }
-        Long cnt = delegationMapper.selectCount(activeProxyQuery);
-        if (cnt > 0) { throw WorkflowException.validationError("已有活跃代理，请先取消"); }
-
-        WfTaskDelegation proxy = new WfTaskDelegation();
-        proxy.setDelegationId(UUID.randomUUID().toString());
-        proxy.setTenantId(currentTenantId);
-        proxy.setDelegationType("PROXY");
-        proxy.setFromUserId(effectiveUserId);
-        proxy.setFromUserName(userName);
-        proxy.setToUserId(proxyUserId);
-        proxy.setToUserName(proxyUserName);
-        proxy.setReason(reason);
-        proxy.setStatus("ACTIVE");
-        proxy.setStartTime(startTime);
-        proxy.setEndTime(endTime);
-        proxy.setCreateTime(LocalDateTime.now());
-        delegationMapper.insert(proxy);
-
-        LambdaUpdateWrapper<WfTask> taskUpdateWrapper = new LambdaUpdateWrapper<WfTask>()
-                .eq(WfTask::getAssignee, effectiveUserId)
-                .eq(WfTask::getStatus, "TODO");
-        if (currentTenantId != null) {
-            taskUpdateWrapper.eq(WfTask::getTenantId, currentTenantId);
-        }
-        taskUpdateWrapper.set(WfTask::getProxyUserId, proxyUserId);
-        taskMapper.update(null, taskUpdateWrapper);
-        sendNotification("TASK_PROXY", proxyUserId, "代理通知", userName + " 已将您设为代理人");
-        return R.ok(proxy.getDelegationId());
+        resolveOperatorId(userId, "setProxy");
+        return R.ok(agents.save(null, new AgentSettingRequest(proxyUserId, "AGENT", List.of(),
+                startTime, endTime, reason, null)).settingId());
     }
 
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "取消代理", highRisk = true)
     public R<?> cancelProxy(Long userId) {
-        Long effectiveUserId = resolveOperatorId(userId, "cancelProxy");
-        Long currentTenantId = UserContext.getTenantId();
-        LambdaUpdateWrapper<WfTaskDelegation> delegationUpdateWrapper = new LambdaUpdateWrapper<WfTaskDelegation>()
-                .eq(WfTaskDelegation::getFromUserId, effectiveUserId)
-                .eq(WfTaskDelegation::getDelegationType, "PROXY")
-                .eq(WfTaskDelegation::getStatus, "ACTIVE")
-                .set(WfTaskDelegation::getStatus, "CANCELLED");
-        if (currentTenantId != null) {
-            delegationUpdateWrapper.eq(WfTaskDelegation::getTenantId, currentTenantId);
-        }
-        delegationMapper.update(null, delegationUpdateWrapper);
-        LambdaUpdateWrapper<WfTask> taskUpdateWrapper = new LambdaUpdateWrapper<WfTask>()
-                .eq(WfTask::getAssignee, effectiveUserId);
-        if (currentTenantId != null) {
-            taskUpdateWrapper.eq(WfTask::getTenantId, currentTenantId);
-        }
-        taskUpdateWrapper.set(WfTask::getProxyUserId, null);
-        taskMapper.update(null, taskUpdateWrapper);
+        resolveOperatorId(userId, "cancelProxy");
+        agents.disableMine();
         return R.ok();
     }
 
@@ -309,6 +262,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     public void createCandidateTask(String taskId, String instanceId, List<Long> userIds,
                                     List<String> userNames, String type) {
         Long candidateTenantId = resolveInstanceTenantId(instanceId);
+        hParticipantPolicy.assertFrozenParticipants(instanceId);
         for (int i = 0; i < userIds.size(); i++) {
             WfTaskCandidate c = new WfTaskCandidate();
             c.setCandidateId(UUID.randomUUID().toString());
@@ -337,16 +291,18 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
                     .eq(WfTaskCandidate::getStatus, "PENDING"));
             if (candidate == null) { throw WorkflowException.validationError("您不是候选人或任务已被认领"); }
 
-            WfTask task = taskMapper.selectById(taskId);
+            WfTask task = agents.lockTask(taskId);
             if (task == null) { throw WorkflowException.taskNotFound(taskId); }
             assertTaskTenantAccess(task, "claimTask");
             if (task.getAssignee() != null && task.getAssignee() > 0) {
                 throw WorkflowException.validationError("任务已被认领");
             }
 
+            hParticipantPolicy.assertTaskAssignment(task, operatorId);
             task.setAssignee(operatorId);
             task.setAssigneeName(userName);
-            taskMapper.updateById(task);
+            if (taskMapper.updateById(task) != 1) throw new WorkflowException("TASK_VERSION_CONFLICT", "任务已被认领，请重新读取");
+            agents.refreshAssignment(task);
             updateTaskMonitorAssignee(task, "CLAIMED", "CLAIM", LocalDateTime.now());
             candidate.setStatus("CLAIMED");
             candidate.setClaimTime(LocalDateTime.now());
@@ -371,97 +327,50 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         Long effectiveOperatorId = resolveOperatorId(operatorId, "withdrawApproval");
         WfTaskHistory history = taskHistoryMapper.selectById(historyId);
         if (history == null) { throw WorkflowException.validationError("历史记录不存在"); }
-        WfProcessInstance instance = processInstanceMapper.selectById(history.getInstanceId());
+        WfProcessInstance instance = processInstanceMapper.selectForExecution(UserContext.getTenantId(), history.getInstanceId());
         if (instance == null) { throw WorkflowException.instanceNotFound(history.getInstanceId()); }
         assertInstanceTenantAccess(instance, "withdrawApproval");
+        if (!WfProcessStatus.isActive(instance.getStatus())) {
+            throw WorkflowException.invalidState("当前流程状态不允许撤回审批");
+        }
+        WorkflowNodePolicy.assertAllowed(nodePolicy.resolveNode(instance, history.getNodeKey()), "allowRollback");
         if (!Objects.equals(history.getOperatorId(), effectiveOperatorId)) { throw WorkflowException.validationError("只能撤回自己的审批"); }
-
-        List<WfTask> currentTasks = taskMapper.selectList(new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getInstanceId, history.getInstanceId()).eq(WfTask::getStatus, "TODO"));
-        if (CollectionUtils.isEmpty(currentTasks)) {
-            throw WorkflowException.validationError("流程已结束或已被处理，无法撤回");
-        }
-        for (WfTask t : currentTasks) {
-            completeTaskMonitor(t, LocalDateTime.now(), "WITHDRAW_CANCEL");
-            taskMapper.deleteById(t.getTaskId());
-        }
-
-        WfTask newTask = new WfTask();
-        newTask.setTaskId(UUID.randomUUID().toString());
-        newTask.setInstanceId(history.getInstanceId());
-        newTask.setNodeKey(history.getNodeKey());
-        newTask.setNodeName(history.getNodeName());
-        newTask.setAssignee(history.getOperatorId());
-        newTask.setAssigneeName(history.getOperatorName());
-        newTask.setStatus("TODO");
-        newTask.setTenantId(instance.getTenantId());
-        newTask.setCreateTime(LocalDateTime.now());
-        taskMapper.insert(newTask);
-        createTaskMonitor(newTask);
-
-        WfTaskHistory wh = new WfTaskHistory();
-        wh.setHistoryId(UUID.randomUUID().toString());
-        wh.setTaskId(newTask.getTaskId());
-        wh.setInstanceId(history.getInstanceId());
-        wh.setNodeKey(history.getNodeKey());
-        wh.setNodeName(history.getNodeName());
-        wh.setOperatorId(effectiveOperatorId);
-        wh.setOperatorName(history.getOperatorName());
-        wh.setAction("WITHDRAW");
-        wh.setComment("撤回审批");
-        wh.setTenantId(instance.getTenantId());
-        wh.setCreateTime(LocalDateTime.now());
-        taskHistoryMapper.insert(wh);
+        WfProcessDefinition definition = processDefinitionMapper.selectById(instance.getDefinitionId());
+        if (definition == null || !Objects.equals(definition.getTenantId(), instance.getTenantId())) throw WorkflowExecutionContext.invalid();
+        WorkflowRuntimeGraph graph = graphs.parseRuntimeGraph(definition.getModelJson());
+        WorkflowExecutionContext.Frame source = rewinds.withdrawalContext(instance, history);
+        WorkflowGatewayRewindPlan plan = rewinds.rewind(instance, graph, source, history);
+        processStateService.transition(instance, WfProcessStatus.WITHDRAWN);
+        WfTask withdrawnTask = new WfTask();
+        withdrawnTask.setTaskId(history.getTaskId());
+        withdrawnTask.setExecutionContext(WorkflowHistoryState.execution(history).executionContext());
+        WfTaskHistory withdrawal = new WfTaskHistory();
+        withdrawal.setHistoryId(UUID.randomUUID().toString());
+        withdrawal.setTaskId(history.getTaskId());
+        withdrawal.setInstanceId(history.getInstanceId());
+        withdrawal.setNodeKey(history.getNodeKey());
+        withdrawal.setNodeName(history.getNodeName());
+        withdrawal.setOperatorId(effectiveOperatorId);
+        withdrawal.setOperatorName(UserContext.getUserName());
+        withdrawal.setAction("WITHDRAW");
+        withdrawal.setTaskType(history.getTaskType());
+        withdrawal.setComment("撤回审批");
+        withdrawal.setTenantId(instance.getTenantId());
+        withdrawal.setCreateTime(LocalDateTime.now());
+        historyState.record(instance, withdrawnTask, withdrawal);
+        taskHistoryMapper.insert(withdrawal);
+        WfNodeConfig root = graphs.parseRuntimeRoot(definition.getModelJson());
+        WorkflowExecutionContext.run(plan.context(), () -> TaskSemanticContext.withType(history.getTaskType(),
+                () -> nodeExecution.runNode(instance, nodeExecution.findNode(root, plan.targetKey()), null, 0, root)));
         return R.ok();
     }
 
     // ==================== P4.8: 驳回到上一步 ====================
 
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public R<?> rejectToPrevious(String taskId, Long operatorId, String operatorName, String comment) {
-        Long effectiveOperatorId = resolveOperatorId(operatorId, "rejectToPrevious");
-        WfTask task = taskMapper.selectById(taskId);
-        if (task == null) { throw WorkflowException.taskNotFound(taskId); }
-        assertTaskAccess(task, effectiveOperatorId, "rejectToPrevious");
-
-        List<WfTaskHistory> histories = taskHistoryMapper.selectList(new LambdaQueryWrapper<WfTaskHistory>()
-                .eq(WfTaskHistory::getInstanceId, task.getInstanceId())
-                .eq(WfTaskHistory::getAction, "APPROVE").orderByDesc(WfTaskHistory::getCreateTime));
-        if (CollectionUtils.isEmpty(histories)) { throw WorkflowException.validationError("无上一审批节点"); }
-
-        WfTaskHistory prev = histories.get(0);
-        WfTaskHistory rh = new WfTaskHistory();
-        rh.setHistoryId(UUID.randomUUID().toString());
-        rh.setTaskId(taskId);
-        rh.setInstanceId(task.getInstanceId());
-        rh.setNodeKey(task.getNodeKey());
-        rh.setNodeName(task.getNodeName());
-        rh.setOperatorId(effectiveOperatorId);
-        rh.setOperatorName(operatorName);
-        rh.setAction("REJECT_TO_PREVIOUS");
-        rh.setComment(comment);
-        rh.setTenantId(resolveTaskTenantId(task));
-        rh.setCreateTime(LocalDateTime.now());
-        taskHistoryMapper.insert(rh);
-
-        completeTaskMonitor(task, rh.getCreateTime(), "REJECT_TO_PREVIOUS");
-        taskMapper.deleteById(taskId);
-        WfTask newTask = new WfTask();
-        newTask.setTaskId(UUID.randomUUID().toString());
-        newTask.setInstanceId(task.getInstanceId());
-        newTask.setNodeKey(prev.getNodeKey());
-        newTask.setNodeName(prev.getNodeName());
-        newTask.setAssignee(prev.getOperatorId());
-        newTask.setAssigneeName(prev.getOperatorName());
-        newTask.setStatus("TODO");
-        newTask.setTenantId(resolveTaskTenantId(task));
-        newTask.setCreateTime(LocalDateTime.now());
-        taskMapper.insert(newTask);
-        createTaskMonitor(newTask);
-
-        sendNotification("TASK_REJECT", prev.getOperatorId(), "驳回通知",
-                "任务 [" + task.getNodeName() + "] 被驳回，意见：" + comment);
-        return R.ok();
+        resolveOperatorId(operatorId, "rejectToPrevious");
+        return taskOperations.rejectTask(taskId, null, comment, "TO_PREVIOUS_NODE");
     }
 
     // ==================== P4.9: 审批附件 ====================
@@ -546,37 +455,30 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     // ==================== P4.10: 批量审批 ====================
 
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public R<?> batchApprove(List<String> taskIds, Long operatorId, String operatorName, String action, String comment) {
-        Long effectiveOperatorId = resolveOperatorId(operatorId, "batchApprove");
-        int success = 0, fail = 0;
+        resolveOperatorId(operatorId, "batchApprove");
+        if (taskIds == null || taskIds.isEmpty() || taskIds.size() > 100 || taskIds.stream().anyMatch(id -> id == null || id.isBlank())
+                || new HashSet<>(taskIds).size() != taskIds.size()) throw WorkflowException.validationError("请选择1至100个不同的任务");
+        if (!Set.of("APPROVE", "PASS", "REJECT").contains(action == null ? "" : action.toUpperCase(Locale.ROOT))) {
+            throw WorkflowException.validationError("批量操作只支持通过或驳回");
+        }
+        int success = 0;
         List<String> failedIds = new ArrayList<>();
         for (String taskId : taskIds) {
             try {
-                WfTask task = taskMapper.selectById(taskId);
-                if (task == null || !Objects.equals(task.getAssignee(), effectiveOperatorId)) { fail++; failedIds.add(taskId); continue; }
-                assertTaskTenantAccess(task, "batchApprove");
-                WfTaskHistory h = new WfTaskHistory();
-                h.setHistoryId(UUID.randomUUID().toString());
-                h.setTaskId(taskId);
-                h.setInstanceId(task.getInstanceId());
-                h.setNodeKey(task.getNodeKey());
-                h.setNodeName(task.getNodeName());
-                h.setOperatorId(effectiveOperatorId);
-                h.setOperatorName(operatorName);
-                h.setAction(action);
-                h.setComment(comment);
-                h.setTenantId(resolveTaskTenantId(task));
-                h.setCreateTime(LocalDateTime.now());
-                taskHistoryMapper.insert(h);
-                completeTaskMonitor(task, h.getCreateTime(), action);
-                taskMapper.deleteById(taskId);
+                R<?> result = taskOperations.completeTask(taskId, action, comment, null, null);
+                if (result == null || !result.isSuccess()) {
+                    failedIds.add(taskId);
+                    continue;
+                }
                 success++;
-            } catch (Exception e) { fail++; failedIds.add(taskId); }
+            } catch (RuntimeException failure) {
+                failedIds.add(taskId);
+                log.warn("批量审批中的单项未生效, taskId={}", taskId, failure);
+            }
         }
-        Map<String, Object> r = new HashMap<>();
-        r.put("total", taskIds.size()); r.put("success", success); r.put("fail", fail); r.put("failedTaskIds", failedIds);
-        return R.ok(r);
+        return R.ok(Map.of("total", taskIds.size(), "success", success, "fail", failedIds.size(), "failedTaskIds", failedIds));
     }
 
     // ==================== P1-5.3: 减签 ====================
@@ -584,53 +486,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "移除会签人员", highRisk = true)
     public R<?> removeSign(String taskId, List<Long> userIds, String reason) {
-        log.info("[removeSign] 减签任务, taskId={}, userIds={}", taskId, userIds);
-        WfTask originalTask = taskMapper.selectById(taskId);
-        if (originalTask == null) { throw WorkflowException.taskNotFound(taskId); }
-        Long operatorId = resolveOperatorId(null, "removeSign");
-        assertTaskAccess(originalTask, operatorId, "removeSign");
-        Long taskTenantId = resolveTaskTenantId(originalTask);
-        if (CollectionUtils.isEmpty(userIds)) { throw WorkflowException.validationError("减签用户不能为空"); }
-
-        // 查找加签创建的任务
-        LambdaQueryWrapper<WfTask> addSignQuery = new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getInstanceId, originalTask.getInstanceId())
-                .like(WfTask::getNodeKey, originalTask.getNodeKey() + "_addsign")
-                .eq(WfTask::getStatus, "TODO")
-                .in(WfTask::getAssignee, userIds);
-        if (taskTenantId != null) {
-            addSignQuery.eq(WfTask::getTenantId, taskTenantId);
-        }
-        List<WfTask> addSignTasks = taskMapper.selectList(addSignQuery);
-
-        int removed = 0;
-        for (WfTask t : addSignTasks) {
-            // 记录历史
-            WfTaskHistory h = new WfTaskHistory();
-            h.setHistoryId(UUID.randomUUID().toString());
-            h.setTaskId(t.getTaskId());
-            h.setInstanceId(t.getInstanceId());
-            h.setNodeKey(t.getNodeKey());
-            h.setNodeName(t.getNodeName());
-            h.setOperatorId(operatorId);
-            h.setOperatorName(UserContext.getUserName());
-            h.setAction("REMOVE_SIGN");
-            h.setComment("减签: " + (reason != null ? reason : ""));
-            h.setTenantId(resolveTaskTenantId(originalTask));
-            h.setCreateTime(LocalDateTime.now());
-            taskHistoryMapper.insert(h);
-
-            completeTaskMonitor(t, h.getCreateTime(), "REMOVE_SIGN");
-            taskMapper.deleteById(t.getTaskId());
-            removed++;
-
-            // 通知被减签的用户
-            sendNotification("TASK_REMOVE_SIGN", t.getAssignee(), "减签通知",
-                    "您的加签任务 [" + t.getNodeName() + "] 已被取消");
-        }
-
-        log.info("[removeSign] 减签完成, 移除{}个任务", removed);
-        return R.ok(removed);
+        return taskOperations.removeOrderedSignatures(taskId, userIds, reason);
     }
 
     // ==================== P1-4.3: 子流程调用 ====================
@@ -656,8 +512,9 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
                 .getRecords().stream().findFirst().orElse(null);
         if (subDef == null) { throw WorkflowException.processNotFound(subProcessDefKey); }
         assertDefinitionTenantAccess(subDef, "startSubProcess");
+        WfFormDefinition subForm = null;
         if (org.springframework.util.StringUtils.hasText(subDef.getFormId())) {
-            WfFormDefinition subForm = formDefinitionMapper.selectById(subDef.getFormId());
+            subForm = formDefinitionMapper.lockLatest(subDef.getTenantId(), subDef.getFormId());
             if (subForm == null) {
                 throw WorkflowException.validationError("子流程绑定表单不存在或已被删除，无法启动");
             }
@@ -668,6 +525,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         subInstance.setInstanceId(UUID.randomUUID().toString());
         subInstance.setProcessDefKey(subProcessDefKey);
         subInstance.setDefinitionId(subDef.getDefinitionId());
+        subInstance.setFormVersion(subForm == null ? null : subForm.getVersion());
         subInstance.setBusinessKey(parentInstanceId + ":" + parentNodeKey); // 关联父流程
         subInstance.setTitle("[子流程] " + subDef.getProcessName());
         subInstance.setStartUserId(parentInstance.getStartUserId());
@@ -693,42 +551,12 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     // ==================== P1-5.8: 条件审批 ====================
 
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public R<?> conditionalApprove(String taskId, Long operatorId, String operatorName,
                                     String action, String comment, String selectedPath) {
-        log.info("[conditionalApprove] 条件审批, taskId={}, selectedPath={}", taskId, selectedPath);
-        Long effectiveOperatorId = resolveOperatorId(operatorId, "conditionalApprove");
-        WfTask task = taskMapper.selectById(taskId);
-        if (task == null) { throw WorkflowException.taskNotFound(taskId); }
-        assertTaskAccess(task, effectiveOperatorId, "conditionalApprove");
-
-        // 记录历史（包含选择的路径）
-        WfTaskHistory h = new WfTaskHistory();
-        h.setHistoryId(UUID.randomUUID().toString());
-        h.setTaskId(taskId);
-        h.setInstanceId(task.getInstanceId());
-        h.setNodeKey(task.getNodeKey());
-        h.setNodeName(task.getNodeName());
-        h.setOperatorId(effectiveOperatorId);
-        h.setOperatorName(operatorName);
-        h.setAction(action);
-        h.setComment(comment);
-        h.setTenantId(resolveTaskTenantId(task));
-        h.setCreateTime(LocalDateTime.now());
-
-        // 记录选择的路径到变量变更
-        try {
-            Map<String, Object> detail = new HashMap<>();
-            detail.put("selectedPath", selectedPath);
-            detail.put("action", action);
-            h.setVariablesChanged(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(detail));
-        } catch (Exception e) { /* ignore */ }
-
-        taskHistoryMapper.insert(h);
-        completeTaskMonitor(task, h.getCreateTime(), action);
-        taskMapper.deleteById(taskId);
-
-        return R.ok();
+        resolveOperatorId(operatorId, "conditionalApprove");
+        if (selectedPath != null && !selectedPath.isBlank()) throw WorkflowException.validationError("审批路径由流程出口条件决定，不能由调用者指定");
+        return taskOperations.completeTask(taskId, action, comment, null, null);
     }
 
     // ==================== P4.11: 任务优先级 ====================
@@ -738,12 +566,12 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         if (!Arrays.asList("URGENT", "HIGH", "NORMAL", "LOW").contains(priority)) {
             throw WorkflowException.validationError("无效优先级: " + priority);
         }
-        WfTask task = taskMapper.selectById(taskId);
+        WfTask task = agents.lockTask(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
         Long operatorId = resolveOperatorId(null, "setTaskPriority");
         assertTaskAccess(task, operatorId, "setTaskPriority");
         task.setPriority(priority);
-        taskMapper.updateById(task);
+        if (taskMapper.updateById(task) != 1) throw new WorkflowException("TASK_VERSION_CONFLICT", "任务已变更，请重新读取");
         if ("URGENT".equals(priority)) {
             sendNotification("TASK_URGENT", task.getAssignee(), "紧急任务", task.getNodeName() + " 已标记为紧急");
         }
@@ -753,25 +581,21 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     // ==================== P4.12: 代理人任务查询 ====================
 
     public R<?> getProxyTasks(Long userId, PageQuery pageQuery) {
-        Long effectiveUserId = resolveOperatorId(userId, "getProxyTasks");
-        Page<WfTask> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
-        LambdaQueryWrapper<WfTask> queryWrapper = new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getProxyUserId, effectiveUserId)
-                .eq(WfTask::getStatus, "TODO")
-                .orderByDesc(WfTask::getCreateTime);
-        Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null) {
-            queryWrapper.eq(WfTask::getTenantId, currentTenantId);
+        resolveOperatorId(userId, "getProxyTasks");
+        if (pageQuery.getPageNum() < 1 || pageQuery.getPageSize() < 1 || pageQuery.getPageSize() > 100) {
+            throw WorkflowException.validationError("页码必须大于0，每页1至100条");
         }
-        Page<WfTask> result = taskMapper.selectPage(page, queryWrapper);
-        List<Map<String, Object>> list = result.getRecords().stream().map(t -> {
-            Map<String, Object> m = new HashMap<>();
-            m.put("task", t); m.put("isProxy", true); m.put("originalAssignee", t.getAssigneeName());
-            return m;
-        }).collect(Collectors.toList());
-        Map<String, Object> r = new HashMap<>();
-        r.put("records", list); r.put("total", result.getTotal());
-        return R.ok(r);
+        List<WfTask> eligible = agents.receivedTasks();
+        long offset = ((long) pageQuery.getPageNum() - 1) * pageQuery.getPageSize();
+        List<Map<String, Object>> records = eligible.stream().skip(offset).limit(pageQuery.getPageSize()).map(task -> {
+            Map<String, Object> record = new HashMap<>();
+            record.put("task", task);
+            record.put("isProxy", true);
+            record.put("agentMode", task.getAgentMode());
+            record.put("originalAssignee", task.getAssigneeName());
+            return record;
+        }).toList();
+        return R.ok(Map.of("records", records, "total", eligible.size()));
     }
 
     // ==================== P4.13: 任务超时标记 ====================
@@ -824,8 +648,9 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     public R<?> getDoneTasks(Long userId, PageQuery pageQuery) {
         Long effectiveUserId = resolveOperatorId(userId, "getDoneTasks");
         Page<WfTaskHistory> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
-        LambdaQueryWrapper<WfTaskHistory> queryWrapper = new LambdaQueryWrapper<WfTaskHistory>()
-                .eq(WfTaskHistory::getOperatorId, effectiveUserId)
+        LambdaQueryWrapper<WfTaskHistory> queryWrapper = WorkflowHistoryAttribution.completedHistory()
+                .and(history -> history.eq(WfTaskHistory::getOperatorId, effectiveUserId)
+                        .or().eq(WfTaskHistory::getOnBehalfOfUserId, effectiveUserId))
                 .orderByDesc(WfTaskHistory::getCreateTime);
         Long currentTenantId = UserContext.getTenantId();
         if (currentTenantId != null) {
@@ -866,8 +691,8 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         Map<String, Object> result = new HashMap<>();
         result.put("version1", Map.of("id", d1.getDefinitionId(), "name", d1.getProcessName(), "version", d1.getVersion()));
         result.put("version2", Map.of("id", d2.getDefinitionId(), "name", d2.getProcessName(), "version", d2.getVersion()));
-        result.put("modelJson1", d1.getModelJson());
-        result.put("modelJson2", d2.getModelJson());
+        result.put("modelJson1", triggerSecrets.maskModel(d1.getModelJson()));
+        result.put("modelJson2", triggerSecrets.maskModel(d2.getModelJson()));
         result.put("isSame", Objects.equals(d1.getModelJson(), d2.getModelJson()));
         return R.ok(result);
     }
@@ -998,8 +823,11 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public void recordUrgeEffect(String urgeId, String taskId, Long beforeDuration, Long afterDuration) {
+        WfTask task = taskMapper.selectById(taskId);
+        if (task == null) { throw WorkflowException.taskNotFound(taskId); }
         WfUrgeEffect effect = new WfUrgeEffect();
         effect.setEffectId(UUID.randomUUID().toString());
+        effect.setTenantId(resolveTaskTenantId(task));
         effect.setUrgeId(urgeId);
         effect.setTaskId(taskId);
         effect.setBeforeDuration(beforeDuration);
@@ -1059,23 +887,10 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     private void assertTaskAccess(WfTask task, Long operatorId, String operation) {
         assertTaskTenantAccess(task, operation);
-        if (task == null || operatorId == null) {
-            return;
-        }
-        // 严格模式开关关闭：跳过办理人归属校验，仅由 Controller 层 @SaCheckPermission 兜底
-        if (taskSecurityProperties != null && !taskSecurityProperties.isStrictOwner()) {
-            return;
-        }
-        // 持有跨人操作权限码（如 admin 的 workflow:task:override）：直接放行
-        if (taskSecurityProperties != null && hasOverridePermission(taskSecurityProperties.getOverridePermission())) {
-            log.info("[{}] 操作人持有跨人操作权限, 放行, taskId={}, operatorId={}", operation, task.getTaskId(), operatorId);
-            return;
-        }
-        if (!Objects.equals(task.getAssignee(), operatorId)) {
-            log.warn("[{}] 操作人不匹配, taskId={}, operatorId={}, assignee={}",
-                    operation, task.getTaskId(), operatorId, task.getAssignee());
+        if (task == null || operatorId == null || !Objects.equals(operatorId, UserContext.getUserId())) {
             throw WorkflowException.permissionDenied(operation);
         }
+        permissionService.checkTaskPermission(task);
     }
 
     private boolean hasOverridePermission(String permission) {
@@ -1109,6 +924,9 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     }
 
     private void createTaskMonitor(WfTask task) {
+        WfProcessInstance instance = processInstanceMapper.selectForExecution(task.getTenantId(), task.getInstanceId());
+        WfNodeConfig node = nodePolicy.resolveNode(instance, task.getNodeKey());
+        taskReminders.registerAfterCommit(task.getTaskId(), node == null ? null : node.getSlaHours());
         try {
             if (task == null) {
                 return;
@@ -1139,6 +957,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     }
 
     private void completeTaskMonitor(WfTask task, LocalDateTime completeTime, String action) {
+        agents.completeRelations(task);
         try {
             if (task == null) {
                 return;

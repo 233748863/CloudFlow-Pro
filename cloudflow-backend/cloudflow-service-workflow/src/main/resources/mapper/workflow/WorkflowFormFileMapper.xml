@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WorkflowFormFileMapper">
+    <select id="findFile" resultType="java.util.LinkedHashMap">
+        SELECT file_id AS fileId, file_name AS fileName, file_size AS size, file_type AS extension,
+            create_by AS owner, biz_id AS businessId,
+            JSON_UNQUOTE(JSON_EXTRACT(remark, '$.d')) AS definitionId,
+            JSON_UNQUOTE(JSON_EXTRACT(remark, '$.f')) AS fieldPath,
+            NULLIF(JSON_UNQUOTE(JSON_EXTRACT(remark, '$.i')), 'null') AS instanceId
+        FROM sys_file WHERE tenant_id = #{tenantId} AND file_id = #{fileId} AND deleted = 0
+            AND biz_type = 'WORKFLOW_FORM' AND access_type = 'PRIVATE'
+    </select>
+    <update id="bindFiles">
+        UPDATE sys_file SET biz_id = #{instanceId}, remark = JSON_SET(remark, '$.i', #{instanceId})
+        WHERE tenant_id = #{tenantId} AND deleted = 0 AND biz_type = 'WORKFLOW_FORM' AND access_type = 'PRIVATE'
+            AND biz_id = #{definitionId} AND create_by = #{userName}
+            AND JSON_UNQUOTE(JSON_EXTRACT(remark, '$.d')) = #{definitionId}
+            AND JSON_UNQUOTE(JSON_EXTRACT(remark, '$.f')) = #{fieldPath}
+            AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(remark, '$.i')), 'null') IS NULL
+            AND file_id IN <foreach collection="fileIds" item="fileId" open="(" separator="," close=")">#{fileId}</foreach>
+    </update>
+</mapper>

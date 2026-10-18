@@ -72,6 +72,7 @@ public class WorkflowAuditService {
         
         // 流程控制操作
         PROCESS_TERMINATE("流程终止"),
+        TIMER_FINISH("人工提前结束定时等待"),
         AUTO_APPROVE("自动审批"),
         IGNORE_PERMISSION("忽略权限"),
         HOT_UPDATE_PREPARE("热更新预确认"),

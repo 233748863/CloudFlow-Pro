@@ -38,11 +38,29 @@ public class WfTaskHistory implements Serializable {
     /** 操作人姓名 */
     private String operatorName;
 
+    private Long onBehalfOfUserId;
+    private String onBehalfOfUserName;
+
+    public Long getOnBehalfOfUserId() { return onBehalfOfUserId; }
+    public void setOnBehalfOfUserId(Long onBehalfOfUserId) { this.onBehalfOfUserId = onBehalfOfUserId; }
+    public String getOnBehalfOfUserName() { return onBehalfOfUserName; }
+    public void setOnBehalfOfUserName(String onBehalfOfUserName) { this.onBehalfOfUserName = onBehalfOfUserName; }
+
     /** 审批意见 */
     private String comment;
 
     /** 审批结果 (APPROVE, REJECT) */
     private String action;
+
+    private String taskType = "APPROVAL";
+
+    public String getTaskType() {
+        return taskType;
+    }
+
+    public void setTaskType(String taskType) {
+        this.taskType = taskType;
+    }
 
     /** 操作时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -53,6 +71,7 @@ public class WfTaskHistory implements Serializable {
     private Integer durationSeconds;
 
     /** 本次修改的变量 (JSON格式) */
+    @com.fasterxml.jackson.databind.annotation.JsonSerialize(using = WorkflowHistoryMetadataSerializer.class)
     private String variablesChanged;
 
     public String getHistoryId() {

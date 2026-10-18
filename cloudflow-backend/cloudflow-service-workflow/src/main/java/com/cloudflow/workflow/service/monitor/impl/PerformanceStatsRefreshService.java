@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
@@ -26,6 +28,17 @@ public class PerformanceStatsRefreshService {
     private final PerformanceStatsMapper performanceStatsMapper;
     private final ProcessMonitorMapper processMonitorMapper;
     private final TaskMonitorMapper taskMonitorMapper;
+
+    /** Serializes scheduled anomaly writes to the same daily statistics row, including its first insert. */
+    public void lockAnomalyScanBucket(ProcessMonitor process) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !Integer.valueOf(TransactionDefinition.ISOLATION_READ_COMMITTED)
+                .equals(TransactionSynchronizationManager.getCurrentTransactionIsolationLevel())) {
+            throw new IllegalStateException("异常巡检统计登记必须在逐条读已提交事务中执行");
+        }
+        performanceStatsMapper.lockAnomalyScanBucket(process.getTenantId(), process.getStartTime().toLocalDate(),
+                process.getProcessDefKey(), process.getProcessDefName());
+    }
 
     @Transactional(rollbackFor = Exception.class)
     public void refreshForProcess(ProcessMonitor processMonitor) {

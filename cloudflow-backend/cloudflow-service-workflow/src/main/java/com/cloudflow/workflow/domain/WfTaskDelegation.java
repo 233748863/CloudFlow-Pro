@@ -27,6 +27,9 @@ public class WfTaskDelegation {
     
     /** 委托类型: DELEGATE(转办), PROXY(代理) */
     private String delegationType;
+
+    private String agentMode = "DELEGATE";
+    private String settingId;
     
     /** 原处理人ID */
     private Long fromUserId;

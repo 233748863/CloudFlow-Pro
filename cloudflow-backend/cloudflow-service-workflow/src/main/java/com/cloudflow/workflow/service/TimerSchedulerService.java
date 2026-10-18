@@ -2,240 +2,188 @@ package com.cloudflow.workflow.service;
 
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.core.RedisCache;
-import com.cloudflow.workflow.domain.WfNodeConfig;
-import com.cloudflow.workflow.domain.WfProcessDefinition;
+import com.cloudflow.common.tenant.TenantBroker;
+import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.workflow.job.TimerScanJob;
 import com.cloudflow.workflow.domain.WfProcessInstance;
-import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
-import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
-import com.cloudflow.workflow.service.INodeExecutionService;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.cloudflow.workflow.exception.WorkflowException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
-/**
- * 定时任务调度服务
- * 用于扫描和触发定时节点
- */
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class TimerSchedulerService {
+    public static final String TIMER_ZSET_KEY = "sys:wf:timers";
+    private final RedisCache redisCache;
+    private final ObjectProvider<TimerScanJob> scanJob;
+    private final WfProcessInstanceMapper instanceMapper;
+    private final TransactionTemplate transactions;
 
-    private static final Logger log = LoggerFactory.getLogger(TimerSchedulerService.class);
+    public static String timerKey(String instanceId, String nodeKey) {
+        return "sys:wf:timer:" + instanceId + ":" + nodeKey;
+    }
 
-    @Autowired
-    private RedisCache redisCache;
+    public static String timerKey(String instanceId, WorkflowWaitState.Pending pending) {
+        String activation = pending.context() == null ? "root" : pending.context().activationId();
+        return timerKey(instanceId, pending.nodeKey()) + ":" + activation + ":" + pending.waitId();
+    }
 
-    @Autowired
-    private RedissonClient redissonClient;
+    public void scheduleAfterCommit(WfProcessInstance instance, WorkflowWaitState.Pending pending) {
+        String instanceId = instance.getInstanceId();
+        afterCommit(() -> schedule(instanceId, pending));
+    }
 
-    @Autowired
-    private WfProcessInstanceMapper processInstanceMapper;
+    private void schedule(String instanceId, WorkflowWaitState.Pending pending) {
+        String key = timerKey(instanceId, pending);
+        if (Boolean.TRUE.equals(pending.payload().get("notified"))) {
+            redisCache.removeCacheZSet(TIMER_ZSET_KEY, key);
+            redisCache.deleteObject(key);
+            return;
+        }
+        Map<String, Object> data = new HashMap<>(pending.payload());
+        data.put("instanceId", instanceId);
+        data.put("nodeKey", pending.nodeKey());
+        data.put("generation", pending.waitId());
+        data.put("waitId", pending.waitId());
+        data.put("executionContext", pending.executionContext());
+        redisCache.setCacheObject(key, data);
+        Number expiry = (Number) pending.payload().getOrDefault("nextRetryAt", pending.payload().get("expireAt"));
+        redisCache.setCacheZSet(TIMER_ZSET_KEY, key, expiry.doubleValue());
+    }
 
-    @Autowired
-    private WfProcessDefinitionMapper processDefinitionMapper;
+    public void restorePendingTimers() {
+        String afterId = "";
+        while (true) {
+            List<WfProcessInstance> instances = instanceMapper.selectWaitingInstances(TenantContext.getTenantId(), afterId, 100);
+            for (WfProcessInstance instance : instances) {
+                for (WorkflowWaitState.Pending pending : WorkflowWaitState.list(instance, "TIMER")) schedule(instance.getInstanceId(), pending);
+            }
+            if (instances.size() < 100) return;
+            afterId = instances.get(instances.size() - 1).getInstanceId();
+        }
+    }
 
-    @Autowired
-    private INodeExecutionService nodeExecutionService;
-    @Autowired
-    private WorkflowGraphModelResolver workflowGraphModelResolver;
+    public boolean retryPendingTimer(String instanceId, String waitId, int maxRetries, int intervalMinutes) {
+        return Boolean.TRUE.equals(transactions.execute(status -> {
+            WfProcessInstance instance = instanceMapper.selectForExecution(TenantContext.getTenantId(), instanceId);
+            if (instance == null || !com.cloudflow.workflow.domain.enums.WfProcessStatus.isOpen(instance.getStatus())) return false;
+            WorkflowWaitState.Pending pending = WorkflowWaitState.find(instance, waitId);
+            if (pending == null || !"TIMER".equals(pending.kind())) return false;
+            if (Boolean.TRUE.equals(pending.payload().get("blocked"))
+                    || Boolean.TRUE.equals(pending.payload().get("notified"))) return false;
+            Map<String, Object> payload = new HashMap<>(pending.payload());
+            int retryCount = ((Number) payload.getOrDefault("retryCount", 0)).intValue() + 1;
+            payload.put("retryCount", retryCount);
+            payload.put("nextRetryAt", System.currentTimeMillis() + Math.max(1, intervalMinutes) * 60000L);
+            payload.put("blocked", retryCount > maxRetries);
+            WorkflowWaitState.Pending updated = WorkflowWaitState.change(instance, null, pending, payload);
+            if (instanceMapper.updateById(instance) != 1) throw WorkflowException.invalidState("定时重试记录已变化");
+            scheduleAfterCommit(instance, updated);
+            return retryCount <= maxRetries;
+        }));
+    }
 
-    /**
-     * 由 TimerScanJob 统一调度的定时节点扫描入口。
-     * 这里不再挂载 @Scheduled，避免同一 Redis ZSet 被两个调度器并发消费，
-     * 从而导致重复触发或流程流转不一致。
-     */
+    /** 停止自动重试后，失败提醒与已通知标记共同提交；失败保留持久等待供补发。 */
+    public boolean notifyExhaustedTimer(String instanceId, String waitId,
+                                      BiConsumer<WfProcessInstance, WorkflowWaitState.Pending> notification) {
+        return Boolean.TRUE.equals(transactions.execute(status -> {
+            Long tenantId = TenantContext.getTenantId();
+            if (tenantId == null) throw WorkflowException.invalidState("定时失败提醒缺少租户上下文");
+            WfProcessInstance instance = instanceMapper.selectForExecution(tenantId, instanceId);
+            if (instance == null || !Objects.equals(tenantId, instance.getTenantId())
+                    || !com.cloudflow.workflow.domain.enums.WfProcessStatus.isOpen(instance.getStatus())) return false;
+            WorkflowWaitState.Pending pending = WorkflowWaitState.find(instance, waitId);
+            if (pending == null || !"TIMER".equals(pending.kind())
+                    || !Boolean.TRUE.equals(pending.payload().get("blocked"))
+                    || Boolean.TRUE.equals(pending.payload().get("notified"))) return false;
+            notification.accept(instance, pending);
+            Map<String, Object> payload = new HashMap<>(pending.payload());
+            payload.put("notified", true);
+            WorkflowWaitState.Pending notified = WorkflowWaitState.change(instance, null, pending, payload);
+            if (instanceMapper.updateById(instance) != 1) throw WorkflowException.invalidState("定时失败提醒记录已变化");
+            scheduleAfterCommit(instance, notified);
+            return true;
+        }));
+    }
+
+    public void completeAfterCommit(String instanceId, WorkflowWaitState.Pending pending) {
+        afterCommit(() -> {
+            String key = timerKey(instanceId, pending);
+            redisCache.removeCacheZSet(TIMER_ZSET_KEY, key);
+            redisCache.deleteObject(key);
+        });
+    }
+
     public void scanAndTriggerTimers() {
-        String lockKey = "lock:scheduled:scanAndTriggerTimers";
-        RLock lock = redissonClient.getLock(lockKey);
-        
-        try {
-            // 尝试获取锁，最多等待1秒，锁定50秒后自动释放
-            if (lock.tryLock(1, 50, TimeUnit.SECONDS)) {
-                try {
-                    long currentTime = System.currentTimeMillis();
-                    
-                    // 从Redis有序集合中获取所有到期的定时任务
-                    Set<Object> expiredTimersRaw = redisCache.getCacheZSetByScoreRange(
-                        "sys:wf:timers", 0, currentTime);
-                    
-                    if (expiredTimersRaw == null || expiredTimersRaw.isEmpty()) {
-                        return;
-                    }
-                    
-                    log.info("[scanAndTriggerTimers] 发现 {} 个到期的定时任务", expiredTimersRaw.size());
-                    
-                    for (Object timerKeyObj : expiredTimersRaw) {
-                        if (!(timerKeyObj instanceof String)) {
-                            log.warn("[scanAndTriggerTimers] 跳过非字符串类型的定时任务键: {}", timerKeyObj);
-                            continue;
-                        }
-                        String timerKey = (String) timerKeyObj;
-                        try {
-                            triggerTimer(timerKey);
-                        } catch (Exception e) {
-                            log.error("[scanAndTriggerTimers] 触发定时任务失败, timerKey={}, error={}", 
-                                timerKey, e.getMessage(), e);
-                        }
-                    }
-                } finally {
-                    lock.unlock();
-                }
-            } else {
-                log.debug("[scanAndTriggerTimers] 未能获取分布式锁，跳过本次执行");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.warn("[scanAndTriggerTimers] 获取分布式锁被中断");
-        } catch (Exception e) {
-            log.error("[scanAndTriggerTimers] 扫描定时任务失败: {}", e.getMessage(), e);
-        }
+        scanJob.getObject().scanTimerTasks();
     }
 
-    /**
-     * 触发指定的定时任务
-     */
-    private void triggerTimer(String timerKey) {
-        try {
-            // 从Redis获取定时任务数据
-            Map<String, Object> timerData = redisCache.getCacheObject(timerKey);
-            
-            if (timerData == null) {
-                log.warn("[triggerTimer] 定时任务数据不存在, timerKey={}", timerKey);
-                // 从有序集合中移除
-                redisCache.removeCacheZSet("sys:wf:timers", timerKey);
-                return;
-            }
-            
-            Object instanceIdObj = timerData.get("instanceId");
-            Object nodeKeyObj = timerData.get("nodeKey");
-            Object nextNodeKeyObj = timerData.get("nextNodeKey");
-            Object variablesObj = timerData.get("variables");
-            
-            if (!(instanceIdObj instanceof String) || !(nodeKeyObj instanceof String)) {
-                log.warn("[triggerTimer] 定时任务数据格式错误, timerKey={}", timerKey);
-                cleanup(timerKey);
-                return;
-            }
-            
-            String instanceId = (String) instanceIdObj;
-            String nodeKey = (String) nodeKeyObj;
-            String nextNodeKey = nextNodeKeyObj instanceof String ? (String) nextNodeKeyObj : null;
-            
-            @SuppressWarnings("unchecked")
-            Map<String, Object> variables = variablesObj instanceof Map ? (Map<String, Object>) variablesObj : null;
-            
-            log.info("[triggerTimer] 触发定时任务, instanceId={}, nodeKey={}, nextNodeKey={}", 
-                instanceId, nodeKey, nextNodeKey);
-            
-            // 查询流程实例
-            WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
-            if (instance == null) {
-                log.warn("[triggerTimer] 流程实例不存在, instanceId={}", instanceId);
-                cleanup(timerKey);
-                return;
-            }
-            
-            // 检查流程实例状态
-            if (!"RUNNING".equals(instance.getStatus())) {
-                log.warn("[triggerTimer] 流程实例状态异常, instanceId={}, status={}", 
-                    instanceId, instance.getStatus());
-                cleanup(timerKey);
-                return;
-            }
-            
-            if (!StringUtils.hasText(instance.getDefinitionId())) {
-                log.warn("[triggerTimer] instanceId={} 缺少 definitionId，终止定时触发",
-                    instance.getInstanceId());
-                cleanup(timerKey);
-                return;
-            }
-            WfProcessDefinition def = processDefinitionMapper.selectById(instance.getDefinitionId());
-            if (def == null || !StringUtils.hasText(def.getModelJson())) {
-                log.warn("[triggerTimer] 流程定义不存在或模型为空, definitionId={}",
-                    instance.getDefinitionId());
-                cleanup(timerKey);
-                return;
-            }
-            
-            // 解析流程模型
-            WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
-            
-            // 查找下一个节点
-            WfNodeConfig nextNode = null;
-            if (StringUtils.hasText(nextNodeKey)) {
-                nextNode = nodeExecutionService.findNode(root, nextNodeKey);
-            }
-            
-            if (nextNode == null) {
-                log.warn("[triggerTimer] 下一个节点不存在, nextNodeKey={}", nextNodeKey);
-                cleanup(timerKey);
-                return;
-            }
-            
-            // 继续执行流程（委托给节点执行引擎）
-            nodeExecutionService.runNode(instance, nextNode, variables != null ? variables : new java.util.HashMap<>(), 0, root);
-            
-            log.info("[triggerTimer] 定时任务触发成功, instanceId={}, nodeKey={}", instanceId, nodeKey);
-            
-            // 清理定时任务数据
-            cleanup(timerKey);
-            
-        } catch (Exception e) {
-            log.error("[triggerTimer] 触发定时任务失败, timerKey={}, error={}", 
-                timerKey, e.getMessage(), e);
-            // 失败时也清理，避免重复触发
-            cleanup(timerKey);
-        }
+    // 事务提交后取消定时器的入口。内部调用 cancelTimersForInstance 走的是同一个 bean，
+    // 不经过代理，那边的 @Audit 不会触发，所以这里必须自己标注，否则
+    // HighRiskAuditVerifier 会按方法名里的 cancel 判定为高风险方法并在启动期抛错。
+    @Audit(name = "取消实例定时器", highRisk = true)
+    public void cancelAfterCommit(String instanceId) {
+        afterCommit(() -> cancelTimersForInstance(instanceId));
     }
 
-    /**
-     * 清理定时任务数据
-     */
-    private void cleanup(String timerKey) {
-        try {
-            redisCache.deleteObject(timerKey);
-            redisCache.removeCacheZSet("sys:wf:timers", timerKey);
-        } catch (Exception e) {
-            log.warn("[cleanup] 清理定时任务数据失败, timerKey={}: {}", timerKey, e.getMessage());
-        }
-    }
-
-    /**
-     * 取消指定流程实例的所有定时任务
-     */
     @Audit(name = "取消实例定时器", highRisk = true)
     public void cancelTimersForInstance(String instanceId) {
-        try {
-            // 查找该实例的所有定时任务
-            Set<Object> allTimersRaw = redisCache.getCacheZSetByScoreRange("sys:wf:timers", Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
-            
-            if (allTimersRaw == null || allTimersRaw.isEmpty()) {
-                return;
-            }
-            
-            for (Object timerKeyObj : allTimersRaw) {
-                if (!(timerKeyObj instanceof String)) {
-                    continue;
-                }
-                String timerKey = (String) timerKeyObj;
-                if (timerKey.contains(instanceId)) {
-                    cleanup(timerKey);
-                    log.info("[cancelTimersForInstance] 已取消定时任务, instanceId={}, timerKey={}", 
-                        instanceId, timerKey);
+        String prefix = timerKey(instanceId, "");
+        Set<Object> entries = redisCache.getCacheZSetByScoreRange(TIMER_ZSET_KEY, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
+        if (entries != null) {
+            for (Object entry : entries) {
+                String key = String.valueOf(entry);
+                if (key.startsWith(prefix)) {
+                    redisCache.removeCacheZSet(TIMER_ZSET_KEY, key);
+                    redisCache.deleteObject(key);
                 }
             }
-            
-        } catch (Exception e) {
-            log.error("[cancelTimersForInstance] 取消定时任务失败, instanceId={}: {}", 
-                instanceId, e.getMessage(), e);
+        }
+        Collection<String> keys = redisCache.keys(prefix + "*");
+        String tenantPrefix = TenantContext.getTenantId() == null ? "" : TenantContext.getTenantId() + ":";
+        if (keys != null) {
+            for (String key : keys) {
+                if (key.startsWith(tenantPrefix + prefix)) {
+                    redisCache.deleteObject(key.substring(tenantPrefix.length()));
+                }
+            }
+        }
+    }
+
+    private void afterCommit(Runnable action) {
+        Long tenantId = TenantContext.getTenantId();
+        Runnable scoped = () -> {
+            try {
+                TenantBroker.runAs(tenantId, ignored -> action.run());
+            } catch (RuntimeException failure) {
+                log.error("流程定时器索引更新失败，将按数据库等待记录再次核验", failure);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    scoped.run();
+                }
+            });
+        } else {
+            // 扫描恢复没有外围事务，应将失败交给任务平台；事务提交后的失败仍由持久等待补偿。
+            TenantBroker.runAs(tenantId, ignored -> action.run());
         }
     }
 }

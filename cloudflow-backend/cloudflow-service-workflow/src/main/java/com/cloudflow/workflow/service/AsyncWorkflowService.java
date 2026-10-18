@@ -68,6 +68,8 @@ public class AsyncWorkflowService {
     private WorkflowGraphModelResolver workflowGraphModelResolver;
     @Autowired
     private INodeExecutionService nodeExecutionService;
+    @Autowired
+    private WorkflowProcessStateService processStateService;
 
     /**
      * 异步执行流程节点解析和任务创建
@@ -127,8 +129,10 @@ public class AsyncWorkflowService {
 
             // 更新实例状态为失败
             try {
-                instance.setStatus(WfProcessStatus.REJECTED.getCode());
-                processInstanceMapper.updateById(instance);
+                WfProcessInstance failedInstance = processInstanceMapper.selectById(instanceId);
+                if (failedInstance != null) {
+                    processStateService.transition(failedInstance, WfProcessStatus.FAILED);
+                }
             } catch (Exception updateEx) {
                 log.error("[asyncStartProcessNodes] 更新实例状态失败: {}", updateEx.getMessage());
             }

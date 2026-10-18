@@ -14,6 +14,7 @@ import com.cloudflow.workflow.mapper.WfProcessCopyMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.service.IProcessCopyService;
+import com.cloudflow.workflow.service.WorkflowNodePolicy;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
     private final WfProcessCopyMapper processCopyMapper;
     private final WfProcessInstanceMapper processInstanceMapper;
     private final WfProcessDefinitionMapper processDefinitionMapper;
+    private final WorkflowNodePolicy nodePolicy;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -43,6 +45,7 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
                                   String nodeId, String nodeName,
                                   Long startUserId, String startUserName,
                                   List<Long> userIds, String formData) {
+        WorkflowNodePolicy.assertAllowed(nodePolicy.resolveNode(processInstanceMapper.selectById(instanceId), nodeId), "allowCc");
         if (userIds == null || userIds.isEmpty()) {
             log.warn("[createCopyRecords] 抄送人列表为空, instanceId={}, nodeId={}", instanceId, nodeId);
             return;

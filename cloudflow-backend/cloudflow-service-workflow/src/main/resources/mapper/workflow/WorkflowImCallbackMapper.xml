@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WorkflowImCallbackMapper">
+    <select id="lockTenant" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT tenant_id FROM sys_tenant WHERE tenant_id = #{tenantId} AND version = #{tenantVersion} FOR SHARE
+    </select>
+    <select id="lockConfig" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT config_id FROM sys_im_config WHERE tenant_id = #{tenantId} AND config_id = #{configId}
+          AND version = #{configVersion} FOR SHARE
+    </select>
+    <select id="lockBinding" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT mapping_id FROM sys_im_user_mapping WHERE tenant_id = #{tenantId} AND mapping_id = #{bindingId}
+          AND version = #{bindingVersion} AND user_id = #{userId} AND config_id = #{configId} FOR SHARE
+    </select>
+    <select id="lockUser" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT user_id FROM sys_user WHERE tenant_id = #{tenantId} AND user_id = #{userId}
+          AND version = #{userVersion} FOR SHARE
+    </select>
+    <select id="lockEvent" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT callback_id FROM sys_im_callback_event WHERE tenant_id = #{tenantId} AND callback_id = #{callbackId}
+          AND config_id = #{configId} AND task_mapping_id = #{todoMappingId} AND action_type = #{action}
+          AND status = 'PROCESSING' AND claim_until = #{claimUntil} AND claim_until &gt; NOW() FOR UPDATE
+    </select>
+    <select id="lockTodo" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT mapping_id FROM sys_im_todo_mapping WHERE tenant_id = #{tenantId} AND mapping_id = #{todoMappingId}
+          AND config_id = #{configId} AND task_id = #{taskId} AND assignment_version = #{assignmentVersion}
+          AND receiver_user_id = #{userId} AND version = #{todoVersion} FOR SHARE
+    </select>
+    <select id="lockRoles" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT menu.menu_id FROM sys_user_role user_role
+        JOIN sys_role role_row ON role_row.role_id = user_role.role_id AND role_row.tenant_id = #{tenantId}
+        JOIN sys_role_menu role_menu ON role_menu.role_id = role_row.role_id AND role_menu.tenant_id = #{tenantId}
+        JOIN sys_menu menu ON menu.menu_id = role_menu.menu_id
+        WHERE user_role.tenant_id = #{tenantId} AND user_role.user_id = #{userId}
+        FOR SHARE
+    </select>
+    <select id="lockBlacklist" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT id FROM sys_user_blacklist WHERE user_id = #{userId} FOR SHARE
+    </select>
+    <select id="lockMenus" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT menu_id FROM sys_menu WHERE menu_id IN
+        <foreach collection="menuIds" item="menuId" open="(" separator="," close=")">#{menuId}</foreach>
+        FOR SHARE
+    </select>
+    <select id="history" resultType="java.lang.String" useCache="false" flushCache="true">
+        SELECT history.history_id FROM wf_task_history history
+        JOIN sys_im_callback_event event ON event.tenant_id = history.tenant_id AND event.callback_id = #{callbackId}
+        JOIN sys_im_todo_mapping todo ON todo.tenant_id = event.tenant_id AND todo.mapping_id = event.task_mapping_id
+          AND todo.config_id = event.config_id AND todo.im_type = 'WECOM'
+        WHERE history.tenant_id = #{tenantId}
+          AND history.history_id = SHA2(CONCAT('wecom-callback', CHAR(10), #{tenantId}, CHAR(10), #{callbackId}), 256)
+          AND history.task_id = todo.task_id AND history.operator_id = todo.receiver_user_id
+          AND CAST(todo.im_user_id AS BINARY) = CAST(event.im_user_id AS BINARY)
+          AND event.action_type IN ('APPROVE', 'REJECT')
+          AND history.action IN (event.action_type, CONCAT('COUNTERSIGN_', event.action_type))
+    </select>
+</mapper>

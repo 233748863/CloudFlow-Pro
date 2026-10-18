@@ -16,11 +16,9 @@ import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
-import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.IWfFormService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
-import com.cloudflow.workflow.validator.JsonSchemaValidator;
-import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.workflow.service.WorkflowFormVersionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,13 +27,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -57,69 +53,13 @@ public class WfFormServiceImpl implements IWfFormService {
     @Autowired
     private WorkflowPermissionService permissionService;
     @Autowired
-    private JsonSchemaValidator jsonSchemaValidator;
-    @Autowired
-    private WorkflowSecurityUtils securityUtils;
+    private WorkflowFormVersionService formVersions;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = "formDefinition", allEntries = true)
     public R<?> saveFormDefinition(WfFormDefinition definition) {
-        log.info("[saveFormDefinition] 开始保存表单定义, formId={}", definition.getFormId());
-
-        permissionService.checkDefinitionPermission("保存表单");
-        Long currentTenantId = UserContext.getTenantId();
-
-        if (!StringUtils.hasText(definition.getFormName())) {
-            throw WorkflowException.validationError("表单名称不能为空");
-        }
-
-        // 关键字段做 XSS 过滤，避免存储型风险
-        definition.setFormName(securityUtils.sanitizeXss(definition.getFormName()));
-
-        if (StringUtils.hasText(definition.getFormSchema())) {
-            jsonSchemaValidator.validateFormSchema(definition.getFormSchema());
-        }
-
-        if (!StringUtils.hasText(definition.getFormId())) {
-            definition.setFormId(UUID.randomUUID().toString());
-        }
-
-        WfFormDefinition exist = formDefinitionMapper.selectById(definition.getFormId());
-        if (exist != null) {
-            if (currentTenantId != null && !Objects.equals(currentTenantId, exist.getTenantId())) {
-                throw new PermissionDeniedException("无权修改该租户表单定义");
-            }
-            if (definition.getTenantId() != null && exist.getTenantId() != null
-                    && !Objects.equals(definition.getTenantId(), exist.getTenantId())) {
-                throw new PermissionDeniedException("不允许变更表单所属租户");
-            }
-            if (definition.getVersionLock() != null && !Objects.equals(definition.getVersionLock(), exist.getVersionLock())) {
-                throw WorkflowException.invalidState("表单定义已被其他用户修改，请刷新后重试");
-            }
-            // 更新时租户归属以历史记录为准，禁止通过请求体篡改
-            definition.setTenantId(exist.getTenantId());
-            definition.setVersion(exist.getVersion() + 1);
-            definition.setVersionLock(exist.getVersionLock() != null ? exist.getVersionLock() + 1 : 1);
-            definition.setIsLatest(1);
-            formDefinitionMapper.updateById(definition);
-            log.info("[saveFormDefinition] 表单定义更新成功, formId={}, version={}", definition.getFormId(), definition.getVersion());
-        } else {
-            if (currentTenantId != null) {
-                if (definition.getTenantId() == null) {
-                    definition.setTenantId(currentTenantId);
-                } else if (!Objects.equals(currentTenantId, definition.getTenantId())) {
-                    throw new PermissionDeniedException("无权创建其他租户表单定义");
-                }
-            }
-            definition.setVersion(1);
-            definition.setVersionLock(0);
-            definition.setIsLatest(1);
-            definition.setCreateTime(LocalDateTime.now());
-            formDefinitionMapper.insert(definition);
-            log.info("[saveFormDefinition] 表单定义创建成功, formId={}", definition.getFormId());
-        }
-        return R.ok(definition.getFormId());
+        return R.ok(formVersions.save(definition));
     }
 
     @Override
@@ -128,7 +68,7 @@ public class WfFormServiceImpl implements IWfFormService {
 
         Long currentUserId = UserContext.getUserId();
         Long currentTenantId = UserContext.getTenantId();
-        WfFormDefinition form = formDefinitionMapper.selectById(formId);
+        WfFormDefinition form = formDefinitionMapper.selectLatest(com.cloudflow.workflow.service.WorkflowLaunchContextService.requireTenant(), formId);
         if (form == null) {
             throw WorkflowException.validationError("表单定义不存在: " + formId);
         }
@@ -209,10 +149,12 @@ public class WfFormServiceImpl implements IWfFormService {
 
     @Override
     public PageResult<WfFormDefinition> listFormDefinitions(PageQuery pageQuery) {
+        permissionService.checkDefinitionPermission("查询表单设计列表");
         log.info("[listFormDefinitions] 查询表单定义列表, pageNum={}, pageSize={}", pageQuery.getPageNum(), pageQuery.getPageSize());
 
         Page<WfFormDefinition> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfFormDefinition> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(WfFormDefinition::getIsLatest, 1);
         Long currentTenantId = UserContext.getTenantId();
         Map<String, Object> params = pageQuery.getParams() != null ? pageQuery.getParams() : Collections.emptyMap();
 

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfAgentSettingMapper">
+    <select id="lockPrincipal" resultType="java.lang.Long">
+        SELECT user_id FROM sys_user
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId}
+        FOR UPDATE
+    </select>
+    <select id="selectPrincipalForUpdate" resultType="com.cloudflow.workflow.domain.WfAgentSetting">
+        SELECT * FROM wf_agent_setting
+        WHERE tenant_id = #{tenantId} AND principal_user_id = #{userId}
+        FOR UPDATE
+    </select>
+    <select id="selectPrincipalTasksForUpdate" resultMap="com.cloudflow.workflow.mapper.WfTaskMapper.TaskResult">
+        SELECT * FROM wf_task
+        WHERE tenant_id = #{tenantId} AND assignee = #{userId} AND status = 'TODO'
+        FOR UPDATE
+    </select>
+    <select id="selectRefreshPrincipals" resultType="java.lang.Long">
+        SELECT DISTINCT principal_user_id FROM wf_agent_setting
+        WHERE tenant_id = #{tenantId} AND principal_user_id &gt; #{afterUserId}
+        ORDER BY principal_user_id LIMIT #{limit}
+    </select>
+    <select id="selectCurrentSetting" resultType="com.cloudflow.workflow.domain.WfAgentSetting" useCache="false" flushCache="true">
+        SELECT * FROM wf_agent_setting
+        WHERE tenant_id = #{tenantId} AND setting_id = #{settingId}
+        FOR UPDATE
+    </select>
+    <select id="selectCurrentRelation" resultType="com.cloudflow.workflow.domain.WfTaskDelegation" useCache="false" flushCache="true">
+        SELECT * FROM wf_task_delegation
+        WHERE tenant_id = #{tenantId} AND task_id = #{taskId}
+          AND setting_id = #{settingId} AND status = 'ACTIVE' AND delegation_type = 'PROXY'
+        FOR UPDATE
+    </select>
+    <select id="selectCurrentActiveUser" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT user_id FROM sys_user
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND status = '0' AND deleted = 0
+        FOR SHARE
+    </select>
+    <select id="selectCurrentReturns" resultType="com.cloudflow.workflow.domain.WfTaskHistory" useCache="false" flushCache="true">
+        SELECT history_id, variables_changed FROM wf_task_history
+        WHERE tenant_id = #{tenantId} AND task_id = #{taskId} AND action = 'AGENT_RETURN'
+        FOR SHARE
+    </select>
+</mapper>

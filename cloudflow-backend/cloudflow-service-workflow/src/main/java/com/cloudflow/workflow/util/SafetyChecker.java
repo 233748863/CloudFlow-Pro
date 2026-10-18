@@ -84,7 +84,7 @@ public class SafetyChecker {
 
             LambdaQueryWrapper<WfProcessInstance> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(WfProcessInstance::getDefinitionId, workflowId)
-                .in(WfProcessInstance::getStatus, "RUNNING", "SUSPENDED");
+                .in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.openCodes());
 
             Long runningCount = instanceMapper.selectCount(queryWrapper);
             if (runningCount != null && runningCount > 0) {
@@ -189,4 +189,3 @@ public class SafetyChecker {
         return checkSafety(workflowIds);
     }
 }
-

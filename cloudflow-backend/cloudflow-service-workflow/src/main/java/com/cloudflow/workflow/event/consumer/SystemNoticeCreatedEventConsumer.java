@@ -38,6 +38,7 @@ public class SystemNoticeCreatedEventConsumer implements BusinessEventConsumer {
         notice.put("noticeContent", event.getContent());
         notice.put("noticeType", event.getType());
         notice.put("status", event.getStatus());
+        notice.put("linkUrl", event.getLinkUrl());
         notice.put("senderId", event.getSenderId());
         notice.put("recipientId", event.getRecipientId());
         notice.put("createBy", event.getSenderName());

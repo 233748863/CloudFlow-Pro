@@ -31,7 +31,7 @@ public interface IProcessMonitorService {
      * 记录流程完成
      *
      * @param instanceId 流程实例ID
-     * @param status     状态：COMPLETED/FAILED/TERMINATED
+     * @param status     状态：PASSED/AUTO_PASSED/REJECTED/FAILED/TERMINATED
      * @param errorMessage 错误信息（如有）
      */
     void recordProcessEnd(String instanceId, String status, String errorMessage);

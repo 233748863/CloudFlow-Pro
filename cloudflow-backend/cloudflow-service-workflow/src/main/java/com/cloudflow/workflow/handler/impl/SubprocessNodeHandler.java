@@ -15,6 +15,8 @@ import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
 import com.cloudflow.workflow.service.INodeExecutionService;
+import com.cloudflow.workflow.service.WorkflowExecutionContext;
+import com.cloudflow.workflow.service.WorkflowWaitState;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -65,6 +67,8 @@ public class SubprocessNodeHandler implements INodeHandler {
     private INodeExecutionService nodeExecutionService;
     @Autowired
     private WorkflowGraphModelResolver workflowGraphModelResolver;
+    @Autowired
+    private com.cloudflow.workflow.service.WorkflowProcessStateService processStateService;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -117,16 +121,14 @@ public class SubprocessNodeHandler implements INodeHandler {
                     "子流程[" + subprocessId + "]定义模型为空，无法启动子流程");
         }
         // 子流程绑定表单被删除时无法继续，交由失败挂起机制处理
-        if (StringUtils.hasText(subDef.getFormId()) && formDefinitionMapper.selectById(subDef.getFormId()) == null) {
+        com.cloudflow.workflow.domain.WfFormDefinition subForm = StringUtils.hasText(subDef.getFormId()) ? formDefinitionMapper.lockLatest(subDef.getTenantId(), subDef.getFormId()) : null;
+        if (StringUtils.hasText(subDef.getFormId()) && subForm == null) {
             throw WorkflowException.validationError(
                     "子流程[" + subprocessId + "]绑定的表单不存在(formId=" + subDef.getFormId() + ")，无法启动子流程");
         }
 
         // 构建子流程变量：先继承父流程变量，再应用变量映射
-        Map<String, Object> subVariables = new HashMap<>();
-        if (variables != null) {
-            subVariables.putAll(variables);
-        }
+        Map<String, Object> subVariables = WorkflowWaitState.childVariables(variables);
 
         // 解析变量映射
         String variableMappingStr = (String) props.get("variableMapping");
@@ -134,12 +136,14 @@ public class SubprocessNodeHandler implements INodeHandler {
             try {
                 @SuppressWarnings("unchecked")
                 Map<String, String> mapping = objectMapper.readValue(variableMappingStr, Map.class);
+                WorkflowExecutionContext.assertNoOverrides(mapping);
                 for (Map.Entry<String, String> entry : mapping.entrySet()) {
                     String targetKey = entry.getKey();
                     String sourceExpr = entry.getValue();
                     // 简单变量引用替换: ${varName} -> 从父流程变量中取值
                     if (sourceExpr != null && sourceExpr.startsWith("${") && sourceExpr.endsWith("}")) {
                         String varName = sourceExpr.substring(2, sourceExpr.length() - 1);
+                        if (varName.startsWith("_wf_")) throw WorkflowExecutionContext.invalid();
                         if (variables != null && variables.containsKey(varName)) {
                             subVariables.put(targetKey, variables.get(varName));
                         }
@@ -147,6 +151,8 @@ public class SubprocessNodeHandler implements INodeHandler {
                         subVariables.put(targetKey, sourceExpr);
                     }
                 }
+            } catch (WorkflowException failure) {
+                throw failure;
             } catch (Exception e) {
                 log.warn("[SubprocessNodeHandler] 解析变量映射失败, nodeKey={}: {}", node.getId(), e.getMessage());
             }
@@ -154,11 +160,14 @@ public class SubprocessNodeHandler implements INodeHandler {
 
         String subInstanceId = UUID.randomUUID().toString();
         boolean subInstanceInserted = false;
+        WorkflowWaitState.Pending parentWait = null;
+        WfProcessStatus previousStatus = WfProcessStatus.fromCode(parentInstance.getStatus());
         try {
             // 创建子流程实例
             WfProcessInstance subInstance = new WfProcessInstance();
             subInstance.setInstanceId(subInstanceId);
             subInstance.setProcessDefId(subDef.getDefinitionId());
+            subInstance.setFormVersion(subForm == null ? null : subForm.getVersion());
             subInstance.setProcessDefKey(subDef.getProcessKey());
             // businessKey: 数据库列 NOT NULL，使用 "SUB_" + 子实例ID 作为业务标识
             subInstance.setBusinessKey("SUB_" + subInstanceId.substring(0, 8));
@@ -181,6 +190,10 @@ public class SubprocessNodeHandler implements INodeHandler {
 
             processInstanceMapper.insert(subInstance);
             subInstanceInserted = true;
+            if (waitForCompletion) {
+                parentWait = WorkflowWaitState.register(parentInstance, variables, subInstanceId, "SUBPROCESS", node.getId(), Map.of());
+                processStateService.transition(parentInstance, WfProcessStatus.PENDING);
+            }
 
             // 解析子流程模型并启动执行
             WfNodeConfig subRoot = workflowGraphModelResolver.parseRuntimeRoot(subDef.getModelJson());
@@ -194,7 +207,7 @@ public class SubprocessNodeHandler implements INodeHandler {
             if (firstNode == null) {
                 throw WorkflowException.validationError("子流程启动失败：未找到首个可执行节点");
             }
-            nodeExecutionService.runNode(subInstance, firstNode, subVariables, 0, subRoot);
+            WorkflowExecutionContext.run(null, () -> nodeExecutionService.runNode(subInstance, firstNode, subVariables, 0, subRoot));
 
             log.info("[SubprocessNodeHandler] 子流程已启动, subInstanceId={}, subProcessKey={}, waitForCompletion={}",
                     subInstance.getInstanceId(), subprocessId, waitForCompletion);
@@ -202,14 +215,16 @@ public class SubprocessNodeHandler implements INodeHandler {
         } catch (Exception e) {
             log.error("[SubprocessNodeHandler] 启动子流程失败, nodeKey={}, subprocessId={}: {}",
                     node.getId(), subprocessId, e.getMessage(), e);
+            if (parentWait != null) {
+                WorkflowWaitState.finish(parentInstance, variables, parentWait.waitId());
+                processStateService.transition(parentInstance, previousStatus);
+            }
             // 清理半启动的子实例，避免重试时残留 RUNNING 状态的孤儿实例
             if (subInstanceInserted) {
                 try {
                     WfProcessInstance orphan = processInstanceMapper.selectById(subInstanceId);
-                    if (orphan != null && WfProcessStatus.RUNNING.getCode().equals(orphan.getStatus())) {
-                        orphan.setStatus(WfProcessStatus.INVALIDATED.getCode());
-                        orphan.setEndTime(LocalDateTime.now());
-                        processInstanceMapper.updateById(orphan);
+                    if (orphan != null && WfProcessStatus.isOpen(orphan.getStatus())) {
+                        processStateService.transition(orphan, WfProcessStatus.INVALIDATED);
                     }
                 } catch (Exception cleanupEx) {
                     log.error("[SubprocessNodeHandler] 清理失败子实例异常, subInstanceId={}: {}",

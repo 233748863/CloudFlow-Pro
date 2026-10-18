@@ -7,7 +7,17 @@ import com.cloudflow.workflow.domain.dto.AddSignReq;
 import com.cloudflow.workflow.domain.dto.RemoveSignReq;
 import com.cloudflow.workflow.domain.dto.DelegateTaskReq;
 import com.cloudflow.workflow.domain.dto.ProcessInvalidateRequest;
+import com.cloudflow.workflow.domain.dto.AgentTaskRequest;
+import com.cloudflow.workflow.domain.dto.ApprovalWithdrawalRequest;
+import com.cloudflow.workflow.domain.WfTask;
+import com.cloudflow.workflow.service.WorkflowAgentService;
+import com.cloudflow.common.log.annotation.SysLog;
+import jakarta.validation.Valid;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
+import com.cloudflow.workflow.domain.vo.PendingSignatureVO;
+import com.cloudflow.workflow.domain.vo.TaskSignatureContext;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.workflow.service.WorkflowAddSignService;
 import com.cloudflow.workflow.service.IWorkflowP4Service;
 import com.cloudflow.workflow.service.IWfInstanceService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
@@ -32,6 +42,49 @@ public class WorkflowEnhanceController {
     @Autowired
     private IWfDefinitionService wfDefinitionService;
 
+    @Autowired
+    private WorkflowAgentService agents;
+
+    @Autowired
+    private WorkflowAddSignService signatures;
+
+    @GetMapping("/task/signatures/pending")
+    @SaCheckPermission("workflow:task:todo")
+    public R<PageResult<PendingSignatureVO>> pendingSignatures(@RequestParam(defaultValue = "1") int pageNum,
+                                                               @RequestParam(defaultValue = "20") int pageSize) {
+        return R.ok(signatures.pending(pageNum, pageSize));
+    }
+
+    @GetMapping("/task/{taskId}/signatures")
+    @SaCheckPermission("workflow:task:todo")
+    public R<TaskSignatureContext> signatureContext(@PathVariable String taskId) {
+        return R.ok(signatures.context(taskId));
+    }
+
+    @PostMapping("/task/withdraw")
+    @SaCheckPermission("workflow:task:reject")
+    @RepeatSubmit
+    @SysLog(value = "撤回本人审批", logParams = false)
+    public R<?> withdrawApproval(@RequestBody @Valid ApprovalWithdrawalRequest request) {
+        return workflowP4Service.withdrawApproval(request.historyId(), UserContext.getUserId());
+    }
+
+    @PostMapping("/task/agent-return")
+    @SaCheckPermission("workflow:agent:return")
+    @RepeatSubmit
+    @SysLog(value = "归还代理任务", logParams = false)
+    public R<WfTask> returnAgentTask(@RequestBody @Valid AgentTaskRequest request) {
+        return R.ok(agents.returnTask(request));
+    }
+
+    @PostMapping("/task/agent-assist")
+    @SaCheckPermission("workflow:agent:assist")
+    @RepeatSubmit
+    @SysLog(value = "提交协办意见", logParams = false)
+    public R<String> assistAgentTask(@RequestBody @Valid AgentTaskRequest request) {
+        return R.ok(agents.assist(request));
+    }
+
     // ==================== P1-4: 加签/减签 ====================
 
     /**
@@ -42,6 +95,7 @@ public class WorkflowEnhanceController {
     @RepeatSubmit
     @PostMapping("/task/addSign")
     @SaCheckPermission("workflow:task:add-sign")
+    @SysLog(value = "增加审批签核人员", logParams = false)
     public R<?> addSign(@RequestBody AddSignReq req) {
         return workflowP4Service.addSign(req.getTaskId(), req.getUserIds(), req.getUserNames(),
                 req.getSignType(), req.getReason());
@@ -54,6 +108,7 @@ public class WorkflowEnhanceController {
     @RepeatSubmit
     @PostMapping("/task/removeSign")
     @SaCheckPermission("workflow:task:reduce-sign")
+    @SysLog(value = "移除审批签核人员", logParams = false)
     public R<?> removeSign(@RequestBody RemoveSignReq req) {
         return workflowP4Service.removeSign(req.getTaskId(), req.getUserIds(), req.getReason());
     }

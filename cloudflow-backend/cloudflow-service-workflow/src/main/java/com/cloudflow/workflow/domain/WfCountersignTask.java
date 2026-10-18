@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 /**
  * 5.I: 会签任务实体
@@ -48,6 +49,11 @@ public class WfCountersignTask {
     
     /** 拒绝人数 */
     private Integer rejectCount;
+
+    private BigDecimal totalWeight;
+    private BigDecimal approveWeight;
+    private BigDecimal rejectWeight;
+    private BigDecimal passWeight;
     
     /** 会签状态: VOTING(投票中), PASSED(通过), REJECTED(拒绝) */
     private String status;

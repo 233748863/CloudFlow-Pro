@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WorkflowConfigurationLockMapper">
+    <resultMap id="definition" type="com.cloudflow.workflow.domain.WfProcessDefinition" autoMapping="false">
+        <id property="definitionId" column="definition_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="processName" column="process_name"/>
+        <result property="processKey" column="process_key"/>
+        <result property="version" column="version"/>
+        <result property="versionLock" column="lock_version"/>
+        <result property="formId" column="form_id"/>
+        <result property="modelJson" column="model_json"/>
+        <result property="status" column="status"/>
+        <result property="isLatest" column="is_latest"/>
+        <result property="category" column="category"/>
+        <result property="tags" column="tags"/>
+        <result property="startPermissionType" column="start_permission_type"/>
+        <result property="startPermissionValue" column="start_permission_value"/>
+        <result property="description" column="description"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="createBy" column="create_by"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="deleted" column="deleted"/>
+        <result property="templateId" column="template_id"/>
+        <result property="currentVersion" column="current_version"/>
+        <result property="changeLog" column="change_log"/>
+        <result property="changeType" column="change_type"/>
+        <result property="checksum" column="checksum"/>
+        <result property="isRollback" column="is_rollback"/>
+        <result property="rollbackFromVersion" column="rollback_from_version"/>
+        <result property="isArchived" column="is_archived"/>
+    </resultMap>
+    <resultMap id="form" type="com.cloudflow.workflow.domain.WfFormDefinition" autoMapping="false">
+        <id property="id" column="id"/>
+        <result property="formId" column="form_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="formKey" column="form_key"/>
+        <result property="formName" column="form_name"/>
+        <result property="fieldsJson" column="fields_json"/>
+        <result property="formSchema" column="form_schema"/>
+        <result property="version" column="version"/>
+        <result property="versionLock" column="version_lock"/>
+        <result property="checksum" column="checksum"/>
+        <result property="changeLog" column="change_log"/>
+        <result property="changeType" column="change_type"/>
+        <result property="isRollback" column="is_rollback"/>
+        <result property="rollbackFromVersion" column="rollback_from_version"/>
+        <result property="isLatest" column="is_latest"/>
+        <result property="status" column="status"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+    <select id="findProcessKey" resultType="java.lang.String" useCache="false" flushCache="true">
+        SELECT process_key FROM wf_process_definition
+        WHERE tenant_id = #{tenantId} AND definition_id = #{definitionId} AND deleted = 0
+    </select>
+    <select id="findFormProcessKeys" resultType="java.lang.String" useCache="false" flushCache="true">
+        SELECT DISTINCT process_key FROM wf_process_definition
+        WHERE tenant_id = #{tenantId} AND form_id = #{formId}
+        ORDER BY process_key
+    </select>
+    <select id="lockDefinitions" resultMap="definition" useCache="false" flushCache="true">
+        SELECT * FROM wf_process_definition
+        WHERE process_key = #{processKey} AND tenant_id = #{tenantId}
+        ORDER BY definition_id FOR UPDATE
+    </select>
+    <select id="lockForm" resultMap="form" useCache="false" flushCache="true">
+        SELECT * FROM wf_form_definition
+        WHERE tenant_id = #{tenantId} AND form_id = #{formId} AND is_latest = 1 FOR UPDATE
+    </select>
+    <select id="lockStartPermissions" resultType="com.cloudflow.workflow.domain.WfFormFieldPermission"
+            useCache="false" flushCache="true">
+        SELECT * FROM wf_form_field_permission
+        WHERE tenant_id = #{tenantId} AND definition_id = #{definitionId} AND node_key = '__START__'
+        ORDER BY field_id FOR UPDATE
+    </select>
+    <sql id="instanceStatusFilter">
+        <if test="statuses != null and !statuses.isEmpty()">
+            AND status IN
+            <foreach collection="statuses" item="status" open="(" separator="," close=")">#{status}</foreach>
+        </if>
+    </sql>
+    <select id="countDefinitionInstances" resultType="long" useCache="false" flushCache="true">
+        SELECT COUNT(*) FROM wf_process_instance
+        WHERE tenant_id = #{tenantId} AND definition_id = #{definitionId} AND deleted = 0
+        <include refid="instanceStatusFilter"/>
+        FOR UPDATE
+    </select>
+    <select id="countProcessInstances" resultType="long" useCache="false" flushCache="true">
+        SELECT COUNT(*) FROM wf_process_instance
+        WHERE tenant_id = #{tenantId} AND process_def_key = #{processKey} AND deleted = 0
+        <include refid="instanceStatusFilter"/>
+        FOR UPDATE
+    </select>
+</mapper>

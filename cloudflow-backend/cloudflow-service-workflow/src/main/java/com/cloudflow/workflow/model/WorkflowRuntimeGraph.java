@@ -111,16 +111,22 @@ public class WorkflowRuntimeGraph implements Serializable {
     }
 
     public static final class EdgeLink implements Serializable {
+        private final String id;
         private final String sourceId;
         private final String targetId;
         private final String condition;
         private final boolean isDefault;
 
-        public EdgeLink(String sourceId, String targetId, String condition, boolean isDefault) {
+        public EdgeLink(String id, String sourceId, String targetId, String condition, boolean isDefault) {
+            this.id = id;
             this.sourceId = sourceId;
             this.targetId = targetId;
             this.condition = condition;
             this.isDefault = isDefault;
+        }
+
+        public String getId() {
+            return id;
         }
 
         public String getSourceId() {

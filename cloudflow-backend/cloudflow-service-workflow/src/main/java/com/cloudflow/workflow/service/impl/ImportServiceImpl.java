@@ -4,18 +4,19 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
-import com.cloudflow.workflow.domain.WfFormDefinition;
 import com.cloudflow.workflow.domain.dto.ConflictResolution;
 import com.cloudflow.workflow.domain.dto.ImportResultDTO;
 import com.cloudflow.workflow.domain.dto.ValidationResultDTO;
 import com.cloudflow.workflow.domain.dto.WorkflowExportFormat;
 import com.cloudflow.workflow.exception.WorkflowException;
-import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.resolver.ConflictResolver;
 import com.cloudflow.workflow.resolver.ConflictResolver.ConflictStrategy;
 import com.cloudflow.workflow.service.IImportService;
 import com.cloudflow.workflow.service.IVersionService;
+import com.cloudflow.workflow.service.WorkflowConfigurationLockService;
+import com.cloudflow.workflow.service.WorkflowConfigurationLockService.LockedConfiguration;
+import com.cloudflow.workflow.service.WorkflowTriggerSecrets;
 import com.cloudflow.workflow.validator.ImportValidator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -23,7 +24,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.io.InputStream;
@@ -52,7 +56,10 @@ public class ImportServiceImpl implements IImportService {
     private WfProcessDefinitionMapper definitionMapper;
 
     @Autowired
-    private WfFormDefinitionMapper formDefinitionMapper;
+    private WorkflowConfigurationLockService configurationLocks;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Autowired
     private ImportValidator importValidator;
@@ -65,6 +72,9 @@ public class ImportServiceImpl implements IImportService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private WorkflowTriggerSecrets triggerSecrets;
 
     /**
      * 文件大小限制：10MB
@@ -175,7 +185,7 @@ public class ImportServiceImpl implements IImportService {
             for (WorkflowExportFormat exportFormat : batch) {
                 try {
                     // 每个流程使用独立事务
-                    ImportResultDTO result = importWorkflow(exportFormat, strategy);
+                    ImportResultDTO result = importInNewTransaction(exportFormat, strategy);
                     results.add(result);
                 } catch (Exception e) {
                     log.error("导入流程失败, workflowName={}", 
@@ -231,7 +241,7 @@ public class ImportServiceImpl implements IImportService {
                 
                 try {
                     // 导入单个流程
-                    ImportResultDTO result = importWorkflow(exportFormat, strategy);
+                    ImportResultDTO result = importInNewTransaction(exportFormat, strategy);
                     results.add(result);
                     
                     log.debug("已处理 {} 个流程", count);
@@ -264,9 +274,12 @@ public class ImportServiceImpl implements IImportService {
         log.info("更新现有流程, workflowId={}", resolution.getExistingWorkflowId());
 
         // 查询现有流程
-        WfProcessDefinition existing = definitionMapper.selectById(resolution.getExistingWorkflowId());
-        if (existing == null) {
-            throw new WorkflowException("现有流程不存在: " + resolution.getExistingWorkflowId());
+        WorkflowExportFormat.WorkflowData workflow = exportFormat.getWorkflow();
+        String formId = resolveWorkflowFormId(workflow);
+        LockedConfiguration locked = configurationLocks.lockDefinition(resolution.getExistingWorkflowId(), formId);
+        WfProcessDefinition existing = locked.requireDefinition(resolution.getExistingWorkflowId());
+        if (!Objects.equals(existing.getProcessName(), resolution.getOriginalName())) {
+            throw WorkflowException.invalidState("导入覆盖目标已变更，请刷新后重试");
         }
         Long currentTenantId = UserContext.getTenantId();
         if (currentTenantId != null && !Objects.equals(currentTenantId, existing.getTenantId())) {
@@ -277,7 +290,7 @@ public class ImportServiceImpl implements IImportService {
         try {
             String definitionJson = objectMapper.writeValueAsString(
                 exportFormat.getWorkflow().getDefinition());
-            existing.setModelJson(definitionJson);
+            existing.setModelJson(triggerSecrets.protectModel(definitionJson, existing.getModelJson()));
         } catch (Exception e) {
             throw new WorkflowException("序列化流程定义失败: " + e.getMessage());
         }
@@ -297,10 +310,8 @@ public class ImportServiceImpl implements IImportService {
         }
 
         // 同步导入可选字段（仅使用标准字段）
-        WorkflowExportFormat.WorkflowData workflow = exportFormat.getWorkflow();
-        String formId = resolveWorkflowFormId(workflow);
         if (StringUtils.hasText(formId)) {
-            validateImportedFormBinding(formId);
+            locked.requireBoundForm(formId);
             existing.setFormId(formId);
         }
         String startPermissionType = resolveStartPermissionType(workflow);
@@ -322,7 +333,9 @@ public class ImportServiceImpl implements IImportService {
             UserContext.getUserId().toString() : "system");
 
         // 保存到数据库
-        definitionMapper.updateById(existing);
+        if (definitionMapper.updateById(existing) != 1) {
+            throw WorkflowException.invalidState("导入覆盖失败，请刷新后重试");
+        }
 
         return existing.getDefinitionId();
     }
@@ -351,6 +364,11 @@ public class ImportServiceImpl implements IImportService {
          */
         String processKey = resolveProcessKey(exportFormat);
         definition.setProcessKey(processKey);
+        String formId = resolveWorkflowFormId(workflow);
+        LockedConfiguration locked = configurationLocks.lockForSave(null, processKey, formId);
+        if (!locked.definitions().isEmpty()) {
+            throw WorkflowException.invalidState("导入流程Key已被占用，请重试");
+        }
         
         // 设置描述
         definition.setDescription(exportFormat.getWorkflow().getDescription());
@@ -361,9 +379,8 @@ public class ImportServiceImpl implements IImportService {
         }
 
         // 导入时保留表单绑定与权限配置，保障“表单设计→流程绑定→发起”链路完整
-        String formId = resolveWorkflowFormId(workflow);
         if (StringUtils.hasText(formId)) {
-            validateImportedFormBinding(formId);
+            locked.requireBoundForm(formId);
             definition.setFormId(formId);
         }
         definition.setStartPermissionType(resolveStartPermissionType(workflow));
@@ -383,7 +400,7 @@ public class ImportServiceImpl implements IImportService {
         try {
             String definitionJson = objectMapper.writeValueAsString(
                 exportFormat.getWorkflow().getDefinition());
-            definition.setModelJson(definitionJson);
+            definition.setModelJson(triggerSecrets.protectModel(definitionJson, null));
         } catch (Exception e) {
             throw new WorkflowException("序列化流程定义失败: " + e.getMessage());
         }
@@ -409,7 +426,9 @@ public class ImportServiceImpl implements IImportService {
         }
         
         // 保存到数据库
-        definitionMapper.insert(definition);
+        if (definitionMapper.insert(definition) != 1) {
+            throw WorkflowException.invalidState("导入流程创建失败");
+        }
 
         return definition.getDefinitionId();
     }
@@ -463,20 +482,6 @@ public class ImportServiceImpl implements IImportService {
             return null;
         }
         return workflow.getDeptId();
-    }
-
-    /**
-     * 表单绑定存在性校验，防止导入后流程绑定悬空表单导致发起失败。
-     */
-    private void validateImportedFormBinding(String formId) {
-        WfFormDefinition formDefinition = formDefinitionMapper.selectById(formId);
-        if (formDefinition == null) {
-            throw WorkflowException.validationError("导入失败：绑定表单不存在: " + formId);
-        }
-        Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && !Objects.equals(currentTenantId, formDefinition.getTenantId())) {
-            throw WorkflowException.validationError("导入失败：绑定表单不属于当前租户: " + formId);
-        }
     }
 
     /**
@@ -565,5 +570,11 @@ public class ImportServiceImpl implements IImportService {
             "从导入创建",
             createdBy
         );
+    }
+
+    private ImportResultDTO importInNewTransaction(WorkflowExportFormat exportFormat, ConflictStrategy strategy) {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return transaction.execute(status -> importWorkflow(exportFormat, strategy));
     }
 }

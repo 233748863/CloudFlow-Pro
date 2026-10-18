@@ -1,7 +1,9 @@
 package com.cloudflow.workflow.service;
 
+import com.cloudflow.common.job.annotation.JobHandler;
+import com.cloudflow.common.job.model.JobResult;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.common.job.annotation.DistributedJob;
@@ -15,13 +17,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import java.util.ArrayList;
+import java.util.Objects;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -69,6 +73,12 @@ public class TransactionConsistencyService {
 
     @Autowired
     private SysConfigHelper sysConfigHelper;
+
+    @Autowired
+    private org.springframework.beans.factory.ObjectProvider<WorkflowTriggerService> triggerService;
+
+    @Autowired
+    private TransactionTemplate transactions;
 
     private int maxRetry() {
         return sysConfigHelper.getConfigInt("sys.workflow.maxRetryCount", DEFAULT_MAX_RETRY);
@@ -221,47 +231,51 @@ public class TransactionConsistencyService {
      * 使用分布式锁防止多实例重复执行
      */
     @DistributedJob(name = "transaction-retry-job", lockTime = 55)
-    @Scheduled(fixedDelay = 60000)
-    public void retryPendingMessages() {
+    @JobHandler(value = "txnConsistencyScan", desc = "事务一致性扫描")
+    public JobResult retryPendingMessages() {
         String lockKey = "lock:scheduled:retryPendingMessages";
         RLock lock = redissonClient.getLock(lockKey);
-        
+        boolean acquired = false;
         try {
-            // 尝试获取锁，最多等待1秒，锁定50秒后自动释放
-            if (lock.tryLock(1, 50, TimeUnit.SECONDS)) {
+            acquired = lock.tryLock(1, TimeUnit.SECONDS);
+            if (!acquired) return skipped("事务消息重试已有任务执行，已跳过");
+            LocalDateTime observedAt = LocalDateTime.now();
+            List<RuntimeException> failures = new ArrayList<>();
+            String afterId = "";
+            int processed = 0;
+            while (true) {
+                String cursor = afterId;
+                List<WfTransactionMessage> pendingMessages;
                 try {
-                    // 平台级跨租户扫描：wf_transaction_message 全表扫待重试，
-                    // 单条重试根据消息自带 tenantId 再切租户上下文。
-                    List<WfTransactionMessage> pendingMessages = TenantBroker.applyWithoutTenant(v ->
-                        messageMapper.selectPage(new Page<>(1, 100, false),
-                            new LambdaQueryWrapper<WfTransactionMessage>()
-                                .eq(WfTransactionMessage::getStatus, "PENDING")
-                                .le(WfTransactionMessage::getNextRetryTime, LocalDateTime.now())
-                                .lt(WfTransactionMessage::getRetryCount, maxRetry())
-                                .orderByAsc(WfTransactionMessage::getCreateTime)
-                        ).getRecords()
-                    );
-
-                    if (pendingMessages.isEmpty()) {
-                        return;
-                    }
-
-                    log.info("[retryPendingMessages] 发现 {} 条待重试消息", pendingMessages.size());
-
-                    for (WfTransactionMessage msg : pendingMessages) {
-                        retryMessage(msg);
-                    }
-                } finally {
-                    lock.unlock();
+                    pendingMessages = TenantBroker.applyWithoutTenant(ignored -> messageMapper.selectRetryCandidates(cursor, observedAt, 100));
+                } catch (RuntimeException failure) {
+                    failures.add(failure);
+                    break;
                 }
-            } else {
-                log.debug("[retryPendingMessages] 未能获取分布式锁，跳过本次执行");
+                for (WfTransactionMessage message : pendingMessages) {
+                    try {
+                        if (message.getTenantId() == null) throw new IllegalStateException("事务消息缺少租户");
+                        if (TenantBroker.applyAs(message.getTenantId(), ignored -> doRetryMessage(message))) processed++;
+                    } catch (RuntimeException failure) {
+                        failures.add(new IllegalStateException("事务消息重试失败，消息：" + message.getMessageId(), failure));
+                    }
+                }
+                if (pendingMessages.size() < 100) break;
+                String next = pendingMessages.get(pendingMessages.size() - 1).getMessageId();
+                if (next == null || next.compareTo(afterId) <= 0) throw new IllegalStateException("事务消息重试分页未前进");
+                afterId = next;
             }
+            if (!failures.isEmpty()) {
+                IllegalStateException failure = new IllegalStateException("事务消息重试存在失败项：" + failures.size() + "项；已处理" + processed + "条");
+                failures.forEach(failure::addSuppressed);
+                throw failure;
+            }
+            return JobResult.success(processed, "事务消息重试完成：处理" + processed + "条");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("[retryPendingMessages] 获取分布式锁被中断");
-        } catch (Exception e) {
-            log.error("[retryPendingMessages] 重试任务执行异常: {}", e.getMessage());
+            throw new IllegalStateException("事务消息重试获取锁被中断", e);
+        } finally {
+            if (acquired && lock.isHeldByCurrentThread()) lock.unlock();
         }
     }
 
@@ -275,172 +289,57 @@ public class TransactionConsistencyService {
         TenantBroker.runAs(msg.getTenantId(), tid -> doRetryMessage(msg));
     }
 
-    private void doRetryMessage(WfTransactionMessage msg) {
+    private boolean doRetryMessage(WfTransactionMessage msg) {
+        if (WorkflowTriggerService.BUSINESS_TYPE.equals(msg.getBusinessType())) {
+            return triggerService.getObject().processForScan(msg);
+        }
         String lockKey = "lock:txn:retry:" + msg.getMessageId();
-        
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean acquired = false;
         try {
-            // 使用 Redis 防止并发重试
-            Boolean locked = redisCache.setCacheObjectIfAbsent(lockKey, "1", 60, TimeUnit.SECONDS);
-            if (locked == null || !locked) {
-                return; // 其他实例正在处理
-            }
-
-            log.info("[retryMessage] 开始重试消息, messageId={}, type={}, retryCount={}", 
-                msg.getMessageId(), msg.getBusinessType(), msg.getRetryCount());
-
-            // 更新状态为处理中
-            msg.setStatus("PROCESSING");
-            msg.setRetryCount(msg.getRetryCount() + 1);
-            msg.setUpdateTime(LocalDateTime.now());
-            messageMapper.updateById(msg);
-
-            // 执行重试逻辑
-            boolean success = executeRetry(msg);
-
-            if (success) {
-                msg.setStatus("SUCCESS");
-                msg.setUpdateTime(LocalDateTime.now());
-                messageMapper.updateById(msg);
-                log.info("[retryMessage] 重试成功, messageId={}", msg.getMessageId());
-            } else {
-                // 计算下次重试时间（指数退避）
-                int delaySeconds = retryBaseInterval() * (int) Math.pow(2, msg.getRetryCount());
-                LocalDateTime nextRetryTime = LocalDateTime.now().plusSeconds(delaySeconds);
-
-                if (msg.getRetryCount() >= msg.getMaxRetryCount()) {
-                    msg.setStatus("FAILED");
-                    msg.setErrorMessage("超过最大重试次数");
-                    log.error("[retryMessage] 消息重试次数已耗尽, messageId={}, type={}", 
-                        msg.getMessageId(), msg.getBusinessType());
-                } else {
-                    msg.setStatus("PENDING");
-                    msg.setNextRetryTime(nextRetryTime);
-                }
-                msg.setUpdateTime(LocalDateTime.now());
-                messageMapper.updateById(msg);
-            }
-        } catch (Exception e) {
-            log.error("[retryMessage] 重试异常, messageId={}, error={}", msg.getMessageId(), e.getMessage());
-            msg.setStatus("PENDING");
-            msg.setErrorMessage(e.getMessage());
-            msg.setUpdateTime(LocalDateTime.now());
-            messageMapper.updateById(msg);
+            acquired = lock.tryLock(0, TimeUnit.SECONDS);
+            if (!acquired) return false;
+            TransactionTemplate itemTransaction = new TransactionTemplate(Objects.requireNonNull(transactions.getTransactionManager()));
+            itemTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            RetryAttempt result = Objects.requireNonNull(itemTransaction.execute(status -> retryUnsupportedMessage(msg)));
+            if (result.failure() != null) throw result.failure();
+            return result.processed();
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("事务消息获取重试锁被中断", interrupted);
         } finally {
-            try {
-                redisCache.deleteObject(lockKey);
-            } catch (Exception e) {
-                // ignore
-            }
+            if (acquired && lock.isHeldByCurrentThread()) lock.unlock();
         }
     }
 
-    /**
-     * 执行具体的重试逻辑
-     * 根据业务类型分发到不同的处理器
-     */
-    private boolean executeRetry(WfTransactionMessage msg) {
-        try {
-            switch (msg.getBusinessType()) {
-                case "PROCESS_START":
-                    return retryProcessStart(msg);
-                case "TASK_COMPLETE":
-                    return retryTaskComplete(msg);
-                case "NOTIFICATION":
-                    return retryNotification(msg);
-                case "SNAPSHOT":
-                    return retrySnapshot(msg);
-                default:
-                    log.warn("[executeRetry] 未知的业务类型: {}", msg.getBusinessType());
-                    return true; // 未知类型标记为成功，避免无限重试
-            }
-        } catch (Exception e) {
-            log.error("[executeRetry] 重试执行失败: {}", e.getMessage());
-            return false;
-        }
-    }
+    private record RetryAttempt(boolean processed, RuntimeException failure) { }
 
-    // ==================== 具体重试处理器 ====================
-
-    /**
-     * 重试流程启动的后续操作
-     * 例如：发送通知、创建初始任务等
-     */
-    private boolean retryProcessStart(WfTransactionMessage msg) {
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> data = objectMapper.readValue(msg.getContent(), Map.class);
-            String instanceId = msg.getBusinessId();
-            
-            // 检查实例是否存在（如果不存在说明主事务已回滚，无需重试）
-            // 这里只需要验证数据一致性
-            log.info("[retryProcessStart] 流程启动一致性检查, instanceId={}", instanceId);
-            
-            // 验证通知是否已发送
-            // 验证初始任务是否已创建
-            // 如果缺失则补偿创建
-            
-            return true;
-        } catch (Exception e) {
-            log.error("[retryProcessStart] 重试失败: {}", e.getMessage());
-            return false;
+    private RetryAttempt retryUnsupportedMessage(WfTransactionMessage pointer) {
+        WfTransactionMessage message = messageMapper.selectForRetry(pointer.getTenantId(), pointer.getMessageId());
+        LocalDateTime now = LocalDateTime.now();
+        if (message == null || !Objects.equals(message.getTenantId(), pointer.getTenantId())
+                || !"PENDING".equals(message.getStatus()) || message.getNextRetryTime() == null
+                || message.getNextRetryTime().isAfter(now)) return new RetryAttempt(false, null);
+        if (WorkflowTriggerService.BUSINESS_TYPE.equals(message.getBusinessType())) {
+            throw new IllegalStateException("事务消息业务类型已改变，等待重新扫描");
         }
-    }
-
-    /**
-     * 重试任务完成的后续操作
-     * 例如：流程流转、通知发起人等
-     */
-    private boolean retryTaskComplete(WfTransactionMessage msg) {
-        try {
-            String taskId = msg.getBusinessId();
-            log.info("[retryTaskComplete] 任务完成一致性检查, taskId={}", taskId);
-            
-            // 验证流程是否已正确流转到下一个节点
-            // 验证通知是否已发送
-            // 如果缺失则补偿执行
-            
-            return true;
-        } catch (Exception e) {
-            log.error("[retryTaskComplete] 重试失败: {}", e.getMessage());
-            return false;
+        RuntimeException failure = new IllegalStateException("事务消息类型没有可执行的补偿处理器");
+        int attempts = message.getRetryCount() == null ? 0 : message.getRetryCount();
+        int maximum = message.getMaxRetryCount() == null ? 0 : message.getMaxRetryCount();
+        if (attempts < 0 || maximum <= 0) throw new IllegalStateException("事务消息重试次数配置无效");
+        if (attempts < maximum) attempts++;
+        message.setRetryCount(attempts);
+        message.setErrorMessage(failure.getMessage());
+        message.setUpdateTime(now);
+        if (attempts >= maximum) {
+            message.setStatus("FAILED");
+        } else {
+            int base = retryBaseInterval();
+            if (base <= 0 || attempts >= 63) throw new IllegalStateException("事务消息重试间隔配置无效");
+            message.setNextRetryTime(now.plusSeconds(Math.multiplyExact((long) base, 1L << attempts)));
         }
-    }
-
-    /**
-     * 重试通知发送
-     */
-    private boolean retryNotification(WfTransactionMessage msg) {
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> data = objectMapper.readValue(msg.getContent(), Map.class);
-            Long recipientId = Long.valueOf(data.get("recipientId").toString());
-            String title = (String) data.get("title");
-            String content = (String) data.get("content");
-            
-            log.info("[retryNotification] 重试发送通知, recipientId={}, title={}", recipientId, title);
-            // 调用通知服务重新发送
-            
-            return true;
-        } catch (Exception e) {
-            log.error("[retryNotification] 重试失败: {}", e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * 重试快照保存
-     */
-    private boolean retrySnapshot(WfTransactionMessage msg) {
-        try {
-            String instanceId = msg.getBusinessId();
-            log.info("[retrySnapshot] 重试保存快照, instanceId={}", instanceId);
-            // 重新保存快照
-            
-            return true;
-        } catch (Exception e) {
-            log.error("[retrySnapshot] 重试失败: {}", e.getMessage());
-            return false;
-        }
+        if (messageMapper.updateById(message) != 1) throw new IllegalStateException("事务消息重试状态保存冲突");
+        return new RetryAttempt(true, failure);
     }
 
     // ==================== 监控和管理 ====================
@@ -474,41 +373,29 @@ public class TransactionConsistencyService {
      * 使用分布式锁防止多实例重复执行
      */
     @DistributedJob(name = "transaction-cleanup-job", lockTime = 120)
-    @Scheduled(cron = "0 0 2 * * ?")
-    public void cleanupSuccessMessages() {
+    @JobHandler(value = "txnConsistencyDaily", desc = "事务一致性清理")
+    public JobResult cleanupSuccessMessages() {
         String lockKey = "lock:scheduled:cleanupSuccessMessages";
         RLock lock = redissonClient.getLock(lockKey);
-        
+        boolean acquired = false;
         try {
-            // 尝试获取锁，最多等待1秒，锁定60秒后自动释放
-            if (lock.tryLock(1, 60, TimeUnit.SECONDS)) {
-                try {
-                    LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-
-                    // 平台级跨租户清理 wf_transaction_message
-                    int deleted = TenantBroker.applyWithoutTenant(v ->
-                        messageMapper.delete(
-                            new LambdaQueryWrapper<WfTransactionMessage>()
-                                .eq(WfTransactionMessage::getStatus, "SUCCESS")
-                                .lt(WfTransactionMessage::getUpdateTime, sevenDaysAgo)
-                        )
-                    );
-
-                    if (deleted > 0) {
-                        log.info("[cleanupSuccessMessages] 清理了 {} 条历史成功消息", deleted);
-                    }
-                } finally {
-                    lock.unlock();
-                }
-            } else {
-                log.debug("[cleanupSuccessMessages] 未能获取分布式锁，跳过本次清理");
-            }
+            acquired = lock.tryLock(1, TimeUnit.SECONDS);
+            if (!acquired) return skipped("事务消息清理已有任务执行，已跳过");
+            LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+            int deleted = TenantBroker.applyWithoutTenant(ignored -> messageMapper.delete(
+                    new LambdaQueryWrapper<WfTransactionMessage>().eq(WfTransactionMessage::getStatus, "SUCCESS")
+                            .lt(WfTransactionMessage::getUpdateTime, sevenDaysAgo)));
+            return JobResult.success(deleted, "事务消息清理完成：删除" + deleted + "条七天前的成功记录");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("[cleanupSuccessMessages] 获取分布式锁被中断");
-        } catch (Exception e) {
-            log.error("[cleanupSuccessMessages] 清理失败: {}", e.getMessage());
+            throw new IllegalStateException("事务消息清理获取锁被中断", e);
+        } finally {
+            if (acquired && lock.isHeldByCurrentThread()) lock.unlock();
         }
+    }
+
+    private static JobResult skipped(String message) {
+        return JobResult.builder().executeStatus("SKIPPED").affectedRows(0).resultMsg(message).build();
     }
 
     /**

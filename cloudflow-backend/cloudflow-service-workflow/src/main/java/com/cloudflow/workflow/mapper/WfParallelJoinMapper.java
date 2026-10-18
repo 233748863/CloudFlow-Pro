@@ -15,5 +15,6 @@ import java.util.List;
 @Mapper
 public interface WfParallelJoinMapper extends BaseMapper<WfParallelJoin> {
 
-    List<Long> selectIdsForUpdate(@Param("instanceId") String instanceId, @Param("gatewayId") String gatewayId);
+    List<WfParallelJoin> selectArrivalsForUpdate(@Param("tenantId") Long tenantId, @Param("activationId") String activationId);
+    int deleteArchived(@Param("tenantId") Long tenantId, @Param("instanceId") String instanceId);
 }

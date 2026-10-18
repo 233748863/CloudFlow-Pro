@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfFormDefinitionMapper">
+    <resultMap id="formVersion" type="com.cloudflow.workflow.domain.WfFormDefinition" autoMapping="true">
+        <id property="id" column="id"/>
+        <result property="versionLock" column="version_lock"/>
+        <result property="createBy" column="version_creator"/>
+    </resultMap>
+    <sql id="creator">
+        (SELECT audit.create_by FROM sys_audit_log audit WHERE audit.tenant_id = form.tenant_id
+            AND audit.biz_module = 'workflow' AND audit.audit_field = 'formVersion'
+            AND JSON_UNQUOTE(JSON_EXTRACT(audit.after_json, '$.formId')) = form.form_id
+            AND JSON_UNQUOTE(JSON_EXTRACT(audit.after_json, '$.version')) = CAST(form.version AS CHAR)
+            ORDER BY audit.audit_id ASC LIMIT 1) AS version_creator
+    </sql>
+    <select id="selectLatest" resultMap="formVersion">
+        SELECT * FROM wf_form_definition WHERE tenant_id = #{tenantId} AND form_id = #{formId} AND is_latest = 1
+        ORDER BY version DESC LIMIT 1
+    </select>
+    <select id="lockLatest" resultMap="formVersion" useCache="false" flushCache="true">
+        SELECT * FROM wf_form_definition WHERE tenant_id = #{tenantId} AND form_id = #{formId} AND is_latest = 1
+        FOR UPDATE
+    </select>
+    <select id="resolveIdentifier" resultMap="formVersion">
+        SELECT * FROM wf_form_definition WHERE tenant_id = #{tenantId} AND (form_id = #{identifier} OR form_key = #{identifier}) AND is_latest = 1
+        ORDER BY form_id LIMIT 2
+    </select>
+    <select id="selectVersion" resultMap="formVersion">
+        SELECT form.*, <include refid="creator"/> FROM wf_form_definition form
+        WHERE form.tenant_id = #{tenantId} AND form.form_id = #{formId} AND form.version = #{version}
+    </select>
+    <select id="selectVersions" resultMap="formVersion">
+        SELECT form.*, <include refid="creator"/> FROM wf_form_definition form
+        WHERE form.tenant_id = #{tenantId} AND form.form_id = #{formId} ORDER BY form.version DESC
+    </select>
+    <update id="updateVersionLockOnly">
+        UPDATE wf_form_definition SET version_lock = version_lock + 1, form_name = #{formName}, form_key = #{formKey}, checksum = #{checksum}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND is_latest = 1 AND version_lock = #{expectedLock}
+    </update>
+    <update id="markNotLatest">
+        UPDATE wf_form_definition SET is_latest = 0 WHERE tenant_id = #{tenantId} AND id = #{id}
+            AND is_latest = 1 AND version_lock = #{expectedLock}
+    </update>
+    <select id="latestFormIds" resultType="java.lang.String">
+        SELECT form_id FROM wf_form_definition WHERE tenant_id = #{tenantId} AND is_latest = 1 ORDER BY form_id
+    </select>
+    <select id="cleanupCandidates" resultMap="formVersion">
+        SELECT form.* FROM wf_form_definition form WHERE form.tenant_id = #{tenantId} AND form.form_id = #{formId}
+            AND form.is_latest = 0 AND form.version &lt; #{keepFrom}
+            AND NOT EXISTS (SELECT 1 FROM wf_process_instance instance
+                JOIN wf_process_definition definition ON definition.tenant_id = instance.tenant_id AND definition.definition_id = instance.definition_id
+                WHERE instance.tenant_id = #{tenantId} AND definition.form_id = #{formId} AND instance.form_version = form.version)
+            ORDER BY form.version LIMIT 500
+    </select>
+    <delete id="deleteUnusedVersion">
+        DELETE FROM wf_form_definition WHERE tenant_id = #{tenantId} AND id = #{id} AND form_id = #{formId}
+            AND version = #{version} AND is_latest = 0
+            AND NOT EXISTS (SELECT 1 FROM wf_process_instance instance
+                JOIN wf_process_definition definition ON definition.tenant_id = instance.tenant_id AND definition.definition_id = instance.definition_id
+                WHERE instance.tenant_id = #{tenantId} AND definition.form_id = #{formId} AND instance.form_version = #{version})
+    </delete>
+</mapper>

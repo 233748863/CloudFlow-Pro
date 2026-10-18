@@ -1,5 +1,10 @@
 package com.cloudflow.workflow.handler.impl;
 
+import com.cloudflow.workflow.domain.enums.WfTaskType;
+import com.cloudflow.workflow.service.TaskSemanticContext;
+import com.cloudflow.workflow.service.WorkflowHParticipantPolicy;
+import com.cloudflow.workflow.service.WorkflowAgentService;
+
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessInstance;
@@ -7,7 +12,7 @@ import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
 import com.cloudflow.workflow.handler.INodeHandler;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
-import com.cloudflow.workflow.service.ISysNoticeService;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.workflow.strategy.AssignUserStrategyFactory;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -16,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Collections;
 import java.util.UUID;
 
 /**
@@ -38,8 +44,10 @@ public class ManualNodeHandler implements INodeHandler {
     private static final Logger log = LoggerFactory.getLogger(ManualNodeHandler.class);
 
     private final WfTaskMapper taskMapper;
-    private final ISysNoticeService sysNoticeService;
+    private final MessageSender sysNoticeService;
     private final AssignUserStrategyFactory assignUserStrategyFactory;
+    private final WorkflowHParticipantPolicy hParticipantPolicy;
+    private final WorkflowAgentService agents;
 
     @Override
     public String getNodeType() {
@@ -52,6 +60,7 @@ public class ManualNodeHandler implements INodeHandler {
 
         // 解析处理人
         Long assigneeId = assignUserStrategyFactory.resolve(node, instance);
+        hParticipantPolicy.assertAssignees(instance, node, Collections.singletonList(assigneeId));
         if (assigneeId == null) {
             log.warn("[ManualNodeHandler] 人工任务节点未能解析到处理人, nodeKey={}, approverType={}, approverValue={}",
                     node.getId(), node.getApproverType(), node.getApproverValue());
@@ -72,22 +81,25 @@ public class ManualNodeHandler implements INodeHandler {
 
         // 创建人工任务（复用 wf_task 表，与审批任务共用同一套完成机制）
         WfTask task = new WfTask();
+        task.setTaskType(TaskSemanticContext.resolve(WfTaskType.MANUAL.name()));
         task.setTaskId(UUID.randomUUID().toString());
         task.setInstanceId(instance.getInstanceId());
+        task.setTenantId(instance.getTenantId());
         task.setNodeName(node.getTitle());
         task.setNodeKey(node.getId());
         task.setAssignee(assigneeId);
         task.setStatus(WfTaskStatus.TODO.getCode());
         task.setPriority(priority);
         task.setCreateTime(LocalDateTime.now());
-        taskMapper.insert(task);
+        hParticipantPolicy.assertTaskAssignment(task, task.getAssignee());
+        agents.createTask(task);
 
         // 发送通知，包含任务描述
         String noticeContent = "您有一个新的人工任务: " + node.getTitle() + " (流程: " + instance.getTitle() + ")";
         if (taskDescription != null && !taskDescription.isEmpty()) {
             noticeContent += "\n任务说明: " + taskDescription;
         }
-        sysNoticeService.sendNotice(assigneeId, "人工任务通知", noticeContent,
+        sysNoticeService.send(assigneeId, "人工任务通知", noticeContent,
                 "1", UserContext.getUserId(), UserContext.getUserName());
 
         log.info("[ManualNodeHandler] 人工任务已创建, taskId={}, assignee={}, priority={}",

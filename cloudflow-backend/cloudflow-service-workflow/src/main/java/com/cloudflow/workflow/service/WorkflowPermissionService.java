@@ -58,6 +58,9 @@ public class WorkflowPermissionService {
     @Autowired
     private WfProcessCopyMapper processCopyMapper;
 
+    @Autowired
+    private WorkflowAgentService agents;
+
     /**
      * 校验当前用户是否有权限处理任务
      */
@@ -69,6 +72,10 @@ public class WorkflowPermissionService {
         checkTenantIsolation(task.getTenantId(), "任务");
         if (task.getAssignee() == null) {
             throw new PermissionDeniedException("任务未认领，请先认领或由管理员指派");
+        }
+        if (!Objects.equals(task.getAssignee(), currentUserId) && Objects.equals(task.getProxyUserId(), currentUserId)) {
+            agents.assertAgentAction(task, currentUserId);
+            return;
         }
         if (task.getAssignee() != null && !task.getAssignee().equals(currentUserId) && !isAdmin(currentUserId)) {
             log.warn("用户 {} 尝试处理非本人任务 {}", currentUserId, task.getTaskId());
@@ -111,17 +118,17 @@ public class WorkflowPermissionService {
      * 校验当前用户是否有权限驳回任务
      */
     public void checkRejectPermission(WfTask task) {
-        Long currentUserId = UserContext.getUserId();
-        if (currentUserId == null) {
-            throw new PermissionDeniedException("用户未登录");
-        }
-        checkTenantIsolation(task.getTenantId(), "任务");
-        if (task.getAssignee() == null) {
-            throw new PermissionDeniedException("任务未认领，请先认领或由管理员指派");
-        }
-        if (task.getAssignee() != null && !task.getAssignee().equals(currentUserId) && !isAdmin(currentUserId)) {
-            throw new PermissionDeniedException("无权驳回此任务");
-        }
+        checkTaskPermission(task);
+    }
+
+    public void checkTaskReadPermission(WfTask task) {
+        if (!canReadTask(task)) throw new PermissionDeniedException("无权读取此任务");
+    }
+
+    public boolean canReadTask(WfTask task) {
+        Long userId = UserContext.getUserId();
+        return task != null && userId != null && Objects.equals(UserContext.getTenantId(), task.getTenantId())
+                && (Objects.equals(task.getAssignee(), userId) || agents.canRead(task, userId) || isAdmin(userId));
     }
 
     /**
@@ -160,10 +167,15 @@ public class WorkflowPermissionService {
             return;
         }
 
+        if (taskMapper.selectList(new LambdaQueryWrapper<WfTask>().eq(WfTask::getTenantId, instance.getTenantId())
+                .eq(WfTask::getInstanceId, instance.getInstanceId()).eq(WfTask::getProxyUserId, currentUserId)
+                .eq(WfTask::getStatus, "TODO")).stream().anyMatch(task -> agents.canRead(task, currentUserId))) return;
+
         // 历史处理人可查看（用于已办、轨迹回看）
         LambdaQueryWrapper<WfTaskHistory> historyWrapper = new LambdaQueryWrapper<WfTaskHistory>()
                 .eq(WfTaskHistory::getInstanceId, instance.getInstanceId())
-                .eq(WfTaskHistory::getOperatorId, currentUserId);
+                .and(history -> history.eq(WfTaskHistory::getOperatorId, currentUserId)
+                        .or().eq(WfTaskHistory::getOnBehalfOfUserId, currentUserId));
         if (currentTenantId != null) {
             historyWrapper.eq(WfTaskHistory::getTenantId, currentTenantId);
         }

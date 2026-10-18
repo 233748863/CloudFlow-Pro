@@ -30,7 +30,7 @@ public class WfUserDeletionGuard implements UserDeletionGuard {
         }
         Long instanceCount = wfProcessInstanceMapper.selectCount(new LambdaQueryWrapper<WfProcessInstance>()
                 .eq(WfProcessInstance::getStartUserId, userId)
-                .eq(WfProcessInstance::getStatus, "RUNNING"));
+                .in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.activeCodes()));
         if (instanceCount != null && instanceCount > 0) {
             result.add("工作流运行中实例 " + instanceCount + " 条");
         }

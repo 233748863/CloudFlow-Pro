@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfTaskAddSignMapper">
+    <select id="selectPendingForUpdate" resultType="com.cloudflow.workflow.domain.WfTaskAddSign" useCache="false" flushCache="true">
+        SELECT * FROM wf_task_add_sign WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND status = 'PENDING'
+        <if test="taskId != null">AND task_id = #{taskId}</if>
+        FOR UPDATE
+    </select>
+    <select id="selectForUpdate" resultType="com.cloudflow.workflow.domain.WfTaskAddSign" useCache="false" flushCache="true">
+        SELECT * FROM wf_task_add_sign
+        WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND add_sign_id = #{addSignId} FOR UPDATE
+    </select>
+    <select id="selectPending" resultType="com.cloudflow.workflow.domain.vo.PendingSignatureVO">
+        SELECT signing.add_sign_id, signing.task_id, task.node_name, instance.title AS instance_title,
+               signing.sign_type, signing.create_time
+          FROM wf_task_add_sign signing
+          JOIN wf_task task ON task.task_id = signing.task_id
+               AND task.tenant_id = signing.tenant_id AND task.instance_id = signing.instance_id
+          JOIN wf_process_instance instance ON instance.instance_id = signing.instance_id
+               AND instance.tenant_id = signing.tenant_id AND instance.deleted = 0
+         WHERE signing.tenant_id = #{tenantId} AND task.assignee = #{userId} AND signing.status = 'PENDING'
+           AND instance.status IN ('RUNNING', 'WITHDRAWN', 'TASK_BACK', 'RESTARTED', 'PENDING')
+         ORDER BY signing.create_time DESC, signing.add_sign_id
+    </select>
+</mapper>

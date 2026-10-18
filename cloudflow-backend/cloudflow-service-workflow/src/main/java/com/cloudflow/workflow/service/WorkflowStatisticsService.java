@@ -58,13 +58,13 @@ public class WorkflowStatisticsService {
             // 1. 流程实例统计
             Long totalInstances = processInstanceMapper.selectCount(null);
             Long runningInstances = processInstanceMapper.selectCount(
-                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "RUNNING"));
+                new LambdaQueryWrapper<WfProcessInstance>().in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.activeCodes()));
             Long completedInstances = processInstanceMapper.selectCount(
-                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "COMPLETED"));
+                new LambdaQueryWrapper<WfProcessInstance>().in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.successCodes()));
             Long rejectedInstances = processInstanceMapper.selectCount(
                 new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "REJECTED"));
             Long revokedInstances = processInstanceMapper.selectCount(
-                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "REVOKED"));
+                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "CANCELLED"));
 
             Map<String, Object> instanceStats = new HashMap<>();
             instanceStats.put("total", totalInstances);
@@ -148,7 +148,7 @@ public class WorkflowStatisticsService {
 
             // 3. 平均处理时长（已完成的流程）
             List<WfProcessInstance> completedList = allInstances.stream()
-                .filter(i -> "COMPLETED".equals(i.getStatus()) && i.getEndTime() != null && i.getStartTime() != null)
+                .filter(i -> com.cloudflow.workflow.domain.enums.WfProcessStatus.isSuccess(i.getStatus()) && i.getEndTime() != null && i.getStartTime() != null)
                 .collect(Collectors.toList());
 
             if (!completedList.isEmpty()) {
@@ -185,8 +185,8 @@ public class WorkflowStatisticsService {
             // 5. 处理人工作量排行（Top 10）
             List<WfTaskHistory> allHistory = taskHistoryMapper.selectList(null);
             Map<Long, Long> operatorWorkload = allHistory.stream()
-                .filter(h -> h.getOperatorId() != null)
-                .collect(Collectors.groupingBy(WfTaskHistory::getOperatorId, Collectors.counting()));
+                .filter(WorkflowHistoryAttribution::countsAsCompletion)
+                .collect(Collectors.groupingBy(WorkflowHistoryAttribution::owner, Collectors.counting()));
 
             List<Map<String, Object>> workloadRank = operatorWorkload.entrySet().stream()
                 .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
@@ -203,7 +203,7 @@ public class WorkflowStatisticsService {
             // 6. 完成率（已完成 / 总实例数）
             long totalCount = allInstances.size();
             long completedCount = allInstances.stream()
-                .filter(i -> "COMPLETED".equals(i.getStatus())).count();
+                .filter(i -> com.cloudflow.workflow.domain.enums.WfProcessStatus.isSuccess(i.getStatus())).count();
             if (totalCount > 0) {
                 double approvalRate = (double) completedCount / totalCount * 100;
                 analysis.put("approvalRate", Math.round(approvalRate * 100.0) / 100.0);
@@ -229,14 +229,14 @@ public class WorkflowStatisticsService {
             // === 核心实例统计（从数据库查询） ===
             Long totalInstances = processInstanceMapper.selectCount(null);
             Long runningInstances = processInstanceMapper.selectCount(
-                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "RUNNING"));
+                new LambdaQueryWrapper<WfProcessInstance>().in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.activeCodes()));
             Long completedInstances = processInstanceMapper.selectCount(
-                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "COMPLETED"));
+                new LambdaQueryWrapper<WfProcessInstance>().in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.successCodes()));
             Long rejectedInstances = processInstanceMapper.selectCount(
                 new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "REJECTED"));
 
             Long revokedInstances = processInstanceMapper.selectCount(
-                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "REVOKED"));
+                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "CANCELLED"));
 
             metrics.put("totalInstances", totalInstances);
             metrics.put("runningInstances", runningInstances);

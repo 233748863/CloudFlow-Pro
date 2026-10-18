@@ -111,7 +111,7 @@ public class DeptManagerAssignStrategy implements AssignUserStrategy {
         return "部门经理";
     }
 
-    private Long resolveLeaderFromDeptField(SysDept dept) {
+    public Long resolveLeaderFromDeptField(SysDept dept) {
         String leaderValue = dept.getLeader();
         if (!StringUtils.hasText(leaderValue)) {
             log.warn("[DeptManagerAssignStrategy] 部门 {} 未设置负责人", dept.getDeptName());

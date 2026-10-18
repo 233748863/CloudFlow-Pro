@@ -1,5 +1,13 @@
 package com.cloudflow.workflow.service.monitor.impl;
 
+import com.cloudflow.common.job.annotation.JobHandler;
+import com.cloudflow.common.job.config.JobInvocationContext;
+import com.cloudflow.common.job.model.JobResult;
+import com.cloudflow.common.message.api.MessageSender;
+import com.cloudflow.common.message.api.MessageSendRequest;
+import com.cloudflow.common.tenant.TenantBroker;
+import com.cloudflow.common.tenant.TenantContext;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.redis.core.SysConfigHelper;
@@ -12,17 +20,19 @@ import com.cloudflow.workflow.mapper.AnomalyAlertMapper;
 import com.cloudflow.workflow.mapper.ProcessMonitorMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
-import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.monitor.IAnomalyDetectionService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * 异常检测服务实现
@@ -41,10 +51,11 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     private final ProcessMonitorMapper processMonitorMapper;
     private final WfTaskMapper taskMapper;
     private final WfProcessInstanceMapper processInstanceMapper;
-    private final INotificationService notificationService;
     private final PerformanceStatsRefreshService performanceStatsRefreshService;
     private final TenantIterator tenantIterator;
     private final SysConfigHelper sysConfigHelper;
+    private final MessageSender messageSender;
+    private final TransactionTemplate transactions;
 
     /** 兜底默认值：异常运行时长阈值小时（实际值从 sys.workflow.anomaly.runningHoursThreshold 读取） */
     private static final int DEFAULT_RUNNING_HOURS_THRESHOLD = 24;
@@ -57,22 +68,16 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     @Transactional(rollbackFor = Exception.class)
     public void detectExecutionFailure(String instanceId, String errorMessage, String stackTrace) {
         try {
-            ProcessMonitor monitor = processMonitorMapper.selectByInstanceId(instanceId);
+            Long tenantId = requireEventTenant();
+            ProcessMonitor monitor = processMonitorMapper.selectByInstanceId(instanceId, tenantId);
             if (monitor == null) {
                 log.warn("流程监控记录不存在: instanceId={}", instanceId);
                 return;
             }
 
-            // 检查是否已存在未解决的告警
-            LambdaQueryWrapper<AnomalyAlert> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(AnomalyAlert::getTenantId, monitor.getTenantId())
-                    .eq(AnomalyAlert::getAnomalyType, "EXECUTION_FAILED")
-                    .eq(AnomalyAlert::getInstanceId, instanceId);
-            applyUnresolvedFilter(wrapper);
-
-            if (anomalyAlertMapper.selectCount(wrapper) > 0) {
-                return; // 已存在告警，跳过
-            }
+            monitor = processMonitorMapper.lockForAnomalyScan(tenantId, monitor.getId());
+            if (monitor == null) throw new IllegalStateException("流程异常监控记录已变更");
+            if (repairExistingEvent(tenantId, instanceId, "EXECUTION_FAILED", null)) return;
 
             // 创建异常告警
             AnomalyAlert alert = new AnomalyAlert();
@@ -90,7 +95,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setCreateTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
 
-            anomalyAlertMapper.insert(alert);
+            if (anomalyAlertMapper.insert(alert) != 1) throw new IllegalStateException("流程异常告警登记失败");
             performanceStatsRefreshService.refreshForAnomalyAlert(alert);
             log.warn("检测到执行失败: instanceId={}, error={}", instanceId, errorMessage);
 
@@ -98,73 +103,141 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             sendAnomalyAlert(alert);
         } catch (Exception e) {
             log.error("检测执行失败异常: instanceId={}", instanceId, e);
+            throw e;
         }
     }
 
     @Override
     @DistributedJob(name = "workflow-anomaly-deadlock-job", lockTime = 600)
-    @Scheduled(cron = "0 */10 * * * ?")
-    @Transactional(rollbackFor = Exception.class)
-    public void detectDeadlock() {
-        log.info("开始检测死锁");
-        tenantIterator.forEachActiveTenant(tid -> detectDeadlockForTenant(tid));
+    @JobHandler(value = "anomalyDetect", desc = "异常死锁检测")
+    public JobResult detectDeadlock() {
+        return scanScheduledAnomalies("anomalyDetect", true);
     }
 
-    private void detectDeadlockForTenant(Long tenantId) {
-        try {
-            // 查询长时间运行的流程
-            List<ProcessMonitor> runningProcesses = processMonitorMapper.selectRunningProcesses(tenantId);
-
-            int alertCount = 0;
-            for (ProcessMonitor process : runningProcesses) {
-                // 检查流程是否可能死锁
-                // 1. 运行时间超过24小时
-                // 2. 没有活动任务
-                long runningHours = java.time.Duration.between(
-                        process.getStartTime(), LocalDateTime.now()).toHours();
-
-                int threshold = runningHoursThreshold();
-                if (runningHours > threshold) {
-                    // 查询该流程的活动任务
-                    LambdaQueryWrapper<WfTask> taskWrapper = new LambdaQueryWrapper<>();
-                    taskWrapper.eq(WfTask::getInstanceId, process.getInstanceId())
-                            .eq(WfTask::getStatus, "TODO");
-
-                    long activeTaskCount = taskMapper.selectCount(taskWrapper);
-
-                    if (activeTaskCount == 0) {
-                        // 可能死锁：流程运行中但没有活动任务
-                        createDeadlockAlert(process, "流程运行超过" + threshold + "小时且无活动任务");
-                        alertCount++;
+    private JobResult scanScheduledAnomalies(String handler, boolean deadlock) {
+        JobInvocationContext.Execution invocation = JobInvocationContext.execution();
+        Long callerTenant = TenantContext.getTenantId();
+        List<Long> tenants = callerTenant == null || (invocation != null && handler.equals(invocation.handlerName()))
+                ? tenantIterator.listActiveTenantIds() : List.of(callerTenant);
+        TransactionTemplate itemTransaction = new TransactionTemplate(Objects.requireNonNull(transactions.getTransactionManager()));
+        itemTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        itemTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+        List<RuntimeException> failures = new ArrayList<>();
+        int[] counts = new int[2];
+        LocalDateTime observedAt = LocalDateTime.now();
+        for (Long tenantId : tenants) {
+            try {
+                TenantBroker.runAs(tenantId, ignored -> {
+                    int threshold = deadlock ? runningHoursThreshold() : 0;
+                    if (threshold < 0) throw new IllegalStateException("异常巡检时长阈值不能为负数");
+                    long afterId = 0;
+                    while (true) {
+                        List<Long> ids = processMonitorMapper.selectAnomalyScanIds(tenantId, afterId, 500);
+                        for (Long id : ids) {
+                            try {
+                                ScanCounts outcome = Objects.requireNonNull(itemTransaction.execute(status -> scanScheduledProcess(tenantId, id, deadlock, threshold, observedAt)));
+                                counts[0] += outcome.created();
+                                counts[1] += outcome.repaired();
+                            } catch (RuntimeException failure) {
+                                failures.add(new IllegalStateException("流程异常巡检处理失败，租户：" + tenantId + "，监控记录：" + id, failure));
+                            }
+                        }
+                        if (ids.size() < 500) break;
+                        long next = ids.get(ids.size() - 1);
+                        if (next <= afterId) throw new IllegalStateException("流程异常巡检分页未前进");
+                        afterId = next;
                     }
+                });
+            } catch (RuntimeException failure) {
+                failures.add(new IllegalStateException("流程异常巡检读取失败，租户：" + tenantId, failure));
+            }
+        }
+        if (!failures.isEmpty()) {
+            IllegalStateException failure = new IllegalStateException("流程异常巡检存在失败项：" + failures.size()
+                    + "项；已提交新增告警" + counts[0] + "条，补登提醒" + counts[1] + "条");
+            failures.forEach(failure::addSuppressed);
+            throw failure;
+        }
+        return JobResult.success(counts[0] + counts[1], "流程异常巡检完成：新增告警" + counts[0] + "条，补登提醒" + counts[1] + "条");
+    }
+
+    record ScanCounts(int created, int repaired) { }
+
+    private ScanCounts scanScheduledProcess(Long tenantId, Long id, boolean deadlock, int threshold, LocalDateTime observedAt) {
+        ProcessMonitor process = processMonitorMapper.lockForAnomalyScan(tenantId, id);
+        if (process == null || !"RUNNING".equals(process.getStatus())) return new ScanCounts(0, 0);
+        if (deadlock && !process.getStartTime().isBefore(observedAt.minusHours(threshold))) return new ScanCounts(0, 0);
+        LambdaQueryWrapper<WfTask> tasks = new LambdaQueryWrapper<>();
+        tasks.eq(WfTask::getTenantId, tenantId).eq(WfTask::getInstanceId, process.getInstanceId());
+        if (deadlock) tasks.eq(WfTask::getStatus, "TODO");
+        if (taskMapper.selectCount(tasks) != 0) return new ScanCounts(0, 0);
+        String type = deadlock ? "DEADLOCK" : "DATA_INCONSISTENCY";
+        LambdaQueryWrapper<AnomalyAlert> existing = new LambdaQueryWrapper<>();
+        existing.eq(AnomalyAlert::getTenantId, tenantId).eq(AnomalyAlert::getInstanceId, process.getInstanceId())
+                .eq(AnomalyAlert::getAnomalyType, type).eq(AnomalyAlert::getResolved, "N").orderByAsc(AnomalyAlert::getId);
+        List<AnomalyAlert> alerts = anomalyAlertMapper.selectList(existing);
+        if (!alerts.isEmpty()) {
+            if (alerts.stream().allMatch(alert -> "Y".equals(alert.getNotificationSent()))) return new ScanCounts(0, 0);
+            performanceStatsRefreshService.lockAnomalyScanBucket(process);
+            int repaired = 0;
+            for (AnomalyAlert alert : alerts) {
+                if (!"Y".equals(alert.getNotificationSent())) {
+                    registerReminder(alert);
+                    repaired++;
                 }
             }
-
-            log.info("死锁检测完成: tenantId={}, 检测数量={}, 新增告警={}", tenantId, runningProcesses.size(), alertCount);
-        } catch (Exception e) {
-            log.error("检测死锁失败, tenantId={}", tenantId, e);
+            performanceStatsRefreshService.refreshForAnomalyAlert(alerts.get(0));
+            return new ScanCounts(0, repaired);
         }
+        performanceStatsRefreshService.lockAnomalyScanBucket(process);
+        AnomalyAlert alert = new AnomalyAlert();
+        alert.setTenantId(tenantId); alert.setInstanceId(process.getInstanceId());
+        alert.setProcessDefKey(process.getProcessDefKey()); alert.setProcessName(process.getProcessDefName());
+        alert.setAnomalyType(type); alert.setSeverity(deadlock ? "CRITICAL" : "MEDIUM");
+        alert.setErrorMessage(deadlock ? "流程运行超过" + threshold + "小时且无活动任务" : "监控显示运行中但无任务记录");
+        alert.setAlertTime(observedAt); alert.setCreateTime(observedAt); alert.setUpdateTime(observedAt);
+        alert.setResolved("N"); alert.setNotificationSent("N");
+        if (anomalyAlertMapper.insert(alert) != 1) throw new IllegalStateException("流程异常告警登记失败");
+        registerReminder(alert);
+        performanceStatsRefreshService.refreshForAnomalyAlert(alert);
+        return new ScanCounts(1, 0);
+    }
+
+    private void registerReminder(AnomalyAlert alert) {
+        WfProcessInstance instance = processInstanceMapper.selectById(alert.getInstanceId());
+        if (instance == null || !Objects.equals(instance.getTenantId(), alert.getTenantId()) || instance.getStartUserId() == null) {
+            throw new IllegalStateException("流程异常提醒缺少本租户的流程发起人");
+        }
+        Long recipient = instance.getStartUserId();
+        messageSender.send(MessageSendRequest.legacy(recipient, buildAlertTitle(alert), buildAlertNoticeContent(alert), "1", null, "系统")
+                .toBuilder().bizType(EVENT_WORKFLOW_ANOMALY).bizId(alert.getId().toString())
+                .deduplicationKey("wf:anomaly:" + alert.getId() + ":" + recipient).build());
+        alert.setNotificationSent("Y"); alert.setUpdateTime(LocalDateTime.now());
+        if (anomalyAlertMapper.updateById(alert) != 1) throw new IllegalStateException("流程异常提醒登记状态更新失败");
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void detectNoAssignee(String taskId, String instanceId, String nodeKey) {
         try {
-            WfTask task = taskMapper.selectById(taskId);
+            Long tenantId = requireEventTenant();
+            WfTask task = taskMapper.selectForUpdate(tenantId, taskId);
             if (task == null) {
                 return;
             }
 
-            // 检查是否已存在未解决的告警
-            LambdaQueryWrapper<AnomalyAlert> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(AnomalyAlert::getTenantId, task.getTenantId())
-                    .eq(AnomalyAlert::getAnomalyType, "NO_ASSIGNEE")
-                    .eq(AnomalyAlert::getTaskId, taskId);
-            applyUnresolvedFilter(wrapper);
-
-            if (anomalyAlertMapper.selectCount(wrapper) > 0) {
-                return; // 已存在告警，跳过
+            if (!Objects.equals(instanceId, task.getInstanceId()) || !Objects.equals(nodeKey, task.getNodeKey())) {
+                throw new IllegalArgumentException("无人认领告警的流程或节点与任务不匹配");
             }
+            if (repairExistingEvent(tenantId, instanceId, "NO_ASSIGNEE", taskId)) return;
+
+            WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+            if (instance == null || !Objects.equals(tenantId, instance.getTenantId())) {
+                throw new IllegalStateException("无人认领告警缺少本租户的流程实例");
+            }
+            ProcessMonitor monitor = processMonitorMapper.selectByInstanceId(instanceId, tenantId);
+            String processName = monitor == null ? null : monitor.getProcessDefName();
+            if (processName == null || processName.isBlank()) processName = instance.getProcessDefKey();
 
             // 创建异常告警
             AnomalyAlert alert = new AnomalyAlert();
@@ -172,7 +245,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setAnomalyType("NO_ASSIGNEE");
             alert.setTaskId(taskId);
             alert.setInstanceId(instanceId);
-            alert.setProcessDefKey(task.getProcessDefKey());
+            alert.setProcessDefKey(instance.getProcessDefKey());
+            alert.setProcessName(processName);
             alert.setNodeKey(nodeKey);
             alert.setNodeName(task.getNodeName());
             alert.setErrorMessage("任务没有候选人，无法分配");
@@ -183,7 +257,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setCreateTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
 
-            anomalyAlertMapper.insert(alert);
+            if (anomalyAlertMapper.insert(alert) != 1) throw new IllegalStateException("流程异常告警登记失败");
             performanceStatsRefreshService.refreshForAnomalyAlert(alert);
             log.warn("检测到无候选人: taskId={}, nodeKey={}", taskId, nodeKey);
 
@@ -191,84 +265,48 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             sendAnomalyAlert(alert);
         } catch (Exception e) {
             log.error("检测无候选人异常: taskId={}", taskId, e);
+            throw e;
         }
     }
 
     @Override
     @DistributedJob(name = "workflow-anomaly-data-check-job", lockTime = 600)
-    @Scheduled(cron = "0 0 */6 * * ?")
-    @Transactional(rollbackFor = Exception.class)
-    public void detectDataInconsistency() {
-        log.info("开始检测数据不一致");
-        tenantIterator.forEachActiveTenant(tid -> detectDataInconsistencyForTenant(tid));
-    }
-
-    private void detectDataInconsistencyForTenant(Long tenantId) {
-        try {
-            // 检查流程监控数据与实际流程状态的一致性
-            List<ProcessMonitor> runningMonitors = processMonitorMapper.selectRunningProcesses(tenantId);
-
-            int alertCount = 0;
-            for (ProcessMonitor monitor : runningMonitors) {
-                // 检查是否存在对应的活动任务
-                LambdaQueryWrapper<WfTask> taskWrapper = new LambdaQueryWrapper<>();
-                taskWrapper.eq(WfTask::getInstanceId, monitor.getInstanceId());
-
-                long taskCount = taskMapper.selectCount(taskWrapper);
-
-                if (taskCount == 0) {
-                    // 数据不一致：监控显示运行中，但没有任何任务记录
-                    createDataInconsistencyAlert(monitor, "监控显示运行中但无任务记录");
-                    alertCount++;
-                }
-            }
-
-            log.info("数据不一致检测完成: tenantId={}, 检测数量={}, 新增告警={}", tenantId, runningMonitors.size(), alertCount);
-        } catch (Exception e) {
-            log.error("检测数据不一致失败, tenantId={}", tenantId, e);
-        }
+    @JobHandler(value = "anomalyDetectDaily", desc = "异常数据一致性检测")
+    public JobResult detectDataInconsistency() {
+        return scanScheduledAnomalies("anomalyDetectDaily", false);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void sendAnomalyAlert(AnomalyAlert alert) {
-        try {
-            Long recipientId = resolveRecipientId(alert);
-            if (recipientId == null) {
-                log.warn("异常告警未找到通知接收人: alertId={}, instanceId={}", alert.getId(), alert.getInstanceId());
-                return;
-            }
-
-            // 构建告警消息
-            String message = buildAlertMessage(alert);
-
-            // 记录告警日志
-            log.error("[异常告警] {}", message);
-
-            notificationService.sendNotification(
-                    recipientId,
-                    buildAlertTitle(alert),
-                    buildAlertNoticeContent(alert),
-                    EVENT_WORKFLOW_ANOMALY
-            );
-
-            // 更新通知状态
-            alert.setNotificationSent("Y");
-            alert.setUpdateTime(LocalDateTime.now());
-            anomalyAlertMapper.updateById(alert);
-
-            log.info("异常告警通知已发送: alertId={}, type={}, severity={}",
-                    alert.getId(), alert.getAnomalyType(), alert.getSeverity());
-        } catch (Exception e) {
-            log.error("发送异常告警失败: alertId={}", alert.getId(), e);
+        Long tenantId = requireEventTenant();
+        if (alert == null || alert.getId() == null || !Objects.equals(tenantId, alert.getTenantId())) {
+            throw new IllegalArgumentException("流程异常提醒必须引用本租户的已登记告警");
         }
+        AnomalyAlert stored = anomalyAlertMapper.selectForNotification(tenantId, alert.getId());
+        if (stored == null) throw new IllegalStateException("流程异常告警不存在");
+        if ("Y".equals(stored.getNotificationSent())) return;
+        registerReminder(stored);
+        alert.setNotificationSent(stored.getNotificationSent());
+        alert.setUpdateTime(stored.getUpdateTime());
     }
 
-    private Long resolveRecipientId(AnomalyAlert alert) {
-        if (alert.getInstanceId() == null) {
-            return null;
+    private Long requireEventTenant() {
+        return Objects.requireNonNull(TenantContext.getTenantId(), "流程异常事件缺少租户上下文");
+    }
+
+    private boolean repairExistingEvent(Long tenantId, String instanceId, String type, String taskId) {
+        List<AnomalyAlert> alerts = anomalyAlertMapper.selectUnresolvedForEvent(tenantId, instanceId, type, taskId);
+        if (alerts.isEmpty()) return false;
+        boolean repaired = false;
+        for (AnomalyAlert alert : alerts) {
+            if (!"Y".equals(alert.getNotificationSent())) {
+                sendAnomalyAlert(alert);
+                repaired = true;
+            }
         }
-        WfProcessInstance instance = processInstanceMapper.selectById(alert.getInstanceId());
-        return instance == null ? null : instance.getStartUserId();
+        if (repaired) performanceStatsRefreshService.refreshForAnomalyAlert(alerts.get(0));
+        return true;
     }
 
     private String buildAlertTitle(AnomalyAlert alert) {
@@ -317,82 +355,6 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     }
 
     /**
-     * 创建死锁告警
-     */
-    private void createDeadlockAlert(ProcessMonitor process, String reason) {
-        try {
-            // 检查是否已存在未解决的告警
-            LambdaQueryWrapper<AnomalyAlert> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(AnomalyAlert::getTenantId, process.getTenantId())
-                    .eq(AnomalyAlert::getAnomalyType, "DEADLOCK")
-                    .eq(AnomalyAlert::getInstanceId, process.getInstanceId());
-            applyUnresolvedFilter(wrapper);
-
-            if (anomalyAlertMapper.selectCount(wrapper) > 0) {
-                return;
-            }
-
-            AnomalyAlert alert = new AnomalyAlert();
-            alert.setTenantId(process.getTenantId());
-            alert.setAnomalyType("DEADLOCK");
-            alert.setInstanceId(process.getInstanceId());
-            alert.setProcessDefKey(process.getProcessDefKey());
-            alert.setProcessName(process.getProcessDefName());
-            alert.setErrorMessage(reason);
-            alert.setSeverity("CRITICAL");
-            alert.setAlertTime(LocalDateTime.now());
-            alert.setNotificationSent("N");
-            alert.setResolved("N");
-            alert.setCreateTime(LocalDateTime.now());
-            alert.setUpdateTime(LocalDateTime.now());
-
-            anomalyAlertMapper.insert(alert);
-            performanceStatsRefreshService.refreshForAnomalyAlert(alert);
-            sendAnomalyAlert(alert);
-        } catch (Exception e) {
-            log.error("创建死锁告警失败: instanceId={}", process.getInstanceId(), e);
-        }
-    }
-
-    /**
-     * 创建数据不一致告警
-     */
-    private void createDataInconsistencyAlert(ProcessMonitor process, String reason) {
-        try {
-            // 检查是否已存在未解决的告警
-            LambdaQueryWrapper<AnomalyAlert> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(AnomalyAlert::getTenantId, process.getTenantId())
-                    .eq(AnomalyAlert::getAnomalyType, "DATA_INCONSISTENCY")
-                    .eq(AnomalyAlert::getInstanceId, process.getInstanceId());
-            applyUnresolvedFilter(wrapper);
-
-            if (anomalyAlertMapper.selectCount(wrapper) > 0) {
-                return;
-            }
-
-            AnomalyAlert alert = new AnomalyAlert();
-            alert.setTenantId(process.getTenantId());
-            alert.setAnomalyType("DATA_INCONSISTENCY");
-            alert.setInstanceId(process.getInstanceId());
-            alert.setProcessDefKey(process.getProcessDefKey());
-            alert.setProcessName(process.getProcessDefName());
-            alert.setErrorMessage(reason);
-            alert.setSeverity("MEDIUM");
-            alert.setAlertTime(LocalDateTime.now());
-            alert.setNotificationSent("N");
-            alert.setResolved("N");
-            alert.setCreateTime(LocalDateTime.now());
-            alert.setUpdateTime(LocalDateTime.now());
-
-            anomalyAlertMapper.insert(alert);
-            performanceStatsRefreshService.refreshForAnomalyAlert(alert);
-            sendAnomalyAlert(alert);
-        } catch (Exception e) {
-            log.error("创建数据不一致告警失败: instanceId={}", process.getInstanceId(), e);
-        }
-    }
-
-    /**
      * 确定严重程度
      */
     private String determineSeverity(String errorMessage) {
@@ -420,32 +382,4 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
         return "MEDIUM";
     }
 
-    /**
-     * 构建告警消息
-     */
-    private String buildAlertMessage(AnomalyAlert alert) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("类型=").append(alert.getAnomalyType());
-        sb.append(", 严重程度=").append(alert.getSeverity());
-        sb.append(", 流程=").append(alert.getProcessDefKey());
-        sb.append(", 实例ID=").append(alert.getInstanceId());
-
-        if (alert.getTaskId() != null) {
-            sb.append(", 任务ID=").append(alert.getTaskId());
-        }
-
-        if (alert.getErrorMessage() != null) {
-            sb.append(", 错误=").append(alert.getErrorMessage());
-        }
-
-        return sb.toString();
-    }
-
-    /**
-     * 兼容历史数据中的 0/1 与当前标准 Y/N。
-     * 未解决告警统一视为 N、0 或 NULL。
-     */
-    private void applyUnresolvedFilter(LambdaQueryWrapper<AnomalyAlert> wrapper) {
-        wrapper.eq(AnomalyAlert::getResolved, "N");
-    }
 }

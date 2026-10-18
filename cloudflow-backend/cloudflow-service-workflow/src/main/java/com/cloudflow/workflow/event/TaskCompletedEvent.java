@@ -18,6 +18,16 @@ public class TaskCompletedEvent extends TaskEvent {
     /** 审批意见 */
     private final String comment;
 
+    private String taskType;
+
+    public String getTaskType() {
+        return taskType;
+    }
+
+    public void setTaskType(String taskType) {
+        this.taskType = taskType;
+    }
+
     public TaskCompletedEvent(Object source, String instanceId, String processDefKey,
                                String taskId, String nodeKey, String nodeName,
                                Long operatorId, String operatorName,

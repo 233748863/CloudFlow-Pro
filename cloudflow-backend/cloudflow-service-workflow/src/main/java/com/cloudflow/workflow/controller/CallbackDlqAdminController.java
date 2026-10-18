@@ -36,11 +36,15 @@ public class CallbackDlqAdminController {
             q.eq(WfCallbackDeadLetter::getTenantId, tenantId);
         }
         q.orderByDesc(WfCallbackDeadLetter::getId);
-        return R.ok(deadLetterMapper.selectPage(new Page<>(current, size), q));
+        Page<WfCallbackDeadLetter> result = deadLetterMapper.selectPage(new Page<>(current, size), q);
+        result.getRecords().stream().filter(entry -> com.cloudflow.workflow.service.WorkflowTriggerService.BUSINESS_TYPE.equals(entry.getBusinessType()))
+                .forEach(entry -> entry.setPayloadJson("{\"request_cipher\":\"****\"}"));
+        return R.ok(result);
     }
 
     @RepeatSubmit
     @PostMapping("/{id}/replay")
+    @com.cloudflow.common.log.annotation.SysLog("重放工作流死信")
     public R<Void> replay(@PathVariable Long id) {
         WfCallbackDeadLetter dlq = deadLetterMapper.selectById(id);
         if (dlq == null) {
@@ -52,6 +56,7 @@ public class CallbackDlqAdminController {
 
     @RepeatSubmit
     @PostMapping("/{id}/ignore")
+    @com.cloudflow.common.log.annotation.SysLog("忽略工作流死信")
     public R<Void> ignore(@PathVariable Long id) {
         WfCallbackDeadLetter dlq = deadLetterMapper.selectById(id);
         if (dlq == null) {

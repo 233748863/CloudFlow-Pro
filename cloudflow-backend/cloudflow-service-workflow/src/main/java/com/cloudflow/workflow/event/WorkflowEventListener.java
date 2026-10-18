@@ -13,18 +13,20 @@ import com.cloudflow.workflow.service.monitor.IProcessMonitorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 工作流核心事件监听器
@@ -38,9 +40,10 @@ import java.util.Map;
  *   3. 流程生命周期：流程完成/拒绝/撤回/作废时，批量关闭所有 RUNNING 节点记录
  *
  * 设计要点：
- *   - @Async 异步处理，不阻塞主流程
+ *   - 节点与任务记录在业务事务提交前按发布顺序保存，回滚时一并撤销
+ *   - 流程收尾晚于同一事务中的节点与任务记录，避免提前关闭后重复插入
  *   - 所有方法 try-catch 包裹，异常不影响主流程
- *   - 节点记录通过 instanceId + nodeKey 唯一定位
+ *   - 完成事件匹配同实例同节点最近的运行记录，保留合法的重复经过
  */
 @Component
 public class WorkflowEventListener {
@@ -82,8 +85,8 @@ public class WorkflowEventListener {
     /**
      * 流程完成 — 关闭所有 RUNNING 节点记录
      */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    @Async("workflowEventExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
+    @Order(100)
     public void onProcessCompleted(ProcessCompletedEvent event) {
         try {
             log.info("[事件监听] 流程完成: instanceId={}, processDefKey={}",
@@ -97,8 +100,8 @@ public class WorkflowEventListener {
     /**
      * 流程拒绝 — 关闭所有 RUNNING 节点记录
      */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    @Async("workflowEventExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
+    @Order(100)
     public void onProcessRejected(ProcessRejectedEvent event) {
         try {
             log.info("[事件监听] 流程被拒绝: instanceId={}, 节点={}, 操作人={}({}), 意见={}",
@@ -113,8 +116,8 @@ public class WorkflowEventListener {
     /**
      * 流程撤回 — 关闭所有 RUNNING 节点记录
      */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    @Async("workflowEventExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
+    @Order(100)
     public void onProcessRevoked(ProcessRevokedEvent event) {
         try {
             log.info("[事件监听] 流程撤回: instanceId={}, 操作人={}({})",
@@ -128,8 +131,8 @@ public class WorkflowEventListener {
     /**
      * 流程作废 — 关闭所有 RUNNING 节点记录
      */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    @Async("workflowEventExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
+    @Order(100)
     public void onProcessInvalidated(ProcessInvalidatedEvent event) {
         try {
             log.info("[事件监听] 流程作废: instanceId={}, 原因={}, 删除任务数={}",
@@ -145,8 +148,8 @@ public class WorkflowEventListener {
     /**
      * 节点开始 — 创建 RUNNING 状态的节点记录
      */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    @Async("workflowEventExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
+    @Order(0)
     public void onNodeStarted(NodeStartedEvent event) {
         try {
             log.info("[事件监听] 节点开始: instanceId={}, nodeKey={}, nodeName={}, nodeType={}",
@@ -158,6 +161,8 @@ public class WorkflowEventListener {
             record.setNodeKey(event.getNodeKey());
             record.setNodeName(event.getNodeName());
             record.setNodeType(event.getNodeType());
+            record.setEventType(event.getTaskType());
+            record.setEventTime(event.getEventTime());
             record.setStatus("RUNNING");
             record.setStartTime(event.getEventTime());
             record.setCreateTime(event.getEventTime());
@@ -172,8 +177,8 @@ public class WorkflowEventListener {
     /**
      * 节点完成 — 更新节点记录为 COMPLETED，计算执行耗时
      */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    @Async("workflowEventExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
+    @Order(0)
     public void onNodeCompleted(NodeCompletedEvent event) {
         try {
             log.info("[事件监听] 节点完成: instanceId={}, nodeKey={}, nodeName={}, durationMs={}",
@@ -192,6 +197,10 @@ public class WorkflowEventListener {
 
             if (existingRecord != null) {
                 existingRecord.setStatus("COMPLETED");
+                if (existingRecord.getEventType() == null) {
+                    existingRecord.setEventType(event.getTaskType());
+                }
+                existingRecord.setEventTime(now);
                 existingRecord.setEndTime(now);
                 // 优先使用事件携带的耗时，否则自行计算
                 if (event.getDurationMs() > 0) {
@@ -202,13 +211,15 @@ public class WorkflowEventListener {
                 }
                 nodeRecordMapper.updateById(existingRecord);
             } else {
-                // 自动节点（开始和完成几乎同时），直接创建 COMPLETED 记录
+                // 仅有完成事件的调用路径仍保留其真实完成记录
                 WfNodeRecord record = new WfNodeRecord();
                 record.setInstanceId(event.getInstanceId());
                 record.setProcessDefKey(event.getProcessDefKey());
                 record.setNodeKey(event.getNodeKey());
                 record.setNodeName(event.getNodeName());
                 record.setNodeType(event.getNodeType());
+                record.setEventType(event.getTaskType());
+                record.setEventTime(now);
                 record.setStatus("COMPLETED");
                 record.setStartTime(now);
                 record.setEndTime(now);
@@ -228,8 +239,8 @@ public class WorkflowEventListener {
     /**
      * 任务分配 — 创建节点记录（RUNNING），记录被分配人
      */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    @Async("workflowEventExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
+    @Order(0)
     public void onTaskAssigned(TaskAssignedEvent event) {
         try {
             log.info("[事件监听] 任务分配: instanceId={}, taskId={}, nodeKey={}, 分配给={}({})",
@@ -253,6 +264,8 @@ public class WorkflowEventListener {
                 record.setStatus("RUNNING");
                 record.setExecutorId(event.getAssigneeId());
                 record.setExecutorName(event.getAssigneeName());
+                record.setEventType(event.getTaskType());
+                record.setEventTime(event.getEventTime());
                 record.setStartTime(event.getEventTime());
                 record.setCreateTime(event.getEventTime());
                 nodeRecordMapper.insert(record);
@@ -267,8 +280,8 @@ public class WorkflowEventListener {
     /**
      * 任务完成 — 更新节点记录为 COMPLETED，记录操作人和审批意见
      */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    @Async("workflowEventExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
+    @Order(0)
     public void onTaskCompleted(TaskCompletedEvent event) {
         try {
             log.info("[事件监听] 任务完成: instanceId={}, taskId={}, nodeKey={}, action={}, 操作人={}({})",
@@ -286,15 +299,18 @@ public class WorkflowEventListener {
                     .getRecords().stream().findFirst().orElse(null);
 
             if (existingRecord != null) {
+                String extraData = buildTaskExtraData(existingRecord.getExtraData(), event.getAction(), event.getComment());
                 existingRecord.setStatus("COMPLETED");
                 existingRecord.setExecutorId(event.getOperatorId());
+                existingRecord.setEventType(event.getTaskType());
+                existingRecord.setEventTime(now);
                 existingRecord.setExecutorName(event.getOperatorName());
                 existingRecord.setEndTime(now);
                 if (existingRecord.getStartTime() != null) {
                     existingRecord.setDurationMs(
                             Duration.between(existingRecord.getStartTime(), now).toMillis());
                 }
-                existingRecord.setExtraData(buildTaskExtraData(event.getAction(), event.getComment()));
+                existingRecord.setExtraData(extraData);
                 nodeRecordMapper.updateById(existingRecord);
             } else {
                 // 没有 RUNNING 记录，直接创建 COMPLETED 记录
@@ -304,13 +320,15 @@ public class WorkflowEventListener {
                 record.setNodeKey(event.getNodeKey());
                 record.setNodeName(event.getNodeName());
                 record.setNodeType("APPROVAL");
+                record.setEventType(event.getTaskType());
+                record.setEventTime(now);
                 record.setStatus("COMPLETED");
                 record.setExecutorId(event.getOperatorId());
                 record.setExecutorName(event.getOperatorName());
                 record.setStartTime(now);
                 record.setEndTime(now);
                 record.setDurationMs(0L);
-                record.setExtraData(buildTaskExtraData(event.getAction(), event.getComment()));
+                record.setExtraData(buildTaskExtraData(null, event.getAction(), event.getComment()));
                 record.setCreateTime(now);
                 nodeRecordMapper.insert(record);
             }
@@ -434,17 +452,23 @@ public class WorkflowEventListener {
     }
 
     /**
-     * 安全构建任务完成的 extraData JSON
+     * 合并审批结果，保留节点已有的策略原因与其他扩展信息。
      */
-    private String buildTaskExtraData(String action, String comment) {
+    private String buildTaskExtraData(String existingExtraData, String action, String comment) {
         try {
-            Map<String, String> data = new HashMap<>();
+            ObjectNode data = objectMapper.createObjectNode();
+            if (existingExtraData != null && !existingExtraData.isBlank()) {
+                JsonNode existing = objectMapper.readTree(existingExtraData);
+                if (!(existing instanceof ObjectNode object)) {
+                    throw new IllegalStateException("节点扩展信息必须是JSON对象，保留原记录");
+                }
+                data.setAll(object);
+            }
             data.put("action", action != null ? action : "");
             data.put("comment", comment != null ? comment : "");
             return objectMapper.writeValueAsString(data);
-        } catch (Exception e) {
-            log.warn("[事件监听] 序列化 extraData 失败: {}", e.getMessage());
-            return "{}";
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("节点扩展信息无法解析或序列化，保留原记录");
         }
     }
 }

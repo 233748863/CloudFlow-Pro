@@ -9,6 +9,7 @@ import com.cloudflow.workflow.domain.WfDeployApprovalStep;
 import com.cloudflow.workflow.domain.WfDeployImpact;
 import com.cloudflow.workflow.domain.WfDeployNotification;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
+import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.dto.ArchivedWorkflowDTO;
 import com.cloudflow.workflow.domain.dto.BatchOperationResultDTO;
 import com.cloudflow.workflow.domain.dto.OperationDetailDTO;
@@ -29,6 +30,7 @@ import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.service.IArchiveService;
 import com.cloudflow.workflow.service.IAuditLogService;
 import com.cloudflow.workflow.service.INotificationService;
+import com.cloudflow.workflow.service.WorkflowConfigurationLockService;
 import com.cloudflow.workflow.util.SafetyChecker;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -36,8 +38,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -45,6 +50,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -95,6 +101,12 @@ public class ArchiveServiceImpl implements IArchiveService {
     @Autowired
     private INotificationService notificationService;
 
+    @Autowired
+    private WorkflowConfigurationLockService configurationLocks;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     /**
      * 归档单个流程
      */
@@ -129,7 +141,7 @@ public class ArchiveServiceImpl implements IArchiveService {
         // 2. 批量归档（每个流程使用独立事务）
         List<OperationDetailDTO> details = new ArrayList<>();
         for (String workflowId : workflowIds) {
-            OperationDetailDTO detail = archiveSingleWorkflow(workflowId, reason);
+            OperationDetailDTO detail = executeWorkflowOperation(workflowId, () -> archiveSingleWorkflow(workflowId, reason));
             details.add(detail);
         }
 
@@ -167,15 +179,7 @@ public class ArchiveServiceImpl implements IArchiveService {
             log.debug("归档流程: workflowId={}", workflowId);
 
             // 1. 查询流程
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
-            if (definition == null) {
-                return OperationDetailDTO.builder()
-                    .workflowId(workflowId)
-                    .workflowName("未知")
-                    .status("failed")
-                    .message("流程不存在")
-                    .build();
-            }
+            WfProcessDefinition definition = configurationLocks.lockDefinition(workflowId).requireDefinition(workflowId);
             ensureWorkflowTenantAccess(definition, "归档流程");
 
             // 2. 检查是否已归档
@@ -186,6 +190,9 @@ public class ArchiveServiceImpl implements IArchiveService {
                     .status("skipped")
                     .message("流程已归档")
                     .build();
+            }
+            if (configurationLocks.countDefinitionInstances(definition, WfProcessStatus.openCodes()) > 0) {
+                throw WorkflowException.invalidState("流程存在运行中或暂停中的实例，无法归档");
             }
 
             // 3. 创建归档记录
@@ -202,21 +209,19 @@ public class ArchiveServiceImpl implements IArchiveService {
             try {
                 String originalData = objectMapper.writeValueAsString(definition);
                 archive.setOriginalData(originalData);
-            } catch (JsonProcessingException e) {
-                log.error("序列化流程数据失败: workflowId={}", workflowId, e);
-                return OperationDetailDTO.builder()
-                    .workflowId(workflowId)
-                    .workflowName(definition.getProcessName())
-                    .status("failed")
-                    .message("序列化流程数据失败: " + e.getMessage())
-                    .build();
+            } catch (JsonProcessingException failure) {
+                throw new WorkflowException("序列化流程归档数据失败", failure);
             }
 
-            archiveMapper.insert(archive);
+            if (archiveMapper.insert(archive) != 1) {
+                throw WorkflowException.invalidState("流程归档记录创建失败");
+            }
 
             // 5. 标记流程为归档状态
             definition.setIsArchived(1);
-            definitionMapper.updateById(definition);
+            if (definitionMapper.updateById(definition) != 1) {
+                throw WorkflowException.invalidState("流程归档失败，请刷新后重试");
+            }
 
             // 6. 发送归档通知
             String operatorName = UserContext.getUserName();
@@ -261,14 +266,8 @@ public class ArchiveServiceImpl implements IArchiveService {
                 .message("归档成功")
                 .build();
 
-        } catch (Exception e) {
-            log.error("归档流程失败: workflowId={}", workflowId, e);
-            return OperationDetailDTO.builder()
-                .workflowId(workflowId)
-                .workflowName("未知")
-                .status("failed")
-                .message("归档失败: " + e.getMessage())
-                .build();
+        } catch (Exception failure) {
+            throw new WorkflowException("归档流程失败", failure);
         }
     }
 
@@ -292,7 +291,7 @@ public class ArchiveServiceImpl implements IArchiveService {
         // 批量恢复（每个流程使用独立事务）
         List<OperationDetailDTO> details = new ArrayList<>();
         for (String workflowId : workflowIds) {
-            OperationDetailDTO detail = restoreSingleWorkflow(workflowId);
+            OperationDetailDTO detail = executeWorkflowOperation(workflowId, () -> restoreSingleWorkflow(workflowId));
             details.add(detail);
         }
 
@@ -330,15 +329,7 @@ public class ArchiveServiceImpl implements IArchiveService {
             log.debug("恢复归档流程: workflowId={}", workflowId);
 
             // 1. 查询流程
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
-            if (definition == null) {
-                return OperationDetailDTO.builder()
-                    .workflowId(workflowId)
-                    .workflowName("未知")
-                    .status("failed")
-                    .message("流程不存在")
-                    .build();
-            }
+            WfProcessDefinition definition = configurationLocks.lockDefinition(workflowId).requireDefinition(workflowId);
             ensureWorkflowTenantAccess(definition, "恢复归档流程");
 
             // 2. 检查是否已归档
@@ -353,7 +344,9 @@ public class ArchiveServiceImpl implements IArchiveService {
 
             // 3. 恢复流程状态
             definition.setIsArchived(0);
-            definitionMapper.updateById(definition);
+            if (definitionMapper.updateById(definition) != 1) {
+                throw WorkflowException.invalidState("流程恢复失败，请刷新后重试");
+            }
 
             // 4. 发送恢复通知
             String operatorName = UserContext.getUserName();
@@ -397,14 +390,8 @@ public class ArchiveServiceImpl implements IArchiveService {
                 .message("恢复成功")
                 .build();
 
-        } catch (Exception e) {
-            log.error("恢复流程失败: workflowId={}", workflowId, e);
-            return OperationDetailDTO.builder()
-                .workflowId(workflowId)
-                .workflowName("未知")
-                .status("failed")
-                .message("恢复失败: " + e.getMessage())
-                .build();
+        } catch (Exception failure) {
+            throw new WorkflowException("恢复流程失败", failure);
         }
     }
 
@@ -511,7 +498,7 @@ public class ArchiveServiceImpl implements IArchiveService {
         // 批量删除（每个流程使用独立事务）
         List<OperationDetailDTO> details = new ArrayList<>();
         for (String workflowId : workflowIds) {
-            OperationDetailDTO detail = permanentDeleteSingleWorkflow(workflowId);
+            OperationDetailDTO detail = executeWorkflowOperation(workflowId, () -> permanentDeleteSingleWorkflow(workflowId));
             details.add(detail);
         }
 
@@ -551,16 +538,11 @@ public class ArchiveServiceImpl implements IArchiveService {
             log.debug("永久删除流程: workflowId={}", workflowId);
 
             // 1. 查询流程
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
-            if (definition == null) {
-                return OperationDetailDTO.builder()
-                    .workflowId(workflowId)
-                    .workflowName("未知")
-                    .status("failed")
-                    .message("流程不存在")
-                    .build();
-            }
+            WfProcessDefinition definition = configurationLocks.lockDefinition(workflowId).requireDefinition(workflowId);
             ensureWorkflowTenantAccess(definition, "永久删除流程");
+            if (configurationLocks.countDefinitionInstances(definition, WfProcessStatus.openCodes()) > 0) {
+                throw WorkflowException.invalidState("流程存在运行中或暂停中的实例，无法永久删除");
+            }
 
             String workflowName = definition.getProcessName();
 
@@ -638,7 +620,9 @@ public class ArchiveServiceImpl implements IArchiveService {
             log.debug("删除归档记录: workflowId={}, count={}", workflowId, archiveCount);
 
             // 7. 真正物理删除流程定义，避免逻辑删除残留在主表中。
-            definitionMapper.deletePhysicalById(workflowId);
+            if (definitionMapper.deletePhysicalById(workflowId) != 1) {
+                throw WorkflowException.invalidState("流程永久删除失败，请刷新后重试");
+            }
 
             // 8. 记录审计日志
             auditLogService.log(
@@ -658,14 +642,20 @@ public class ArchiveServiceImpl implements IArchiveService {
                 .message("永久删除成功")
                 .build();
 
-        } catch (Exception e) {
-            log.error("永久删除流程失败: workflowId={}", workflowId, e);
-            return OperationDetailDTO.builder()
-                .workflowId(workflowId)
-                .workflowName("未知")
-                .status("failed")
-                .message("永久删除失败: " + e.getMessage())
-                .build();
+        } catch (Exception failure) {
+            throw new WorkflowException("永久删除流程失败", failure);
+        }
+    }
+
+    private OperationDetailDTO executeWorkflowOperation(String workflowId, Supplier<OperationDetailDTO> operation) {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        try {
+            return transaction.execute(status -> operation.get());
+        } catch (Exception failure) {
+            log.error("流程配置操作已回滚: workflowId={}", workflowId, failure);
+            return OperationDetailDTO.builder().workflowId(workflowId).workflowName("未知")
+                    .status("failed").message(failure.getMessage()).build();
         }
     }
 

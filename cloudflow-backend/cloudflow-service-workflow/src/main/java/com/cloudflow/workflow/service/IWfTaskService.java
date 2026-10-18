@@ -29,6 +29,8 @@ public interface IWfTaskService {
      */
     R<?> completeTask(String taskId, String action, String comment, Map<String, Object> variables, String delegateUserId);
 
+    R<?> completeAutomaticTask(String taskId, String action, String comment, Map<String, Object> variables);
+
     /**
      * 驳回任务到指定节点
      *
@@ -39,6 +41,8 @@ public interface IWfTaskService {
      */
     R<?> rejectTask(String taskId, String targetNodeKey, String comment);
 
+    R<?> rejectTask(String taskId, String targetNodeKey, String comment, String strategy);
+
     /**
      * 查询待办任务（分页）
      *
@@ -47,6 +51,8 @@ public interface IWfTaskService {
      * @return 任务列表
      */
     PageResult<WfTask> getTodoTasks(Long userId, PageQuery pageQuery);
+
+    WfTask getTodoTask(String taskId);
 
     /**
      * 查询已办任务（分页）。
@@ -95,4 +101,6 @@ public interface IWfTaskService {
      * @return 结果
      */
     R<?> reductionSignature(String taskId, java.util.List<Long> userIds, String comment);
+
+    R<?> removeOrderedSignatures(String taskId, java.util.List<Long> userIds, String reason);
 }

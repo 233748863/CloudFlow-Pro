@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class WfUrgeEffect {
     @TableId
     private String effectId;
+    private Long tenantId;
     private String urgeId;
     private String taskId;
     private Long beforeDuration;

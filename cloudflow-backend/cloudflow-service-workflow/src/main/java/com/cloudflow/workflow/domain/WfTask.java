@@ -37,6 +37,16 @@ public class WfTask implements Serializable {
     /** 候选角色ID (逗号分隔) */
     private String candidateRoles;
 
+    private String taskType = "APPROVAL";
+
+    public String getTaskType() {
+        return taskType;
+    }
+
+    public void setTaskType(String taskType) {
+        this.taskType = taskType;
+    }
+
     /** 状态 (TODO, DONE) */
     private String status;
 
@@ -49,6 +59,9 @@ public class WfTask implements Serializable {
     @Version
 
     private Integer version;
+
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
     /** 截止时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
 
@@ -60,11 +73,97 @@ public class WfTask implements Serializable {
     /** P4.1: 处理人姓名 */
     private String assigneeName;
 
+    /** 仅由停用释放及离职交接维护，不接受客户端写入或向外暴露。 */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Long disabledFromUserId;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String disabledFromUserName;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Integer disabledReleaseVersion;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String disabledReleaseEventId;
+
+    public Long getDisabledFromUserId() { return disabledFromUserId; }
+    public void setDisabledFromUserId(Long disabledFromUserId) { this.disabledFromUserId = disabledFromUserId; }
+    public String getDisabledFromUserName() { return disabledFromUserName; }
+    public void setDisabledFromUserName(String disabledFromUserName) { this.disabledFromUserName = disabledFromUserName; }
+    public Integer getDisabledReleaseVersion() { return disabledReleaseVersion; }
+    public void setDisabledReleaseVersion(Integer disabledReleaseVersion) { this.disabledReleaseVersion = disabledReleaseVersion; }
+    public String getDisabledReleaseEventId() { return disabledReleaseEventId; }
+    public void setDisabledReleaseEventId(String disabledReleaseEventId) { this.disabledReleaseEventId = disabledReleaseEventId; }
+
     /** P4.5: 代理人用户ID */
     private Long proxyUserId;
 
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+    private String agentSettingId;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String executionContext;
+
+    public String getExecutionContext() { return executionContext; }
+    public void setExecutionContext(String executionContext) { this.executionContext = executionContext; }
+
+    @TableField(exist = false)
+    private String agentMode;
+
+    @TableField(exist = false)
+    private Long onBehalfOfUserId;
+
+    @TableField(exist = false)
+    private String onBehalfOfUserName;
+
+    @TableField(exist = false)
+    private Long operatorId;
+
+    @TableField(exist = false)
+    private String operatorName;
+
+    @TableField(exist = false)
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+    private String historyId;
+
+    @TableField(exist = false)
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+    private Boolean canWithdraw = false;
+
+    public String getHistoryId() { return historyId; }
+    public void setHistoryId(String historyId) { this.historyId = historyId; }
+    public Boolean getCanWithdraw() { return canWithdraw; }
+    public void setCanWithdraw(Boolean canWithdraw) { this.canWithdraw = canWithdraw; }
+
+    public Long getOnBehalfOfUserId() { return onBehalfOfUserId; }
+    public void setOnBehalfOfUserId(Long onBehalfOfUserId) { this.onBehalfOfUserId = onBehalfOfUserId; }
+    public String getOnBehalfOfUserName() { return onBehalfOfUserName; }
+    public void setOnBehalfOfUserName(String onBehalfOfUserName) { this.onBehalfOfUserName = onBehalfOfUserName; }
+    public Long getOperatorId() { return operatorId; }
+    public void setOperatorId(Long operatorId) { this.operatorId = operatorId; }
+    public String getOperatorName() { return operatorName; }
+    public void setOperatorName(String operatorName) { this.operatorName = operatorName; }
+
+    public String getAgentSettingId() { return agentSettingId; }
+    public void setAgentSettingId(String agentSettingId) { this.agentSettingId = agentSettingId; }
+    public String getAgentMode() { return agentMode; }
+    public void setAgentMode(String agentMode) { this.agentMode = agentMode; }
+
     /** P4.13: 是否超时 (0-否, 1-是) */
     private Integer isTimeout;
+
+    @TableField(exist = false)
+    private java.util.Map<String, Boolean> nodePermissions;
+
+    @TableField(exist = false)
+    private String rejectStrategy;
+
+    @TableField(exist = false)
+    private String rejectToNodeKey;
+
+    public java.util.Map<String, Boolean> getNodePermissions() { return nodePermissions; }
+    public void setNodePermissions(java.util.Map<String, Boolean> nodePermissions) { this.nodePermissions = nodePermissions; }
+    public String getRejectStrategy() { return rejectStrategy; }
+    public void setRejectStrategy(String rejectStrategy) { this.rejectStrategy = rejectStrategy; }
+    public String getRejectToNodeKey() { return rejectToNodeKey; }
+    public void setRejectToNodeKey(String rejectToNodeKey) { this.rejectToNodeKey = rejectToNodeKey; }
 
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private String processDefKey;
