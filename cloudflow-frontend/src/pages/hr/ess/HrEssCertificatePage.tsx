@@ -1,3 +1,4 @@
+import { PrintButton } from '@/components/printing/PrintButton';
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
@@ -24,7 +25,6 @@ import {
   listCertificateRequests,
   submitCertificateRequest,
   cancelCertificateRequest,
-  downloadCertificatePdf,
 } from '@/services/api/hr';
 import { normalizeRows, formatDateTimeValue, hasWorkflowStatus } from '../hrShared';
 import { getCertificateStatusLabel } from '@/utils/enumLabels';
@@ -104,21 +104,6 @@ export const HrEssCertificatePage: React.FC = () => {
     }
   };
 
-  const handleDownload = async (row: HrCertificateRequest) => {
-    try {
-      const blob = await downloadCertificatePdf(row.id);
-      const url = window.URL.createObjectURL(blob as unknown as Blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${row.requestNo}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      toast.error(getErrorMessage(error, 'PDF 下载失败'));
-    }
-  };
 
   const hasFilters = Boolean(query.keyword || query.status);
   const draftCount = rows.filter((row) => hasWorkflowStatus(row.status, 'DRAFT')).length;
@@ -259,8 +244,8 @@ export const HrEssCertificatePage: React.FC = () => {
                           <td className="text-sm">{formatDateTimeValue(row.issuedAt)}</td>
                           <td>
                             <div className="admin-users-row-actions">
-                              {row.status === 'ISSUED' && row.pdfFileId ? (
-                                <button type="button" data-tooltip="下载" aria-label="下载" onClick={() => void handleDownload(row)}><Download size={15} /></button>
+                              {row.status === 'ISSUED' ? (
+                                <PrintButton bizType="CERTIFICATE" bizId={row.id} />
                               ) : null}
                               {hasWorkflowStatus(row.status, 'DRAFT', 'PENDING', 'APPROVING') ? (
                                 <button type="button" className="danger" data-tooltip="取消" aria-label="取消" onClick={() => setPendingCancel(row)}><XCircle size={15} /></button>

@@ -1,0 +1,9 @@
+.exit-interviews { min-width: 0; }
+.exit-interviews button, .exit-interviews input:not([type="checkbox"]), .exit-interviews [role="combobox"] { min-height: 44px; min-width: 44px; }
+.exit-interviews .interview-row { display: grid; gap: 12px; align-items: center; }
+@media (min-width: 768px) {
+  .exit-interviews .interview-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto; gap: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .exit-interviews *, .exit-interviews *::before, .exit-interviews *::after { animation: none !important; transition: none !important; }
+}

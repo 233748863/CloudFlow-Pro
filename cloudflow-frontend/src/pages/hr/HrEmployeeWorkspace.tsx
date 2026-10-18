@@ -1,3 +1,5 @@
+import AuthorizedAttachmentLinks from '@/components/AttachmentLinks';
+import type { FileDownloadRequest } from '@/services/api/file';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
@@ -5,6 +7,7 @@ import {
   Edit3,
   FileText,
   MapPin,
+  Eye,
   Paperclip,
   Phone,
   Plus,
@@ -17,6 +20,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DetailDialog } from '@/components/common/DetailDialog';
 import {
   Button,
   DatePicker,
@@ -158,29 +162,20 @@ const getAttachmentCount = (attachmentUrls?: AttachmentValue) =>
 
 const AttachmentLinks = ({
   attachmentUrls,
+  limit = 2,
+  downloadContext,
 }: {
   attachmentUrls?: AttachmentValue;
+  limit?: number;
+  downloadContext: Omit<FileDownloadRequest, 'fileId' | 'reference'>;
 }) => {
   const attachmentList = getAttachmentList(attachmentUrls);
-  if (attachmentList.length === 0) {
-    return <span>-</span>;
-  }
-
+  const shown = limit > 0 ? attachmentList.slice(0, limit) : attachmentList;
   return (
     <div className="flex flex-wrap gap-2">
-      {attachmentList.slice(0, 2).map((url, index) => (
-        <a
-          key={`${url}-${index}`}
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
-        >
-          {`附件${index + 1}`}
-        </a>
-      ))}
-      {attachmentList.length > 2 ? (
-        <span className="text-xs text-cf-subtle">{`+${attachmentList.length - 2}`}</span>
+      <AuthorizedAttachmentLinks value={shown.join(',')} emptyText="-" compact downloadContext={downloadContext} />
+      {attachmentList.length > shown.length ? (
+        <span className="text-xs text-cf-subtle">{`+${attachmentList.length - shown.length}`}</span>
       ) : null}
     </div>
   );
@@ -413,6 +408,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   const documentTypeDict = useDict('hr_document_type');
   const relationshipDict = useDict('hr_family_relationship');
   const [pendingDelete, setPendingDelete] = useState<DeleteTarget | null>(null);
+  const [detailContract, setDetailContract] = useState<EmployeeContract | null>(null);
+  const [detailDocument, setDetailDocument] = useState<EmployeeDocument | null>(null);
+  const [detailContact, setDetailContact] = useState<EmergencyContact | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const currentEmployee = useMemo(
@@ -1014,6 +1012,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             </div>
 
                             <div className="admin-users-row-actions">
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailContract(item)}>
+                                <Eye size={15} />
+                              </button>
                               <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEditContract(item.id)}>
                                 <Edit3 size={15} />
                               </button>
@@ -1049,7 +1050,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                           />
                           <ArchiveCardField
                             label={'\u5408\u540c\u9644\u4ef6'}
-                            value={<AttachmentLinks attachmentUrls={item.attachmentUrls} />}
+                            value={<AttachmentLinks attachmentUrls={item.attachmentUrls} downloadContext={{ bizType: 'HR_EMPLOYEE_CONTRACT', bizId: String(item.id) }} />}
                             icon={<Paperclip className="h-3.5 w-3.5" />}
                           />
                         </div>
@@ -1136,6 +1137,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                               </div>
 
                               <div className="admin-users-row-actions">
+                                <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailDocument(item)}>
+                                  <Eye size={15} />
+                                </button>
                                 <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEditDocument(item.id)}>
                                   <Edit3 size={15} />
                                 </button>
@@ -1164,7 +1168,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             />
                             <ArchiveCardField
                               label="扫描件"
-                              value={<AttachmentLinks attachmentUrls={item.attachmentUrls} />}
+                              value={<AttachmentLinks attachmentUrls={item.attachmentUrls} downloadContext={{ bizType: 'HR_EMPLOYEE_DOCUMENT', bizId: String(item.id) }} />}
                               icon={<Paperclip className="h-3.5 w-3.5" />}
                             />
                           </div>
@@ -1249,6 +1253,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             </div>
 
                             <div className="admin-users-row-actions">
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailContact(item)}>
+                                <Eye size={15} />
+                              </button>
                               <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEditContact(item.id)}>
                                 <Edit3 size={15} />
                               </button>
@@ -1608,6 +1615,108 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             void handleConfirmDelete();
           }
         }}
+      />
+
+      <DetailDialog
+        open={Boolean(detailContract)}
+        title="劳动合同详情"
+        onClose={() => setDetailContract(null)}
+        heading={detailContract?.contractNo}
+        subheading={detailContract ? contractTypeDict.getLabel(String(detailContract.contractType ?? '')) : undefined}
+        headingAside={detailContract ? (
+          <span
+            className={[
+              'inline-flex rounded-md border px-2.5 py-1 text-xs font-medium',
+              contractStatusTone(detailContract.status),
+            ].join(' ')}
+          >
+            {contractStatusDict.getLabel(String(detailContract.status ?? '')) || '-'}
+          </span>
+        ) : undefined}
+        sections={detailContract ? [
+          {
+            title: '合同信息',
+            items: [
+              { label: '合同编号', value: detailContract.contractNo },
+              { label: '合同类型', value: contractTypeDict.getLabel(String(detailContract.contractType ?? '')) },
+              { label: '合同状态', value: contractStatusDict.getLabel(String(detailContract.status ?? '')) },
+              { label: '签订日期', value: toDateInputValue(detailContract.signDate) },
+              { label: '合同周期', value: contractDateRangeLabel(detailContract) },
+              { label: '合同期限', value: detailContract.duration == null ? '' : `${detailContract.duration} 个月` },
+              { label: '剩余天数', value: contractRemainingLabel(detailContract) },
+              {
+                label: '合同附件',
+                value: <AttachmentLinks attachmentUrls={detailContract.attachmentUrls} limit={0} downloadContext={{ bizType: 'HR_EMPLOYEE_CONTRACT', bizId: String(detailContract.id) }} />,
+                wide: true,
+              },
+            ],
+          },
+        ] : []}
+      />
+
+      <DetailDialog
+        open={Boolean(detailDocument)}
+        title="证件档案详情"
+        onClose={() => setDetailDocument(null)}
+        heading={detailDocument?.documentNo}
+        subheading={detailDocument ? documentTypeDict.getLabel(String(detailDocument.documentType ?? '')) : undefined}
+        headingAside={detailDocument ? (
+          <span
+            className={[
+              'inline-flex rounded-md border px-2.5 py-1 text-xs font-medium',
+              documentExpiryTone(detailDocument),
+            ].join(' ')}
+          >
+            {documentExpiryLabel(detailDocument)}
+          </span>
+        ) : undefined}
+        sections={detailDocument ? [
+          {
+            title: '证件信息',
+            items: [
+              { label: '证件类型', value: documentTypeDict.getLabel(String(detailDocument.documentType ?? '')) },
+              { label: '证件号码', value: detailDocument.documentNo },
+              { label: '签发日期', value: toDateInputValue(detailDocument.issueDate) },
+              { label: '有效期至', value: toDateInputValue(detailDocument.expiryDate) },
+              { label: '有效期状态', value: documentExpiryLabel(detailDocument) },
+              {
+                label: '扫描件',
+                value: <AttachmentLinks attachmentUrls={detailDocument.attachmentUrls} limit={0} downloadContext={{ bizType: 'HR_EMPLOYEE_DOCUMENT', bizId: String(detailDocument.id) }} />,
+                wide: true,
+              },
+            ],
+          },
+        ] : []}
+      />
+
+      <DetailDialog
+        open={Boolean(detailContact)}
+        title="紧急联系人详情"
+        onClose={() => setDetailContact(null)}
+        heading={detailContact?.contactName}
+        subheading={detailContact ? relationshipDict.getLabel(String(detailContact.relationship ?? '')) : undefined}
+        headingAside={detailContact ? (
+          <span
+            className={[
+              'inline-flex rounded-md border px-2.5 py-1 text-xs font-medium',
+              contactPriorityTone(detailContact.priority),
+            ].join(' ')}
+          >
+            {contactPriorityLabel(detailContact.priority)}
+          </span>
+        ) : undefined}
+        sections={detailContact ? [
+          {
+            title: '联系人信息',
+            items: [
+              { label: '姓名', value: detailContact.contactName },
+              { label: '关系', value: relationshipDict.getLabel(String(detailContact.relationship ?? '')) },
+              { label: '联系电话', value: detailContact.phone },
+              { label: '优先级', value: contactPriorityLabel(detailContact.priority) },
+              { label: '联系地址', value: detailContact.address, wide: true },
+            ],
+          },
+        ] : []}
       />
     </>
   );

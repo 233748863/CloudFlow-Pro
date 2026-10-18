@@ -1,0 +1,9 @@
+.severance-rules { min-width: 0; }
+.severance-rules button, .severance-rules input:not([type="checkbox"]), .severance-rules [role="combobox"] { min-height: 44px; min-width: 44px; }
+.severance-rules .severance-rule-row { display: grid; gap: 12px; align-items: center; }
+@media (min-width: 768px) {
+  .severance-rules .severance-rule-row { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto auto; gap: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .severance-rules *, .severance-rules *::before, .severance-rules *::after { animation: none !important; transition: none !important; }
+}

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Grid3x3, RefreshCcw, Send, User, Users } from 'lucide-react';
+import { Edit, Eye, Grid3x3, RefreshCcw, Send, User, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -26,6 +26,7 @@ import {
   Textarea,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
+import { DetailDialog } from '@/components/common/DetailDialog';
 import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -62,6 +63,10 @@ const CELLS: CellMeta[] = [
   { cell: 8, label: '待提升', performance: '低', potential: '中', tone: 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900' },
   { cell: 9, label: '末位', performance: '低', potential: '低', tone: 'bg-rose-100 border-rose-300 dark:bg-rose-950/25 dark:border-rose-800' },
 ];
+
+/** 业绩/潜力档位取值和编辑弹窗的下拉一致，只是这里要显示成中文。 */
+const BAND_LABELS: Record<string, string> = { HIGH: '高', MEDIUM: '中', LOW: '低' };
+const bandLabel = (band?: string) => (band ? BAND_LABELS[band] || band : '');
 
 interface EmployeeChipProps {
   participant: HrTalentReviewParticipant;
@@ -157,6 +162,7 @@ export const HrTalentNineBoxPage: React.FC = () => {
     developActionSummary: '',
   });
   const [cellListOpen, setCellListOpen] = useState<number | null>(null);
+  const [detailParticipant, setDetailParticipant] = useState<HrTalentReviewParticipant | null>(null);
   const { getLabel: statusLabel } = useDict('hr_talent_review_status');
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor), useSensor(KeyboardSensor));
@@ -473,16 +479,29 @@ export const HrTalentNineBoxPage: React.FC = () => {
                 <span className="font-mono text-xs text-cf-subtle">#{p.employeeId}</span>
                 <span>业绩 {p.performanceScore ?? '-'} / 潜力 {p.potentialScore ?? '-'}</span>
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setCellListOpen(null);
-                  openChip(p);
-                }}
-              >
-                编辑
-              </Button>
+              <div className="admin-users-row-actions">
+                {/* 查看叠在名单之上，关掉详情还能接着看名单；
+                    编辑仍沿用原来的先关名单再开表单。 */}
+                <button
+                  type="button"
+                  data-tooltip="查看详情"
+                  aria-label="查看详情"
+                  onClick={() => setDetailParticipant(p)}
+                >
+                  <Eye size={15} />
+                </button>
+                <button
+                  type="button"
+                  data-tooltip="编辑"
+                  aria-label="编辑"
+                  onClick={() => {
+                    setCellListOpen(null);
+                    openChip(p);
+                  }}
+                >
+                  <Edit size={15} />
+                </button>
+              </div>
             </div>
           ))}
           {cellListParticipants.length === 0 ? (
@@ -490,6 +509,42 @@ export const HrTalentNineBoxPage: React.FC = () => {
           ) : null}
         </div>
       </BaseDialog>
+
+      <DetailDialog
+        open={Boolean(detailParticipant)}
+        title="盘点人员详情"
+        onClose={() => setDetailParticipant(null)}
+        zIndex={60}
+        heading={detailParticipant ? `员工 #${detailParticipant.employeeId}` : undefined}
+        subheading={currentReview?.reviewName}
+        sections={detailParticipant ? [
+          {
+            title: '盘点结果',
+            items: [
+              { label: '员工编号', value: `#${detailParticipant.employeeId}` },
+              {
+                label: '所在格',
+                value: detailParticipant.gridCell
+                  ? `[${detailParticipant.gridCell}] ${CELLS.find((c) => c.cell === detailParticipant.gridCell)?.label || ''}`
+                  : '',
+              },
+              { label: '业绩得分', value: detailParticipant.performanceScore == null ? '' : String(detailParticipant.performanceScore) },
+              { label: '业绩档位', value: bandLabel(detailParticipant.performanceBand) },
+              { label: '潜力得分', value: detailParticipant.potentialScore == null ? '' : String(detailParticipant.potentialScore) },
+              { label: '潜力档位', value: bandLabel(detailParticipant.potentialBand) },
+              { label: '定档人', value: detailParticipant.decidedBy == null ? '' : `#${detailParticipant.decidedBy}` },
+              { label: '定档时间', value: detailParticipant.decidedAt },
+            ],
+          },
+          {
+            title: '校准与培养',
+            items: [
+              { label: '校准纪要', value: <span className="whitespace-pre-wrap">{detailParticipant.calibrationNotes}</span>, wide: true },
+              { label: '培养建议', value: <span className="whitespace-pre-wrap">{detailParticipant.developActionSummary}</span>, wide: true },
+            ],
+          },
+        ] : []}
+      />
     </>
   );
 };

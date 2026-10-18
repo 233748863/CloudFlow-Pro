@@ -1,4 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import Decimal from 'decimal.js';
+import { decimalAmount, groupAmountDigits } from '@/utils/amountValue';
+import { useSearchParams } from 'react-router-dom';
+import HrPerformanceResultPage from './HrPerformanceResultPage';
 import {
   BarChart3,
   CheckCircle2,
@@ -700,7 +704,7 @@ const ProgressEmployeeColGroup = () => (
   </colgroup>
 );
 
-export const HrPerformancePage: React.FC = () => {
+const HrPerformanceWorkspace: React.FC = () => {
   const [objectives, setObjectives] = useState<PerformanceObjective[]>([]);
   const [overview, setOverview] = useState<PerformanceOverview | null>(null);
   const [currentObjective, setCurrentObjective] = useState<PerformanceObjective | null>(null);
@@ -1573,7 +1577,9 @@ export const HrPerformancePage: React.FC = () => {
                 </div>
               </div>
         
-              {loading || treeLoading ? (
+              {activeTab === 'sales' ? (
+                <CrmSalesView />
+              ) : loading || treeLoading ? (
                 <div className="card flex items-center justify-center py-10 text-sm text-cf-subtle">
                   <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
                   加载绩效数据...
@@ -1614,8 +1620,6 @@ export const HrPerformancePage: React.FC = () => {
                 }} />
               ) : activeTab === 'archive' ? (
                 <ArchiveView objective={currentObjective} categoryNodes={categoryNodes} employeeRows={employeeSummaryRows} renderProgress={renderProgress} />
-              ) : activeTab === 'sales' ? (
-                <CrmSalesView />
               ) : (
                 <SalaryLinkView
                   objective={currentObjective}
@@ -2049,9 +2053,9 @@ const TreeTable = ({
                         <td className="px-3 text-center">{renderProgress(row.completionRate)}</td>
                         <td className="px-3 text-center">{row.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-gray">{row.quotaSource === 'DEPT_OWNER' ? '部门负责人' : '经理'}</span>}</td>
                         <td className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {row.assigneeType === 'DEPT' && canEditPlan ? <Button size="sm" variant="outline" className="min-w-[72px] justify-center" onClick={() => onSplit(row)}>分解</Button> : null}
-                            {row.assigneeType === 'EMPLOYEE' && canFillResult ? <Button size="sm" variant="soft" className="min-w-[72px] justify-center" onClick={() => onResult(row)}>填报</Button> : null}
+                          <div className="admin-users-row-actions">
+                            {row.assigneeType === 'DEPT' && canEditPlan ? <button type="button" data-tooltip="分解指标" aria-label="分解指标" onClick={() => onSplit(row)}><GitBranch size={15} /></button> : null}
+                            {row.assigneeType === 'EMPLOYEE' && canFillResult ? <button type="button" data-tooltip="填报实绩" aria-label="填报实绩" onClick={() => onResult(row)}><FilePlus2 size={15} /></button> : null}
                           </div>
                         </td>
                       </tr>
@@ -2077,9 +2081,9 @@ const TreeTable = ({
                     {row.locked ? <span className="badge badge-warning">锁定</span> : null}
                   </div>
                   <div className="mt-3">{renderProgress(row.completionRate)}</div>
-                  <div className="mt-3 flex justify-end gap-2">
-                    {row.assigneeType === 'DEPT' && canEditPlan ? <Button size="sm" variant="outline" onClick={() => onSplit(row)}>分解</Button> : null}
-                    {row.assigneeType === 'EMPLOYEE' && canFillResult ? <Button size="sm" variant="soft" onClick={() => onResult(row)}>填报</Button> : null}
+                  <div className="admin-users-row-actions mt-3">
+                    {row.assigneeType === 'DEPT' && canEditPlan ? <button type="button" data-tooltip="分解指标" aria-label="分解指标" onClick={() => onSplit(row)}><GitBranch size={15} /></button> : null}
+                    {row.assigneeType === 'EMPLOYEE' && canFillResult ? <button type="button" data-tooltip="填报实绩" aria-label="填报实绩" onClick={() => onResult(row)}><FilePlus2 size={15} /></button> : null}
                   </div>
                 </div>
               );
@@ -2290,7 +2294,11 @@ const ProgressView = ({
                   <td className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</td>
                   <td className="px-3 text-center">{renderProgress(node.completionRate)}</td>
                   <td className="text-right">
-                    {canFillResult ? <Button size="sm" variant="soft" className="min-w-[96px] justify-center" onClick={() => onResult(node)}>填报实绩</Button> : <span className="text-xs text-cf-faint">待执行</span>}
+                    {canFillResult ? (
+                      <div className="admin-users-row-actions">
+                        <button type="button" data-tooltip="填报实绩" aria-label="填报实绩" onClick={() => onResult(node)}><FilePlus2 size={15} /></button>
+                      </div>
+                    ) : <span className="text-xs text-cf-faint">待执行</span>}
                   </td>
                 </tr>
               ))}
@@ -2407,191 +2415,246 @@ const SalaryLinkView = ({
   </div>
 );
 
+export const HrPerformancePage: React.FC = () => {
+  const [search] = useSearchParams();
+  const resultId = search.get('id');
+  return resultId !== null ? <HrPerformanceResultPage resultId={resultId} /> : <HrPerformanceWorkspace />;
+};
+
 export default HrPerformancePage;
 
-const numberFormatter = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
-const currencyFormatter = new Intl.NumberFormat('zh-CN', {
-  style: 'currency',
-  currency: 'CNY',
-  maximumFractionDigits: 0,
-});
 
-const CrmSalesView: React.FC = () => {
-  const [loading, setLoading] = useState(false);
+const salesNumberFormatter = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 });
+const SalesDecimal = Decimal.clone({ precision: 128 });
+
+const salesAmount = (value: string | number): Decimal => {
+  const amount = decimalAmount(value);
+  if (!amount) throw new Error('销售业绩金额无效，请重新读取');
+  return new SalesDecimal(amount.toString());
+};
+
+const salesMoney = (value: string | number): string => {
+  const [integer, fraction] = salesAmount(value).toFixed(2).split('.');
+  return groupAmountDigits(integer) + '.' + fraction;
+};
+
+const validSalesAmount = (value: string | number, precision: number): boolean => {
+  const amount = decimalAmount(value);
+  return amount !== null && amount.decimalPlaces() <= precision;
+};
+
+const validSalesRows = (rows: CrmPerformanceSummary[], dimension: string, basis: string, currency: string): boolean =>
+  Array.isArray(rows) && rows.every(row => row && typeof row === 'object' && !Array.isArray(row)
+    && row.dimension === dimension && /^[1-9][0-9]*$/.test(String(row.targetId))
+    && row.calculationBasis === basis && row.currency === currency
+    && [row.wonOpportunityCount, row.customerCount, row.followUpCount].every(value => Number.isSafeInteger(value))
+    && [row.wonAmount, row.contractAmount, row.receivedAmount, row.outstandingAmount,
+      row.baselineWonAmount, row.baselineContractAmount, row.baselineReceivedAmount]
+      .every(value => validSalesAmount(value, 2))
+    && validSalesAmount(row.allocatedWonCount, 4));
+
+const salesCardMoney = (currency: string, amount: string): React.ReactNode => {
+  const formatted = salesMoney(amount);
+  return <span className="block" style={{ fontSize: formatted.length > 14 ? '1rem' : 'inherit', color: 'inherit' }}>
+    {currency} <span className="inline-block whitespace-nowrap" style={{ fontSize: 'inherit', color: 'inherit' }} data-crm-sales-card-amount>{formatted}</span>
+  </span>;
+};
+
+export const CrmSalesView: React.FC = () => {
+  const [queryStatus, setQueryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [revision, setRevision] = useState(0);
   const [error, setError] = useState<string>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [calculationBasis, setCalculationBasis] = useState<'OWNER_V1' | 'TEAM_V2'>('TEAM_V2');
+  const [currency, setCurrency] = useState('CNY');
   const [topOwners, setTopOwners] = useState<CrmPerformanceSummary[]>([]);
   const [topDepartments, setTopDepartments] = useState<CrmPerformanceSummary[]>([]);
-
-  const fetchAll = React.useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const range = startDate && endDate ? { startDate, endDate } : undefined;
-      const [owners, depts] = await Promise.all([
-        listCrmTopOwners(10, range),
-        listCrmTopDepartments(10, range),
-      ]);
-      setTopOwners(owners || []);
-      setTopDepartments(depts || []);
-    } catch (ex) {
-      setError(getErrorMessage(ex));
-    } finally {
-      setLoading(false);
-    }
-  }, [startDate, endDate]);
+  const [completedQuery, setCompletedQuery] = useState('');
+  const queryIdentity = [startDate, endDate, calculationBasis, currency, revision].join('|');
+  const loading = queryStatus === 'loading' || queryStatus === 'ready' && completedQuery !== queryIdentity;
+  const teamBasis = calculationBasis === 'TEAM_V2';
 
   useEffect(() => {
-    void fetchAll();
-  }, [fetchAll]);
-
-  const totals = useMemo(() => {
-    const seed = {
-      wonOpportunityCount: 0,
-      contractAmount: 0,
-      receivedAmount: 0,
-      followUpCount: 0,
+    const controller = new AbortController();
+    let active = true;
+    setQueryStatus('loading');
+    setError('');
+    setTopOwners([]);
+    setTopDepartments([]);
+    const fetchAll = async () => {
+      try {
+        if (!/^[A-Z]{3}$/.test(currency)) throw new Error('币种须为三个大写字母，如 CNY');
+        if (startDate && endDate && startDate > endDate) throw new Error('起始日期不能晚于结束日期');
+        const range = { calculationBasis, currency, startDate: startDate || undefined, endDate: endDate || undefined };
+        const [owners, departments] = await Promise.all([
+          listCrmTopOwners(10, range, controller.signal),
+          listCrmTopDepartments(10, range, controller.signal),
+        ]);
+        if (!active) return;
+        if (!validSalesRows(owners, 'OWNER', calculationBasis, currency)
+          || !validSalesRows(departments, 'DEPT', calculationBasis, currency)) {
+          throw new Error('销售业绩返回内容或统计范围无效，请重新读取');
+        }
+        setTopOwners(owners);
+        setTopDepartments(departments);
+        setCompletedQuery(queryIdentity);
+        setQueryStatus('ready');
+      } catch (failure) {
+        if (!active) return;
+        controller.abort();
+        setError(getErrorMessage(failure));
+        setQueryStatus('error');
+      }
     };
-    return topOwners.reduce(
-      (acc, item) => ({
-        wonOpportunityCount: acc.wonOpportunityCount + (item.wonOpportunityCount || 0),
-        contractAmount: acc.contractAmount + Number(item.contractAmount || 0),
-        receivedAmount: acc.receivedAmount + Number(item.receivedAmount || 0),
-        followUpCount: acc.followUpCount + (item.followUpCount || 0),
-      }),
-      seed,
-    );
-  }, [topOwners]);
+    void fetchAll();
+    return () => { active = false; controller.abort(); };
+  }, [startDate, endDate, calculationBasis, currency, revision, queryIdentity]);
+
+  const totals = useMemo(() => topOwners.reduce((total, row) => ({
+    wonOpportunityCount: total.wonOpportunityCount + row.wonOpportunityCount,
+    contractAmount: total.contractAmount.plus(salesAmount(row.contractAmount)),
+    receivedAmount: total.receivedAmount.plus(salesAmount(row.receivedAmount)),
+    followUpCount: total.followUpCount + row.followUpCount,
+  }), { wonOpportunityCount: 0, contractAmount: new SalesDecimal(0), receivedAmount: new SalesDecimal(0), followUpCount: 0 }), [topOwners]);
 
   const cards = [
-    {
-      title: '赢单数',
-      value: numberFormatter.format(totals.wonOpportunityCount),
-      icon: <Target className="h-6 w-6" />,
-      iconVariant: 'primary' as const,
-      meta: '期间新增 WON 商机总数',
-    },
-    {
-      title: '合同金额',
-      value: currencyFormatter.format(totals.contractAmount),
-      icon: <ClipboardList className="h-6 w-6" />,
-      iconVariant: 'success' as const,
-      meta: '赢单商机合计（含期望金额近似）',
-    },
-    {
-      title: '已到账回款',
-      value: currencyFormatter.format(totals.receivedAmount),
-      icon: <CheckCircle2 className="h-6 w-6" />,
-      iconVariant: 'success' as const,
-      meta: '按回款到账日统计',
-    },
-    {
-      title: '跟进记录',
-      value: numberFormatter.format(totals.followUpCount),
-      icon: <BarChart3 className="h-6 w-6" />,
-      iconVariant: 'primary' as const,
-      meta: '期间新增跟进条数',
-    },
+    { title: teamBasis ? '赢单参与人次' : '赢单数', value: salesNumberFormatter.format(totals.wonOpportunityCount),
+      icon: <Target className="h-6 w-6" />, iconVariant: 'primary' as const,
+      meta: teamBasis ? '按员工累计参与次数，撤回扣回原人次' : '旧口径：当前仍为赢单的商机' },
+    { title: '合同金额', value: salesCardMoney(currency, totals.contractAmount.toFixed(2)),
+      icon: <ClipboardList className="h-6 w-6" />, iconVariant: 'success' as const,
+      meta: teamBasis ? '实际合同事实的团队分配净额' : '旧口径：按赢单预期金额估算' },
+    { title: '已到账回款', value: salesCardMoney(currency, totals.receivedAmount.toFixed(2)),
+      icon: <CheckCircle2 className="h-6 w-6" />, iconVariant: 'success' as const,
+      meta: teamBasis ? '实际到账减退款，按各自发生日期统计' : '旧口径：按到账日筛选累计回款' },
+    { title: '跟进记录', value: salesNumberFormatter.format(totals.followUpCount),
+      icon: <BarChart3 className="h-6 w-6" />, iconVariant: 'primary' as const, meta: '所选期间内归属这些员工的跟进条数' },
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="card flex flex-wrap items-end gap-3 p-4">
-        <div className="flex flex-col gap-1">
-          <Label className="text-xs text-cf-subtle">起始日期</Label>
-          <DatePicker type="date" className="h-9 w-40" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+    <div className="flex min-w-0 flex-col gap-4" role="region" aria-label="销售业绩">
+      <div className="card flex flex-wrap items-end gap-3 p-4" style={{ '--cf-density-control-height': '44px' } as React.CSSProperties}>
+        <div className="flex min-w-0 flex-col gap-1">
+          <Label htmlFor="crm-sales-basis" className="text-xs text-cf-subtle">统计方式</Label>
+          <Select value={calculationBasis} onValueChange={value => setCalculationBasis(value as 'OWNER_V1' | 'TEAM_V2')}>
+            <SelectTrigger id="crm-sales-basis" className="min-h-11 w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="TEAM_V2">团队分成</SelectItem>
+              <SelectItem value="OWNER_V1">负责人（旧口径）</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <div className="flex flex-col gap-1">
-          <Label className="text-xs text-cf-subtle">结束日期</Label>
-          <DatePicker type="date" className="h-9 w-40" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        <div className="flex min-w-0 flex-col gap-1">
+          <Label htmlFor="crm-sales-currency" className="text-xs text-cf-subtle">币种</Label>
+          <Input id="crm-sales-currency" className="min-h-11 w-40" maxLength={3} value={currency}
+            onChange={event => setCurrency(event.target.value.toUpperCase())} placeholder="CNY" aria-describedby="crm-sales-currency-hint" />
+          <span id="crm-sales-currency-hint" className="text-xs text-cf-subtle">填写币种代码，如 CNY</span>
         </div>
-        <Button variant="outline" onClick={() => void fetchAll()} disabled={loading}>
-          <RefreshCcw className={cn('h-4 w-4', loading && 'animate-spin')} />
-          刷新
+        <div className="flex flex-col gap-1" role="group" aria-labelledby="crm-sales-start-date-label">
+          <Label id="crm-sales-start-date-label" className="text-xs text-cf-subtle">起始日期</Label>
+          <DatePicker type="date" className="h-11 w-40" value={startDate} onChange={event => setStartDate(event.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1" role="group" aria-labelledby="crm-sales-end-date-label">
+          <Label id="crm-sales-end-date-label" className="text-xs text-cf-subtle">结束日期</Label>
+          <DatePicker type="date" className="h-11 w-40" value={endDate} onChange={event => setEndDate(event.target.value)} />
+        </div>
+        <Button variant="outline" className="min-h-11" onClick={() => setRevision(value => value + 1)} disabled={loading}>
+          <RefreshCcw className={cn('h-4 w-4', loading && 'animate-spin')} />刷新
         </Button>
-        {error ? <span className="text-sm text-red-600 dark:text-red-400">{error}</span> : null}
       </div>
-
-      <div className="admin-source-stat-grid">
-        {cards.map((card) => (
-          <div
-            key={card.title}
-            className={cn(
-              'card admin-source-stat',
-              card.iconVariant === 'success' && 'admin-source-tone-green',
-              card.iconVariant === 'primary' && 'admin-source-tone-blue',
-            )}
-          >
-            <span className="admin-source-stat-icon">{card.icon}</span>
-            <div className="min-w-0">
-              <p>{card.title}</p>
-              <strong>{card.value}</strong>
-              <span>{card.meta}</span>
-            </div>
+      <div className="card space-y-1 p-4 text-sm text-cf-subtle">
+        <p>金额仅统计所选币种；客户数和跟进数按原归属统计，不按币种拆分。</p>
+        {teamBasis
+          ? <p>撤回按发生日期扣回原分配，原月份保持；期初快照金额单列，当前未收按当前团队分配。</p>
+          : <p>当前使用负责人旧口径，合同金额按赢单预期金额估算，回款使用累计金额。</p>}
+      </div>
+      {loading ? <p role="status" className="card p-4 text-sm text-cf-subtle">正在加载销售业绩…</p>
+        : queryStatus === 'error' ? <div role="alert" className="card space-y-2 p-4 text-sm">
+          <p className="font-medium text-cf-title">销售业绩未加载</p>
+          <p className="text-cf-subtle">{error}。请点击刷新重新读取。</p>
+        </div> : <>
+          <p className="text-sm text-cf-subtle">以下卡片仅汇总当前员工排行榜的 {topOwners.length} 人，排行最多显示 10 人。</p>
+          <div className="admin-source-stat-grid">
+            {cards.map(card => <div key={card.title} className={cn('card admin-source-stat',
+              card.iconVariant === 'success' && 'admin-source-tone-green', card.iconVariant === 'primary' && 'admin-source-tone-blue')}>
+              <span className="admin-source-stat-icon">{card.icon}</span>
+              <div className="min-w-0 break-words">
+                <p>{card.title}</p><strong className="break-words">{card.value}</strong><span>{card.meta}</span>
+              </div>
+            </div>)}
           </div>
-        ))}
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <CrmSalesRankTable title="员工业绩 Top 10" subtitle="按已到账回款金额倒序" rows={topOwners} dimensionLabel="员工" />
-        <CrmSalesRankTable title="部门业绩 Top 10" subtitle="按已到账回款金额倒序" rows={topDepartments} dimensionLabel="部门" />
-      </div>
+          <div className="grid min-w-0 gap-4">
+            <CrmSalesRankTable title="员工业绩 Top 10" rows={topOwners} dimensionLabel="员工" currency={currency} teamBasis={teamBasis} />
+            <CrmSalesRankTable title="部门业绩 Top 10" rows={topDepartments} dimensionLabel="部门" currency={currency} teamBasis={teamBasis} />
+          </div>
+        </>}
     </div>
   );
 };
 
 type CrmSalesRankTableProps = {
   title: string;
-  subtitle: string;
   rows: CrmPerformanceSummary[];
   dimensionLabel: string;
+  currency: string;
+  teamBasis: boolean;
 };
 
-const CrmSalesRankTable: React.FC<CrmSalesRankTableProps> = ({ title, subtitle, rows, dimensionLabel }) => (
-  <InnerTableSurface>
-    <div className="admin-source-section-head flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800">
-      <div>
-        <strong>{title}</strong>
-        <span>{subtitle}</span>
-      </div>
-      <Users className="h-5 w-5 text-cf-faint" />
-    </div>
-    <table className="unity-data-table admin-source-table min-w-[860px]">
-      <thead>
-        <tr>
-          <th className="w-12">#</th>
-          <th>{dimensionLabel}</th>
-          <th className="text-right">赢单</th>
-          <th className="text-right">合同金额</th>
-          <th className="text-right">已到账</th>
-          <th className="text-right">未到账</th>
-          <th className="text-right">跟进</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 ? (
-          <tr>
-            <td colSpan={7} className="py-6 text-center text-sm text-cf-subtle">
-              暂无数据
-            </td>
-          </tr>
-        ) : (
-          rows.map((row, index) => (
-            <tr key={`${row.dimension}-${row.targetId}`}>
+const CrmSalesRankTable: React.FC<CrmSalesRankTableProps> = ({ title, rows, dimensionLabel, currency, teamBasis }) => {
+  const baselineRows = rows.filter(row => [row.baselineWonAmount, row.baselineContractAmount, row.baselineReceivedAmount]
+    .some(value => !salesAmount(value).isZero()));
+  return (
+    <div className="min-w-0 space-y-2">
+      <section className="card min-w-0 overflow-hidden">
+        <div className="admin-source-section-head flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800">
+          <div><strong>{title}</strong><span>按已到账回款净额倒序 · {currency}{teamBasis && dimensionLabel === '部门' ? ' · 同一笔赢单在同部门只计一次' : ''}</span></div>
+          <Users className="h-5 w-5 shrink-0 text-cf-faint" />
+        </div>
+        <p className="px-4 py-2 text-xs text-cf-subtle">左右滑动表格可查看全部 10 列。</p>
+        <div className="overflow-x-auto" data-crm-sales-scroll role="region" aria-label={title + '表格'} tabIndex={0}>
+        <table className="unity-data-table admin-source-table min-w-[1180px] whitespace-nowrap">
+          <caption className="sr-only">{title}，{currency}，{teamBasis ? '团队分成' : '负责人旧口径'}</caption>
+          <thead><tr>
+            <th className="w-12">#</th><th>{dimensionLabel}</th>
+            <th className="text-right">{teamBasis ? '参与赢单' : '赢单数'}</th>
+            <th className="text-right">按比例折算</th><th className="text-right">赢单金额</th>
+            <th className="text-right">合同金额</th><th className="text-right">已到账净额</th>
+            <th className="text-right">{teamBasis ? '当前未收' : '旧口径未收'}</th>
+            <th className="text-right">客户数</th><th className="text-right">跟进</th>
+          </tr></thead>
+          <tbody>{rows.length === 0 ? <tr><td colSpan={10} className="py-6 text-center text-sm text-cf-subtle">暂无数据</td></tr>
+            : rows.map((row, index) => <tr key={row.dimension + '-' + row.targetId}>
               <td className="tabular-nums text-cf-subtle">{index + 1}</td>
-              <td className="font-medium text-cf-title">
-                {row.targetName || `#${row.targetId}`}
-              </td>
+              <td className="font-medium text-cf-title">{row.targetName || '#' + row.targetId}</td>
               <td className="text-right tabular-nums">{row.wonOpportunityCount}</td>
-              <td className="text-right tabular-nums">{currencyFormatter.format(Number(row.contractAmount || 0))}</td>
-              <td className="text-right tabular-nums">{currencyFormatter.format(Number(row.receivedAmount || 0))}</td>
-              <td className="text-right tabular-nums text-amber-600 dark:text-amber-400">{currencyFormatter.format(Number(row.outstandingAmount || 0))}</td>
+              <td className="text-right tabular-nums">{salesAmount(row.allocatedWonCount).toFixed(4)}</td>
+              <td className="text-right tabular-nums">{salesMoney(row.wonAmount)}</td>
+              <td className="text-right tabular-nums">{salesMoney(row.contractAmount)}</td>
+              <td className="text-right tabular-nums">{salesMoney(row.receivedAmount)}</td>
+              <td className="text-right tabular-nums text-amber-600 dark:text-amber-400">{salesMoney(row.outstandingAmount)}</td>
+              <td className="text-right tabular-nums">{row.customerCount}</td>
               <td className="text-right tabular-nums">{row.followUpCount}</td>
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  </InnerTableSurface>
-);
+            </tr>)}</tbody>
+        </table>
+        </div>
+      </section>
+      {teamBasis && <details className="card min-w-0 p-4">
+        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-cf-title">{dimensionLabel}排行中的期初快照金额（不计本期新增）</summary>
+        {baselineRows.length === 0 ? <p className="text-sm text-cf-subtle">本排行范围的三类期初净额均为 0.00。</p>
+          : <div className="overflow-x-auto" role="region" aria-label={dimensionLabel + '期初快照表格'} tabIndex={0}>
+            <table className="unity-data-table min-w-[600px] whitespace-nowrap">
+              <caption className="sr-only">{dimensionLabel}排行的期初快照，{currency}</caption>
+              <thead><tr><th>{dimensionLabel}</th><th className="text-right">赢单期初</th><th className="text-right">合同期初</th><th className="text-right">到账期初</th></tr></thead>
+              <tbody>{baselineRows.map(row => <tr key={row.dimension + '-' + row.targetId}>
+                <td>{row.targetName || '#' + row.targetId}</td>
+                <td className="text-right tabular-nums">{salesMoney(row.baselineWonAmount)}</td>
+                <td className="text-right tabular-nums">{salesMoney(row.baselineContractAmount)}</td>
+                <td className="text-right tabular-nums">{salesMoney(row.baselineReceivedAmount)}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>}
+      </details>}
+    </div>
+  );
+};

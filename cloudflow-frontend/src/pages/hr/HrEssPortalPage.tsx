@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Bell,
   CalendarClock,
+  CheckCheck,
   FileBadge,
   FileSignature,
   RefreshCcw,
@@ -20,6 +21,7 @@ import {
 } from '@/services/api/hr';
 import { formatDateValue, formatDateTimeValue, formatMoneyValue } from './hrShared';
 import { DictLabel } from '@/components/common/DictLabel';
+import { useAuth } from '@/context/AuthContext';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import '../../styles/features/admin-recruitment.css';
 
@@ -51,6 +53,7 @@ const SummaryCard: React.FC<{
 
 export const HrEssPortalPage: React.FC = () => {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [summary, setSummary] = useState<HrEssPortalSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -71,9 +74,12 @@ export const HrEssPortalPage: React.FC = () => {
   }, [load]);
 
   const remainingLeave = useMemo(() => {
-    if (!summary?.leaveBalances?.length) return '0';
-    const total = summary.leaveBalances.reduce((acc, item) => acc + Number(item.availableQuota ?? item.remainQuota ?? 0), 0);
-    return total.toFixed(1);
+    const quantities = { DAY: 0, HOUR: 0 };
+    for (const balance of summary?.leaveBalances || []) {
+      const unit = balance.unit === 'HOUR' ? 'HOUR' : 'DAY';
+      quantities[unit] += Number(balance.availableQuota ?? balance.remainQuota ?? 0);
+    }
+    return `${quantities.DAY.toFixed(2)} 天 / ${quantities.HOUR.toFixed(2)} 小时`;
   }, [summary]);
 
   const selfServiceRows = useMemo(() => {
@@ -88,16 +94,18 @@ export const HrEssPortalPage: React.FC = () => {
     }));
 
     const messageRows = (summary?.unreadMessages ?? []).map((msg) => ({
-      id: `message-${msg.id}`,
+      id: `message-${msg.recordId}`,
       category: '未读消息',
       subject: msg.title,
-      detail: msg.summary || '-',
+      detail: msg.content || '-',
       status: '未读',
       time: formatDateTimeValue(msg.createTime),
       action: (
-        <Button size="sm" variant="ghost" onClick={() => void handleMarkOneRead(msg.id)}>
-          标记已读
-        </Button>
+        <div className="admin-users-row-actions">
+          <button type="button" data-tooltip="标记已读" aria-label="标记已读" onClick={() => void handleMarkOneRead(msg.recordId)}>
+            <CheckCheck size={15} />
+          </button>
+        </div>
       ),
     }));
 
@@ -158,6 +166,10 @@ export const HrEssPortalPage: React.FC = () => {
           <span>集中查看假期、工资、合同、证明和站内消息</span>
         </div>
         <div className="admin-source-controls">
+          {hasPermission('hr:leave:mine') && <Button variant="outline" size="sm" onClick={() => navigate('/hr/ess/leave-balance')}>请假申请</Button>}
+          {hasPermission('hr:attendance:mine') && <Button variant="outline" size="sm" onClick={() => navigate('/hr/ess/attendance')}>我的考勤</Button>}
+          {hasPermission('hr:payroll:mine') && <Button variant="outline" size="sm" onClick={() => navigate('/hr/ess/tax-deductions')}>专项扣除</Button>}
+          {hasPermission('hr:grievance:mine:list') && <Button variant="outline" size="sm" onClick={() => navigate('/hr/ess/grievances')}>我的申诉</Button>}
           <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
           </Button>
@@ -168,7 +180,7 @@ export const HrEssPortalPage: React.FC = () => {
         <SummaryCard
           title="假期余额"
           value={remainingLeave}
-          hint="单位：天"
+          hint="按天、小时分别汇总"
           icon={<CalendarClock size={18} />}
           tone="blue"
           onClick={() => navigate('/hr/ess/leave-balance')}

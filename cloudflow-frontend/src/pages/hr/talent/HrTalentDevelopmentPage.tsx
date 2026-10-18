@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { CheckCircle2, ClipboardList, LoaderCircle, Pencil, Plus, RefreshCcw, RotateCcw, Search, Trash2, UserCheck } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Eye, LoaderCircle, Pencil, Plus, RefreshCcw, RotateCcw, Search, Trash2, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
   ConfirmDialog,
+  DetailDialog,
   DatePicker,
   Input,
   Label,
@@ -52,6 +53,7 @@ export const HrTalentDevelopmentPage: React.FC = () => {
   const [completeAction, setCompleteAction] = useState<HrTalentDevelopmentAction | null>(null);
   const [completeForm, setCompleteForm] = useState({ evaluationScore: '', evaluationNotes: '' });
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [detailAction, setDetailAction] = useState<HrTalentDevelopmentAction | null>(null);
   const actionTypeOptions = useDict('hr_talent_action_type').getOptions();
   const statusOptions = useDict('hr_talent_action_status').getOptions();
 
@@ -283,6 +285,9 @@ export const HrTalentDevelopmentPage: React.FC = () => {
                           <td>{row.evaluationScore ?? '-'}</td>
                           <td>
                             <div className="admin-users-row-actions">
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailAction(row)}>
+                                <Eye size={15} />
+                              </button>
                               {canEdit ? (
                                 <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => {
                                   setEditingId(row.id);
@@ -405,6 +410,34 @@ export const HrTalentDevelopmentPage: React.FC = () => {
         danger
         onCancel={() => setDeleteId(null)}
         onConfirm={() => void handleDelete()}
+      />
+
+      <DetailDialog
+        open={Boolean(detailAction)}
+        title="培养行动详情"
+        onClose={() => setDetailAction(null)}
+        heading={detailAction?.actionName}
+        headingAside={detailAction ? (
+          <DictLabel dictType="hr_talent_action_status" value={detailAction.status} fallback="-" />
+        ) : undefined}
+        sections={detailAction ? [
+          {
+            title: '行动信息',
+            items: [
+              { label: '员工 ID', value: String(detailAction.employeeId) },
+              { label: '行动类型', value: <DictLabel dictType="hr_talent_action_type" value={detailAction.actionType} fallback="-" /> },
+              { label: '行动名称', value: detailAction.actionName },
+              { label: '导师 ID', value: detailAction.mentorId === undefined ? '' : String(detailAction.mentorId) },
+              { label: '培训班次', value: detailAction.trainingSessionId === undefined ? '' : String(detailAction.trainingSessionId) },
+              { label: '开始日期', value: formatDateValue(detailAction.startDate) },
+              { label: '结束日期', value: formatDateValue(detailAction.endDate) },
+              { label: '状态', value: <DictLabel dictType="hr_talent_action_status" value={detailAction.status} fallback="-" /> },
+              { label: '评估分', value: detailAction.evaluationScore === undefined ? '' : String(detailAction.evaluationScore) },
+              { label: '评估说明', value: detailAction.evaluationNotes, wide: true },
+              { label: '说明', value: detailAction.description, wide: true },
+            ],
+          },
+        ] : []}
       />
     </>
   );

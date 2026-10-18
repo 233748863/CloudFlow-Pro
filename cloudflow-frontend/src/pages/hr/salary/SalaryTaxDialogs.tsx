@@ -1,7 +1,9 @@
 import React from 'react';
+import { Edit, Eye, RotateCcw, Trash2 } from 'lucide-react';
 import {
   Button,
   DatePicker,
+  DetailDialog,
   Input,
   Label,
   Select,
@@ -439,9 +441,13 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
     handleDeleteTaxDeduction,
   } = viewModel;
 
+  // 只读详情是本地展示态，不进 viewModel：它不参与提交也不需要跨弹窗共享。
+  const [detailDeduction, setDetailDeduction] = React.useState<any>(null);
+
   if (!open) return null;
 
   return (
+    <>
     <WorkspaceDialogShell
       title="专项扣除"
       onClose={close}
@@ -673,23 +679,35 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                           <SubtleStatusBadge tone={statusTone}>{statusLabel}</SubtleStatusBadge>
                         </td>
                         <td className="text-right">
-                          {item.latestInScopeRecord ? (
-                            <Button variant="outline" size="sm" onClick={() => openTaxDeductionEditDialog(item.latestInScopeRecord!)}>
-                              编辑
-                            </Button>
-                          ) : item.referenceAmount > 0 ? (
-                            <Button variant="outline" size="sm" onClick={() => applyTaxDeductionReferenceTemplate(item.type, item.referenceAmount)}>
-                              回填
-                            </Button>
-                          ) : item.latestRecord ? (
-                            <Button variant="outline" size="sm" onClick={() => openTaxDeductionEditDialog(item.latestRecord!)}>
-                              编辑最近
-                            </Button>
-                          ) : (
-                            <Button variant="outline" size="sm" disabled>
-                              -
-                            </Button>
-                          )}
+                          <div className="admin-users-row-actions">
+                            {/* 汇总行本身不是记录，查看落到它背后那条：优先当月命中，其次最近一条。 */}
+                            <button
+                              type="button"
+                              data-tooltip={item.latestInScopeRecord || item.latestRecord ? '查看详情' : '暂无可查看记录'}
+                              aria-label="查看详情"
+                              disabled={!item.latestInScopeRecord && !item.latestRecord}
+                              onClick={() => setDetailDeduction(item.latestInScopeRecord || item.latestRecord)}
+                            >
+                              <Eye size={15} />
+                            </button>
+                            {item.latestInScopeRecord ? (
+                              <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openTaxDeductionEditDialog(item.latestInScopeRecord!)}>
+                                <Edit size={15} />
+                              </button>
+                            ) : item.referenceAmount > 0 ? (
+                              <button type="button" data-tooltip="按参考值回填" aria-label="按参考值回填" onClick={() => applyTaxDeductionReferenceTemplate(item.type, item.referenceAmount)}>
+                                <RotateCcw size={15} />
+                              </button>
+                            ) : item.latestRecord ? (
+                              <button type="button" data-tooltip="编辑最近一条" aria-label="编辑最近一条" onClick={() => openTaxDeductionEditDialog(item.latestRecord!)}>
+                                <Edit size={15} />
+                              </button>
+                            ) : (
+                              <button type="button" data-tooltip="暂无可编辑记录" aria-label="暂无可编辑记录" disabled>
+                                <Edit size={15} />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -820,16 +838,22 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                         </div>
                       </td>
                       <td className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" onClick={() => openTaxDeductionEditDialog(item)}>
-                            编辑
-                          </Button>
-                          <Button
-                            variant="outline"
+                        <div className="admin-users-row-actions">
+                          <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailDeduction(item)}>
+                            <Eye size={15} />
+                          </button>
+                          <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openTaxDeductionEditDialog(item)}>
+                            <Edit size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="danger"
+                            data-tooltip="删除"
+                            aria-label="删除"
                             onClick={() => void handleDeleteTaxDeduction(item)}
                           >
-                            删除
-                          </Button>
+                            <Trash2 size={15} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -853,5 +877,40 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
         </div>
       </div>
     </WorkspaceDialogShell>
+
+    {/* 专项扣除本体是个 z-50 的工作台弹窗，详情要抬一层。 */}
+    <DetailDialog
+      open={Boolean(detailDeduction)}
+      title="专项扣除详情"
+      onClose={() => setDetailDeduction(null)}
+      zIndex={60}
+      heading={detailDeduction ? deductionTypeLabel(detailDeduction.deductionType) || detailDeduction.deductionType : undefined}
+      subheading={currentEmployeeRecord?.employeeName}
+      sections={detailDeduction ? [
+        {
+          title: '扣除信息',
+          items: [
+            { label: '扣除类型', value: deductionTypeLabel(detailDeduction.deductionType) || detailDeduction.deductionType },
+            { label: '月扣除额', value: detailDeduction.amount == null ? '' : formatCurrency(detailDeduction.amount) },
+            {
+              label: '参考额度',
+              value: (() => {
+                const ref = Number(currentTaxConfigReferenceMap?.get(detailDeduction.deductionType) || 0);
+                return ref > 0 ? formatCurrency(ref) : '未配置';
+              })(),
+            },
+            { label: '状态', value: taxDeductionStatusLabel(detailDeduction.status) },
+            { label: '生效日期', value: toDateInputValue(detailDeduction.startDate) },
+            { label: '截止日期', value: toDateInputValue(detailDeduction.endDate) || '长期有效' },
+            {
+              label: '当月是否计入',
+              value: detailDeduction.id != null && activeTaxDeductionIds?.has(detailDeduction.id) ? '计入' : '未计入',
+            },
+            { label: '备注', value: <span className="whitespace-pre-wrap">{detailDeduction.remark}</span>, wide: true },
+          ],
+        },
+      ] : []}
+    />
+    </>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive,
   Ban,
@@ -35,10 +35,13 @@ import {
   TabsList,
   TabsTrigger,
   Textarea,
+  UserSelector,
   type TableRowActionItem,
 } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
+import { getErrorMessage } from '@/utils/errorMessage';
+import { normalizeFormNumber } from '@/utils/amountValue';
 import { HrRecord } from '@/services/api/hr';
 import { HR_CITY_OPTIONS } from './hrShared';
 import { HrStatusPill } from './hrReference';
@@ -63,11 +66,13 @@ export interface HrFormField {
     | 'city'
     | 'multiselect'
     | 'employee'
+    | 'user'
     | 'dept'
     | 'post'
     | 'position';
   options?: HrSelectOption[];
   placeholder?: string;
+  description?: string;
   required?: boolean;
   className?: string;
   valueType?: 'string' | 'number';
@@ -104,6 +109,13 @@ interface HrCrudPanelProps<T extends HrRecord = HrRecord> {
   emptyTitle?: string;
   /** 客户端分页页大小;不传则不分页 */
   pageSize?: number;
+  pagination?: {
+    total: number;
+    page: number;
+    pageSize: number;
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (pageSize: number) => void;
+  };
 }
 
 export const statusTone = (status?: string | number | null) => {
@@ -236,7 +248,7 @@ const setFieldValue = (
   rawValue: string,
 ) => {
   const value = field.type === 'number' || field.valueType === 'number'
-    ? Number(rawValue || 0)
+    ? normalizeFormNumber(rawValue || '0')
     : rawValue;
   setForm((prev) => ({
     ...prev,
@@ -277,10 +289,13 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
   minWidthClassName = 'min-w-[840px]',
   emptyTitle,
   pageSize,
+  pagination,
 }: HrCrudPanelProps<T>) => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [innerPageSize, setInnerPageSize] = useState(pageSize ?? 10);
   const canCreate = Boolean(createLabel && form && setForm && onCreate);
@@ -292,31 +307,43 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
     || userPermissions.includes('*:*:*')
     || userPermissions.includes('*');
 
-  const paged = Boolean(pageSize);
-  const total = rows.length;
+  const serverPaged = Boolean(pagination);
+  const paged = Boolean(pageSize) || serverPaged;
+  const total = pagination?.total ?? rows.length;
   useEffect(() => {
+    if (serverPaged) return;
     const maxPage = Math.max(1, Math.ceil(total / innerPageSize));
     if (page > maxPage) setPage(maxPage);
-  }, [total, innerPageSize, page]);
+  }, [serverPaged, total, innerPageSize, page]);
   const visibleRows = useMemo(
-    () => (paged ? rows.slice((page - 1) * innerPageSize, page * innerPageSize) : rows),
-    [paged, rows, page, innerPageSize],
+    () => (paged && !serverPaged ? rows.slice((page - 1) * innerPageSize, page * innerPageSize) : rows),
+    [paged, serverPaged, rows, page, innerPageSize],
   );
 
-  const closeDialog = () => {
+  const resetAndClose = () => {
     setOpen(false);
+    setSubmitError(null);
     if (setForm && resetForm) {
       setForm(resetForm());
     }
   };
 
+  const closeDialog = () => {
+    if (!submittingRef.current) resetAndClose();
+  };
+
   const submit = async () => {
-    if (!form || !onCreate) return;
+    if (!form || !onCreate || submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitError(null);
     setSubmitting(true);
     try {
       await onCreate(form);
-      closeDialog();
+      resetAndClose();
+    } catch (error) {
+      setSubmitError(getErrorMessage(error, '保存失败，输入已保留'));
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -338,7 +365,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
             </Button>
           ) : null}
           {canCreate ? (
-            <Button size="sm" onClick={() => setOpen(true)}>
+            <Button size="sm" onClick={() => { setSubmitError(null); setOpen(true); }} className="!min-h-[44px] !min-w-[44px]">
               <Plus size={14} className="mr-1.5" />
               {createLabel}
             </Button>
@@ -412,11 +439,11 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
       {paged && total > 0 ? (
         <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
           <Pagination
-            page={page}
-            pageSize={innerPageSize}
+            page={pagination?.page ?? page}
+            pageSize={pagination?.pageSize ?? innerPageSize}
             total={total}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => { setInnerPageSize(size); setPage(1); }}
+            onPageChange={pagination?.onPageChange ?? setPage}
+            onPageSizeChange={pagination?.onPageSizeChange ?? ((size) => { setInnerPageSize(size); setPage(1); })}
           />
         </div>
       ) : null}
@@ -426,24 +453,28 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
           open={open}
           title={dialogTitle || createLabel}
           onClose={closeDialog}
+          closeOnEscape={!submitting}
+          hideCloseButton={submitting}
           width="wide"
           footer={(
             <>
-              <Button variant="outline" onClick={closeDialog}>取消</Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
+              <Button variant="outline" disabled={submitting} onClick={closeDialog} className="!min-h-[44px] !min-w-[44px]">取消</Button>
+              <Button disabled={submitting} onClick={() => void submit()} className="!min-h-[44px] !min-w-[44px]">
                 {submitting ? '提交中...' : '保存'}
               </Button>
             </>
           )}
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {submitError && <p role="alert" className="mb-4 break-words text-sm text-red-600">{submitError}</p>}
+          <fieldset disabled={submitting} aria-busy={submitting} className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
             {formFields.map((field) => (
-              <div key={field.key} className={cn('admin-dialog-field', field.className)}>
+              <div key={field.key} role="group" aria-label={field.label} className={cn('admin-dialog-field', field.className)}>
                 <Label className="text-sm font-semibold text-cf-body">
                   {field.label}
                 </Label>
                 {field.type === 'select' || field.type === 'city' ? (
                   <Select
+                    disabled={submitting}
                     value={getFieldValue(form, field)}
                     onValueChange={(value) => setFieldValue(setForm, field, value)}
                   >
@@ -465,6 +496,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                     return (
                       <EmployeeSelector
                         single
+                        disabled={submitting}
                         allowClear={field.allowClear !== false}
                         value={Number.isFinite(idVal) ? idVal : null}
                         onChange={(id) => setFieldValue(setForm, field, id == null ? '' : String(id))}
@@ -472,6 +504,15 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                       />
                     );
                   })()
+                ) : field.type === 'user' ? (
+                  <UserSelector
+                    single
+                    disabled={submitting}
+                    allowClear={field.allowClear !== false}
+                    value={form[field.key] == null || form[field.key] === '' ? null : String(form[field.key])}
+                    onChange={(userId) => setFieldValue(setForm, field, userId ?? '')}
+                    placeholder={field.placeholder || field.label}
+                  />
                 ) : field.type === 'dept' ? (
                   (() => {
                     const raw = form[field.key];
@@ -479,6 +520,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                     return (
                       <DeptSelector
                         single
+                        disabled={submitting}
                         allowClear={field.allowClear !== false}
                         value={Number.isFinite(idVal) ? idVal : null}
                         onChange={(id) => setFieldValue(setForm, field, id == null ? '' : String(id))}
@@ -493,6 +535,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                     return (
                       <PostSelector
                         single
+                        disabled={submitting}
                         allowClear={field.allowClear !== false}
                         value={Number.isFinite(idVal) ? idVal : null}
                         onChange={(id) => setFieldValue(setForm, field, id == null ? '' : String(id))}
@@ -509,6 +552,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                     return (
                       <PositionSelector
                         single
+                        disabled={submitting}
                         allowClear={field.allowClear !== false}
                         deptId={Number.isFinite(deptId) ? deptId : null}
                         value={Number.isFinite(idVal) ? idVal : null}
@@ -522,6 +566,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                     const selectedValues = getFieldArrayValue(form, field);
                     return (
                       <Select
+                        disabled={submitting}
                         value=""
                         onValueChange={(value) => {
                           const exists = selectedValues.includes(value);
@@ -562,6 +607,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                   })()
                 ) : field.type === 'textarea' ? (
                   <Textarea
+                    aria-label={field.label}
                     rows={4}
                     value={getFieldValue(form, field)}
                     placeholder={field.placeholder}
@@ -569,6 +615,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                   />
                 ) : field.type === 'date' || field.type === 'time' || field.type === 'datetime-local' ? (
                   <DatePicker
+                    disabled={submitting}
                     type={field.type}
                     value={getFieldValue(form, field)}
                     placeholder={field.placeholder || field.label}
@@ -578,6 +625,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                   />
                 ) : (
                   <Input
+                    aria-label={field.label}
                     type={field.type || 'text'}
                     value={getFieldValue(form, field)}
                     placeholder={field.placeholder}
@@ -585,9 +633,10 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                     className="h-11"
                   />
                 )}
+                {field.description && <p className="mt-2 break-words text-xs leading-5 text-cf-subtle">{field.description}</p>}
               </div>
             ))}
-          </div>
+          </fieldset>
         </BaseDialog>
       ) : null}
     </InnerTableSurface>

@@ -77,7 +77,6 @@ const ruleDefault = (): HrRecord => ({
   ruleName: '',
   ruleType: 'STANDARD',
   shiftId: '',
-  workDays: [1, 2, 3, 4, 5],
   lateToleranceMinutes: 10,
   absentThresholdMinutes: 60,
   status: 1,
@@ -271,20 +270,9 @@ const HrAttendancePage: React.FC = () => {
     return typeof option?.label === 'string' || typeof option?.label === 'number' ? String(option.label) : '';
   };
 
-  const weekDayOptions = [
-    { label: '周一', value: 1 },
-    { label: '周二', value: 2 },
-    { label: '周三', value: 3 },
-    { label: '周四', value: 4 },
-    { label: '周五', value: 5 },
-    { label: '周六', value: 6 },
-    { label: '周日', value: 7 },
-  ];
-
   const buildRulePayload = (form: HrRecord) => ({
     ...form,
     configJson: JSON.stringify({
-      workDays: form.workDays || [],
       lateToleranceMinutes: Number(form.lateToleranceMinutes || 0),
       absentThresholdMinutes: Number(form.absentThresholdMinutes || 0),
     }),
@@ -320,6 +308,7 @@ const HrAttendancePage: React.FC = () => {
   };
 
   const requestActions = (row: HrRecord): TableRowActionItem[] => {
+    if (String(row.requestType).toUpperCase() === 'OVERTIME') return [];
     const status = String(row.status || '').toUpperCase();
     const items: Array<{ label: string; action: string; semantic: TableRowActionItem['semantic']; enabled: boolean }> = [
       { label: '提交', action: 'submit', semantic: 'submit', enabled: status === 'DRAFT' },
@@ -352,7 +341,6 @@ const HrAttendancePage: React.FC = () => {
     { key: 'ruleName', label: '规则名称' },
     { key: 'ruleType', label: '规则类型', type: 'select', options: [{ label: '标准工时', value: 'STANDARD' }, { label: '弹性工时', value: 'FLEXIBLE' }] },
     { key: 'shiftId', label: '默认班次', type: 'select', valueType: 'number', options: shiftOptions },
-    { key: 'workDays', label: '工作日', type: 'multiselect', valueType: 'number', options: weekDayOptions, className: 'md:col-span-2' },
     { key: 'lateToleranceMinutes', label: '迟到容差（分钟）', type: 'number' },
     { key: 'absentThresholdMinutes', label: '缺勤阈值（分钟）', type: 'number' },
     { key: 'status', label: '状态', type: 'select', valueType: 'number', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }] },
@@ -381,7 +369,7 @@ const HrAttendancePage: React.FC = () => {
   ];
 
   const requestFields: HrFormField[] = [
-    { key: 'requestType', label: '类型', type: 'select', options: requestTypeDict.getOptions() },
+    { key: 'requestType', label: '类型', type: 'select', options: requestTypeDict.getOptions().filter(option => option.value !== 'OVERTIME') },
     { key: 'employeeId', label: '员工', type: 'employee' },
     { key: 'leaveTypeId', label: '假期类型', type: 'select', valueType: 'number', options: leaveTypeOptions },
     { key: 'startTime', label: '开始时间', type: 'datetime-local' },
@@ -667,4 +655,4 @@ const HrAttendancePage: React.FC = () => {
   );
 };
 
-export default HrAttendancePage;
+export { default } from './rules/HrAttendanceRulesPage';

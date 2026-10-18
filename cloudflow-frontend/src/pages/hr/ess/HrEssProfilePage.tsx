@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CreditCard, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { CreditCard, Eye, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -19,6 +19,7 @@ import {
   TabsTrigger,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
+import { DetailDialog } from '@/components/common/DetailDialog';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
@@ -87,6 +88,7 @@ const BankCardTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
     isPrimary: false,
   });
   const [deleteTarget, setDeleteTarget] = useState<HrBankCard | null>(null);
+  const [detailRow, setDetailRow] = useState<HrBankCard | null>(null);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -152,6 +154,9 @@ const BankCardTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
                   <td><span className={row.isPrimary ? 'badge badge-success' : 'badge badge-gray'}>{row.isPrimary ? '是' : '否'}</span></td>
                   <td>
                     <div className="admin-users-row-actions">
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRow(row)}>
+                        <Eye size={15} />
+                      </button>
                       <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, accountNo: '' }); setOpen(true); }}>
                         <Pencil size={15} />
                       </button>
@@ -201,6 +206,36 @@ const BankCardTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void handleDeleteConfirm()}
       />
+
+      <DetailDialog
+        open={Boolean(detailRow)}
+        title="银行卡详情"
+        onClose={() => setDetailRow(null)}
+        heading={detailRow?.bankName}
+        subheading={detailRow?.accountHolder}
+        headingAside={detailRow ? (
+          <span className={detailRow.isPrimary ? 'badge badge-success' : 'badge badge-gray'}>
+            {detailRow.isPrimary ? '主卡' : '非主卡'}
+          </span>
+        ) : undefined}
+        sections={detailRow ? [
+          {
+            title: '卡片信息',
+            items: [
+              { label: '开户行', value: detailRow.bankName },
+              { label: '支行', value: detailRow.bankBranch },
+              /* accountNo 由后端脱敏后返回（列表表头就写着「卡号（脱敏）」），
+                 这里直接展示不会多暴露位数。 */
+              { label: '卡号（脱敏）', value: <span className="font-mono">{detailRow.accountNo}</span> },
+              { label: '持卡人', value: detailRow.accountHolder },
+              { label: '是否主卡', value: detailRow.isPrimary ? '是' : '否' },
+              { label: '状态', value: detailRow.status, visible: Boolean(detailRow.status) },
+              { label: '创建时间', value: detailRow.createTime, visible: Boolean(detailRow.createTime) },
+              { label: '更新时间', value: detailRow.updateTime, visible: Boolean(detailRow.updateTime) },
+            ],
+          },
+        ] : []}
+      />
     </div>
   );
 };
@@ -215,6 +250,7 @@ const FamilyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
     relationship: '配偶',
   });
   const [deleteTarget, setDeleteTarget] = useState<HrFamilyMember | null>(null);
+  const [detailRow, setDetailRow] = useState<HrFamilyMember | null>(null);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -281,6 +317,9 @@ const FamilyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
                   <td><span className={row.isDependent ? 'badge badge-success' : 'badge badge-gray'}>{row.isDependent ? '是' : '否'}</span></td>
                   <td>
                     <div className="admin-users-row-actions">
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRow(row)}>
+                        <Eye size={15} />
+                      </button>
                       <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, birthDate: toDateInputValue(row.birthDate), idCardNo: '' }); setOpen(true); }}>
                         <Pencil size={15} />
                       </button>
@@ -340,6 +379,36 @@ const FamilyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void handleDeleteConfirm()}
       />
+
+      <DetailDialog
+        open={Boolean(detailRow)}
+        title="家庭成员详情"
+        onClose={() => setDetailRow(null)}
+        heading={detailRow?.memberName}
+        subheading={detailRow?.relationship}
+        headingAside={detailRow ? (
+          <span className={detailRow.isDependent ? 'badge badge-success' : 'badge badge-gray'}>
+            {detailRow.isDependent ? '赡养人' : '非赡养人'}
+          </span>
+        ) : undefined}
+        sections={detailRow ? [
+          {
+            title: '成员信息',
+            items: [
+              { label: '姓名', value: detailRow.memberName },
+              { label: '关系', value: detailRow.relationship },
+              /* idCardNo 同样是后端脱敏值（列表表头「身份证（脱敏）」）。 */
+              { label: '身份证（脱敏）', value: <span className="font-mono">{detailRow.idCardNo}</span> },
+              { label: '生日', value: toDateInputValue(detailRow.birthDate) },
+              { label: '职业', value: detailRow.occupation },
+              { label: '联系方式', value: detailRow.phone },
+              { label: '是否赡养人', value: detailRow.isDependent ? '是' : '否' },
+              { label: '创建时间', value: detailRow.createTime, visible: Boolean(detailRow.createTime) },
+              { label: '更新时间', value: detailRow.updateTime, visible: Boolean(detailRow.updateTime) },
+            ],
+          },
+        ] : []}
+      />
     </div>
   );
 };
@@ -355,6 +424,7 @@ const EmergencyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
     phone: '',
   });
   const [deleteTarget, setDeleteTarget] = useState<EmergencyContact | null>(null);
+  const [detailRow, setDetailRow] = useState<EmergencyContact | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -424,6 +494,9 @@ const EmergencyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
                   <td>{row.phone}</td>
                   <td>
                     <div className="admin-users-row-actions">
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRow(row)}>
+                        <Eye size={15} />
+                      </button>
                       <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>
                         <Pencil size={15} />
                       </button>
@@ -475,6 +548,26 @@ const EmergencyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
         confirmText="确认删除"
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void handleDeleteConfirm()}
+      />
+
+      <DetailDialog
+        open={Boolean(detailRow)}
+        title="紧急联系人详情"
+        onClose={() => setDetailRow(null)}
+        heading={detailRow?.contactName}
+        subheading={detailRow?.relationship}
+        sections={detailRow ? [
+          {
+            title: '联系人信息',
+            items: [
+              { label: '姓名', value: detailRow.contactName },
+              { label: '关系', value: detailRow.relationship },
+              { label: '电话', value: detailRow.phone },
+              { label: '创建时间', value: detailRow.createTime, visible: Boolean(detailRow.createTime) },
+              { label: '更新时间', value: detailRow.updateTime, visible: Boolean(detailRow.updateTime) },
+            ],
+          },
+        ] : []}
       />
     </div>
   );

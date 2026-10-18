@@ -1,0 +1,11 @@
+.final-settlements { min-width: 0; overflow-wrap: anywhere; }
+.final-settlements button, .final-settlements input:not([type="checkbox"]), .final-settlements [role="combobox"], .final-settlements summary { min-height: 44px; min-width: 44px; }
+.final-settlements summary { display: flex; align-items: center; }
+.final-settlements summary:focus-visible { outline: 2px solid var(--cf-primary); outline-offset: 2px; border-radius: 4px; }
+.final-settlements .settlement-row { display: grid; gap: 12px; align-items: center; }
+@media (min-width: 768px) {
+  .final-settlements .settlement-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto; gap: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .final-settlements *, .final-settlements *::before, .final-settlements *::after { animation: none !important; transition: none !important; }
+}

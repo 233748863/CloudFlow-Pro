@@ -1,0 +1,39 @@
+.appraisal-workspace,
+[role="dialog"]:has(.appraisal-workspace) {
+  --cf-density-control-height: 44px;
+  min-width: 0;
+}
+
+.appraisal-workspace button,
+.appraisal-workspace input:not([type="checkbox"]),
+.appraisal-workspace [role="combobox"],
+[role="dialog"]:has(.appraisal-workspace) button,
+.appraisal-choice {
+  min-height: 44px;
+}
+
+.appraisal-workspace button,
+[role="dialog"]:has(.appraisal-workspace) button {
+  min-width: 44px;
+  transition-duration: 150ms;
+}
+
+.appraisal-workspace input,
+.appraisal-workspace textarea,
+.appraisal-workspace fieldset,
+.appraisal-workspace .grid > * {
+  min-width: 0;
+}
+
+.appraisal-workspace input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appraisal-workspace button,
+  [role="dialog"]:has(.appraisal-workspace) button {
+    transition: none;
+  }
+}

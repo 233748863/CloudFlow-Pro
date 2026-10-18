@@ -298,4 +298,4 @@ export const HrEssSalarySlipPage: React.FC = () => {
   );
 };
 
-export default HrEssSalarySlipPage;
+export { default } from './HrEssPayrollPage';

@@ -238,6 +238,7 @@ const HrCompensationPage: React.FC = () => {
       await loadData();
     } catch (error) {
       toast.error(getErrorMessage(error, success.replace('已', '') + '失败'));
+      throw error;
     }
   };
 
@@ -254,7 +255,7 @@ const HrCompensationPage: React.FC = () => {
         key: item.label,
         label: item.label,
         semantic: item.semantic,
-        onClick: () => void submitAndReload(item.runner, `调薪已${item.label}`),
+        onClick: () => void submitAndReload(item.runner, `调薪已${item.label}`).catch(() => undefined),
       }));
   };
 
@@ -607,7 +608,10 @@ const HrCompensationPage: React.FC = () => {
         open={simulateOpen}
         onClose={() => setSimulateOpen(false)}
         employees={employees.map((emp) => ({ id: emp.id, name: emp.name, employeeNo: emp.employeeNo }))}
-        positionLevels={grades.map((g) => ({ id: g.id, gradeName: g.gradeName, gradeCode: g.gradeCode }))}
+        structures={structures}
+        components={components}
+        grades={grades}
+        compensations={employeeComps}
       />
     </>
   );

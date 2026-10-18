@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Check, Edit, LoaderCircle, Plus, Trash2 } from 'lucide-react';
+import { Check, Edit, Eye, LoaderCircle, Plus, Trash2 } from 'lucide-react';
 import {
   BaseDialog,
   Button,
   ConfirmDialog,
   DatePicker,
+  DetailDialog,
   Input,
   Label,
   Textarea,
@@ -40,6 +41,7 @@ export const HrPerformanceInterviewPanel = ({ open, resultId, employeeId, employ
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState<HrPerformanceInterview | null>(null);
   const [pendingDelete, setPendingDelete] = useState<HrPerformanceInterview | null>(null);
+  const [detailInterview, setDetailInterview] = useState<HrPerformanceInterview | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!open) return;
@@ -184,21 +186,26 @@ export const HrPerformanceInterviewPanel = ({ open, resultId, employeeId, employ
                         </div>
                       </td>
                       <td>
-                        {item.status === 'DRAFT' ? (
-                          <div className="admin-users-row-actions">
-                            <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => startEdit(item)} disabled={submitting}>
-                              <Edit size={15} />
-                            </button>
-                            <button type="button" data-tooltip="确认" aria-label="确认" onClick={() => item.id && void handleConfirm(item.id)} disabled={submitting}>
-                              <Check size={15} />
-                            </button>
-                            <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setPendingDelete(item)} disabled={submitting}>
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-cf-faint">-</span>
-                        )}
+                        {/* 查看放在草稿判断外面：已确认的记录原来整行只有一个「-」，
+                            共识和改进项在列表里被 line-clamp 截断，没有任何入口能看全文。 */}
+                        <div className="admin-users-row-actions">
+                          <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailInterview(item)}>
+                            <Eye size={15} />
+                          </button>
+                          {item.status === 'DRAFT' ? (
+                            <>
+                              <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => startEdit(item)} disabled={submitting}>
+                                <Edit size={15} />
+                              </button>
+                              <button type="button" data-tooltip="确认" aria-label="确认" onClick={() => item.id && void handleConfirm(item.id)} disabled={submitting}>
+                                <Check size={15} />
+                              </button>
+                              <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setPendingDelete(item)} disabled={submitting}>
+                                <Trash2 size={15} />
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -266,6 +273,37 @@ export const HrPerformanceInterviewPanel = ({ open, resultId, employeeId, employ
         danger
         onCancel={() => setPendingDelete(null)}
         onConfirm={handleDelete}
+      />
+
+      <DetailDialog
+        open={Boolean(detailInterview)}
+        title="面谈记录详情"
+        onClose={() => setDetailInterview(null)}
+        heading={detailInterview?.employeeName}
+        subheading={detailInterview?.interviewTime}
+        headingAside={detailInterview ? (
+          <DictBadge dictType="hr_perf_interview_status" value={String(detailInterview.status || 'DRAFT')} />
+        ) : undefined}
+        sections={detailInterview ? [
+          {
+            title: '面谈信息',
+            items: [
+              { label: '员工', value: detailInterview.employeeName },
+              { label: '面谈时间', value: detailInterview.interviewTime },
+              { label: '面谈地点', value: detailInterview.location },
+              { label: '面谈人', value: detailInterview.interviewerName },
+              { label: 'HR 见证人', value: detailInterview.hrWitnessName },
+              { label: '状态', value: <DictBadge dictType="hr_perf_interview_status" value={String(detailInterview.status || 'DRAFT')} /> },
+            ],
+          },
+          {
+            title: '面谈内容',
+            items: [
+              { label: '达成共识', value: <span className="whitespace-pre-wrap">{detailInterview.consensus}</span>, wide: true },
+              { label: '改进方向', value: <span className="whitespace-pre-wrap">{detailInterview.improvements}</span>, wide: true },
+            ],
+          },
+        ] : []}
       />
     </>
   );

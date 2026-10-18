@@ -1,4 +1,5 @@
 import React from 'react';
+import AttachmentLinks from '@/components/AttachmentLinks';
 import {
   createMediation,
   listMediations,
@@ -23,7 +24,7 @@ export const HrDisputeMediationPage: React.FC = () => (
       { header: '调解员', render: (r) => r.mediatorId ?? '-' },
       { header: '地点', className: 'px-4 py-3 max-w-[10rem] truncate text-xs', render: (r) => r.location ?? '-' },
       { header: '结果', render: (r) => <DictLabel dictType="hr_dispute_mediation_result" value={r.result} fallback="-" /> },
-      { header: '协议', render: (r) => r.agreementUrl ? <a href={r.agreementUrl} target="_blank" rel="noreferrer" className="text-sky-600 hover:underline text-xs">查看</a> : '-' },
+      { header: '协议', render: (r) => <AttachmentLinks value={r.agreementUrl} compact emptyText="-" downloadContext={{ bizType: 'HR_DISPUTE_MEDIATION', bizId: String(r.disputeId), childId: r.id }} /> },
       { header: '签订时间', className: 'px-4 py-3 text-xs', render: (r) => formatDateTimeValue(r.signedAt) },
     ]}
     emptyForm={{

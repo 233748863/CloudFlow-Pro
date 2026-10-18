@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Archive, LoaderCircle, Pencil, Plus, RefreshCcw, RotateCcw, Search, Send, Trash2 } from 'lucide-react';
+import { Archive, Eye, LoaderCircle, Pencil, Plus, RefreshCcw, RotateCcw, Search, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
   ConfirmDialog,
+  DetailDialog,
   Input,
   Label,
   Pagination,
@@ -55,6 +56,7 @@ export const HrTrainingPlanPage: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<HrTrainingPlanPayload>(defaultForm);
   const [pendingDelete, setPendingDelete] = useState<HrTrainingPlan | null>(null);
+  const [detailPlan, setDetailPlan] = useState<HrTrainingPlan | null>(null);
   const planTypeOptions = useDict('hr_training_plan_type').getOptions();
   const planStatusOptions = useDict('hr_publish_status').getOptions();
 
@@ -251,6 +253,9 @@ export const HrTrainingPlanPage: React.FC = () => {
                           <td><DictLabel dictType="hr_publish_status" value={row.status} fallback="-" /></td>
                           <td>
                             <div className="admin-users-row-actions">
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailPlan(row)}>
+                                <Eye size={15} />
+                              </button>
                               {canEdit ? (
                                 <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>
                                   <Pencil size={15} />
@@ -326,6 +331,32 @@ export const HrTrainingPlanPage: React.FC = () => {
         danger
         onCancel={() => setPendingDelete(null)}
         onConfirm={handleDelete}
+      />
+
+      <DetailDialog
+        open={Boolean(detailPlan)}
+        title="培训计划详情"
+        onClose={() => setDetailPlan(null)}
+        heading={detailPlan?.planName}
+        subheading={detailPlan?.planNo}
+        headingAside={detailPlan ? (
+          <DictLabel dictType="hr_publish_status" value={detailPlan.status} fallback="-" />
+        ) : undefined}
+        sections={detailPlan ? [
+          {
+            title: '计划信息',
+            items: [
+              { label: '计划名称', value: detailPlan.planName },
+              { label: '计划编号', value: detailPlan.planNo },
+              { label: '计划类型', value: <DictLabel dictType="hr_training_plan_type" value={detailPlan.planType} fallback="-" /> },
+              { label: '年度', value: detailPlan.year === undefined ? '' : String(detailPlan.year) },
+              { label: '季度', value: detailPlan.quarter === undefined ? '' : `Q${detailPlan.quarter}` },
+              { label: '预算', value: formatMoneyValue(detailPlan.budget) },
+              { label: '状态', value: <DictLabel dictType="hr_publish_status" value={detailPlan.status} fallback="-" /> },
+              { label: '说明', value: detailPlan.description, wide: true },
+            ],
+          },
+        ] : []}
       />
     </>
   );

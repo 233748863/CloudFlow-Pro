@@ -25,18 +25,14 @@ import { DictBadge } from '@/components/common/DictBadge';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
-type EvaluatorSource = 'SELF' | 'MANAGER' | 'PEER' | 'SUBORDINATE' | 'CUSTOMER';
+type EvaluatorSource = 'SELF' | 'MANAGER' | 'PEER' | 'SUBORDINATE';
 
-const SOURCE_OPTIONS: Array<{ value: EvaluatorSource; label: string; external?: boolean }> = [
+const SOURCE_OPTIONS: Array<{ value: EvaluatorSource; label: string }> = [
   { value: 'SELF', label: '自评' },
   { value: 'MANAGER', label: '上级' },
   { value: 'PEER', label: '同事' },
   { value: 'SUBORDINATE', label: '下属' },
-  { value: 'CUSTOMER', label: '客户（外部）', external: true },
 ];
-
-const isExternalSource = (source: EvaluatorSource) =>
-  SOURCE_OPTIONS.find((opt) => opt.value === source)?.external === true;
 
 interface Props {
   open: boolean;
@@ -52,12 +48,10 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
 
   const [inviteSource, setInviteSource] = useState<EvaluatorSource>('PEER');
   const [inviteEvaluatorId, setInviteEvaluatorId] = useState<number | null>(null);
-  const [inviteExternalId, setInviteExternalId] = useState('');
   const [inviteWeight, setInviteWeight] = useState('1.0');
 
   const [respondScore, setRespondScore] = useState<Record<number, string>>({});
 
-  const external = isExternalSource(inviteSource);
 
   const loadData = async () => {
     if (!objectiveId || !evaluateeId) {
@@ -80,7 +74,6 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
       setEvaluateeId(null);
       setEvaluators([]);
       setInviteEvaluatorId(null);
-      setInviteExternalId('');
       setInviteSource('PEER');
       setRespondScore({});
       return;
@@ -89,27 +82,17 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
   }, [open, objectiveId, evaluateeId]);
 
   useEffect(() => {
-    // 切换来源时清空对应输入，避免内部/外部 ID 串台
     setInviteEvaluatorId(null);
-    setInviteExternalId('');
   }, [inviteSource]);
-
-  const resolveEvaluatorId = (): number | null => {
-    if (external) {
-      const parsed = Number(inviteExternalId);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    }
-    return inviteEvaluatorId;
-  };
 
   const handleInvite = async () => {
     if (!objectiveId || !evaluateeId) {
       toast.error('请先选择被评人');
       return;
     }
-    const evaluatorId = resolveEvaluatorId();
+    const evaluatorId = inviteEvaluatorId;
     if (!evaluatorId) {
-      toast.error(external ? '请输入外部客户 ID' : '请选择评估人');
+      toast.error('请选择评估人');
       return;
     }
     try {
@@ -120,7 +103,6 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
       });
       toast.success('已邀请评估人');
       setInviteEvaluatorId(null);
-      setInviteExternalId('');
       await loadData();
     } catch (err) {
       toast.error(getErrorMessage(err, '邀请失败'));
@@ -128,6 +110,10 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
   };
 
   const handleSubmitResponse = async (evaluatorId: number) => {
+    if (evaluators.some(row => row.id === evaluatorId && row.evaluatorSource === 'CUSTOMER')) {
+      toast.error('客户评分已停用；接入真实客户身份后启用');
+      return;
+    }
     const scoreStr = respondScore[evaluatorId];
     const score = Number(scoreStr);
     if (!score || score < 0 || score > 100) {
@@ -173,7 +159,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
       onClose={onClose}
       width="extra-wide"
       title="360 度评估"
-      description="邀请上级 / 同事 / 下属 / 客户参与多维度评分，自动按权重聚合得分"
+      description="邀请员工参与多维度评分；客户评分已停用，接入真实客户身份后启用"
       bodyClassName="admin-dialog-stack"
       footer={
         <>
@@ -241,13 +227,6 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                 ))}
               </SelectContent>
             </Select>
-            {external ? (
-              <Input
-                placeholder="外部客户 ID（CRM 客户主键）"
-                value={inviteExternalId}
-                onChange={(e) => setInviteExternalId(e.target.value)}
-              />
-            ) : (
               <EmployeeSelector
                 single
                 value={inviteEvaluatorId}
@@ -255,7 +234,6 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                 placeholder="选择评估人"
                 allowClear
               />
-            )}
             <Input
               placeholder="权重"
               value={inviteWeight}
@@ -270,11 +248,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
               邀请
             </Button>
           </div>
-          {external ? (
-            <p className="px-4 pb-4 text-xs text-cf-faint">
-              客户来源为外部参与方，需在 CRM 客户表中已存在；权重建议 0-1 之间
-            </p>
-          ) : null}
+          <p className="px-4 pb-4 text-xs text-cf-faint">客户评分已停用；接入真实客户身份后启用。</p>
         </section>
 
         <InnerTableSurface>
@@ -306,7 +280,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                             : 'bg-[var(--cf-surface-muted)] text-cf-body border-slate-200 dark:bg-slate-800 dark:border-slate-700',
                         )}
                       >
-                        {SOURCE_OPTIONS.find((opt) => opt.value === row.evaluatorSource)?.label || '-'}
+                        {isExternal ? '客户评分已停用' : SOURCE_OPTIONS.find((opt) => opt.value === row.evaluatorSource)?.label || '-'}
                       </span>
                     </td>
                     <td className="tabular-nums">{row.weight}</td>
@@ -317,6 +291,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                       <div className="flex flex-wrap items-center justify-end gap-2">
                         <Input
                           className="w-24"
+                          disabled={isExternal}
                           placeholder="0-100"
                           value={respondScore[row.id || 0] || ''}
                           onChange={(e) =>
@@ -324,7 +299,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                           }
                         />
                         <div className="admin-users-row-actions">
-                          <button type="button" data-tooltip="提交评分" aria-label="提交评分" onClick={() => void handleSubmitResponse(row.id || 0)}>
+                          <button type="button" disabled={isExternal} data-tooltip="提交评分" aria-label="提交评分" onClick={() => void handleSubmitResponse(row.id || 0)}>
                             <Check size={15} />
                           </button>
                           <button type="button" className="danger" data-tooltip="取消" aria-label="取消" onClick={() => void handleCancel(row.id || 0)}>

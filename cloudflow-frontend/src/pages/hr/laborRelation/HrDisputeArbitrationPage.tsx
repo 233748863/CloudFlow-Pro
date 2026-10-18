@@ -1,4 +1,5 @@
 import React from 'react';
+import AttachmentLinks from '@/components/AttachmentLinks';
 import {
   createArbitration,
   listArbitrations,
@@ -26,7 +27,7 @@ export const HrDisputeArbitrationPage: React.FC = () => (
       { header: '裁决结果', className: 'px-4 py-3 max-w-[10rem] truncate text-xs', render: (r) => r.awardResult ?? '-' },
       { header: '裁决金额', render: (r) => formatMoneyValue(r.awardAmount) },
       { header: '生效日', className: 'px-4 py-3 text-xs', render: (r) => formatDateValue(r.effectiveDate) },
-      { header: '裁决书', render: (r) => r.awardDocUrl ? <a href={r.awardDocUrl} target="_blank" rel="noreferrer" className="text-sky-600 hover:underline text-xs">查看</a> : '-' },
+      { header: '裁决书', render: (r) => <AttachmentLinks value={r.awardDocUrl} compact emptyText="-" downloadContext={{ bizType: 'HR_DISPUTE_ARBITRATION', bizId: String(r.disputeId), childId: r.id }} /> },
     ]}
     emptyForm={{
       arbitrationCommittee: '',

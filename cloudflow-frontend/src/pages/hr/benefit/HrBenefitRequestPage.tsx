@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { Ban, Edit, LoaderCircle, Plus, RefreshCcw, RotateCcw, Search, Send } from 'lucide-react';
+import { Ban, Edit, Eye, LoaderCircle, Plus, RefreshCcw, RotateCcw, Search, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
+  DetailDialog,
   Input,
   Label,
   Pagination,
@@ -54,6 +55,7 @@ export const HrBenefitRequestPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<Partial<HrBenefitRequestPayload>>(emptyForm);
   const [cancelTarget, setCancelTarget] = useState<HrBenefitRequest | null>(null);
+  const [detailRequest, setDetailRequest] = useState<HrBenefitRequest | null>(null);
   const [cancelReason, setCancelReason] = useState('撤回');
 
   const { getOptions: getTypeOptions } = useDict('hr_benefit_request_type');
@@ -278,6 +280,7 @@ export const HrBenefitRequestPage: React.FC = () => {
                 <td className="text-xs">{formatDateTimeValue(row.paidAt)}</td>
                 <td>
                   <div className="admin-users-row-actions">
+                    <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRequest(row)}><Eye size={15} /></button>
                     {hasWorkflowStatus(row.status, 'DRAFT') ? (
                       <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Edit size={15} /></button>
                     ) : null}
@@ -395,6 +398,31 @@ export const HrBenefitRequestPage: React.FC = () => {
           <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="请输入取消理由" />
         </div>
       </BaseDialog>
+
+      <DetailDialog
+        open={Boolean(detailRequest)}
+        title="福利申领详情"
+        onClose={() => setDetailRequest(null)}
+        heading={detailRequest?.requestNo}
+        headingAside={detailRequest ? (
+          <DictLabel dictType="hr_benefit_request_status" value={detailRequest.status} fallback="-" />
+        ) : undefined}
+        sections={detailRequest ? [
+          {
+            title: '申领信息',
+            items: [
+              { label: '申请单号', value: detailRequest.requestNo },
+              { label: '员工 ID', value: String(detailRequest.employeeId) },
+              { label: '申领类型', value: <DictLabel dictType="hr_benefit_request_type" value={detailRequest.requestType} fallback="-" /> },
+              { label: '金额', value: detailRequest.amount ? formatMoneyValue(detailRequest.amount) : '' },
+              { label: '积分', value: detailRequest.pointAmount === undefined ? '' : String(detailRequest.pointAmount) },
+              { label: '状态', value: <DictLabel dictType="hr_benefit_request_status" value={detailRequest.status} fallback="-" /> },
+              { label: '发放时间', value: formatDateTimeValue(detailRequest.paidAt) },
+              { label: '申请理由', value: detailRequest.reason, wide: true },
+            ],
+          },
+        ] : []}
+      />
     </section>
   );
 };

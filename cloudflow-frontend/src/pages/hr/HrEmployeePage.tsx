@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useBusinessSearchFocus } from '@/hooks/useBusinessSearchFocus';
 import { getConfigIntSync, useConfigValue } from '@/hooks/useSystemConfig';
 import { SYS_HR_EMPLOYEE_DEFAULT_CREATE_MODE, SYS_PAGE_DEFAULT_PAGE_SIZE } from '@/constants/sysConfig';
 import { BaseDialog } from '@/components/common/BaseDialog';
@@ -49,6 +50,7 @@ import {
 } from '@/services/api/hr';
 import { flattenDeptTree, normalizeRows, toDateInputValue } from './hrShared';
 import HrEmployeeWorkspace from './HrEmployeeWorkspace';
+import { ImportButton } from '@/components/import/ImportButton';
 
 const defaultForm: HrEmployeePayload = {
   employeeNo: '',
@@ -129,6 +131,14 @@ export const HrEmployeePage: React.FC = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [focusedEmployee, setFocusedEmployee] = useState<HrEmployee | null>(null);
+  const cancelSearchFocus = useBusinessSearchFocus(async (identifier, signal) => {
+    const employee = await getEmployeeDetail(identifier, signal);
+    if (signal.aborted) return;
+    if (!employee || Number(employee.id) !== identifier) throw new Error('员工已删除或无权查看。');
+    setFocusedEmployee(employee);
+    setDetailDialogOpen(true);
+  }, () => { setFocusedEmployee(null); setDetailDialogOpen(false); });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<HrEmployeePayload>(defaultForm);
@@ -255,17 +265,18 @@ export const HrEmployeePage: React.FC = () => {
   };
 
   const handleViewDetail = (id: number) => {
+    cancelSearchFocus();
     setSelectedEmployeeId(id);
     setDetailDialogOpen(true);
   };
 
   const handleEditFromDetail = (id: number) => {
-    setDetailDialogOpen(false);
+    cancelSearchFocus();
     void handleEdit(id);
   };
 
   const closeDetailDialog = () => {
-    setDetailDialogOpen(false);
+    cancelSearchFocus();
   };
 
   const validateForm = () => {
@@ -357,6 +368,7 @@ export const HrEmployeePage: React.FC = () => {
                 <RefreshCcw size={14} className={cn('mr-1.5', loading && 'animate-spin')} />
                 刷新
               </Button>
+              <ImportButton bizType="EMPLOYEE" permission="hr:employees:import" onSuccess={() => void loadEmployees()} />
               <Button size="sm" onClick={handleCreate}>
                 <Plus size={14} className="mr-1.5" />
                 新建员工
@@ -781,9 +793,9 @@ export const HrEmployeePage: React.FC = () => {
         panelClassName="max-h-[92vh]"
       >
         <HrEmployeeWorkspace
-          employees={employees}
-          selectedEmployeeId={selectedEmployeeId}
-          loading={loading}
+          employees={focusedEmployee ? [focusedEmployee] : employees}
+          selectedEmployeeId={focusedEmployee?.id ?? selectedEmployeeId}
+          loading={focusedEmployee ? false : loading}
           onEditEmployee={handleEditFromDetail}
         />
       </BaseDialog>

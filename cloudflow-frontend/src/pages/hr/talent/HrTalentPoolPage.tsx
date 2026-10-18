@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { LoaderCircle, Pencil, Plus, RefreshCcw, RotateCcw, Search, Trash2, UserMinus, UserPlus, Users } from 'lucide-react';
+import { Eye, LoaderCircle, Pencil, Plus, RefreshCcw, RotateCcw, Search, Trash2, UserMinus, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
   ConfirmDialog,
+  DetailDialog,
   Input,
   Label,
   Pagination,
@@ -56,6 +57,7 @@ export const HrTalentPoolPage: React.FC = () => {
   const [members, setMembers] = useState<HrTalentPoolMember[]>([]);
   const [memberForm, setMemberForm] = useState({ employeeId: '', sourceReviewId: '' });
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [detailPool, setDetailPool] = useState<HrTalentPool | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -281,6 +283,9 @@ export const HrTalentPoolPage: React.FC = () => {
                           <td className="max-w-[24rem] truncate">{row.description || '-'}</td>
                           <td>
                             <div className="admin-users-row-actions">
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailPool(row)}>
+                                <Eye size={15} />
+                              </button>
                               {canEdit ? (
                                 <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm({ poolNo: row.poolNo, poolName: row.poolName, poolType: row.poolType, description: row.description ?? '' }); setOpen(true); }}>
                                   <Pencil size={15} />
@@ -407,6 +412,29 @@ export const HrTalentPoolPage: React.FC = () => {
         danger
         onCancel={() => setDeleteId(null)}
         onConfirm={() => void handleDelete()}
+      />
+
+      <DetailDialog
+        open={Boolean(detailPool)}
+        title="人才池详情"
+        onClose={() => setDetailPool(null)}
+        heading={detailPool?.poolName}
+        subheading={detailPool?.poolNo}
+        headingAside={detailPool ? (
+          <span className="text-xs text-cf-subtle">{detailPool.status === 'ACTIVE' ? '启用' : '已归档'}</span>
+        ) : undefined}
+        sections={detailPool ? [
+          {
+            title: '人才池信息',
+            items: [
+              { label: '人才池名称', value: detailPool.poolName },
+              { label: '人才池编号', value: detailPool.poolNo },
+              { label: '类型', value: <DictLabel dictType="hr_talent_pool_type" value={detailPool.poolType} fallback="-" /> },
+              { label: '状态', value: detailPool.status === 'ACTIVE' ? '启用' : '已归档' },
+              { label: '说明', value: detailPool.description, wide: true },
+            ],
+          },
+        ] : []}
       />
     </>
   );

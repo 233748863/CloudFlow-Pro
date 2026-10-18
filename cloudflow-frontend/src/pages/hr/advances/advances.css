@@ -1,0 +1,18 @@
+.advance-workspace { min-width: 0; }
+.advance-workspace :is(button, input:not([type="checkbox"]), [role="combobox"]),
+[role="dialog"]:has(.advance-workspace) :is(button, input:not([type="checkbox"]), [role="combobox"]) { min-height: 44px; min-width: 44px; max-width: 100%; }
+.advance-workspace :is(input, textarea, [role="combobox"]) { width: 100%; }
+.advance-workspace button { transition: background-color 150ms ease, border-color 150ms ease; }
+.advance-workspace :is(button, input, textarea, [role="combobox"]):focus-visible { outline: 2px solid var(--cf-primary); outline-offset: 2px; }
+.advance-filters { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; gap: 1rem; }
+.advance-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.advance-card { min-width: 0; border: 1px solid var(--cf-border); border-radius: 0.75rem; padding: 1rem; background: var(--cf-surface); }
+.advance-workspace input[type="file"] { overflow: hidden; padding-block: 0.5rem; }
+.advance-workspace dl { min-width: 0; }
+@media (min-width: 768px) {
+  .advance-filters { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .advance-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .advance-workspace *, [role="dialog"]:has(.advance-workspace) * { animation: none !important; transition: none !important; }
+}

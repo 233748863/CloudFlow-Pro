@@ -1,29 +1,25 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger, type TableRowActionItem } from '@/components/common';
 import { CheckCircle2, LogOut, RefreshCw, Repeat, UserPlus } from 'lucide-react';
 import {
   Candidate,
-  DeptTreeNode,
   HrEmployee,
   HrRecord,
   LifecycleApplication,
-  PositionOption,
-  PostOption,
   changeLifecycleApplicationStatus,
   createLifecycleApplication,
-  getDeptTreeOptions,
-  getPositionOptions,
-  getPostOptions,
   listCandidates,
   listEmployees,
   listLifecycleApplications,
 } from '@/services/api/hr';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { buildEmployeeLabel, flattenDeptTree, formatDateValue, normalizeRows, optionOrIdLabel } from './hrShared';
+import { buildEmployeeLabel, formatDateValue, normalizeRows, optionOrIdLabel } from './hrShared';
 import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 import { useDict } from '@/hooks/useDict';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { useAuth } from '@/context/AuthContext';
+import { HrResignationHandoverDialog } from './HrResignationHandoverDialog';
 import './admin-hr.css';
 
 type LifecycleType = 'ONBOARDING' | 'PROBATION' | 'TRANSFER' | 'RESIGNATION';
@@ -66,19 +62,22 @@ const formDefaults: Record<LifecycleType, () => HrRecord> = {
     employeeId: '',
     effectiveDate: '',
     reason: '',
+    successorUserId: '',
     status: 'DRAFT',
   }),
 };
 
 const HrLifecyclePage: React.FC = () => {
+  const { hasPermission } = useAuth();
+  const canRead = hasPermission('hr:lifecycle:list');
+  const [handoverId, setHandoverId] = useState<number | null>(null);
+  const [actingId, setActingId] = useState<number | null>(null);
+  const actionRef = useRef(false);
   const lifecycleTypeDict = useDict('hr_lifecycle_type');
   const [activeTab, setActiveTab] = useState<LifecycleType>('ONBOARDING');
   const [applications, setApplications] = useState<LifecycleApplication[]>([]);
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [deptTree, setDeptTree] = useState<DeptTreeNode[]>([]);
-  const [posts, setPosts] = useState<PostOption[]>([]);
-  const [positions, setPositions] = useState<PositionOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [forms, setForms] = useState<Record<LifecycleType, HrRecord>>({
     ONBOARDING: formDefaults.ONBOARDING(),
@@ -88,22 +87,17 @@ const HrLifecyclePage: React.FC = () => {
   });
 
   const loadData = async () => {
+    if (!canRead) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [applicationRes, employeeRes, candidateRes, deptRes, postRes, positionRes] = await Promise.all([
+      const [applicationRes, employeeRes, candidateRes] = await Promise.all([
         listLifecycleApplications(),
         listEmployees({ pageNum: 1, pageSize: 500 }),
         listCandidates({ pageNum: 1, pageSize: 200 }),
-        getDeptTreeOptions(),
-        getPostOptions(),
-        getPositionOptions({ pageNum: 1, pageSize: 500 }),
       ]);
       setApplications(normalizeRows<LifecycleApplication>(applicationRes));
       setEmployees(normalizeRows<HrEmployee>(employeeRes));
       setCandidates(normalizeRows<Candidate>(candidateRes));
-      setDeptTree(normalizeRows<DeptTreeNode>(deptRes));
-      setPosts(normalizeRows<PostOption>(postRes));
-      setPositions(normalizeRows<PositionOption>(positionRes));
     } catch (error) {
       toast.error(getErrorMessage(error, '员工异动数据加载失败'));
     } finally {
@@ -113,7 +107,7 @@ const HrLifecyclePage: React.FC = () => {
 
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [canRead]);
 
   const employeeOptions = useMemo(
     () => employees.map((item) => ({ label: buildEmployeeLabel(item) || `${item.employeeNo} / ${item.name}`, value: item.id })),
@@ -123,18 +117,6 @@ const HrLifecyclePage: React.FC = () => {
   const candidateOptions = useMemo(
     () => candidates.map((item) => ({ label: `${item.name} / ${item.positionName || '-'}`, value: item.id })),
     [candidates],
-  );
-
-  const deptOptions = useMemo(() => flattenDeptTree(deptTree), [deptTree]);
-
-  const postOptions = useMemo(
-    () => posts.map((item) => ({ label: item.postName || item.postCode || String(item.postId), value: item.postId })),
-    [posts],
-  );
-
-  const positionOptions = useMemo(
-    () => positions.map((item) => ({ label: item.positionName || item.positionCode || String(item.id), value: item.id })),
-    [positions],
   );
 
   const displayPerson = (row: LifecycleApplication) => {
@@ -194,6 +176,8 @@ const HrLifecyclePage: React.FC = () => {
       return [
         { key: 'employeeId', label: '员工', type: 'employee' },
         { key: 'effectiveDate', label: '离职日期', type: 'date' },
+        { key: 'successorUserId', label: '客户业务接任人（可选）', type: 'user', valueType: 'number', className: 'md:col-span-2',
+          description: '未指定时生成交接待办；指定后在完成离职时交接。接任人已在团队时合并比例，其他成员及历史业绩不变。' },
         { key: 'reason', label: '离职原因', type: 'textarea', className: 'md:col-span-2' },
       ];
     }
@@ -234,17 +218,29 @@ const HrLifecyclePage: React.FC = () => {
       { label: '驳回', action: 'reject', semantic: 'void', enabled: status === 'APPROVING' },
       { label: row.type === 'TRANSFER' ? '生效' : '完成', action: row.type === 'TRANSFER' ? 'effective' : 'complete', semantic: 'confirm', enabled: ['APPROVED', 'ACCEPTED'].includes(status) },
     ];
-    return items
+    const operations: TableRowActionItem[] = items
       .filter((item) => item.enabled)
       .map((item) => ({
         key: item.action,
         label: item.label,
         semantic: item.semantic,
-        onClick: () => void submitAndReload(
-          () => changeLifecycleApplicationStatus(row.id, item.action),
-          `申请已${item.label}`,
-        ),
+        permissionKey: 'hr:lifecycle:edit',
+        disabled: actingId !== null,
+        className: '!min-h-[44px] !min-w-[44px]',
+        onClick: () => {
+          if (actionRef.current) return;
+          actionRef.current = true;
+          setActingId(row.id);
+          void submitAndReload(() => changeLifecycleApplicationStatus(row.id, item.action,
+            row.type === 'RESIGNATION' ? { version: row.version } : undefined), `申请已${item.label}`)
+            .finally(() => { actionRef.current = false; setActingId(null); });
+        },
       }));
+    if (row.type === 'RESIGNATION') operations.unshift({
+      key: 'handover', label: '交接安排', semantic: 'view', permissionKey: 'hr:lifecycle:view', disabled: actingId !== null,
+      className: '!min-h-[44px] !min-w-[44px]', onClick: () => setHandoverId(row.id),
+    });
+    return operations;
   };
 
   const metrics = [
@@ -253,6 +249,8 @@ const HrLifecyclePage: React.FC = () => {
     { label: '调岗', value: String(rowsByType.TRANSFER?.length || 0), meta: '组织变更', icon: <Repeat size={18} />, tone: 'amber' },
     { label: '离职', value: String(rowsByType.RESIGNATION?.length || 0), meta: '离职交接', icon: <LogOut size={18} />, tone: 'violet' },
   ];
+
+  if (!canRead) return <p role="alert" className="p-4 text-sm text-cf-subtle">没有员工生命周期查看权限。</p>;
 
   return (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as LifecycleType)} className="contents">
@@ -308,22 +306,25 @@ const HrLifecyclePage: React.FC = () => {
                 rows={rowsByType[item.value] || []}
                 loading={loading}
                 onRefresh={() => void loadData()}
-                createLabel={`新增${item.label}`}
+                createLabel={hasPermission('hr:lifecycle:add') ? `新增${item.label}` : undefined}
                 dialogTitle={`新增${item.label}申请`}
                 form={forms[item.value]}
                 setForm={updateForm(item.value)}
                 resetForm={formDefaults[item.value]}
                 formFields={fieldsByType(item.value)}
-                onCreate={(form) => submitAndReload(
-                  () => createLifecycleApplication(item.value, form),
-                  `${item.label}申请已保存`,
-                )}
+                onCreate={async (form) => {
+                  await createLifecycleApplication(item.value, item.value === 'RESIGNATION'
+                    ? { ...form, successorUserId: form.successorUserId || null, detailJson: { reason: form.reason } } : form);
+                  toast.success(`${item.label}申请已保存`);
+                  await loadData();
+                }}
                 columns={[
                   { key: 'applicationNo', label: '编号' },
                   { key: 'name', label: '员工/候选人', render: displayPerson },
                   { key: 'type', label: '类型', render: () => lifecycleTypeDict.getLabel(item.value) },
                   { key: 'expectedDate', label: '预计日期', render: (row) => formatDateValue(row.expectedDate || row.effectiveDate || row.onboardDate || row.actualDate) },
                   { key: 'status', label: '状态', render: (row) => renderStatus(row.status, row.statusDesc) },
+                  ...(item.value === 'RESIGNATION' ? [{ key: 'successorName', label: '客户业务接任人', render: (row: LifecycleApplication) => row.successorName || '待指派' }] : []),
                 ]}
                 actions={actionButtons}
                 minWidthClassName="min-w-[960px]"
@@ -334,6 +335,7 @@ const HrLifecyclePage: React.FC = () => {
           }
         />
       </section>
+      {handoverId !== null && <HrResignationHandoverDialog key={handoverId} applicationId={handoverId} onClose={() => setHandoverId(null)} onSaved={loadData} />}
     </Tabs>
   );
 };

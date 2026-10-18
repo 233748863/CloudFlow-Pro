@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BriefcaseBusiness,
   CalendarRange,
@@ -47,7 +48,6 @@ import {
   RecruitmentRequestPayload,
   acceptOffer,
   approveRecruitmentRequest,
-  approveOffer,
   cancelRecruitmentRequest,
   completeRecruitmentRequest,
   convertOfferToOnboarding,
@@ -73,6 +73,7 @@ import { formatDateValue, formatDateTimeValue, formatMoneyValue, optionLabel, op
 import { getAttachmentRawValue } from '@/utils/attachment';
 import HrRecruitmentChannelPanel from './components/HrRecruitmentChannelPanel';
 import HrResumeParsePanel from './components/HrResumeParsePanel';
+import AttachmentLinks from '@/components/AttachmentLinks';
 import { listRecruitmentChannels, type RecruitmentChannel } from '@/services/api/hr/recruitment';
 import { DictBadge } from '@/components/common/DictBadge';
 import { useDict } from '@/hooks/useDict';
@@ -243,6 +244,7 @@ export const HrRecruitmentPage: React.FC = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
+  const navigate = useNavigate();
   const [deptOptions, setDeptOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [positionOptions, setPositionOptions] = useState<PositionOption[]>([]);
   const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
@@ -595,10 +597,9 @@ export const HrRecruitmentPage: React.FC = () => {
     }
   };
 
-  const handleOfferAction = async (id: number, action: 'submit' | 'approve' | 'send' | 'accept' | 'reject' | 'convert') => {
+  const handleOfferAction = async (id: number, action: 'submit' | 'send' | 'accept' | 'reject' | 'convert') => {
     try {
       if (action === 'submit') await submitOffer(id);
-      if (action === 'approve') await approveOffer(id);
       if (action === 'send') await sendOffer(id);
       if (action === 'accept') await acceptOffer(id);
       if (action === 'reject') await rejectOffer(id);
@@ -803,6 +804,7 @@ export const HrRecruitmentPage: React.FC = () => {
                               </button>
                               <button
                                 type="button"
+                                className="tone-success"
                                 data-tooltip="审批通过" aria-label="审批通过"
                                 disabled={item.status !== 'APPROVING'}
                                 onClick={() => void handleApproveRequest(item.id)}
@@ -878,6 +880,8 @@ export const HrRecruitmentPage: React.FC = () => {
                               <div>
                                 <strong>{item.name}</strong>
                                 <small>{item.email || '-'}</small>
+                                <AttachmentLinks value={Array.isArray(item.resumeAttachmentUrls) ? item.resumeAttachmentUrls.join(',') : item.resumeAttachmentUrls}
+                                  compact emptyText="暂无简历附件" previewContext={{ bizType: 'HR_RESUME', bizId: String(item.id) }} />
                               </div>
                             </div>
                           </td>
@@ -1031,8 +1035,8 @@ export const HrRecruitmentPage: React.FC = () => {
                                 <button type="button" data-tooltip="提交" aria-label="提交" disabled={status !== 'DRAFT'} onClick={() => void handleOfferAction(item.id, 'submit')}>
                                   <Send size={15} />
                                 </button>
-                                <button type="button" data-tooltip="通过" aria-label="通过" disabled={status !== 'APPROVING'} onClick={() => void handleOfferAction(item.id, 'approve')}>
-                                  <Check size={15} />
+                                <button type="button" data-tooltip="查看审批" aria-label="查看审批" disabled={!item.processInstanceId} onClick={() => navigate(`/workflow/search-instance/${encodeURIComponent(item.processInstanceId || '')}`)}>
+                                  <FileSearch size={15} />
                                 </button>
                                 <button type="button" data-tooltip="发送" aria-label="发送" disabled={status !== 'APPROVED'} onClick={() => void handleOfferAction(item.id, 'send')}>
                                   <Send size={15} />
@@ -1040,7 +1044,7 @@ export const HrRecruitmentPage: React.FC = () => {
                                 <button type="button" data-tooltip="接受" aria-label="接受" disabled={status !== 'SENT'} onClick={() => void handleOfferAction(item.id, 'accept')}>
                                   <UserCheck size={15} />
                                 </button>
-                                <button type="button" className="danger" data-tooltip="拒绝" aria-label="拒绝" disabled={!['SENT', 'APPROVING'].includes(status)} onClick={() => void handleOfferAction(item.id, 'reject')}>
+                                <button type="button" className="tone-danger" data-tooltip="候选人拒绝" aria-label="候选人拒绝" disabled={status !== 'SENT'} onClick={() => void handleOfferAction(item.id, 'reject')}>
                                   <CircleX size={15} />
                                 </button>
                                 <button type="button" data-tooltip="转入职" aria-label="转入职" disabled={status !== 'ACCEPTED'} onClick={() => void handleOfferAction(item.id, 'convert')}>

@@ -1,0 +1,17 @@
+.referral-workspace { min-width: 0; }
+.referral-workspace :is(button, input, [role="combobox"]),
+[role="dialog"]:has(.referral-workspace) :is(button, input, [role="combobox"]) { min-height: 44px; min-width: 44px; max-width: 100%; }
+.referral-workspace :is(input, textarea, [role="combobox"]) { width: 100%; }
+.referral-workspace button { transition: background-color 150ms ease, border-color 150ms ease; }
+.referral-workspace :is(button, input, textarea, [role="combobox"]):focus-visible { outline: 2px solid var(--cf-primary); outline-offset: 2px; }
+.referral-filters { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; gap: 1rem; }
+.referral-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.referral-card { min-width: 0; border: 1px solid var(--cf-border); border-radius: 0.75rem; padding: 1rem; background: var(--cf-surface); }
+.referral-workspace input[type="file"] { overflow: hidden; padding-block: 0.5rem; }
+@media (min-width: 768px) {
+  .referral-filters { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; }
+  .referral-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .referral-workspace *, [role="dialog"]:has(.referral-workspace) * { animation: none !important; transition: none !important; }
+}

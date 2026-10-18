@@ -1,0 +1,30 @@
+.skill-workspace,
+[role="dialog"]:has(.skill-workspace) {
+  --cf-density-control-height: 44px;
+  min-width: 0;
+}
+
+.skill-workspace button,
+.skill-workspace input:not([type="checkbox"]),
+.skill-workspace [role="combobox"],
+[role="dialog"]:has(.skill-workspace) button {
+  min-height: 44px;
+}
+
+.skill-workspace button,
+[role="dialog"]:has(.skill-workspace) button {
+  min-width: 44px;
+  transition-duration: 150ms;
+}
+
+.skill-workspace input,
+.skill-workspace textarea {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skill-workspace button,
+  [role="dialog"]:has(.skill-workspace) button {
+    transition: none;
+  }
+}

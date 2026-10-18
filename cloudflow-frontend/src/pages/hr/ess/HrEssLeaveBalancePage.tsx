@@ -154,4 +154,4 @@ export const HrEssLeaveBalancePage: React.FC = () => {
   );
 };
 
-export default HrEssLeaveBalancePage;
+export { default } from './HrEssLeaveRulesPage';

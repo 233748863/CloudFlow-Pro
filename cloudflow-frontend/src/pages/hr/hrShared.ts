@@ -1,4 +1,6 @@
 import { DeptTreeNode, HrEmployee } from '@/services/api/hr';
+import Decimal from 'decimal.js';
+import { decimalAmount, groupAmountDigits } from '@/utils/amountValue';
 
 export type HrOptionLike = { label: unknown; value: string | number };
 
@@ -125,14 +127,17 @@ export const formatDateTimeValue = (value?: unknown) => {
 };
 
 export const formatMoneyValue = (value?: unknown, currency = 'CNY') => {
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return '-';
+  const amount = decimalAmount(value === null || value === '' ? '0' : String(value));
+  if (!amount) return '-';
+  const [integer, fraction] = amount.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).abs().toFixed(2).split('.');
   return new Intl.NumberFormat('zh-CN', {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).formatToParts(amount.isNegative() ? -1 : 1).map(part =>
+    part.type === 'integer' ? groupAmountDigits(integer) : part.type === 'fraction' ? fraction : part.value,
+  ).join('');
 };
 
 export const yesNoLabel = (value?: unknown) =>

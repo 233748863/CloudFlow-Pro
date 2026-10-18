@@ -21,6 +21,7 @@ import {
 import { getErrorMessage } from '@/utils/errorMessage';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface } from '@/components/layout/TablePageLayout';
+import { BarChart } from '@/components/charts/presets';
 
 const DEFAULT_DISTRIBUTION = [
   { grade: 'S', percent: 10 },
@@ -194,7 +195,17 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4 dark:border-slate-800">
-            <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-4">
+            <BarChart
+              height={224}
+              wrapperClassName="min-w-0 flex-1 basis-[260px]"
+              categories={distribution.map(item => item.grade)}
+              series={[{ name: '等级配额', values: distribution.map(item => item.percent) }]}
+              categoryAxisName="绩效等级"
+              valueAxisName="配额"
+              valueFormatter={value => `${value}%`}
+              ariaLabel="绩效等级配额分布图"
+            />
+            <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 md:grid-cols-4" style={{ flexBasis: '100%' }}>
               {distribution.map((row, idx) => (
                 <div
                   key={row.grade}
@@ -209,7 +220,9 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
                     {row.grade}
                   </span>
                   <Input
-                    className="w-full"
+                    className="min-w-0 w-full"
+                    style={{ minWidth: 48 }}
+                    aria-label={`${row.grade}等级配额百分比`}
                     value={row.percent}
                     onChange={(e) =>
                       setDistribution((prev) =>

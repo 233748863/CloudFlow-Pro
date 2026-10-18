@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { Ban, Edit, LoaderCircle, Plus, RefreshCcw, RotateCcw, Search, Send } from 'lucide-react';
+import { Ban, Edit, Eye, LoaderCircle, Plus, RefreshCcw, RotateCcw, Search, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
+  DetailDialog,
   Input,
   Label,
   Pagination,
@@ -52,6 +53,7 @@ export const HrMallItemAdminPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState({ itemName: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   const [editing, setEditing] = useState<HrMallItem | null>(null);
+  const [detailItem, setDetailItem] = useState<HrMallItem | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Partial<HrMallItemPayload>>(emptyForm);
 
@@ -266,6 +268,7 @@ export const HrMallItemAdminPage: React.FC = () => {
                 <td className="text-sm"><DictLabel dictType="hr_mall_item_status" value={row.status} fallback="-" /></td>
                 <td>
                   <div className="admin-users-row-actions">
+                    <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailItem(row)}><Eye size={15} /></button>
                     {canEditItem ? (
                       <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Edit size={15} /></button>
                     ) : null}
@@ -354,6 +357,33 @@ export const HrMallItemAdminPage: React.FC = () => {
             <Textarea rows={6} value={form.detailHtml ?? ''} onChange={(e) => setForm({ ...form, detailHtml: e.target.value })} />
           </div>
       </BaseDialog>
+
+      <DetailDialog
+        open={Boolean(detailItem)}
+        title="积分商品详情"
+        onClose={() => setDetailItem(null)}
+        heading={detailItem?.itemName}
+        subheading={detailItem?.itemNo}
+        headingAside={detailItem ? (
+          <DictLabel dictType="hr_mall_item_status" value={detailItem.status} fallback="-" />
+        ) : undefined}
+        sections={detailItem ? [
+          {
+            title: '商品信息',
+            items: [
+              { label: '商品名称', value: detailItem.itemName },
+              { label: '商品编号', value: detailItem.itemNo },
+              { label: '分类', value: detailItem.category },
+              { label: '积分价格', value: String(detailItem.pointPrice) },
+              { label: '库存', value: String(detailItem.stock) },
+              { label: '销量', value: String(detailItem.salesCount ?? 0) },
+              { label: '审批阈值', value: detailItem.approvalThreshold === undefined ? '' : String(detailItem.approvalThreshold) },
+              { label: '状态', value: <DictLabel dictType="hr_mall_item_status" value={detailItem.status} fallback="-" /> },
+              /* 详情 HTML 不在只读弹窗里渲染，避免把后台录入的标记直接当 React 节点。 */
+            ],
+          },
+        ] : []}
+      />
     </>
   );
 };

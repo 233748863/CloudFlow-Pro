@@ -1,0 +1,16 @@
+@media (max-width: 767px) {
+  :is(.hr09-workspace, .hr09-dialog) :is(button, [role="combobox"]) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  :is(.hr09-workspace, .hr09-dialog) :is(input:not([type="checkbox"]), textarea) {
+    min-width: 0;
+    min-height: 44px;
+    max-width: 100%;
+  }
+
+  .hr09-workspace [role="listitem"] {
+    overflow-wrap: anywhere;
+  }
+}

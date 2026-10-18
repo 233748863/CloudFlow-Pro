@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BookOpen, Pencil, Plus, RefreshCcw, Tags, Trash2, UserRound } from 'lucide-react';
+import { BookOpen, Eye, Pencil, Plus, RefreshCcw, Tags, Trash2, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
   ConfirmDialog,
+  DetailDialog,
   Input,
   Label,
   Select,
@@ -53,6 +54,7 @@ const CoursesTab: React.FC<{
   const defaultForm: HrTrainingCoursePayload = { courseName: '', mode: 'OFFLINE', durationHours: 0, creditHours: 0, status: 'ACTIVE' };
   const [form, setForm] = useState<HrTrainingCoursePayload>(defaultForm);
   const [deleteTarget, setDeleteTarget] = useState<HrTrainingCourse | null>(null);
+  const [detailCourse, setDetailCourse] = useState<HrTrainingCourse | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -142,6 +144,9 @@ const CoursesTab: React.FC<{
                   <td>{row.creditHours ?? '-'}</td>
                   <td>
                     <div className="admin-users-row-actions">
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailCourse(row)}>
+                        <Eye size={15} />
+                      </button>
                       <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>
                         <Pencil size={15} />
                       </button>
@@ -221,6 +226,33 @@ const CoursesTab: React.FC<{
         confirmText="确认删除"
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void handleDeleteConfirm()}
+      />
+
+      <DetailDialog
+        open={Boolean(detailCourse)}
+        title="培训课程详情"
+        onClose={() => setDetailCourse(null)}
+        heading={detailCourse?.courseName}
+        subheading={detailCourse?.courseCode}
+        headingAside={detailCourse ? (
+          <DictLabel dictType="hr_training_mode" value={detailCourse.mode} fallback="-" />
+        ) : undefined}
+        sections={detailCourse ? [
+          {
+            title: '课程信息',
+            items: [
+              { label: '课程名称', value: detailCourse.courseName },
+              { label: '课程编码', value: detailCourse.courseCode },
+              { label: '分类', value: categories.find((c) => c.id === detailCourse.categoryId)?.name },
+              { label: '讲师', value: instructors.find((i) => i.id === detailCourse.instructorId)?.instructorName },
+              { label: '授课形式', value: <DictLabel dictType="hr_training_mode" value={detailCourse.mode} fallback="-" /> },
+              { label: '课时', value: detailCourse.durationHours === undefined ? '' : String(detailCourse.durationHours) },
+              { label: '学分', value: detailCourse.creditHours === undefined ? '' : String(detailCourse.creditHours) },
+              { label: '状态', value: detailCourse.status },
+              { label: '简介', value: detailCourse.description, wide: true },
+            ],
+          },
+        ] : []}
       />
     </div>
   );

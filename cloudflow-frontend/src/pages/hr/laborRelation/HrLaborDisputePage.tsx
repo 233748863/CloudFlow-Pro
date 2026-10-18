@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { ruleDownload } from '@/services/api/hr/rules';
 import { Eye, FileUp, Pencil, Plus, RefreshCcw, Send, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -49,6 +52,11 @@ const emptyForm: Partial<HrLaborDisputePayload> = {
 };
 
 export const HrLaborDisputePage: React.FC = () => {
+  const { hasPermission } = useAuth();
+  const canRegister = hasPermission('hr:dispute:register');
+  const canUploadEvidence = hasPermission('hr:dispute:evidence:upload');
+  const canClose = hasPermission('hr:dispute:close');
+  const [search] = useSearchParams();
   const [rows, setRows] = useState<HrLaborDispute[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -140,7 +148,7 @@ export const HrLaborDisputePage: React.FC = () => {
     }
   };
 
-  const openDetail = async (row: HrLaborDispute) => {
+  const openDetail = useCallback(async (row: Pick<HrLaborDispute, 'id'>) => {
     try {
       const [full, evRes] = await Promise.all([getDispute(row.id), listEvidence(row.id)]);
       setDetail(full);
@@ -148,7 +156,12 @@ export const HrLaborDisputePage: React.FC = () => {
     } catch (error) {
       toast.error(getErrorMessage(error, '加载详情失败'));
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const id = Number(search.get('id'));
+    if (id > 0) void openDetail({ id });
+  }, [search, openDetail]);
 
   const handleUploadEvidence = async () => {
     if (!evidenceOpen) return;
@@ -207,9 +220,9 @@ export const HrLaborDisputePage: React.FC = () => {
           <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
           </Button>
-          <Button size="sm" onClick={openCreate}>
+          {canRegister && <Button size="sm" onClick={openCreate}>
             <Plus className="mr-1.5 h-4 w-4" />登记争议
-          </Button>
+          </Button>}
         </div>
       </div>
     </section>
@@ -252,12 +265,12 @@ export const HrLaborDisputePage: React.FC = () => {
                 <td>
                   <div className="admin-users-row-actions">
                     <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
-                    {hasWorkflowStatus(row.status, 'REGISTERED', 'MEDIATED') ? (
+                    {canRegister && hasWorkflowStatus(row.status, 'REGISTERED', 'MEDIATED') ? (
                       <button type="button" data-tooltip="发起处理" aria-label="发起处理" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
                     ) : null}
-                    <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
-                    <button type="button" data-tooltip="上传证据" aria-label="上传证据" onClick={() => setEvidenceOpen(row)}><FileUp size={15} /></button>
-                    {!hasWorkflowStatus(row.status, 'CLOSED') ? (
+                    {canRegister && <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>}
+                    {canUploadEvidence && <button type="button" data-tooltip="上传证据" aria-label="上传证据" onClick={() => setEvidenceOpen(row)}><FileUp size={15} /></button>}
+                    {canClose && !hasWorkflowStatus(row.status, 'CLOSED') ? (
                       <button type="button" className="danger" data-tooltip="关闭" aria-label="关闭" onClick={() => { setCloseTarget(row); setCloseReason(''); }}><XCircle size={15} /></button>
                     ) : null}
                   </div>
@@ -274,7 +287,7 @@ export const HrLaborDisputePage: React.FC = () => {
     <section className="admin-source-page">
       <TablePageLayout actions={pageActions} filters={pageFilters} table={pageTable} />
 
-      <BaseDialog
+      {canRegister && open && <BaseDialog
         open={open}
         title={editing ? '编辑争议' : '登记争议'}
         onClose={() => setOpen(false)}
@@ -319,7 +332,7 @@ export const HrLaborDisputePage: React.FC = () => {
             <Textarea rows={4} value={form.claimDescription ?? ''} onChange={(e) => setForm({ ...form, claimDescription: e.target.value })} />
           </div>
         </>
-      </BaseDialog>
+      </BaseDialog>}
 
       <ConfirmDialog
         open={Boolean(closeTarget)}
@@ -380,7 +393,9 @@ export const HrLaborDisputePage: React.FC = () => {
                       evidence.map((ev) => (
                         <tr key={ev.id}>
                           <td><DictLabel dictType="hr_evidence_type" value={ev.evidenceType} fallback="-" /></td>
-                          <td className="font-mono text-xs">{ev.fileId ?? '-'}</td>
+                          <td className="text-xs">{ev.fileId && ev.remark === '申诉材料，沿用来源申诉访问限制' ? <Button size="sm" variant="outline" onClick={() => {
+                            if (detail) void ruleDownload(`/labor/disputes/${detail.id}/grievance-files/${ev.fileId}`, `申诉材料-${ev.fileId}`).catch(error => toast.error(getErrorMessage(error, '无权下载该材料')));
+                          }}>下载申诉材料</Button> : ev.fileId ?? '-'}</td>
                           <td>{formatDateTimeValue(ev.uploadedAt)}</td>
                           <td className="max-w-[16rem] truncate text-xs">{ev.remark ?? '-'}</td>
                         </tr>

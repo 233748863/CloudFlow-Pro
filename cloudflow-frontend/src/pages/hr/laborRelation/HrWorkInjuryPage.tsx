@@ -14,6 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Table,
   Textarea,
 } from '@/components/common';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -30,11 +31,13 @@ import {
 import { formatDateTimeValue, hasWorkflowStatus, normalizeRows } from '../hrShared';
 import { StageTimeline } from '../components/StageTimeline';
 import { DictLabel } from '@/components/common/DictLabel';
+import { DictBadge } from '@/components/common/DictBadge';
 import { useDict } from '@/hooks/useDict';
 import { toLocalDatetimeString } from '@/utils/dateFormat';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const statusFlow = ['REPORTED', 'INVESTIGATING', 'DETERMINING', 'DETERMINED', 'COMPENSATING', 'REHABILITATING', 'CLOSED'];
+const statusOptions = [...statusFlow, 'REJECTED'];
 
 const emptyForm: Partial<HrWorkInjuryPayload> = {
   employeeId: undefined,
@@ -184,7 +187,7 @@ export const HrWorkInjuryPage: React.FC = () => {
             <SelectTrigger><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部状态</SelectItem>
-              {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>)}
+              {statusOptions.map((s) => <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>)}
             </SelectContent>
           </Select>
         </label>
@@ -202,8 +205,8 @@ export const HrWorkInjuryPage: React.FC = () => {
   );
 
   const pageTable = (
-    <InnerTableSurface>
-      <table className="unity-data-table admin-source-table min-w-[960px]">
+    <InnerTableSurface disableScrollWrapper>
+      <Table className="admin-source-table min-w-[960px]">
         <thead>
           <tr>
             <th>编号</th>
@@ -231,9 +234,15 @@ export const HrWorkInjuryPage: React.FC = () => {
                 </td>
                 <td>{row.employeeId}</td>
                 <td>{formatDateTimeValue(row.occurredAt)}</td>
-                <td className="max-w-[10rem] truncate">{row.location ?? '-'}</td>
+                <td className="sm:max-w-[10rem] sm:truncate">{row.location ?? '-'}</td>
                 <td><DictLabel dictType="hr_work_injury_level" value={row.injuryLevel} fallback="-" /></td>
-                <td><StageTimeline steps={statusFlow} dictType="hr_work_injury_status" current={row.status} tone="emerald" /></td>
+                <td>
+                  {hasWorkflowStatus(row.status, 'REJECTED') ? (
+                    <DictBadge dictType="hr_work_injury_status" value="REJECTED" fallback="已驳回" />
+                  ) : (
+                    <StageTimeline steps={statusFlow} dictType="hr_work_injury_status" current={row.status} tone="emerald" />
+                  )}
+                </td>
                 <td>{row.determinedGrade ? `${row.determinedGrade} 级` : '-'}</td>
                 <td>
                   <div className="admin-users-row-actions">
@@ -253,7 +262,7 @@ export const HrWorkInjuryPage: React.FC = () => {
             ))
           )}
         </tbody>
-      </table>
+      </Table>
     </InnerTableSurface>
   );
 
@@ -333,7 +342,11 @@ export const HrWorkInjuryPage: React.FC = () => {
           footer={<div className="flex justify-end"><Button variant="outline" onClick={() => setDetail(null)}>关闭</Button></div>}
         >
           <div className="admin-dialog-stack text-sm">
-            <StageTimeline steps={statusFlow} dictType="hr_work_injury_status" current={detail.status} tone="emerald" />
+            {hasWorkflowStatus(detail.status, 'REJECTED') ? (
+              <DictBadge dictType="hr_work_injury_status" value="REJECTED" fallback="已驳回" />
+            ) : (
+              <StageTimeline steps={statusFlow} dictType="hr_work_injury_status" current={detail.status} tone="emerald" />
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="admin-dialog-field"><span className="text-cf-subtle">员工 ID:</span> {detail.employeeId}</div>
               <div className="admin-dialog-field"><span className="text-cf-subtle">发生时间:</span> {formatDateTimeValue(detail.occurredAt)}</div>

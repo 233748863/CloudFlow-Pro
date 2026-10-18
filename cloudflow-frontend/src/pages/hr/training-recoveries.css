@@ -1,0 +1,9 @@
+.training-recoveries { min-width: 0; }
+.training-recoveries button, .training-recoveries input:not([type="checkbox"]), .training-recoveries [role="combobox"] { min-height: 44px; min-width: 44px; }
+.training-recoveries .training-recovery-row { display: grid; gap: 12px; align-items: center; }
+@media (min-width: 768px) {
+  .training-recoveries .training-recovery-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto; gap: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .training-recoveries *, .training-recoveries *::before, .training-recoveries *::after { animation: none !important; transition: none !important; }
+}

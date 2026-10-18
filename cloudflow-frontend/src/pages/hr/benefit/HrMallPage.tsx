@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Coins, Minus, PackageCheck, Plus, RefreshCcw, Search, ShoppingBag, ShoppingCart, Trash2 } from 'lucide-react';
+import { Coins, Eye, Minus, PackageCheck, Plus, RefreshCcw, Search, ShoppingBag, ShoppingCart, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -284,11 +284,13 @@ export const HrMallPage: React.FC = () => {
                       <td>{Number(it.stock ?? 0).toLocaleString()}</td>
                       <td>{Number(it.salesCount ?? 0).toLocaleString()}</td>
                       <td>
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="outline" onClick={() => setDetail(it)}>详情</Button>
-                          <Button size="sm" onClick={() => addToCart(it)} disabled={it.stock <= 0}>
-                            <Plus className="h-3 w-3" />加入
-                          </Button>
+                        <div className="admin-users-row-actions">
+                          <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetail(it)}>
+                            <Eye size={15} />
+                          </button>
+                          <button type="button" data-tooltip="加入购物车" aria-label="加入购物车" disabled={it.stock <= 0} onClick={() => addToCart(it)}>
+                            <Plus size={15} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -449,9 +451,11 @@ export const HrMallPage: React.FC = () => {
                       </td>
                       <td className="text-sm font-semibold">{((c.item.pointPrice ?? 0) * c.quantity).toLocaleString()}</td>
                       <td className="text-sm">
-                        <Button size="sm" variant="outline" onClick={() => removeFromCart(c.item.id)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        <div className="admin-users-row-actions">
+                          <button type="button" className="danger" data-tooltip="移除" aria-label="移除" onClick={() => removeFromCart(c.item.id)}>
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

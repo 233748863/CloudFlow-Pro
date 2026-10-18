@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { ClipboardList, DatabaseZap, LoaderCircle, Pencil, Plus, RefreshCcw, RotateCcw, Search, Send, Target } from 'lucide-react';
+import { ClipboardList, DatabaseZap, Eye, LoaderCircle, Pencil, Plus, RefreshCcw, RotateCcw, Search, Send, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
   DatePicker,
+  DetailDialog,
   Input,
   Label,
   Pagination,
@@ -60,6 +61,7 @@ export const HrTalentReviewPage: React.FC = () => {
   const [form, setForm] = useState<HrTalentReviewPayload>(defaultForm);
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const [snapshotReview, setSnapshotReview] = useState<HrTalentReview | null>(null);
+  const [detailReview, setDetailReview] = useState<HrTalentReview | null>(null);
   const [objectiveId, setObjectiveId] = useState('');
 
   const load = useCallback(async () => {
@@ -260,6 +262,9 @@ export const HrTalentReviewPage: React.FC = () => {
                           <td>{formatDateTimeValue(row.publishTime) || '-'}</td>
                           <td>
                             <div className="admin-users-row-actions">
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailReview(row)}>
+                                <Eye size={15} />
+                              </button>
                               {canEdit ? (
                                 <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, deadline: toDateInputValue(row.deadline) }); setOpen(true); }}>
                                   <Pencil size={15} />
@@ -352,6 +357,34 @@ export const HrTalentReviewPage: React.FC = () => {
           <div className="admin-dialog-field"><Label>目标计划 ID</Label><Input value={objectiveId} onChange={(e) => setObjectiveId(e.target.value)} placeholder="hr_performance_objective.id" /></div>
         </>
       </BaseDialog>
+
+      <DetailDialog
+        open={Boolean(detailReview)}
+        title="人才盘点详情"
+        onClose={() => setDetailReview(null)}
+        heading={detailReview?.reviewName}
+        subheading={detailReview?.reviewNo}
+        headingAside={detailReview ? (
+          <DictLabel dictType="hr_talent_review_status" value={String(detailReview.status ?? '')} fallback="-" />
+        ) : undefined}
+        sections={detailReview ? [
+          {
+            title: '盘点信息',
+            items: [
+              { label: '盘点名称', value: detailReview.reviewName },
+              { label: '盘点编号', value: detailReview.reviewNo },
+              { label: '年度', value: String(detailReview.reviewYear) },
+              { label: '周期', value: <DictLabel dictType="hr_talent_cycle" value={String(detailReview.cycleType ?? '')} fallback="-" /> },
+              { label: '范围类型', value: <DictLabel dictType="hr_talent_scope_type" value={String(detailReview.scopeType ?? '')} fallback="-" /> },
+              { label: '范围值', value: detailReview.scopeValue },
+              { label: '截止日期', value: formatDateTimeValue(detailReview.deadline) },
+              { label: '状态', value: <DictLabel dictType="hr_talent_review_status" value={String(detailReview.status ?? '')} fallback="-" /> },
+              { label: '发布时间', value: formatDateTimeValue(detailReview.publishTime) },
+              { label: '说明', value: detailReview.description, wide: true },
+            ],
+          },
+        ] : []}
+      />
     </>
   );
 };

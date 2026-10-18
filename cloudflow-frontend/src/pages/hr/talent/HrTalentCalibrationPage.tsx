@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CalendarClock, LoaderCircle, MapPin, Pencil, Plus, RefreshCcw, Users } from 'lucide-react';
+import { CalendarClock, Eye, LoaderCircle, MapPin, Pencil, Plus, RefreshCcw, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
   DatePicker,
+  DetailDialog,
   Input,
   Label,
   Select,
@@ -49,6 +50,7 @@ export const HrTalentCalibrationPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<HrTalentCalibrationSession | null>(null);
+  const [detailSession, setDetailSession] = useState<HrTalentCalibrationSession | null>(null);
   const [form, setForm] = useState(defaultForm);
   const statusOptions = useDict('hr_talent_calibration_status').getOptions();
 
@@ -217,6 +219,9 @@ export const HrTalentCalibrationPage: React.FC = () => {
                           <td><DictLabel dictType="hr_talent_calibration_status" value={s.status} fallback="-" /></td>
                           <td>
                             <div className="admin-users-row-actions">
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailSession(s)}>
+                                <Eye size={15} />
+                              </button>
                               {canEdit ? (
                                 <button type="button" data-tooltip="编辑/纪要" aria-label="编辑/纪要" onClick={() => openEdit(s)}>
                                   <Pencil size={15} />
@@ -274,6 +279,30 @@ export const HrTalentCalibrationPage: React.FC = () => {
           <div className="admin-dialog-field"><Label>会议纪要</Label><Textarea value={form.minutes} onChange={(e) => setForm((p) => ({ ...p, minutes: e.target.value }))} rows={6} /></div>
         </>
       </BaseDialog>
+
+      <DetailDialog
+        open={Boolean(detailSession)}
+        title="校准会议详情"
+        onClose={() => setDetailSession(null)}
+        heading={detailSession?.sessionNo}
+        subheading={detailSession ? formatDateTimeValue(detailSession.scheduledAt) : undefined}
+        headingAside={detailSession ? (
+          <DictLabel dictType="hr_talent_calibration_status" value={detailSession.status} fallback="-" />
+        ) : undefined}
+        sections={detailSession ? [
+          {
+            title: '会议信息',
+            items: [
+              { label: '会议编号', value: detailSession.sessionNo },
+              { label: '计划时间', value: formatDateTimeValue(detailSession.scheduledAt) },
+              { label: '地点', value: detailSession.location },
+              { label: '状态', value: <DictLabel dictType="hr_talent_calibration_status" value={detailSession.status} fallback="-" /> },
+              { label: '议程', value: detailSession.agenda, wide: true },
+              { label: '会议纪要', value: detailSession.minutes, wide: true },
+            ],
+          },
+        ] : []}
+      />
     </>
   );
 };

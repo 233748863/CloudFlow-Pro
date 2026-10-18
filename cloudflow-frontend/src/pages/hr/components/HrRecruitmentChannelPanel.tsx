@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Button,
+  DetailDialog,
   Input,
   Select,
   SelectContent,
@@ -10,7 +11,7 @@ import {
 } from '@/components/common';
 import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { toast } from 'sonner';
-import { Pencil, RefreshCcw, Trash2, X } from 'lucide-react';
+import { Eye, Pencil, RefreshCcw, Trash2, X } from 'lucide-react';
 import {
   listRecruitmentChannels,
   saveRecruitmentChannel,
@@ -33,6 +34,7 @@ export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
   const [stats, setStats] = useState<RecruitmentChannelStat[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<RecruitmentChannel>({ status: 'ACTIVE', channelType: 'PORTAL' });
+  const [detailChannel, setDetailChannel] = useState<RecruitmentChannel | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -186,6 +188,9 @@ export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
                   <td><span className="badge badge-gray">{getRecruitChannelStatusLabel(channel.status)}</span></td>
                   <td>
                     <div className="admin-users-row-actions">
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailChannel(channel)}>
+                        <Eye size={15} />
+                      </button>
                       <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => setEditing(channel)}>
                         <Pencil size={15} />
                       </button>
@@ -208,6 +213,47 @@ export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
           </table>
         </div>
       </InnerTableSurface>
+
+      <DetailDialog
+        open={Boolean(detailChannel)}
+        title="招聘渠道详情"
+        onClose={() => setDetailChannel(null)}
+        heading={detailChannel?.channelName}
+        subheading={detailChannel?.channelCode}
+        headingAside={detailChannel ? (
+          <span className="text-xs text-cf-subtle">{getRecruitChannelStatusLabel(detailChannel.status)}</span>
+        ) : undefined}
+        sections={detailChannel ? [
+          {
+            title: '渠道信息',
+            items: [
+              { label: '渠道名称', value: detailChannel.channelName },
+              { label: '渠道编码', value: detailChannel.channelCode },
+              { label: '渠道类型', value: channelTypeDict.getLabel(String(detailChannel.channelType ?? '')) || detailChannel.channelType },
+              { label: '年度费用', value: detailChannel.costAmount?.toLocaleString?.() },
+              { label: '合作开始', value: detailChannel.contractStart },
+              { label: '合作结束', value: detailChannel.contractEnd },
+              { label: '联系人', value: detailChannel.contactName },
+              { label: '联系电话', value: detailChannel.contactPhone },
+              { label: '联系邮箱', value: detailChannel.contactEmail },
+              { label: '状态', value: getRecruitChannelStatusLabel(detailChannel.status) },
+              { label: '备注', value: detailChannel.remark, wide: true },
+            ],
+          },
+          {
+            title: '转化数据',
+            items: (() => {
+              const stat = stats.find((s) => s.id === detailChannel.id);
+              return [
+                { label: '候选人数', value: String(stat?.totalCandidates ?? 0) },
+                { label: '录用人数', value: String(stat?.hiredCount ?? 0) },
+                { label: '录用率', value: stat?.hireRate != null ? `${(stat.hireRate * 100).toFixed(1)}%` : '' },
+                { label: '人均成本', value: stat?.costPerHire != null ? stat.costPerHire.toLocaleString() : '' },
+              ];
+            })(),
+          },
+        ] : []}
+      />
     </section>
   );
 };

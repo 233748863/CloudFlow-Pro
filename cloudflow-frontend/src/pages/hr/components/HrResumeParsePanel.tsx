@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Check, Edit, LoaderCircle, RefreshCw, Save, X } from 'lucide-react';
+import { Check, Edit, Eye, LoaderCircle, RefreshCw, Save, X } from 'lucide-react';
 import {
   BaseDialog,
   Button,
+  DetailDialog,
   Input,
   Label,
   Textarea,
@@ -38,6 +39,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
   const [editForm, setEditForm] = useState<HrResumeParsedFieldsPayload>({});
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [detailRecord, setDetailRecord] = useState<HrResumeParsedRecord | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!candidateId) return;
@@ -222,26 +224,35 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
                           </td>
                           <td className="tabular-nums">{formatConfidence(record.confidence)}</td>
                           <td>
-                            {record.status === 'PENDING' && !isEditing ? (
+                            {/* 编辑态之外都给查看入口：工作经历/技能在列表里被 line-clamp 截断，
+                                已确认和已驳回的记录原来一个按钮都没有。 */}
+                            {!isEditing ? (
                               <div className="admin-users-row-actions">
-                                <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => startEdit(record)} disabled={submitting}>
-                                  <Edit size={15} />
+                                <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRecord(record)}>
+                                  <Eye size={15} />
                                 </button>
-                                <button type="button" data-tooltip="确认回填" aria-label="确认回填" onClick={() => void confirmRecord(record.id)} disabled={submitting}>
-                                  <Check size={15} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="danger"
-                                  data-tooltip="驳回" aria-label="驳回"
-                                  onClick={() => {
-                                    setRejectingId(record.id);
-                                    setRejectReason('');
-                                  }}
-                                  disabled={submitting}
-                                >
-                                  <X size={15} />
-                                </button>
+                                {record.status === 'PENDING' ? (
+                                  <>
+                                    <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => startEdit(record)} disabled={submitting}>
+                                      <Edit size={15} />
+                                    </button>
+                                    <button type="button" className="tone-success" data-tooltip="确认回填" aria-label="确认回填" onClick={() => void confirmRecord(record.id)} disabled={submitting}>
+                                      <Check size={15} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="tone-danger"
+                                      data-tooltip="驳回" aria-label="驳回"
+                                      onClick={() => {
+                                        setRejectingId(record.id);
+                                        setRejectReason('');
+                                      }}
+                                      disabled={submitting}
+                                    >
+                                      <X size={15} />
+                                    </button>
+                                  </>
+                                ) : null}
                               </div>
                             ) : null}
                             {isEditing ? (
@@ -333,6 +344,49 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
           <Textarea className="admin-source-form-wide" rows={3} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="例如：识别错误、字段缺失等" />
         </div>
       </BaseDialog>
+
+      <DetailDialog
+        open={Boolean(detailRecord)}
+        title="解析结果详情"
+        onClose={() => setDetailRecord(null)}
+        heading={detailRecord?.parsedName || candidateName}
+        subheading={detailRecord?.createTime ? `解析于 ${detailRecord.createTime}` : undefined}
+        headingAside={detailRecord ? (
+          <DictBadge dictType="hr_resume_parse_status" value={String(detailRecord.status || 'PENDING')} />
+        ) : undefined}
+        sections={detailRecord ? [
+          {
+            title: '解析字段',
+            items: [
+              { label: '姓名', value: detailRecord.parsedName },
+              { label: '手机号', value: detailRecord.parsedPhone },
+              { label: '邮箱', value: detailRecord.parsedEmail },
+              { label: '学历', value: detailRecord.parsedEducation },
+              { label: '置信度', value: formatConfidence(detailRecord.confidence) },
+              { label: '状态', value: <DictBadge dictType="hr_resume_parse_status" value={String(detailRecord.status || 'PENDING')} /> },
+              { label: '技能', value: <span className="whitespace-pre-wrap">{detailRecord.parsedSkills}</span>, wide: true },
+              { label: '工作经历', value: <span className="whitespace-pre-wrap">{detailRecord.parsedWorkExperience}</span>, wide: true },
+            ],
+          },
+          {
+            title: '复核信息',
+            visible: Boolean(detailRecord.reviewerName || detailRecord.reviewTime || detailRecord.reviewRemark),
+            items: [
+              { label: '复核人', value: detailRecord.reviewerName },
+              { label: '复核时间', value: detailRecord.reviewTime },
+              { label: '复核意见', value: <span className="whitespace-pre-wrap">{detailRecord.reviewRemark}</span>, wide: true },
+            ],
+          },
+          {
+            title: '原始文本',
+            description: '解析引擎抽取的简历纯文本，仅供核对字段来源',
+            visible: Boolean(detailRecord.rawText),
+            items: [
+              { label: '文本内容', value: <span className="whitespace-pre-wrap break-words">{detailRecord.rawText}</span>, wide: true },
+            ],
+          },
+        ] : []}
+      />
     </>
   );
 };

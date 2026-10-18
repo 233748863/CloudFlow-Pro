@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Ban, CalendarClock, Check, LoaderCircle, Pencil, Play, Plus, RefreshCcw, RotateCcw, Send, Trash2 } from 'lucide-react';
+import { Ban, CalendarClock, Check, Eye, LoaderCircle, Pencil, Play, Plus, RefreshCcw, RotateCcw, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
   ConfirmDialog,
   DatePicker,
+  DetailDialog,
   Input,
   Label,
   Pagination,
@@ -60,6 +61,7 @@ export const HrTrainingSessionPage: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<HrTrainingSessionPayload>(defaultForm);
   const [pendingDelete, setPendingDelete] = useState<HrTrainingSession | null>(null);
+  const [detailSession, setDetailSession] = useState<HrTrainingSession | null>(null);
   const statusOptions = useDict('hr_training_session_status').getOptions();
 
   const load = useCallback(async () => {
@@ -261,6 +263,9 @@ export const HrTrainingSessionPage: React.FC = () => {
                           <td><DictLabel dictType="hr_training_session_status" value={row.status} fallback="-" /></td>
                           <td>
                             <div className="admin-users-row-actions">
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailSession(row)}>
+                                <Eye size={15} />
+                              </button>
                               {canEdit ? (
                                 <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, startTime: toLocalDatetimeString(row.startTime), endTime: toLocalDatetimeString(row.endTime) }); setOpen(true); }}>
                                   <Pencil size={15} />
@@ -347,6 +352,33 @@ export const HrTrainingSessionPage: React.FC = () => {
         danger
         onCancel={() => setPendingDelete(null)}
         onConfirm={handleDelete}
+      />
+
+      <DetailDialog
+        open={Boolean(detailSession)}
+        title="培训班次详情"
+        onClose={() => setDetailSession(null)}
+        heading={detailSession ? (courses.find((c) => c.id === detailSession.courseId)?.courseName || `课程#${detailSession.courseId}`) : undefined}
+        subheading={detailSession?.sessionNo || (detailSession ? `#${detailSession.id}` : undefined)}
+        headingAside={detailSession ? (
+          <DictLabel dictType="hr_training_session_status" value={detailSession.status} fallback="-" />
+        ) : undefined}
+        sections={detailSession ? [
+          {
+            title: '班次信息',
+            items: [
+              { label: '班次号', value: detailSession.sessionNo || `#${detailSession.id}` },
+              { label: '课程', value: courses.find((c) => c.id === detailSession.courseId)?.courseName || `课程#${detailSession.courseId}` },
+              { label: '地点', value: detailSession.location },
+              { label: '开始时间', value: formatDateTimeValue(detailSession.startTime) },
+              { label: '结束时间', value: formatDateTimeValue(detailSession.endTime) },
+              { label: '容量', value: String(detailSession.capacity) },
+              { label: '已报名', value: String(detailSession.enrolledCount ?? 0) },
+              { label: '状态', value: <DictLabel dictType="hr_training_session_status" value={detailSession.status} fallback="-" /> },
+              { label: '备注', value: detailSession.remark, wide: true },
+            ],
+          },
+        ] : []}
       />
     </>
   );
