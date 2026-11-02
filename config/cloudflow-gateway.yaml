@@ -7,6 +7,16 @@ spring:
     gateway:
       lazy-routes-initialization: true
       routes:
+        - id: cloudflow-oauth2
+          uri: lb://cloudflow-auth
+          predicates:
+            - Path=/oauth2/**
+
+        - id: cloudflow-portal-auth
+          uri: lb://cloudflow-auth
+          predicates:
+            - Path=/portal/**
+
         - id: cloudflow-auth
           uri: lb://cloudflow-auth
           predicates:
@@ -127,6 +137,32 @@ spring:
 
       globalcors:
         cors-configurations:
+          '[/crm/track/unsubscribe]':
+            allowed-origins: "*"
+            allowed-methods:
+              - GET
+              - POST
+              - OPTIONS
+            allowed-headers:
+              - Content-Type
+            allow-credentials: false
+            max-age: 3600
+          '[/portal/**]':
+            allowed-origins: "${cloudflow.portal.public-url:}"
+            allowed-methods:
+              - GET
+              - POST
+              - DELETE
+              - OPTIONS
+            allowed-headers:
+              - Content-Type
+              - Accept
+              - portal-token
+            exposed-headers:
+              - X-Trace-Id
+              - Retry-After
+            allow-credentials: false
+            max-age: 600
           '[/**]':
             # CORS 白名单：默认仅允许本地开发域名（含 Vite dev、Docker Nginx）；
             # 生产环境通过 CLOUDFLOW_CORS_ALLOWED_ORIGINS 环境变量（逗号分隔）覆盖为真实域名。
@@ -139,5 +175,7 @@ spring:
               - DELETE
               - OPTIONS
             allowed-headers: "*"
+            exposed-headers:
+              - X-Trace-Id
             allow-credentials: true
             max-age: 3600

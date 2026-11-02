@@ -107,14 +107,7 @@ public class OaExpenseStandardServiceImpl implements IOaExpenseStandardService {
         if (standardId == null) {
             return false;
         }
-        OaExpenseStandard standard = standardMapper.selectById(standardId);
-        if (standard == null) {
-            return false;
-        }
-        standard.setDeleted(1);
-        standard.setUpdateBy(UserContext.getUserName());
-        standard.setUpdateTime(LocalDateTime.now());
-        return standardMapper.updateById(standard) > 0;
+        return standardMapper.deleteById(standardId) > 0;
     }
 
     @Override
