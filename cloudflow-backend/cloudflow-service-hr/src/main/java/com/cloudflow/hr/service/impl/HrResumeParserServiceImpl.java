@@ -43,8 +43,6 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class HrResumeParserServiceImpl implements IHrResumeParserService {
 
-    private static final long TENANT_ID = 100000L;
-
     // 11 位中国手机号
     private static final Pattern PHONE_PATTERN = Pattern.compile("(?<![\\d])(1[3-9]\\d{9})(?![\\d])");
     // 邮箱
@@ -76,8 +74,16 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
     @Override
     @Transactional
     public Long parseResume(Long candidateId, String resumeUrl, String rawText) {
+        Long tenantId = requireTenantId();
         if (candidateId == null) {
             throw new IllegalArgumentException("candidateId 不能为空");
+        }
+        Long candidateCount = candidateMapper.selectCount(new LambdaQueryWrapper<HrCandidate>()
+                .eq(HrCandidate::getId, candidateId)
+                .eq(HrCandidate::getTenantId, tenantId)
+                .eq(HrCandidate::getDeleted, 0));
+        if (candidateCount == 0) {
+            throw new IllegalArgumentException("候选人不存在或不可用");
         }
         String text = rawText == null ? "" : rawText;
 
@@ -102,7 +108,7 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
         String operator = defaultOperator();
         HrResumeParsedFields existing = parsedFieldsMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrResumeParsedFields>()
-                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
+                        .eq(HrResumeParsedFields::getTenantId, tenantId)
                         .eq(HrResumeParsedFields::getCandidateId, candidateId)
                         .eq(HrResumeParsedFields::getDeleted, 0)
                         .orderByDesc(HrResumeParsedFields::getId))
@@ -125,7 +131,7 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
             return existing.getId();
         }
         HrResumeParsedFields row = new HrResumeParsedFields();
-        row.setTenantId(TENANT_ID);
+        row.setTenantId(tenantId);
         row.setCandidateId(candidateId);
         row.setResumeUrl(resumeUrl);
         row.setParsedName(name);
@@ -147,9 +153,10 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
 
     @Override
     public List<HrResumeParsedFieldVO> listParsed(Long candidateId) {
+        Long tenantId = requireTenantId();
         List<HrResumeParsedFields> rows = parsedFieldsMapper.selectList(
                 new LambdaQueryWrapper<HrResumeParsedFields>()
-                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
+                        .eq(HrResumeParsedFields::getTenantId, tenantId)
                         .eq(HrResumeParsedFields::getCandidateId, candidateId)
                         .eq(HrResumeParsedFields::getDeleted, 0)
                         .orderByDesc(HrResumeParsedFields::getId));
@@ -163,10 +170,11 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
     @Override
     @Transactional
     public void confirmParsed(Long parsedId) {
+        Long tenantId = requireTenantId();
         HrResumeParsedFields row = parsedFieldsMapper.selectOne(
                 new LambdaQueryWrapper<HrResumeParsedFields>()
                         .eq(HrResumeParsedFields::getId, parsedId)
-                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
+                        .eq(HrResumeParsedFields::getTenantId, tenantId)
                         .eq(HrResumeParsedFields::getDeleted, 0));
         if (row == null) {
             return;
@@ -176,7 +184,7 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
         HrCandidate candidate = candidateMapper.selectOne(
                 new LambdaQueryWrapper<HrCandidate>()
                         .eq(HrCandidate::getId, row.getCandidateId())
-                        .eq(HrCandidate::getTenantId, TENANT_ID)
+                        .eq(HrCandidate::getTenantId, tenantId)
                         .eq(HrCandidate::getDeleted, 0));
         if (candidate != null) {
             boolean dirty = false;
@@ -208,10 +216,12 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
 
     @Override
     public void rejectParsed(Long parsedId, String reason) {
+        Long tenantId = requireTenantId();
         HrResumeParsedFields row = parsedFieldsMapper.selectOne(
                 new LambdaQueryWrapper<HrResumeParsedFields>()
                         .eq(HrResumeParsedFields::getId, parsedId)
-                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID));
+                        .eq(HrResumeParsedFields::getTenantId, tenantId)
+                        .eq(HrResumeParsedFields::getDeleted, 0));
         if (row == null) {
             return;
         }
@@ -227,13 +237,15 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
     @Override
     @Audit(name = "更新简历解析")
     public void updateParsed(Long parsedId, HrResumeParsedFieldsPayload payload) {
+        Long tenantId = requireTenantId();
         if (payload == null) {
             return;
         }
         HrResumeParsedFields row = parsedFieldsMapper.selectOne(
                 new LambdaQueryWrapper<HrResumeParsedFields>()
                         .eq(HrResumeParsedFields::getId, parsedId)
-                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID));
+                        .eq(HrResumeParsedFields::getTenantId, tenantId)
+                        .eq(HrResumeParsedFields::getDeleted, 0));
         if (row == null) {
             return;
         }
@@ -249,6 +261,14 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
     }
 
     // ============== helpers ==============
+
+    private Long requireTenantId() {
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
+    }
 
     private String firstMatch(Pattern p, String text) {
         Matcher m = p.matcher(text);

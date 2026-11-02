@@ -199,7 +199,6 @@ export interface HrOvertimeApplicationVO extends HrRecord {
 
 export interface RecruitmentRequest extends HrRecord {
   id: number;
-  requestNo?: string;
   requisitionNo?: string;
   title?: string;
   deptId?: number;
@@ -209,18 +208,20 @@ export interface RecruitmentRequest extends HrRecord {
   headcount?: number;
   status?: string;
   statusDesc?: string;
-  expectedDate?: string;
   expectedArrivalDate?: string;
-  jobRequirements?: string;
   requirements?: string;
   createTime?: string;
   updateTime?: string;
 }
 
 export interface RecruitmentRequestPayload extends HrRecord {
+  requisitionNo?: string;
+  title?: string;
   deptId: number;
   positionId: number;
   headcount: number;
+  expectedArrivalDate?: string;
+  requirements?: string;
 }
 
 export interface Candidate extends HrRecord {
@@ -230,8 +231,9 @@ export interface Candidate extends HrRecord {
   phone?: string;
   email?: string;
   resumeAttachmentUrls?: string[] | string;
-  requestId?: number;
   requisitionId?: number;
+  requisitionNo?: string;
+  expectedArrivalDate?: string;
   deptId?: number;
   deptName?: string;
   positionId?: number;
@@ -250,7 +252,6 @@ export interface CandidatePayload extends HrRecord {
   name: string;
   phone?: string;
   email?: string;
-  requestId?: number;
   requisitionId?: number;
   source?: string;
   channelId?: number;
@@ -294,9 +295,7 @@ export interface Offer extends HrRecord {
   salary?: number;
   status?: string;
   expectedArrivalDate?: string;
-  expectedDate?: string;
   expireDate?: string;
-  expiryDate?: string;
   statusDesc?: string;
 }
 
@@ -305,9 +304,7 @@ export interface OfferPayload extends HrRecord {
   positionId?: number;
   salary?: number;
   expectedArrivalDate?: string;
-  expectedDate?: string;
   expireDate?: string;
-  expiryDate?: string;
   offerContent?: string;
 }
 

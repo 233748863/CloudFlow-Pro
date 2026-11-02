@@ -387,8 +387,8 @@ export const HrDashboardPage: React.FC = () => {
       [...requests]
         .sort((a, b) => {
           const timeDiff =
-            getLatestTimestamp(b.updateTime || b.createTime || b.expectedDate)
-            - getLatestTimestamp(a.updateTime || a.createTime || a.expectedDate);
+            getLatestTimestamp(b.updateTime || b.createTime || b.expectedArrivalDate)
+            - getLatestTimestamp(a.updateTime || a.createTime || a.expectedArrivalDate);
           if (timeDiff !== 0) return timeDiff;
           return b.id - a.id;
         })
@@ -543,8 +543,8 @@ export const HrDashboardPage: React.FC = () => {
                   {recentRequests.map((item) => (
                     <ActivityRow
                       key={item.id}
-                      title={`${item.requestNo || item.requisitionNo || item.id} · ${item.positionName || item.title || '未配置岗位'}`}
-                      secondary={`需求 ${item.headcount || 0} 人 · ${formatDateLabel(item.expectedDate || item.updateTime || item.createTime)}`}
+                      title={`${item.requisitionNo || item.id} · ${item.positionName || item.title || '未配置岗位'}`}
+                      secondary={`需求 ${item.headcount || 0} 人 · ${formatDateLabel(item.expectedArrivalDate || item.updateTime || item.createTime)}`}
                       aside={statusPill(recruitRequestStatusDict.getLabel(String(item.status ?? '')), 'green')}
                       onOpen={() => navigate('/hr/recruitment')}
                     />

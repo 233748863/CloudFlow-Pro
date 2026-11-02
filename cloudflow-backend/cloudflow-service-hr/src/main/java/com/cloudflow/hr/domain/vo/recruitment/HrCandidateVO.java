@@ -16,9 +16,7 @@ public class HrCandidateVO {
     @Schema(description = "候选人 ID") private Long id;
     @Schema(description = "候选人编号") private String candidateNo;
     @Schema(description = "招聘需求 ID") private Long requisitionId;
-    @Schema(description = "兼容前端招聘需求 ID") private Long requestId;
     @Schema(description = "招聘需求编号") private String requisitionNo;
-    @Schema(description = "兼容前端招聘需求编号") private String requestNo;
     @Schema(description = "姓名") private String name;
     @Schema(description = "性别") private String gender;
     @Schema(description = "手机号（按 hr:comp:view 权限脱敏）") private Object phone;
@@ -30,7 +28,7 @@ public class HrCandidateVO {
     @Schema(description = "部门名称") private String deptName;
     @Schema(description = "岗位 ID") private Long positionId;
     @Schema(description = "岗位名称") private String positionName;
-    @Schema(description = "预计到岗日期") private String expectedDate;
+    @Schema(description = "预计到岗日期") private String expectedArrivalDate;
     @Schema(description = "状态") private String status;
     @Schema(description = "状态描述") private String statusDesc;
     @Schema(description = "拒绝原因") private String rejectReason;
