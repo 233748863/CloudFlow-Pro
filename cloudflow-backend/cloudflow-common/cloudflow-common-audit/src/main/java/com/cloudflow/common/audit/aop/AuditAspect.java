@@ -1,5 +1,7 @@
 package com.cloudflow.common.audit.aop;
 
+import com.cloudflow.common.audit.support.AuditChangeScope;
+
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.audit.handle.ICompareHandle;
 import com.cloudflow.common.audit.support.SpelParser;
@@ -26,6 +28,15 @@ public class AuditAspect {
 
     @Around("@annotation(audit)")
     public Object auditLog(ProceedingJoinPoint joinPoint, Audit audit) throws Throwable {
+        if (audit.captureChanges()) {
+            try (AuditChangeScope scope = AuditChangeScope.open()) {
+                Object result = joinPoint.proceed();
+                if (scope.captured()) {
+                    compareHandle.compare(scope.before(), scope.after(), joinPoint, audit);
+                }
+                return result;
+            }
+        }
         // 方法执行前：通过 SPEL 获取旧值
         Object oldVal = SpelParser.parser(joinPoint,
                 StringUtils.hasText(audit.oldVal()) ? audit.oldVal() : audit.spel());

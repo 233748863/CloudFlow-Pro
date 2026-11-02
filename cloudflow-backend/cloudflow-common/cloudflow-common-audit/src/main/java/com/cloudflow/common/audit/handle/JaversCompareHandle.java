@@ -31,6 +31,12 @@ public class JaversCompareHandle implements ICompareHandle {
         Object newVal = SpelParser.parser(joinPoint,
                 StringUtils.hasText(audit.newVal()) ? audit.newVal() : audit.spel());
 
+        return compare(oldVal, newVal, joinPoint, audit);
+    }
+
+    @Override
+    public Changes compare(Object oldVal, Object newVal, ProceedingJoinPoint joinPoint, Audit audit) {
+
         // 使用 Javers 比较新旧值差异
         Changes changes = DataAuditor.compare(oldVal, newVal);
 

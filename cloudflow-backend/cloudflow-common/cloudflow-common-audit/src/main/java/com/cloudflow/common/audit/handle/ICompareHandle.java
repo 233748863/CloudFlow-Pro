@@ -24,4 +24,6 @@ public interface ICompareHandle {
      * @return 变更列表
      */
     Changes compare(Object oldVal, ProceedingJoinPoint joinPoint, Audit audit);
+
+    Changes compare(Object oldVal, Object newVal, ProceedingJoinPoint joinPoint, Audit audit);
 }

@@ -15,12 +15,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.javers.core.Changes;
 import org.javers.core.diff.Change;
 import org.javers.core.diff.changetype.ValueChange;
+import org.javers.core.diff.changetype.map.MapChange;
+import org.javers.core.diff.changetype.map.EntryChange;
+import org.javers.core.diff.changetype.map.EntryAdded;
+import org.javers.core.diff.changetype.map.EntryRemoved;
+import org.javers.core.diff.changetype.map.EntryValueChange;
 import org.springframework.scheduling.annotation.Async;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * 默认审计日志处理器
@@ -82,51 +86,61 @@ public class DefaultAuditLogHandle implements IAuditLogHandle {
         // 将每个字段变更转换为审计日志记录
         List<SysAuditLogEntity> auditLogList = new ArrayList<>();
         for (Change change : changes) {
-            if (!(change instanceof ValueChange valueChange)) {
-                continue;
+            if (change instanceof ValueChange valueChange) {
+                auditLogList.add(fieldChange(valueChange.getPropertyName(), valueChange.getLeft(), valueChange.getRight()));
+            } else if (change instanceof MapChange<?> mapChange) {
+                for (EntryChange entry : mapChange.getEntryChanges()) {
+                    String field = mapChange.getPropertyName() + "." + entry.getKey();
+                    if (entry instanceof EntryValueChange value) {
+                        auditLogList.add(fieldChange(field, value.getLeftValue(), value.getRightValue()));
+                    } else if (entry instanceof EntryAdded added) {
+                        auditLogList.add(fieldChange(field, null, added.getValue()));
+                    } else if (entry instanceof EntryRemoved removed) {
+                        auditLogList.add(fieldChange(field, removed.getValue(), null));
+                    }
+                }
             }
+        }
 
-            SysAuditLogEntity auditLog = new SysAuditLogEntity();
+        String beforeJson = null;
+        String afterJson = null;
+        String diffJson = null;
+        if (audit.diff() && oldVal != null && newVal != null && !auditLogList.isEmpty()) {
+            try {
+                beforeJson = objectMapper.writeValueAsString(oldVal);
+                afterJson = objectMapper.writeValueAsString(newVal);
+                JsonNode diffNode = JsonDiff.asJson(objectMapper.readTree(beforeJson), objectMapper.readTree(afterJson));
+                diffJson = diffNode.toString();
+            } catch (Exception e) {
+                log.warn("审计 JSON diff 失败: {}", e.getMessage());
+            }
+        }
+        for (SysAuditLogEntity auditLog : auditLogList) {
             auditLog.setBizModule(bizModule);
             auditLog.setAuditName(audit.name());
-            auditLog.setAuditField(valueChange.getPropertyName());
-
-            if (Objects.nonNull(valueChange.getLeft())) {
-                auditLog.setBeforeVal(valueChange.getLeft().toString());
-            }
-            if (Objects.nonNull(valueChange.getRight())) {
-                auditLog.setAfterVal(valueChange.getRight().toString());
-            }
-
             auditLog.setCreateBy(username);
             auditLog.setCreateTime(LocalDateTime.now());
             auditLog.setTenantId(tenantId);
             auditLog.setHighRisk(audit.highRisk() ? 1 : 0);
             auditLog.setRiskLevel(audit.highRisk() ? "HIGH" : "NORMAL");
 
-            // M0-5: diff=true 时记录完整 JSON
-            if (audit.diff() && oldVal != null && newVal != null) {
-                try {
-                    String beforeJson = objectMapper.writeValueAsString(oldVal);
-                    String afterJson = objectMapper.writeValueAsString(newVal);
-                    JsonNode beforeNode = objectMapper.readTree(beforeJson);
-                    JsonNode afterNode = objectMapper.readTree(afterJson);
-                    JsonNode diffNode = JsonDiff.asJson(beforeNode, afterNode);
-                    auditLog.setBeforeJson(beforeJson);
-                    auditLog.setAfterJson(afterJson);
-                    auditLog.setDiffJson(diffNode.toString());
-                } catch (Exception e) {
-                    log.warn("审计 JSON diff 失败: {}", e.getMessage());
-                }
-            }
-
-            auditLogList.add(auditLog);
+            auditLog.setBeforeJson(beforeJson);
+            auditLog.setAfterJson(afterJson);
+            auditLog.setDiffJson(diffJson);
         }
 
         if (!auditLogList.isEmpty()) {
             // 异步保存
             asyncSave(auditLogList);
         }
+    }
+
+    private SysAuditLogEntity fieldChange(String name, Object before, Object after) {
+        SysAuditLogEntity entry = new SysAuditLogEntity();
+        entry.setAuditField(name);
+        entry.setBeforeVal(before == null ? null : before.toString());
+        entry.setAfterVal(after == null ? null : after.toString());
+        return entry;
     }
 
     @Async
