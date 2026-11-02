@@ -22,6 +22,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.HashSet;
+import java.util.Collection;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -115,16 +117,28 @@ public class UserDataScopeService {
         if (deptId == null) {
             return;
         }
-        Set<Long> deptIds = collectDeptAndDescendants(deptId).stream().collect(Collectors.toSet());
+        refreshByDeptIds(List.of(deptId));
+    }
+
+    public void refreshByDeptIds(Collection<Long> roots) {
+        Set<Long> deptIds = roots.stream().filter(Objects::nonNull).collect(Collectors.toCollection(HashSet::new));
         if (deptIds.isEmpty()) {
             return;
         }
-        sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>()
-                        .in(SysUser::getDeptId, deptIds))
-                .stream()
-                .map(SysUser::getUserId)
-                .filter(Objects::nonNull)
-                .forEach(this::refresh);
+        Set<Long> rootIds = Set.copyOf(deptIds);
+        for (SysDept dept : sysDeptMapper.selectList(null)) {
+            if (dept.getAncestors() == null) {
+                continue;
+            }
+            for (Long rootId : rootIds) {
+                if (dept.getAncestors().contains("," + rootId + ",") || dept.getAncestors().endsWith("," + rootId)) {
+                    deptIds.add(dept.getDeptId());
+                    break;
+                }
+            }
+        }
+        sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>().in(SysUser::getDeptId, deptIds))
+                .stream().map(SysUser::getUserId).filter(Objects::nonNull).distinct().forEach(this::refresh);
     }
 
     private List<Long> resolveDeptIds(Integer dsType, List<SysRole> roles, Long deptId) {

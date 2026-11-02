@@ -18,6 +18,8 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 
 /**
@@ -137,37 +139,13 @@ public class SysMenuServiceImpl implements ISysMenuService {
     // ==================== 树构建工具方法 ====================
 
     public List<SysMenu> getChildPerms(List<SysMenu> list, int parentId) {
-        List<SysMenu> returnList = new ArrayList<>();
-        for (SysMenu t : list) {
-            if (t.getParentId() == parentId) {
-                recursionFn(list, t);
-                returnList.add(t);
-            }
+        Map<Long, List<SysMenu>> children = new HashMap<>();
+        for (SysMenu menu : list) {
+            children.computeIfAbsent(menu.getParentId(), key -> new ArrayList<>()).add(menu);
         }
-        return returnList;
-    }
-
-    private void recursionFn(List<SysMenu> list, SysMenu t) {
-        List<SysMenu> childList = getChildList(list, t);
-        t.setChildren(childList);
-        for (SysMenu tChild : childList) {
-            if (hasChild(list, tChild)) {
-                recursionFn(list, tChild);
-            }
+        for (SysMenu menu : list) {
+            menu.setChildren(children.getOrDefault(menu.getMenuId(), new ArrayList<>()));
         }
-    }
-
-    private List<SysMenu> getChildList(List<SysMenu> list, SysMenu t) {
-        List<SysMenu> tlist = new ArrayList<>();
-        for (SysMenu n : list) {
-            if (n.getParentId().longValue() == t.getMenuId().longValue()) {
-                tlist.add(n);
-            }
-        }
-        return tlist;
-    }
-
-    private boolean hasChild(List<SysMenu> list, SysMenu t) {
-        return !getChildList(list, t).isEmpty();
+        return children.getOrDefault((long) parentId, new ArrayList<>());
     }
 }

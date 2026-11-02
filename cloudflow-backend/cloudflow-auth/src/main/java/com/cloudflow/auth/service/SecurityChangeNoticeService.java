@@ -26,7 +26,7 @@ public class SecurityChangeNoticeService {
     private final ObjectMapper objectMapper;
 
     /** 关闭双因素认证：账号防护等级下降，必须通知本人 */
-    public void notifyTotpDisabled(SysUser user) {
+    public void sendTotpDeactivationNotice(SysUser user) {
         dispatch(
                 user,
                 "双因素认证已关闭",

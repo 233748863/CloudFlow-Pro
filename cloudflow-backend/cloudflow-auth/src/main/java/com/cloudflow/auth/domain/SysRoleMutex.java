@@ -18,8 +18,10 @@ public class SysRoleMutex {
 
     private Long tenantId;
 
+    @TableField("role_id_1")
     private Long roleId1;
 
+    @TableField("role_id_2")
     private Long roleId2;
 
     @TableField(fill = FieldFill.INSERT)
