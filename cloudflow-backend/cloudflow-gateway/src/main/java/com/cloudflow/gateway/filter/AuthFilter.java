@@ -20,6 +20,7 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -71,6 +72,12 @@ public class AuthFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange);
         }
 
+        // TokenService 和 Cookie 续期配置使用同步 Redis，不能在 Redis 回调线程执行。
+        return Mono.defer(() -> authenticate(exchange, chain, rawToken))
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Mono<Void> authenticate(ServerWebExchange exchange, GatewayFilterChain chain, String rawToken) {
         Map<String, Object> loginUser = tokenService.verifyToken(rawToken);
         if (loginUser == null) {
             return unauthorized(exchange);
@@ -88,7 +95,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
                     if (!Boolean.TRUE.equals(ok)) {
                         return tenantDisabled(exchange);
                     }
-                    ServerHttpRequest mutableReq = request.mutate()
+                    ServerHttpRequest mutableReq = exchange.getRequest().mutate()
                             .headers(headers -> {
                                 headers.set("Authorization", "Bearer " + rawToken);
                                 headers.remove("X-Auth-Token");
