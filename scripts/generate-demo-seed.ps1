@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$OutputPath = (Join-Path $PSScriptRoot '..\cloudflow-backend\DB\07.cloudflow-demo-seed.sql'),
     [string]$SchemaPath = (Join-Path $PSScriptRoot '..\cloudflow-backend\DB'),
@@ -228,7 +228,7 @@ function Get-StringIdExpression([string]$table, [string]$suffix, [string]$tenant
 
 function Get-TargetTable([string]$column) {
     $map = @{
-        dept_id='sys_dept'; role_id='sys_role'; post_id='sys_post'; user_id='sys_user'; employee_id='hr_employee';
+        dept_id='sys_dept'; role_id='sys_role'; post_id='sys_post'; user_id='sys_user'; leader_user_id='sys_user'; employee_id='hr_employee';
         position_id='hr_position'; family_id='hr_position_family'; level_id='hr_job_level'; candidate_id='hr_candidate';
         requisition_id='hr_recruitment_requisition'; interview_id='hr_interview'; offer_id='hr_offer'; shift_id='hr_shift';
         rule_id='hr_attendance_rule'; record_id='hr_attendance_record'; attendance_record_id='hr_attendance_record';
@@ -302,6 +302,8 @@ function Get-StatusExpression([string]$table, [string]$column, [string]$type, [i
     if ($type -match '(?i)(tinyint|smallint|mediumint|int|bigint|bit)') { return '1' }
     if (($type -match 'char|varchar') -and $length -gt 0 -and $length -le 2) { return "'0'" }
     if ($table -in @('sys_tenant','sys_user','sys_role','sys_post','sys_menu','sys_dict_type','sys_dict_data','sys_config')) { return "'0'" }
+    # 每租户首行为管理员：保留已解除样例，避免初始化后管理员无法登录。
+    if ($table -eq 'sys_user_blacklist' -and $column -eq 'status') { return "IF(r.n=0,'INACTIVE',ELT(MOD(r.n,2)+1,'ACTIVE','INACTIVE'))" }
     if ($table -eq 'sys_legal_release') { return "'PUBLISHED'" }
     if ($table -eq 'sys_legal_document') { return "'0'" }
     if ($table -eq 'wf_task') { return "ELT(MOD(r.n,5)+1,'TODO','DONE','CANCELLED','TRANSFERRED','DONE')" }
@@ -328,6 +330,20 @@ function Get-StatusExpression([string]$table, [string]$column, [string]$type, [i
 function Get-TextExpression($definition, $column) {
     $table = $definition.Table
     $name = $column.Name
+    if ($table -eq 'wf_notification_log') {
+        if ($name -eq 'notification_type') { return Get-CatalogExpression @('INTERNAL','EMAIL','SMS') }
+        if ($name -eq 'event_type') { return Get-CatalogExpression @('TASK_CREATED','TASK_TIMEOUT','WORKFLOW_ARCHIVE','WORKFLOW_RESTORE','WORKFLOW_ROLLBACK') }
+        if ($name -eq 'send_status') { return Get-CatalogExpression @('PENDING','SUCCESS','FAILED') }
+    }
+    if ($table -eq 'wf_notification_config') {
+        if ($name -eq 'event_type') { return Get-CatalogExpression @('TASK_CREATED','TASK_TIMEOUT','WORKFLOW_ARCHIVE','WORKFLOW_RESTORE','WORKFLOW_ROLLBACK') }
+    }
+    if ($table -eq 'wf_task_attachment' -and $name -eq 'uploader_name') { return Get-PersonExpression }
+    if ($table -eq 'wf_deploy_rollback_history' -and $name -eq 'rollback_status') { return Get-CatalogExpression @('SUCCESS','FAILED','PARTIAL') }
+    if ($table -eq 'wf_process_definition') {
+        if ($name -eq 'start_permission_type') { return "'ALL'" }
+        if ($name -eq 'start_permission_value') { return "'[]'" }
+    }
     if ($name -eq 'tenant_code') { return Get-TenantFieldExpression 'Code' }
     if ($name -eq 'tenant_name') {
         return Get-TenantFieldExpression 'Name'
@@ -344,7 +360,7 @@ function Get-TextExpression($definition, $column) {
     if ($name -eq 'pwd_reset_required') { return "'0'" }
     if ($name -match '(?i)(email)$') { return "CONCAT('user',LPAD(r.n+1,2,'0'),'@',$(Get-TenantFieldExpression 'Code'),'.cn')" }
     if ($name -match '(?i)(phone|phonenumber)$') { return "CONCAT('139',LPAD(MOD(t.n*100+r.n,100000000),8,'0'))" }
-    if ($name -match '(?i)(nick_name|contact_name|employee_name|evaluatee_name|evaluator_name|interviewer_name|reviewer_name|driver_name|owner_name|approver_name|operator_name|leader|member_name)$') {
+    if ($name -match '(?i)(nick_name|contact_name|employee_name|evaluatee_name|evaluator_name|interviewer_name|reviewer_name|driver_name|owner_name|approver_name|operator_name|member_name)$') {
         return Get-PersonExpression
     }
     if ($name -match '(?i)(dept_name|department_name)$') { return Get-DepartmentExpression }
@@ -471,10 +487,87 @@ function Get-TextExpression($definition, $column) {
     return "CONCAT($(Get-TenantFieldExpression 'Name'),'业务登记-',LPAD(r.n+1,3,'0'))"
 }
 
+# 持久化 List 和业务约定数组列必须写数组；没有真实附件/子项时保留空集合。
+$jsonArrayExpressions = @{
+    'hr_attendance_appeal.evidence_urls' = 'JSON_ARRAY()'
+    'hr_attendance_rule.work_days' = 'JSON_ARRAY(1,2,3,4,5)'
+    'hr_attendance_rule.check_methods' = "JSON_ARRAY('GPS','WIFI','FACE')"
+    'hr_benefit_payment.items' = 'JSON_ARRAY()'
+    'hr_benefit_request.attachments' = 'JSON_ARRAY()'
+    'hr_candidate.resume_attachment_urls' = 'JSON_ARRAY()'
+    'hr_dispute_arbitration.hearing_dates' = 'JSON_ARRAY()'
+    'hr_employee_contract.attachment_urls' = 'JSON_ARRAY()'
+    'hr_employee_document.attachment_urls' = 'JSON_ARRAY()'
+    'hr_exam_attempt.answers' = 'JSON_ARRAY()'
+    'hr_exam_paper.question_ids' = 'JSON_ARRAY()'
+    'hr_exam_question_bank.options' = 'JSON_ARRAY()'
+    'hr_exam_question_bank.answer' = 'JSON_ARRAY()'
+    'hr_interview.interviewer_ids' = 'JSON_ARRAY()'
+    'hr_interview.interviewer_names' = 'JSON_ARRAY()'
+    'hr_mall_item.images' = 'JSON_ARRAY()'
+    'hr_performance_interview.improvement_items' = 'JSON_ARRAY()'
+    'hr_performance_interview.attachment_urls' = 'JSON_ARRAY()'
+    'hr_resume_parsed_fields.parsed_skills' = 'JSON_ARRAY()'
+    'hr_resume_parsed_fields.parsed_experiences' = 'JSON_ARRAY()'
+    'hr_salary_slip.components' = 'JSON_ARRAY()'
+    'hr_talent_calibration_session.participants' = 'JSON_ARRAY()'
+    'hr_training_certificate_template.fields' = 'JSON_ARRAY()'
+    'hr_training_course.materials' = 'JSON_ARRAY()'
+    'hr_work_injury_investigation.scene_photos' = 'JSON_ARRAY()'
+    'hr_work_injury_treatment.receipts' = 'JSON_ARRAY()'
+    'hr_perf_distribution_rule.distribution' = 'JSON_ARRAY()'
+    'hr_perf_evaluator_response.dimension_scores' = 'JSON_ARRAY()'
+}
+
 function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashtable]$definitionMap) {
     $table = $definition.Table
     $name = $column.Name
     $type = $column.Type
+    $jsonArrayExpression = $jsonArrayExpressions["$table.$name"]
+    if ($jsonArrayExpression) { return $jsonArrayExpression }
+    # 文档示例 IP 必须与精确匹配类型一致，避免中文样例进入地址解析。
+    if ($table -eq 'sys_ip_acl') {
+        if ($name -eq 'ip_pattern') { return "CONCAT('192.0.2.',r.n+1)" }
+        if ($name -eq 'rule_type') { return "'EXACT'" }
+    }
+    # 基础设施演示记录只展示已完成历史，不向后台调度器投递伪造任务。
+    if ($table -eq 'outbox_event') {
+        $eventId = "CONCAT('demo50_outbox_event_t',LPAD(t.n,2,'0'),'_',LPAD(r.n+1,3,'0'))"
+        $sourceId = Get-NumericIdExpression $indexes[$table]
+        switch ($name) {
+            'aggregate_type' { return "'DemoArchive'" }
+            'aggregate_id' { return $sourceId }
+            'event_id' { return $eventId }
+            'event_type' { return "'DemoArchivedEvent'" }
+            'payload_json' { return "JSON_OBJECT('eventId',$eventId,'eventType','DemoArchivedEvent','sourceModule','demo-seed','sourceId',$sourceId,'payload',CAST(JSON_OBJECT('source','demo50','archived',true) AS CHAR),'occurredAt',DATE_FORMAT(DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY),'%Y-%m-%dT%H:%i:%s'),'tenantId',$tenantBase+t.n)" }
+            'status' { return "'PUBLISHED'" }
+            'retry_count' { return '0' }
+            { $_ -in @('next_retry_at','created_at','published_at') } { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY)' }
+            { $_ -in @('last_error','locked_by','locked_until') } { return 'NULL' }
+        }
+    }
+    if ($table -eq 'wf_transaction_message') {
+        switch ($name) {
+            'business_type' { return "'NOTIFICATION'" }
+            'content' { return "JSON_OBJECT('recipientId',$(Get-TargetIdExpression 'sys_user' $indexes $definitionMap),'title','演示历史通知','content','演示通知已完成，不参与自动重试')" }
+            'status' { return "'SUCCESS'" }
+            'retry_count' { return '0' }
+            'max_retry_count' { return '5' }
+            { $_ -in @('next_retry_time','error_message') } { return 'NULL' }
+            { $_ -in @('create_time','update_time') } { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY)' }
+        }
+    }
+    if ($table -eq 'oa_expense_standard') {
+        switch ($name) {
+            'position_level' { return "IF(MOD(r.n,5)=0,NULL,CONCAT('P',MOD(r.n,8)+1))" }
+            'city' { return "IF(MOD(r.n,5)=0,NULL,$(Get-CatalogExpression $cities))" }
+            'limit_type' { return "ELT(MOD(r.n,4)+1,'PER_ITEM','DAILY','MONTHLY','YEARLY')" }
+        }
+    }
+    if (($table -eq 'wf_process_definition' -and $name -eq 'model_json') -or
+        ($table -eq 'wf_template' -and $name -eq 'definition')) {
+        return Quote-Sql '{"nodes":[{"id":"start","type":"START","title":"提交演示事项"},{"id":"approval","type":"APPROVAL","title":"发起人确认","approverType":"INITIATOR"},{"id":"end","type":"END","title":"结束"}],"edges":[{"source":"start","target":"approval"},{"source":"approval","target":"end"}]}'
+    }
     if ($name -eq 'tenant_id') { return "($tenantBase + t.n)" }
     if ($table -eq 'sys_tenant' -and $name -eq 'user_limit') { return '100' }
     if ($table -eq 'sys_tenant' -and $name -eq 'storage_limit') { return '10240' }
@@ -484,7 +577,6 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     # 而 /auth/tenant/options 带 expire_time > NOW() 过滤，
     # 灌数据当天能登录、次日登录页租户下拉全空。
     if ($table -eq 'sys_tenant' -and $name -eq 'expire_time') { return 'DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR)' }
-    if ($table -eq 'sys_role' -and $name -eq 'data_scope') { return "IF(r.n=0,'1','3')" }
     if ($table -eq 'sys_role' -and $name -eq 'ds_type') { return 'IF(r.n=0,0,3)' }
     if ($table -eq 'sys_menu' -and $name -eq 'status') { return "'1'" }
     if ($table -eq 'oa_meeting_room' -and $name -eq 'status') { return "'1'" }

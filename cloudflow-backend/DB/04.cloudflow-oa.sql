@@ -1668,16 +1668,13 @@ CREATE TABLE oa_contract_template (
 -- =========================================================
 DROP TABLE IF EXISTS oa_expense_standard;
 CREATE TABLE oa_expense_standard (
-  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  standard_id       BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '费用标准ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  standard_code     VARCHAR(60)     NOT NULL COMMENT '标准编码',
-  standard_name     VARCHAR(200)    NOT NULL COMMENT '标准名称',
-  job_level         VARCHAR(60)     DEFAULT NULL COMMENT '职级(为空表示通用)',
+  position_level    VARCHAR(60)     DEFAULT NULL COMMENT '职级(为空表示通用)',
   category          VARCHAR(30)     NOT NULL COMMENT '报销类别(TRAVEL/OFFICE/ENTERTAIN/TRANSPORT/OTHER)',
-  city_tier         VARCHAR(30)     DEFAULT NULL COMMENT '城市等级(TIER1/TIER2/TIER3/ANY)',
-  limit_amount      DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '限额(单次)',
-  limit_currency    VARCHAR(10)     DEFAULT 'CNY' COMMENT '币种',
-  limit_period      VARCHAR(20)     DEFAULT 'PER_CLAIM' COMMENT '限额周期(PER_CLAIM/PER_DAY/PER_MONTH)',
+  city              VARCHAR(100)    DEFAULT NULL COMMENT '具体城市(为空表示通用)',
+  limit_amount      DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '限额金额',
+  limit_type        VARCHAR(20)     NOT NULL DEFAULT 'PER_ITEM' COMMENT '限额类型(PER_ITEM/DAILY/MONTHLY/YEARLY)',
   status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE/INACTIVE)',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
@@ -1686,9 +1683,8 @@ CREATE TABLE oa_expense_standard (
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_expense_standard_code (tenant_id, standard_code),
-  KEY idx_expense_standard_match (tenant_id, category, job_level, city_tier, status)
+  PRIMARY KEY (standard_id),
+  KEY idx_expense_standard_match (tenant_id, category, position_level, city, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA报销费用标准';
 
 -- 注：biz_expense_claim.exceeded_* 已内嵌在 biz_expense_claim CREATE 中
@@ -1788,7 +1784,6 @@ CREATE TABLE oa_meeting_attendance (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   minutes_id        BIGINT(20)      NOT NULL COMMENT '关联会议纪要ID',
-  meeting_id        BIGINT(20)      DEFAULT NULL COMMENT '关联会议ID(冗余便于查询)',
   user_id           BIGINT(20)      NOT NULL COMMENT '参会人员ID',
   user_name         VARCHAR(100)    DEFAULT NULL COMMENT '参会人员姓名',
   attend_status     VARCHAR(20)     DEFAULT 'NOT_CHECKED' COMMENT '出席状态(ATTEND已出席/ABSENT缺席/LATE迟到/LEAVE请假/NOT_CHECKED未签到)',
