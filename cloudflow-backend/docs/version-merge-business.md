@@ -48,3 +48,15 @@ HR 借款的新负责人查询仍通过 sys_dept.leader 文本猜用户，已改
 2026-11-02 17:47:55 补派完成：`mvn -B -ntp -f cloudflow-backend/pom.xml -pl .,cloudflow-service-hr install` 返回 BUILD SUCCESS，耗时 01:01；HR 重新编译 845 个生产源码文件，7 份 Surefire 报告合计 15 测试、0 失败、0 错误、0 跳过，依赖分析通过。修正后的简历往返测试通过，HR 服务包已生成并安装，target 保留供主代理部署。未运行其他模块测试、未操作 Git 索引或服务器；本分工停止编辑。
 
 本次独立复测日志已在提取上述结果后删除，文件位于系统 TEMP，清理前已核对绝对路径和非链接属性；共 28715 字节。C 盘清理前可用 53472919552 字节、清理后 53472952320 字节；同盘仍有其他构建与部署工作，不将空间差值归为本次清理释放量。主代理原构建日志及部署所需 target/dist 未动。
+
+## 更新后契约验收脚本准备
+
+本轮仅准备系统 TEMP/cloudflow_merge_contract_smoke.py，不访问服务器、不修改业务源码。沿用真实滑块验证码、登录和退出；候选人使用页面 WEBSITE 来源、channelId=null、唯一 example.test 邮箱与空附件数组。已核实新版 HrReferralProgressService 禁止直接新增 REFERRAL 候选人，内推需从推荐记录转换，因此本脚本用招聘网站证明来源独立与渠道可空，不绕过内推规则。检查候选人的 EMAIL 身份占位哈希与本租户归属；费用验证具体城市、四周期、创建/更新正文伪造租户不能改变归属及跨租户读写拒绝。
+
+跨租户费用验证使用本次唯一标记的独立外租户哨兵记录，避免向已有业务样例尝试更新；该哨兵由脚本精确 SQL 插入，四条正常费用标准和候选人仍经真实 API 创建。清理只按本次标记、编号、租户及身份哈希匹配删除候选人、其 EMAIL 身份占位与五条费用测试记录，保留登录和业务审计；不执行按租户批量删除。
+
+准备完成：脚本路径 `C:/Users/Administrator/AppData/Local/Temp/cloudflow_merge_contract_smoke.py`（系统 TEMP 短路径为 `C:/Users/ADMINI~1/AppData/Local/Temp/`），14835 字节，SHA-256 `7e4f31992575776ecda747c7c9e69ce619cf230083a855f6118ac3821a61052b`。所需环境变量为 CF_SERVER、CF_REDIS_PASSWORD、CF_DB_PASSWORD；可选 CF_DEMO_TENANT_CODE、CF_DEMO_USERNAME、CF_DEMO_PASSWORD、CF_GATEWAY_PORT，默认沿旧脚本使用 xinghe/admin 演示登录。凭据只读环境，不写入脚本或输出。
+
+当前仅通过 Python AST / compile 语法检查及 3 条参数化 DELETE 的标记、编号、租户范围检查；未导入执行脚本、未连接服务器、未调用读写 API、未标为运行验收。主代理健康检查通过后可执行 `python $env:TEMP/cloudflow_merge_contract_smoke.py`；运行结果另由主代理记录，脚本当前保留供待执行验收使用。
+
+主代理更新后实际验收：候选人WEBSITE来源独立、channelId为空、附件数组、同租户EMAIL身份归属通过；部门负责人50项编号与名称通过。首轮费用删除持久化断言暴露真实框架逻辑删除问题，修复OA并重新部署后，四周期、具体城市、创建/更新租户归属、跨租户拒绝及逻辑删除全部通过，最后退出成功且旧token被拒绝。首轮与复测均精确清理本次候选人、身份占位和费用哨兵记录，实际残留0，审计保留；不将本检查扩展解释为薪资或全HR流程验收。

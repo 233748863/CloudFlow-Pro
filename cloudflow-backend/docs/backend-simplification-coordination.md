@@ -158,4 +158,10 @@ Workflow及全部公共依赖clean install已成功；HR编译成功但15测试�
 ## 当前补派：database_schema 部署配置只读预检
 请并行只读比较新版本地 config/*.yaml、六服务application.yml 相对f576fd1a变化，以及服务器/data/cloudflow/runtime/config/和/data/cloudflow/native.env（仅读取，不输出密码或密钥）。评估新增功能是否需要同步外部配置、系统环境变量；重点新版消息中心、IM/报表、HR敏感加密配置、Job地址等。服务器192.168.1.173，凭据沿用用户已给出的root，环境注入后连接；可参考scripts/demo_seed_server.py，但禁止服务器写入、禁止Git索引及构建。结果写docs/version-merge-deployment.md，列出具体必须同步的键和推荐做法，秘密只标已具备/缺失。不需要执行全站回归或重建数据。完成后停止。
 
+## 18:08 部署进度及预检补充
+主代理已核实服务器runtime/config七份YAML与仓库config语义完全一致，无缺失键或不同值；sys_job_handler忽略项已具备。消息密钥与五个Job密钥均已配置，Job认证地址为19001，Redis为10。SPRING_APPLICATION_JSON只覆盖审计dry-run、Redis库和连接池上下限。当前六包及前端/SQL摘要校验通过，合并提交103c9f1b，正在执行备份后更新。database_schema请立即将已有只读预检结果写文档并停止，无需继续扩大检查。
+
+## 当前补派：contract_review 更新后契约验收准备
+仅准备验收脚本，不运行服务器。参考系统TEMP/cloudflow_contract_smoke.py的旧版真实验证码登录、部门负责人/招聘来源独立渠道为空、费用具体城市四周期及跨租户拒绝测试，按合并后新版HR候选人创建要求和响应结构适配，保存为系统TEMP/cloudflow_merge_contract_smoke.py。必须检查新版联系方式/身份锁等实际逻辑，新增候选人用唯一合法邮箱或带国家区号手机号，source用页面标准枚举；仅清理本次唯一标记记录及其必要关联，保留审计，不修改业务源码。主代理在健康通过后执行。不要调用服务器写接口、不要Maven/Git，完成后在version-merge-business.md记录准备范围、脚本路径，勿标成已验收。
+
 - seed_runtime_review：前端最终验证完成并停止：type-check通过；npm.cmd run build -- --outDir TEMP/dist通过（4393模块、48.98秒、图表检查22文件）；新增可复用scripts/check-report-components.cjs的23项静态渲染检查全通过。未发现新源码错误，未浏览器绘图/分享/整站验收。部署产物保留C:/Users/Administrator/AppData/Local/Temp/cloudflow-report-final-fbc8f2479ae440deb181c7c62b0c1937/dist，已通知主代理。临时verify-report-static.cjs与render.cjs共5357293字节的精准非递归清理被自动审批blocked by policy拒绝，两副本保留；完整结果和限制见version-merge-platform.md。
