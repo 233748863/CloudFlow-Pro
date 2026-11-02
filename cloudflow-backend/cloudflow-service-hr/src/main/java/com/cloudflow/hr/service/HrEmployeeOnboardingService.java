@@ -1,6 +1,8 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.redis.config.RuntimeSysConfigService;
@@ -24,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
@@ -51,11 +54,10 @@ public class HrEmployeeOnboardingService {
     private final HrLifecycleApplicationMapper lifecycleApplicationMapper;
     private final HrLifecycleDetailMapper lifecycleDetailMapper;
     private final ObjectMapper objectMapper;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional(rollbackFor = Exception.class)
     public HrEmployeeOnboardingResultVO submit(HrEmployeePayload payload) {
         normalizeAndValidate(payload);
-        assertEmployeeNoAvailable(payload.getEmployeeNo(), null);
 
         HrLifecycleApplicationPayload application = new HrLifecycleApplicationPayload();
         application.setApplicationNo(lifecycleService.nextApplicationNo());
@@ -72,12 +74,20 @@ public class HrEmployeeOnboardingService {
         viewSupport.putDeptName(employeeDetail);
         viewSupport.putPostName(employeeDetail);
         viewSupport.putPositionSnapshot(employeeDetail);
-        Long applicationId = lifecycleService.createApplication(application, employeeDetail);
+        Long applicationId = transactionTemplate.execute(status -> {
+            assertEmployeeNoAvailable(payload.getEmployeeNo(), null);
+            return lifecycleService.createApplication(application, employeeDetail);
+        });
+        // 申请先提交，远程启动不占用数据库事务；远程不可用时保留申请供已有重试消息继续处理。
         String processInstanceId = startWorkflow(applicationId, application, payload, employeeDetail);
-        crudService.updateProperties(HrLifecycleApplication.class, applicationId,
-                Map.of("processInstanceId", processInstanceId));
+        recordStartedWorkflow(applicationId, processInstanceId);
         return new HrEmployeeOnboardingResultVO(
                 applicationId, application.getApplicationNo(), processInstanceId);
+    }
+
+    public void recordStartedWorkflow(Long applicationId, String processInstanceId) {
+        crudService.updateProperties(HrLifecycleApplication.class, applicationId,
+                Map.of("processInstanceId", processInstanceId));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -120,7 +130,7 @@ public class HrEmployeeOnboardingService {
         dto.setTenantId(currentTenantId());
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_ONBOARDING_PROCESS_KEY, DEFAULT_PROCESS_KEY));
-        dto.setBusinessType("ONBOARDING");
+        dto.setBusinessType(HrWorkflowBusinessTypes.LIFECYCLE);
         dto.setBusinessId(applicationId);
         dto.setBusinessNo(application.getApplicationNo());
         dto.setProcessTitle("员工入职审批-" + employee.getName());
@@ -162,12 +172,13 @@ public class HrEmployeeOnboardingService {
     }
 
     private HrLifecycleDetail findOnboardingDetail(Long applicationId) {
-        return lifecycleDetailMapper.selectOne(
+        List<HrLifecycleDetail> details = lifecycleDetailMapper.selectPage(new Page<>(1, 1, false),
                 new QueryWrapper<HrLifecycleDetail>()
                         .eq("tenant_id", currentTenantId())
                         .eq("application_id", applicationId)
                         .eq("detail_type", "ONBOARDING")
-                        .last("LIMIT 1"));
+                        .orderByAsc("id")).getRecords();
+        return details.isEmpty() ? null : details.get(0);
     }
 
     private void assertEmployeeNoAvailable(String employeeNo, Long currentApplicationId) {
@@ -186,16 +197,18 @@ public class HrEmployeeOnboardingService {
                         .eq("type", "ONBOARDING")
                         .in("status", ACTIVE_APPLICATION_STATUSES)
                         .eq("deleted", 0));
-        for (HrLifecycleApplication application : applications) {
-            if (currentApplicationId != null && currentApplicationId.equals(application.getId())) {
-                continue;
-            }
-            HrLifecycleDetail detail = lifecycleDetailMapper.selectOne(
-                    new QueryWrapper<HrLifecycleDetail>()
-                            .eq("tenant_id", tenantId)
-                            .eq("application_id", application.getId())
-                            .eq("detail_type", "ONBOARDING")
-                            .last("LIMIT 1"));
+        List<Long> applicationIds = applications.stream()
+                .map(HrLifecycleApplication::getId)
+                .filter(id -> !id.equals(currentApplicationId))
+                .toList();
+        if (applicationIds.isEmpty()) {
+            return;
+        }
+        List<HrLifecycleDetail> details = lifecycleDetailMapper.selectList(new QueryWrapper<HrLifecycleDetail>()
+                .eq("tenant_id", tenantId)
+                .in("application_id", applicationIds)
+                .eq("detail_type", "ONBOARDING"));
+        for (HrLifecycleDetail detail : details) {
             if (detail == null || detail.getDetailJson() == null) {
                 continue;
             }

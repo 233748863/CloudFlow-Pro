@@ -71,12 +71,12 @@ public class ScriptExecutionPolicy {
                 JsonNode props = node.path("props");
                 String scriptType = normalizeScriptType(props.path("scriptType").asText(null));
                 if ("JAVASCRIPT".equals(scriptType)) {
-                    String nodeName = firstText(node.path("title").asText(null), node.path("label").asText(null), node.path("id").asText(null), "未命名脚本节点");
+                    String nodeName = firstText(node.path("title").asText(null), node.path("id").asText(null), "未命名脚本节点");
                     throw new WorkflowException("SCRIPT_TYPE_UNSUPPORTED",
                             "脚本节点 [" + nodeName + "] 使用 JAVASCRIPT，" + JAVASCRIPT_UNSUPPORTED_MESSAGE);
                 }
                 if (isInProcessScriptType(scriptType)) {
-                    String nodeName = firstText(node.path("title").asText(null), node.path("label").asText(null), node.path("id").asText(null), "未命名脚本节点");
+                    String nodeName = firstText(node.path("title").asText(null), node.path("id").asText(null), "未命名脚本节点");
                     throw new WorkflowException("SCRIPT_DISABLED", "脚本节点 [" + nodeName + "] 使用 " + scriptType
                             + "，当前禁止发布进程内脚本节点，请改用 API 类型或启用隔离脚本执行器");
                 }

@@ -9,7 +9,7 @@ import {
   SelectItem,
 } from "../common/select";
 import { LazyInput, LazyTextarea } from "./LazyInput";
-import { ApproverValueSelector } from "./ApproverValueSelector";
+import { StartPermissionSelector } from "./StartPermissionSelector";
 import {
   studioSidePanelClassName,
   studioSectionTitleClassName,
@@ -140,8 +140,9 @@ export const GlobalPropertyPanel = ({
               <Select
                 value={formData.startPermissionType || "ALL"}
                 onValueChange={(v) => {
-                  handleChange("startPermissionType", v);
-                  if (v === "ALL") handleChange("startPermissionValue", "");
+                  const updated = { ...formData, startPermissionType: v, startPermissionValue: "[]" };
+                  setFormData(updated);
+                  onUpdate(updated);
                 }}
               >
                 <SelectTrigger>
@@ -159,11 +160,10 @@ export const GlobalPropertyPanel = ({
             {["ROLE", "USER", "DEPT"].includes(
               formData.startPermissionType || "",
             ) && (
-              <ApproverValueSelector
-                type={formData.startPermissionType as string}
-                value={formData.startPermissionValue || ""}
+              <StartPermissionSelector
+                type={formData.startPermissionType as 'ROLE' | 'USER' | 'DEPT'}
+                value={formData.startPermissionValue || "[]"}
                 onChange={(val) => handleChange("startPermissionValue", val)}
-                multiple={true}
               />
             )}
           </div>

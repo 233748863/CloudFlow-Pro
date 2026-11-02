@@ -49,7 +49,6 @@ import {
   insertWorkflowGraphSubgraphAfter,
   moveWorkflowGraphNode,
   normalizeWorkflowGraphLayout,
-  parseWorkflowGraphDefinition,
   patchWorkflowGraphNodeLayout,
   patchWorkflowGraphViewport,
   autoLayoutWorkflowGraph,
@@ -149,14 +148,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     [],
   );
 
-  const resolveGraphModel = useCallback(
-    (raw: unknown): WorkflowGraphDefinition => {
-      const graphModel = parseWorkflowGraphDefinition(raw);
-      return graphModel || defaultGraphModel;
-    },
-    [defaultGraphModel],
-  );
-
   const {
     state: graphModel,
     set: setGraphModel,
@@ -166,7 +157,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     redo: rawRedo,
     canUndo: rawCanUndo,
     canRedo: rawCanRedo,
-  } = useHistory<WorkflowGraphDefinition>(resolveGraphModel(workflow?.graph));
+  } = useHistory<WorkflowGraphDefinition>(workflow?.graph ?? defaultGraphModel);
 
   const graphModelRef = useRef(graphModel);
   graphModelRef.current = graphModel;
@@ -175,27 +166,15 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       nextGraph: WorkflowGraphDefinition,
       options?: {
         resetHistory?: boolean;
-        fallbackToDefault?: boolean;
         recordHistory?: boolean;
       },
     ) => {
-      let nextStateGraph = normalizeWorkflowGraphLayout(
+      const nextStateGraph = normalizeWorkflowGraphLayout(
         nextGraph,
         graphModelRef.current,
       );
 
-      try {
-        assertWorkflowGraphIntegrity(nextStateGraph);
-      } catch (error) {
-        if (!options?.fallbackToDefault) {
-          throw error;
-        }
-        console.warn(
-          "[WorkflowBuilder] failed to apply graph state, fallback to default workflow",
-          error,
-        );
-        nextStateGraph = normalizeWorkflowGraphLayout(defaultGraphModel);
-      }
+      assertWorkflowGraphIntegrity(nextStateGraph);
 
       graphModelRef.current = nextStateGraph;
 
@@ -207,7 +186,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         setGraphModel(nextStateGraph);
       }
     },
-    [defaultGraphModel, replaceGraphModel, resetGraphModel, setGraphModel],
+    [replaceGraphModel, resetGraphModel, setGraphModel],
   );
 
   const workflowRef = useRef(workflow);
@@ -265,7 +244,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const [selectedFormId, setSelectedFormId] = useState("");
 
   const [startPermissionType, setStartPermissionType] = useState("ALL");
-  const [startPermissionValue, setStartPermissionValue] = useState("");
+  const [startPermissionValue, setStartPermissionValue] = useState("[]");
   const [workflowDeptId, setWorkflowDeptId] = useState<number | undefined>(
     undefined,
   );
@@ -316,7 +295,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       category: workflowCategory || undefined,
       tags: tagsText,
       startPermissionType: startPermissionType || "ALL",
-      startPermissionValue: startPermissionValue || undefined,
+      startPermissionValue: startPermissionValue || "[]",
       deptId: workflowDeptId,
     };
   }, [
@@ -379,10 +358,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       setCanvasEpoch((epoch) => epoch + 1);
     }
 
-    const nextGraph = resolveGraphModel(workflow.graph);
-    replaceGraphState(nextGraph, {
+    replaceGraphState(workflow.graph, {
       resetHistory: true,
-      fallbackToDefault: true,
     });
     const parsedTags = parseTagsToArray(workflow.tags);
     setSelectedNodeId(null);
@@ -394,7 +371,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     setWorkflowTags(parsedTags);
     setSelectedFormId(workflow.formId || "");
     setStartPermissionType(workflow.startPermissionType || "ALL");
-    setStartPermissionValue(workflow.startPermissionValue || "");
+    setStartPermissionValue(workflow.startPermissionValue || "[]");
     const nextDeptId =
       normalizeDeptId(workflow.deptId) ?? normalizeDeptId(user?.deptId);
     setWorkflowDeptId(nextDeptId);
@@ -404,14 +381,13 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       category: normalizeWorkflowCategory(workflow.category) || undefined,
       tags: parsedTags.length > 0 ? parsedTags.join(", ") : undefined,
       startPermissionType: workflow.startPermissionType || "ALL",
-      startPermissionValue: workflow.startPermissionValue || undefined,
+      startPermissionValue: workflow.startPermissionValue || "[]",
     });
   }, [
     workflow,
     parseTagsToArray,
     normalizeDeptId,
     user?.deptId,
-    resolveGraphModel,
     replaceGraphState,
   ]);
 
@@ -1074,7 +1050,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           ? settings.tags.join(", ")
           : undefined,
       startPermissionType: settings.startPermissionType || "ALL",
-      startPermissionValue: settings.startPermissionValue || undefined,
+      startPermissionValue: settings.startPermissionValue || "[]",
     });
     toast.success("流程设置已更新");
   };
@@ -1099,7 +1075,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       setWorkflowCategory(normalizedCategory);
       setSelectedFormId(next.formId || "");
       setStartPermissionType(next.startPermissionType || "ALL");
-      setStartPermissionValue(next.startPermissionValue || "");
+      setStartPermissionValue(next.startPermissionValue || "[]");
       setWorkflowTags(parseTagsToArray(next.tags));
     },
     [parseTagsToArray],
@@ -1340,12 +1316,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
               startPermissionType={startPermissionType}
               startPermissionValue={startPermissionValue}
               availableForms={availableForms}
-              availableRoles={availableRoles}
-              availableUsers={availableUsers?.map((u) => ({
-                userId: Number(u.id) || undefined,
-                userName: u.username || u.name,
-                nickName: u.name,
-              }))}
               onSave={handleSettingsSave}
             />
 

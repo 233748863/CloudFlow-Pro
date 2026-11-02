@@ -1,6 +1,5 @@
 package com.cloudflow.common.event.outbox;
 
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.event.config.OutboxProperties;
 import com.cloudflow.common.event.core.DeadLetterPublisher;
 import com.cloudflow.common.redis.core.RedisStreamUtil;
@@ -59,7 +58,7 @@ public class OutboxScheduler {
 
     private void publishToStream(OutboxEvent event) {
         Map<String, Object> content = new HashMap<>();
-        content.put("eventId", extractEventId(event));
+        content.put("eventId", event.getEventId());
         content.put("eventType", event.getEventType());
         content.put("payload", event.getPayloadJson());
         content.put("tenantId", event.getTenantId());
@@ -98,15 +97,6 @@ public class OutboxScheduler {
         // 指数退避：base * 2^retryCount，max 1h
         long delaySeconds = Math.min(properties.getRetryBaseSeconds() * (1L << retryCount), 3600);
         return LocalDateTime.now().plusSeconds(delaySeconds);
-    }
-
-    private String extractEventId(OutboxEvent event) {
-        try {
-            Map<?, ?> map = objectMapper.readValue(event.getPayloadJson(), Map.class);
-            return (String) map.get("eventId");
-        } catch (Exception e) {
-            return "unknown";
-        }
     }
 
     private com.cloudflow.common.event.core.BusinessEventEnvelope readEnvelope(OutboxEvent event) {

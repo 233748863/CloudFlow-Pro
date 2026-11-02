@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class WfNotificationConfig {
     @TableId
     private String configId;
+    private String configName;
     private String eventType;
     private String notifyChannel;
     private String templateId;

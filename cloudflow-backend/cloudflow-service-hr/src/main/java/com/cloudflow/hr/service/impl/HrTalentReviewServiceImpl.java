@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -303,7 +304,7 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_TALENT_REVIEW_PROCESS_KEY,
                 "wf_hr_talent_review"));
-        dto.setBusinessType("HR_TALENT_REVIEW");
+        dto.setBusinessType(HrWorkflowBusinessTypes.TALENT_REVIEW);
         dto.setBusinessId(review.getId());
         dto.setBusinessNo(review.getReviewNo());
         dto.setProcessTitle("人才盘点发布-" + review.getReviewName());

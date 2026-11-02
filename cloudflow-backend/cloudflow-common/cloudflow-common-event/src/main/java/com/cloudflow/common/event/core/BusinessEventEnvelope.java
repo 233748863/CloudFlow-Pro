@@ -1,5 +1,10 @@
 package com.cloudflow.common.event.core;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -41,6 +46,9 @@ public class BusinessEventEnvelope implements Serializable {
     private String payload;
 
     /** 事件发生时间（业务时间，非 outbox 写入时间） */
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     private LocalDateTime occurredAt;
 
     /** 租户 ID（多租户场景，订阅方需显式 TenantBroker.runAs） */

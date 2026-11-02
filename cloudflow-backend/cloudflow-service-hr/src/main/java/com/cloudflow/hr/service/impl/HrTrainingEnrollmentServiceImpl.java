@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -176,7 +177,7 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
             return;
         }
         R<Void> cancelResult = workflowServiceClient.cancelProcess(
-                enrollment.getTenantId(), processInstanceId, "HR_TRAINING_ENROLLMENT", enrollment.getId());
+                enrollment.getTenantId(), processInstanceId, HrWorkflowBusinessTypes.TRAINING_ENROLLMENT, enrollment.getId());
         if (cancelResult == null || !cancelResult.isSuccess()) {
             throw new HrBusinessException("WORKFLOW_CANCEL_FAILED",
                     "撤销培训报名流程失败：" + (cancelResult == null ? "Workflow 服务无响应" : cancelResult.getMsg()));
@@ -201,7 +202,7 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_TRAINING_ENROLLMENT_PROCESS_KEY,
                 "wf_hr_training_enrollment"));
-        dto.setBusinessType("HR_TRAINING_ENROLLMENT");
+        dto.setBusinessType(HrWorkflowBusinessTypes.TRAINING_ENROLLMENT);
         dto.setBusinessId(enrollment.getId());
         dto.setBusinessNo(String.valueOf(enrollment.getSessionId()));
         dto.setProcessTitle("培训报名审批-班次 " + enrollment.getSessionId());

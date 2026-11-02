@@ -28,10 +28,8 @@ public class ProcessStartDTO implements Serializable {
     private String processDefinitionKey;
     
     /**
-     * 业务类型
-     * ONBOARDING-入职, PROBATION_CONFIRMATION-转正, TRANSFER-调岗, RESIGNATION-离职,
-     * LEAVE-请假, OVERTIME-加班, SALARY_ADJUSTMENT-调薪, RECRUITMENT_REQUEST-招聘需求,
-     * OFFER-Offer, ATTENDANCE_SUPPLEMENT-补卡
+     * 正式业务类型，取自 HrWorkflowBusinessTypes。
+     * 生命周期和假勤的具体子类型保存在业务记录 type / requestType 中。
      */
     private String businessType;
     

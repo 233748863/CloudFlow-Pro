@@ -24,10 +24,8 @@ import org.springframework.data.redis.stream.Subscription;
 import org.springframework.core.env.Environment;
 
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -209,22 +207,7 @@ public class EventConsumerAutoConfiguration {
     }
 
     private static LocalDateTime parseLocalDateTime(String value) {
-        String text = value.trim();
-        try {
-            return LocalDateTime.parse(text, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        } catch (DateTimeParseException ignored) {
-            // Fall through to legacy formats.
-        }
-        try {
-            return OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toLocalDateTime();
-        } catch (DateTimeParseException ignored) {
-            // Fall through to legacy formats.
-        }
-        try {
-            return LocalDateTime.parse(text, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        } catch (DateTimeParseException ex) {
-            throw new IllegalArgumentException("business event occurredAt is invalid: " + text, ex);
-        }
+        return LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
     private boolean publishDeadLetter(DeadLetterPublisher deadLetterPublisher,

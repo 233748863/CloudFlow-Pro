@@ -303,14 +303,8 @@ public class ImportServiceImpl implements IImportService {
             validateImportedFormBinding(formId);
             existing.setFormId(formId);
         }
-        String startPermissionType = resolveStartPermissionType(workflow);
-        if (StringUtils.hasText(startPermissionType)) {
-            existing.setStartPermissionType(startPermissionType);
-        }
-        String startPermissionValue = resolveStartPermissionValue(workflow);
-        if (StringUtils.hasText(startPermissionValue)) {
-            existing.setStartPermissionValue(startPermissionValue);
-        }
+        existing.setStartPermissionType(resolveStartPermissionType(workflow));
+        existing.setStartPermissionValue(resolveStartPermissionValue(workflow));
         Long deptId = resolveDeptId(workflow);
         if (deptId != null) {
             existing.setDeptId(deptId);
@@ -442,7 +436,7 @@ public class ImportServiceImpl implements IImportService {
         if (workflow == null) {
             return null;
         }
-        return StringUtils.hasText(workflow.getStartPermissionType()) ? workflow.getStartPermissionType() : null;
+        return StringUtils.hasText(workflow.getStartPermissionType()) ? workflow.getStartPermissionType() : "ALL";
     }
 
     /**
@@ -452,7 +446,7 @@ public class ImportServiceImpl implements IImportService {
         if (workflow == null) {
             return null;
         }
-        return StringUtils.hasText(workflow.getStartPermissionValue()) ? workflow.getStartPermissionValue() : null;
+        return "ALL".equals(resolveStartPermissionType(workflow)) ? "[]" : workflow.getStartPermissionValue();
     }
 
     /**

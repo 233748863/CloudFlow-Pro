@@ -34,9 +34,10 @@ public class WfDeployImpact {
     private String impactDetail;
 
     /** 处理建议 */
+    @TableField("mitigation_plan")
     private String suggestion;
 
-    @TableField(fill = FieldFill.INSERT)
+    @TableField("create_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdTime;
 }

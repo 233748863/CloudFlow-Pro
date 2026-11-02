@@ -50,13 +50,11 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Autowired private WfTaskCandidateMapper candidateMapper;
     @Autowired private WfTaskAttachmentMapper attachmentMapper;
     @Autowired private WfDeployRecordMapper deployRecordMapper;
-    @Autowired private WfUrgeEffectMapper urgeEffectMapper;
     @Autowired private TaskMonitorMapper taskMonitorMapper;
     @Autowired private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
     @Autowired private INotificationService notificationService;
     @Autowired private RedissonClient redissonClient;
     @Autowired private WorkflowTaskSecurityProperties taskSecurityProperties;
-    @Autowired private com.cloudflow.common.redis.core.SysDictHelper sysDictHelper;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -994,22 +992,6 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         return R.ok(new ArrayList<>());
     }
 
-    // ==================== P4.27: 催办效果跟踪 ====================
-
-    @Transactional(rollbackFor = Exception.class)
-    public void recordUrgeEffect(String urgeId, String taskId, Long beforeDuration, Long afterDuration) {
-        WfUrgeEffect effect = new WfUrgeEffect();
-        effect.setEffectId(UUID.randomUUID().toString());
-        effect.setUrgeId(urgeId);
-        effect.setTaskId(taskId);
-        effect.setBeforeDuration(beforeDuration);
-        effect.setAfterDuration(afterDuration);
-        effect.setEffectiveness(calculateEffectiveness(beforeDuration, afterDuration));
-        effect.setUrgeTime(LocalDateTime.now());
-        effect.setCompleteTime(LocalDateTime.now());
-        urgeEffectMapper.insert(effect);
-    }
-
     /**
      * 统一获取当前操作人，防止通过入参伪造他人身份。
      */
@@ -1191,54 +1173,6 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             log.warn("[updateTaskMonitorAssignee] 更新P4任务监控处理人失败, taskId={}, error={}",
                     task != null ? task.getTaskId() : null, e.getMessage());
         }
-    }
-
-    /**
-     * 按工作流效能改进百分比映射 1-5 的效能等级（5=显著改善，1=无改善）。
-     * <p><b>字典约定（与 CRM 档位语义相反）：</b>
-     * <ul>
-     *   <li>dict_value = 本档百分比 <b>下限</b>（如 50 表示 improvement &gt;= 50%）</li>
-     *   <li>按 dict_value <b>降序</b>匹配第一个 improvement &gt;= value 的档</li>
-     *   <li>对应等级从 5 递减；字典为空时回退到内置 50/30/10/0 四档</li>
-     * </ul>
-     */
-    private Integer calculateEffectiveness(Long before, Long after) {
-        if (after == null || after == 0) return 1;
-        double improvement = (double) (before - after) / before * 100;
-        // 按字典 workflow_efficiency_tier 查档位：value=本档下限百分比，降序匹配
-        // 命中后等级 = 5 - 数组索引（顶档=5）
-        java.util.List<com.cloudflow.common.redis.core.SysDictHelper.DictItem> tiers =
-                sysDictHelper.getDictData("workflow_efficiency_tier");
-        if (tiers != null && !tiers.isEmpty()) {
-            // 按 value 降序匹配第一个 improvement >= value 的档位
-            tiers.sort((a, b) -> {
-                java.math.BigDecimal va = a.getValueAsDecimal();
-                java.math.BigDecimal vb = b.getValueAsDecimal();
-                if (va == null) return 1;
-                if (vb == null) return -1;
-                return vb.compareTo(va);
-            });
-            int level = 5;
-            for (com.cloudflow.common.redis.core.SysDictHelper.DictItem tier : tiers) {
-                java.math.BigDecimal threshold = tier.getValueAsDecimal();
-                if (threshold == null) {
-                    continue;
-                }
-                if (improvement >= threshold.doubleValue()) {
-                    return level;
-                }
-                level--;
-                if (level < 1) {
-                    break;
-                }
-            }
-            return 1;
-        }
-        if (improvement >= 50) return 5;
-        if (improvement >= 30) return 4;
-        if (improvement >= 10) return 3;
-        if (improvement > 0) return 2;
-        return 1;
     }
 
     // ==================== P4.28: 消息通知完善 ====================

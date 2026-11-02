@@ -4,20 +4,14 @@ import { Button } from '@/components/common';
 import { Input } from './common/input';
 import { Textarea } from './common/textarea';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './common/select';
-import { getDeptTree } from '../services/api/auth';
+import { StartPermissionSelector } from './workflow-builder/StartPermissionSelector';
 import { FormDefinition } from '../types';
-import { SysRole, SysUser, SysDept } from '../services/api/auth';
-import { toast } from 'sonner';
-import { getErrorMessage } from '@/utils/errorMessage';
 import { WORKFLOW_CATEGORY_OPTIONS, normalizeWorkflowCategory } from '../utils/workflowCategory';
 
 const SELECT_NONE_VALUE = '__NONE__';
 
 const sectionTitleClassName = 'text-xs font-medium text-cyan-700 dark:text-cyan-300';
 const fieldLabelClassName = 'mb-1 block text-[11px] text-cf-subtle';
-const loadingBlockClassName =
-  'w-full rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 text-sm text-cf-faint dark:border-slate-800 dark:bg-slate-950';
-
 interface WorkflowSettingsModalProps {
   open: boolean;
   onClose: () => void;
@@ -30,8 +24,6 @@ interface WorkflowSettingsModalProps {
   startPermissionType: string;
   startPermissionValue: string;
   availableForms?: FormDefinition[];
-  availableRoles?: SysRole[];
-  availableUsers?: SysUser[];
   onSave: (settings: {
     description: string;
     category: string;
@@ -41,9 +33,6 @@ interface WorkflowSettingsModalProps {
     startPermissionValue: string;
   }) => void;
 }
-
-const flattenDeptTree = (nodes: SysDept[] = []): SysDept[] =>
-  nodes.flatMap((node) => [node, ...flattenDeptTree(Array.isArray(node.children) ? node.children : [])]);
 
 const formatTagText = (values: string[] = []) => values.join(', ');
 
@@ -86,8 +75,6 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   startPermissionType: initialStartPermissionType,
   startPermissionValue: initialStartPermissionValue,
   availableForms = [],
-  availableRoles = [],
-  availableUsers = [],
   onSave,
 }) => {
   const [description, setDescription] = useState(initialDescription);
@@ -95,12 +82,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   const [tagText, setTagText] = useState(formatTagText(initialTags));
   const [formId, setFormId] = useState(initialFormId);
   const [startPermissionType, setStartPermissionType] = useState(initialStartPermissionType || 'ALL');
-  const [startPermissionValue, setStartPermissionValue] = useState(initialStartPermissionValue || '');
-  const [roleList, setRoleList] = useState<SysRole[]>([]);
-  const [userList, setUserList] = useState<SysUser[]>([]);
-  const [deptList, setDeptList] = useState<SysDept[]>([]);
-  const [loadingPermissions, setLoadingPermissions] = useState(false);
-  const loadingForms = false;
+  const [startPermissionValue, setStartPermissionValue] = useState(initialStartPermissionValue || '[]');
 
   const formList = useMemo(
     () =>
@@ -116,7 +98,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
     setTagText(formatTagText(initialTags));
     setFormId(initialFormId);
     setStartPermissionType(initialStartPermissionType || 'ALL');
-    setStartPermissionValue(initialStartPermissionValue || '');
+    setStartPermissionValue(initialStartPermissionValue || '[]');
   }, [
     initialDescription,
     initialCategory,
@@ -125,47 +107,6 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
     initialStartPermissionType,
     initialStartPermissionValue,
   ]);
-
-  useEffect(() => {
-    setRoleList(Array.isArray(availableRoles) ? availableRoles : []);
-  }, [availableRoles]);
-
-  useEffect(() => {
-    setUserList(Array.isArray(availableUsers) ? availableUsers : []);
-  }, [availableUsers]);
-
-  useEffect(() => {
-    if (!open || startPermissionType !== 'DEPT' || deptList.length > 0) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadDeptList = async () => {
-      try {
-        setLoadingPermissions(true);
-        const depts = await getDeptTree();
-        if (!cancelled) {
-          setDeptList(flattenDeptTree(Array.isArray(depts) ? depts : []));
-        }
-      } catch (error) {
-        console.error('加载部门列表失败:', error);
-        if (!cancelled) {
-          toast.error(getErrorMessage(error, '加载部门列表失败'));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingPermissions(false);
-        }
-      }
-    };
-
-    void loadDeptList();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, startPermissionType, deptList.length]);
 
   const handleSave = () => {
     onSave({
@@ -259,9 +200,6 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
 
         <div className="admin-dialog-field">
           <label className={sectionTitleClassName}>关联表单</label>
-          {loadingForms ? (
-            <div className={loadingBlockClassName}>加载表单列表中...</div>
-          ) : (
             <Select
               value={formId || SELECT_NONE_VALUE}
               onValueChange={(value) => setFormId(value === SELECT_NONE_VALUE ? '' : value)}
@@ -278,7 +216,6 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
                 ))}
               </SelectContent>
             </Select>
-          )}
         </div>
 
         <div className="admin-dialog-stack border-t border-slate-200 pt-3 dark:border-slate-800">
@@ -290,7 +227,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
               value={startPermissionType}
               onValueChange={(value) => {
                 setStartPermissionType(value);
-                setStartPermissionValue('');
+                setStartPermissionValue('[]');
               }}
             >
               <SelectTrigger>
@@ -305,80 +242,13 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
             </Select>
           </div>
 
-          {startPermissionType === 'ROLE' ? (
-            <div className="admin-dialog-field">
-              <span className={fieldLabelClassName}>选择角色</span>
-              {loadingPermissions ? (
-                <div className={loadingBlockClassName}>加载角色列表中...</div>
-              ) : (
-                <Select
-                  value={startPermissionValue || undefined}
-                  onValueChange={setStartPermissionValue}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择角色" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roleList.map((role) => (
-                      <SelectItem key={role.roleId} value={String(role.roleId)}>
-                        {role.roleName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          ) : null}
-
-          {startPermissionType === 'DEPT' ? (
-            <div className="admin-dialog-field">
-              <span className={fieldLabelClassName}>选择部门</span>
-              {loadingPermissions ? (
-                <div className={loadingBlockClassName}>加载部门列表中...</div>
-              ) : (
-                <Select
-                  value={startPermissionValue || undefined}
-                  onValueChange={setStartPermissionValue}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择部门" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {deptList.map((dept) => (
-                      <SelectItem key={dept.deptId} value={String(dept.deptId)}>
-                        {dept.deptName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          ) : null}
-
-          {startPermissionType === 'USER' ? (
-            <div className="admin-dialog-field">
-              <span className={fieldLabelClassName}>选择用户</span>
-              {loadingPermissions ? (
-                <div className={loadingBlockClassName}>加载用户列表中...</div>
-              ) : (
-                <Select
-                  value={startPermissionValue || undefined}
-                  onValueChange={setStartPermissionValue}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择用户" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {userList.map((user) => (
-                      <SelectItem key={user.userId} value={String(user.userId)}>
-                        {user.nickName || user.userName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          ) : null}
+          {['ROLE', 'USER', 'DEPT'].includes(startPermissionType) && (
+            <StartPermissionSelector
+              type={startPermissionType as 'ROLE' | 'USER' | 'DEPT'}
+              value={startPermissionValue}
+              onChange={setStartPermissionValue}
+            />
+          )}
         </div>
       </div>
     </BaseDialog>

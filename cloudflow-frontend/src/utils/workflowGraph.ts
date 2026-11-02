@@ -15,7 +15,15 @@ import {
 export const isWorkflowGraphDefinition = (value: unknown): value is WorkflowGraphDefinition => {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Record<string, unknown>;
-  return Array.isArray(candidate.nodes) && Array.isArray(candidate.edges);
+  return Array.isArray(candidate.nodes) && Array.isArray(candidate.edges)
+    && candidate.nodes.every((node) => node && typeof node === 'object'
+      && typeof node.id === 'string' && typeof node.type === 'string'
+      && typeof node.title === 'string' && node.title.trim().length > 0
+      && !('name' in node) && !('label' in node))
+    && candidate.edges.every((edge) => edge && typeof edge === 'object'
+      && typeof edge.source === 'string' && typeof edge.target === 'string'
+      && (edge.condition == null || typeof edge.condition === 'string')
+      && !['from', 'to', 'expression', 'expr', 'label'].some((key) => key in edge));
 };
 
 const DEFAULT_WORKFLOW_VIEWPORT: WorkflowGraphViewport = { x: 0, y: 0, zoom: 1 };

@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -254,7 +255,7 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
         processStartDTO.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_MALL_ORDER_PROCESS_KEY,
                 "wf_hr_mall_order"));
-        processStartDTO.setBusinessType("HR_MALL_ORDER");
+        processStartDTO.setBusinessType(HrWorkflowBusinessTypes.MALL_ORDER);
         processStartDTO.setBusinessId(order.getId());
         processStartDTO.setBusinessNo(order.getOrderNo());
         processStartDTO.setProcessTitle("积分商城兑换-" + order.getOrderNo());

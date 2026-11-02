@@ -168,6 +168,12 @@ public class WorkflowGraphModelResolver {
             if (!StringUtils.hasText(nodeType)) {
                 throw WorkflowException.validationError("流程节点缺少 type: " + nodeId);
             }
+            if (!node.path("title").isTextual() || !StringUtils.hasText(text(node, "title"))) {
+                throw WorkflowException.validationError("流程节点缺少 title: " + nodeId);
+            }
+            if (node.has("name") || node.has("label")) {
+                throw WorkflowException.validationError("流程节点名称仅使用 title: " + nodeId);
+            }
             nodeMap.put(nodeId, node);
             incomingCount.put(nodeId, 0);
         }
@@ -175,6 +181,12 @@ public class WorkflowGraphModelResolver {
         Map<String, List<EdgeLink>> outgoing = new LinkedHashMap<>();
         Map<String, List<EdgeLink>> incoming = new LinkedHashMap<>();
         for (JsonNode edge : edgesNode) {
+            if (edge.has("from") || edge.has("to") || edge.has("expression") || edge.has("expr") || edge.has("label")) {
+                throw WorkflowException.validationError("流程连线仅使用 source、target、condition 字段");
+            }
+            if (edge.hasNonNull("condition") && !edge.get("condition").isTextual()) {
+                throw WorkflowException.validationError("流程连线 condition 必须为字符串");
+            }
             String source = text(edge, "source");
             String target = text(edge, "target");
             if (!StringUtils.hasText(source) || !StringUtils.hasText(target)) {

@@ -2,6 +2,7 @@ package com.cloudflow.workflow.config;
 
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeContributor;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeDef;
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeRegistry;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
  *   <li>{@code WorkflowController.businessTypes()} 暴露 /wf/business-types 给前端选择器。</li>
  * </ul>
  *
- * <p>这些 31 项代码与 {@code WfReconcileAlertMapper.xml} 历史 UNION ALL 中的 business_type 标签对齐，
+ * <p>这些代码定义 {@code WfReconcileAlertMapper.xml} 的业务表与流程实例列，
  * 新增业务模块在本类追加 register 调用即可同步生效。
  */
 @Configuration
@@ -24,53 +25,61 @@ public class WorkflowBusinessTypeContributor implements BusinessTypeContributor 
     public void contribute(BusinessTypeRegistry registry) {
         // ===== HR =====
         registry.register(BusinessTypeDef.builder()
-                .code("HR_RECRUITMENT").module("hr").businessTable("hr_recruitment_requisition")
+                .code(HrWorkflowBusinessTypes.RECRUITMENT).module("hr").businessTable("hr_recruitment_requisition")
                 .displayName("招聘需求审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_LIFECYCLE").module("hr").businessTable("hr_lifecycle_application")
+                .code(HrWorkflowBusinessTypes.LIFECYCLE).module("hr").businessTable("hr_lifecycle_application")
                 .displayName("员工生命周期申请").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_TIME_REQUEST").module("hr").businessTable("hr_time_request")
+                .code(HrWorkflowBusinessTypes.TIME_REQUEST).module("hr").businessTable("hr_time_request")
                 .displayName("考勤请假申请").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_OFFER").module("hr").businessTable("hr_offer")
+                .code(HrWorkflowBusinessTypes.OFFER).module("hr").businessTable("hr_offer")
                 .displayName("录用 Offer 审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_COMP_CHANGE").module("hr").businessTable("hr_comp_change")
+                .code(HrWorkflowBusinessTypes.COMP_CHANGE).module("hr").businessTable("hr_comp_change")
                 .displayName("薪酬调整审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_PERFORMANCE_OBJECTIVE").module("hr").businessTable("hr_performance_objective")
-                .displayName("绩效目标审批").build());
+                .code(HrWorkflowBusinessTypes.PERFORMANCE_PLAN).module("hr").businessTable("hr_performance_objective")
+                .processInstanceIdField("plan_process_instance_id")
+                .approvingStatuses(java.util.List.of("PLAN_APPROVING"))
+                .finishedStatuses(java.util.List.of("PLAN_APPROVED", "RESULT_APPROVING", "COMPLETED", "REJECTED"))
+                .displayName("绩效计划审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_CERTIFICATE_REQUEST").module("hr").businessTable("hr_certificate_request")
+                .code(HrWorkflowBusinessTypes.PERFORMANCE_RESULT).module("hr").businessTable("hr_performance_objective")
+                .processInstanceIdField("result_process_instance_id")
+                .approvingStatuses(java.util.List.of("RESULT_APPROVING"))
+                .displayName("绩效结果审批").build());
+        registry.register(BusinessTypeDef.builder()
+                .code(HrWorkflowBusinessTypes.CERTIFICATE_REQUEST).module("hr").businessTable("hr_certificate_request")
                 .displayName("证明开具审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_CONTRACT_SIGN").module("hr").businessTable("hr_contract_signature")
-                .displayName("电子合同签署").build());
+                .code(HrWorkflowBusinessTypes.CONTRACT_SIGN).module("hr").businessTable("hr_contract_signature")
+                .statusField("sign_status").displayName("电子合同签署").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_TRAINING_ENROLLMENT").module("hr").businessTable("hr_training_enrollment")
+                .code(HrWorkflowBusinessTypes.TRAINING_ENROLLMENT).module("hr").businessTable("hr_training_enrollment")
                 .displayName("培训报名审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_TALENT_REVIEW").module("hr").businessTable("hr_talent_review")
+                .code(HrWorkflowBusinessTypes.TALENT_REVIEW).module("hr").businessTable("hr_talent_review")
                 .displayName("人才盘点发布审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_TALENT_SUCCESSION").module("hr").businessTable("hr_talent_succession_plan")
+                .code(HrWorkflowBusinessTypes.TALENT_SUCCESSION).module("hr").businessTable("hr_talent_succession_plan")
                 .displayName("继任计划发布审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_BENEFIT_REQUEST").module("hr").businessTable("hr_benefit_request")
+                .code(HrWorkflowBusinessTypes.BENEFIT_REQUEST).module("hr").businessTable("hr_benefit_request")
                 .displayName("福利申领审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_MALL_ORDER").module("hr").businessTable("hr_mall_order")
+                .code(HrWorkflowBusinessTypes.MALL_ORDER).module("hr").businessTable("hr_mall_order")
                 .displayName("积分商城订单审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_WORK_INJURY").module("hr").businessTable("hr_work_injury")
+                .code(HrWorkflowBusinessTypes.WORK_INJURY).module("hr").businessTable("hr_work_injury")
                 .displayName("工伤认定审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_LABOR_DISPUTE").module("hr").businessTable("hr_labor_dispute")
+                .code(HrWorkflowBusinessTypes.LABOR_DISPUTE).module("hr").businessTable("hr_labor_dispute")
                 .displayName("劳动争议处理审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_ATTENDANCE_APPEAL").module("hr").businessTable("hr_attendance_appeal")
-                .displayName("考勤异常申诉审批").build());
+                .code(HrWorkflowBusinessTypes.ATTENDANCE_APPEAL).module("hr").businessTable("hr_attendance_appeal")
+                .processInstanceIdField("instance_id").displayName("考勤异常申诉审批").build());
 
         // ===== OA =====
         registry.register(BusinessTypeDef.builder()

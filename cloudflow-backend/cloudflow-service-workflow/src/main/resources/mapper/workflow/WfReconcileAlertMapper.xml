@@ -28,6 +28,14 @@
                 '${bt.module}' AS biz_module,
                 ${bt.idField} AS business_id,
                 ${bt.statusField} AS actual_status,
+                CASE
+                    WHEN ${bt.statusField} IN
+                    <foreach collection="bt.approvingStatuses" item="status" open="(" close=")" separator=",">#{status}</foreach>
+                    THEN 'APPROVING'
+                    WHEN ${bt.statusField} IN
+                    <foreach collection="bt.finishedStatuses" item="status" open="(" close=")" separator=",">#{status}</foreach>
+                    THEN 'FINISHED'
+                END AS workflow_stage_status,
                 ${bt.businessTable}.tenant_id AS tenant_id
             FROM ${bt.businessTable}
             WHERE ${bt.processInstanceIdField} IS NOT NULL
@@ -36,9 +44,9 @@
         ) biz ON pi.instance_id = biz.process_instance_id
               AND pi.tenant_id = biz.tenant_id
         WHERE (
-            (biz.actual_status IN ('PENDING_APPROVAL','PENDING','APPROVING','IN_APPROVAL') AND pi.status IN ('COMPLETED','CANCELLED'))
+            (biz.workflow_stage_status = 'APPROVING' AND pi.status IN ('COMPLETED','CANCELLED'))
             OR
-            (pi.status = 'RUNNING' AND biz.actual_status IN ('APPROVED','REJECTED','COMPLETED','CANCELLED'))
+            (pi.status = 'RUNNING' AND biz.workflow_stage_status = 'FINISHED')
         )
           AND COALESCE(pi.end_time, pi.start_time, pi.create_time) >= DATE_SUB(NOW(), INTERVAL #{windowDays} DAY)
     </select>

@@ -1,12 +1,14 @@
 package com.cloudflow.hr.event.consumer;
 
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.workflow.WorkflowFallbackRetryContext;
 import com.cloudflow.common.event.workflow.WorkflowFallbackRetryPublisher;
 import com.cloudflow.hr.client.WorkflowServiceClient;
+import com.cloudflow.hr.service.HrEmployeeOnboardingService;
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.cloudflow.hr.client.dto.WorkflowStartRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
 
     private final ObjectMapper objectMapper;
     private final WorkflowServiceClient workflowServiceClient;
+    private final HrEmployeeOnboardingService onboardingService;
 
     @Override
     public String eventType() {
@@ -44,12 +47,20 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
         if (result[0] == null || !result[0].isSuccess()) {
             throw new IllegalStateException("workflow fallback retry failed: " + (result[0] == null ? "null" : result[0].getMsg()));
         }
+        if (HrWorkflowBusinessTypes.LIFECYCLE.equals(request.getVariables().get("businessType"))) {
+            Map<String, String> data = (Map<String, String>) result[0].getData();
+            String instanceId = data.get("instanceId");
+            if (instanceId == null || instanceId.isBlank()) {
+                throw new IllegalStateException("workflow fallback retry returned no instanceId");
+            }
+            onboardingService.recordStartedWorkflow(parseTenantId(request.getVariables().get("businessId")), instanceId);
+        }
         log.info("workflow fallback retry success, module={}, eventId={}", SOURCE_MODULE, envelope.getEventId());
     }
 
     private void validateTenant(BusinessEventEnvelope envelope, Map<String, Object> payload, Long requestTenantId) {
         Long payloadTenantId = parseTenantId(payload.get("tenantId"));
-        Long contextTenantId = UserContext.getTenantId();
+        Long contextTenantId = TenantContext.getTenantId();
         if (requestTenantId == null || envelope.getTenantId() == null || contextTenantId == null
                 || !requestTenantId.equals(envelope.getTenantId())
                 || !requestTenantId.equals(payloadTenantId)

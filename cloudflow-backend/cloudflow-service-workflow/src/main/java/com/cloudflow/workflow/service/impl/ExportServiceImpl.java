@@ -124,11 +124,6 @@ public class ExportServiceImpl implements IExportService {
             metadata.put("updatedAt", definition.getUpdateTime());
             metadata.put("createdBy", definition.getCreateBy());
             metadata.put("status", definition.getStatus());
-            metadata.put("processKey", definition.getProcessKey());
-            metadata.put("formId", definition.getFormId());
-            metadata.put("startPermissionType", definition.getStartPermissionType());
-            metadata.put("startPermissionValue", definition.getStartPermissionValue());
-            metadata.put("deptId", definition.getDeptId());
             workflowData.setMetadata(metadata);
 
             exportFormat.setWorkflow(workflowData);
@@ -208,8 +203,7 @@ public class ExportServiceImpl implements IExportService {
         try {
             return objectMapper.readValue(definitionJson, Object.class);
         } catch (Exception e) {
-            log.error("解析流程定义失败", e);
-            return definitionJson; // 返回原始字符串
+            throw new WorkflowException("PARSE_FAILED", "流程定义 JSON 无效，无法导出", e);
         }
     }
     /**

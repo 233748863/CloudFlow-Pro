@@ -7,6 +7,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.service.WorkflowCallbackService;
 import com.cloudflow.hr.client.AuthServiceClient;
@@ -75,10 +76,7 @@ import java.util.Set;
  * （得益于 {@code @ConditionalOnMissingBean}）。HR 业务不使用 {@code ApprovalResultHandler}
  * 策略模式，而是按 businessType 直接路由到 {@link HrTypedCrudService} 做状态回写。
  *
- * <p>businessType 命名兼容：历史 case 形式为去 {@code HR_} 前缀的裸名
- * （{@code RECRUITMENT_REQUEST} / {@code OFFER} / ...），与
- * {@code WorkflowBusinessTypeContributor} 注册的 {@code HR_*} code 形式存在历史错位。
- * 本类 {@link #normalizeBusinessType} 在归一化时同时剥离 {@code HR_} 前缀，使两种写法均能命中。
+ * <p>业务类型与流程启动和对账注册共用 HrWorkflowBusinessTypes。
  */
 @Slf4j
 @Service
@@ -157,33 +155,33 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
         if (target != null && target.entityClass() == HrContractSignature.class) {
             return CONTRACT_SIGN_APPROVING_STATUSES;
         }
+        if (target.entityClass() == HrPerformanceObjective.class) {
+            return Set.of("planProcessInstanceId".equals(target.instanceField()) ? "PLAN_APPROVING" : "RESULT_APPROVING");
+        }
         return CALLBACK_APPROVING_STATUSES;
     }
 
     private CallbackTarget resolveTarget(String businessType) {
-        String normalized = normalizeBusinessType(businessType);
-        return switch (normalized) {
-            case "RECRUITMENT_REQUEST" -> new CallbackTarget(HrRecruitmentRequisition.class, "status", null);
-            case "OFFER" -> new CallbackTarget(HrOffer.class, "status", null);
-            case "ONBOARDING", "PROBATION", "PROBATION_CONFIRMATION", "TRANSFER", "RESIGNATION" ->
-                    new CallbackTarget(HrLifecycleApplication.class, "status", null);
-            case "LEAVE", "OVERTIME", "ATTENDANCE_SUPPLEMENT" ->
-                    new CallbackTarget(HrTimeRequest.class, "status", null);
-            case "SALARY_ADJUSTMENT" -> new CallbackTarget(HrCompChange.class, "status", null);
-            case "PERFORMANCE_PLAN" ->
+        return switch (businessType) {
+            case HrWorkflowBusinessTypes.RECRUITMENT -> new CallbackTarget(HrRecruitmentRequisition.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.OFFER -> new CallbackTarget(HrOffer.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.LIFECYCLE -> new CallbackTarget(HrLifecycleApplication.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.TIME_REQUEST -> new CallbackTarget(HrTimeRequest.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.COMP_CHANGE -> new CallbackTarget(HrCompChange.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.PERFORMANCE_PLAN ->
                     new CallbackTarget(HrPerformanceObjective.class, "status", "planProcessInstanceId");
-            case "PERFORMANCE_RESULT" ->
+            case HrWorkflowBusinessTypes.PERFORMANCE_RESULT ->
                     new CallbackTarget(HrPerformanceObjective.class, "status", "resultProcessInstanceId");
-            case "CERTIFICATE_REQUEST" -> new CallbackTarget(HrCertificateRequest.class, "status", null);
-            case "CONTRACT_SIGN" -> new CallbackTarget(HrContractSignature.class, "signStatus", null);
-            case "TRAINING_ENROLLMENT" -> new CallbackTarget(HrTrainingEnrollment.class, "status", null);
-            case "TALENT_REVIEW" -> new CallbackTarget(HrTalentReview.class, "status", null);
-            case "TALENT_SUCCESSION" -> new CallbackTarget(HrTalentSuccessionPlan.class, "status", null);
-            case "BENEFIT_REQUEST" -> new CallbackTarget(HrBenefitRequest.class, "status", null);
-            case "MALL_ORDER" -> new CallbackTarget(HrMallOrder.class, "status", null);
-            case "WORK_INJURY" -> new CallbackTarget(HrWorkInjury.class, "status", null);
-            case "LABOR_DISPUTE" -> new CallbackTarget(HrLaborDispute.class, "status", null);
-            case "ATTENDANCE_APPEAL" -> new CallbackTarget(
+            case HrWorkflowBusinessTypes.CERTIFICATE_REQUEST -> new CallbackTarget(HrCertificateRequest.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.CONTRACT_SIGN -> new CallbackTarget(HrContractSignature.class, "signStatus", "processInstanceId");
+            case HrWorkflowBusinessTypes.TRAINING_ENROLLMENT -> new CallbackTarget(HrTrainingEnrollment.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.TALENT_REVIEW -> new CallbackTarget(HrTalentReview.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.TALENT_SUCCESSION -> new CallbackTarget(HrTalentSuccessionPlan.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.BENEFIT_REQUEST -> new CallbackTarget(HrBenefitRequest.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.MALL_ORDER -> new CallbackTarget(HrMallOrder.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.WORK_INJURY -> new CallbackTarget(HrWorkInjury.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.LABOR_DISPUTE -> new CallbackTarget(HrLaborDispute.class, "status", "processInstanceId");
+            case HrWorkflowBusinessTypes.ATTENDANCE_APPEAL -> new CallbackTarget(
                     com.cloudflow.hr.domain.entity.HrAttendanceAppeal.class, "status", "instanceId");
             default -> throw new HrBusinessException("UNSUPPORTED_BUSINESS_TYPE",
                     "不支持的业务类型：" + businessType);
@@ -191,36 +189,35 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
     }
 
     private String resolveStatus(String businessType, String approvalResult) {
-        String normalized = normalizeBusinessType(businessType);
         if (WorkflowCallbackConstants.RESULT_REJECTED.equals(approvalResult)) {
             return "REJECTED";
         }
         // APPROVED 分支
-        if ("RECRUITMENT_REQUEST".equals(normalized)) {
+        if (HrWorkflowBusinessTypes.RECRUITMENT.equals(businessType)) {
             return "RECRUITING";
         }
-        if ("PERFORMANCE_PLAN".equals(normalized)) {
+        if (HrWorkflowBusinessTypes.PERFORMANCE_PLAN.equals(businessType)) {
             return "PLAN_APPROVED";
         }
-        if ("PERFORMANCE_RESULT".equals(normalized)) {
+        if (HrWorkflowBusinessTypes.PERFORMANCE_RESULT.equals(businessType)) {
             return "COMPLETED";
         }
-        if ("CONTRACT_SIGN".equals(normalized)) {
+        if (HrWorkflowBusinessTypes.CONTRACT_SIGN.equals(businessType)) {
             return "SIGNED";
         }
-        if ("TALENT_REVIEW".equals(normalized) || "TALENT_SUCCESSION".equals(normalized)) {
+        if (HrWorkflowBusinessTypes.TALENT_REVIEW.equals(businessType) || HrWorkflowBusinessTypes.TALENT_SUCCESSION.equals(businessType)) {
             return "PUBLISHED";
         }
-        if ("BENEFIT_REQUEST".equals(normalized)) {
+        if (HrWorkflowBusinessTypes.BENEFIT_REQUEST.equals(businessType)) {
             return "APPROVED";
         }
-        if ("MALL_ORDER".equals(normalized)) {
+        if (HrWorkflowBusinessTypes.MALL_ORDER.equals(businessType)) {
             return "APPROVED";
         }
-        if ("WORK_INJURY".equals(normalized)) {
+        if (HrWorkflowBusinessTypes.WORK_INJURY.equals(businessType)) {
             return "DETERMINED";
         }
-        if ("LABOR_DISPUTE".equals(normalized)) {
+        if (HrWorkflowBusinessTypes.LABOR_DISPUTE.equals(businessType)) {
             return "AWARDED";
         }
         // CERTIFICATE_REQUEST APPROVED 后由 PDF 生成完毕异步切换为 ISSUED，本回调先落 APPROVED。
@@ -362,7 +359,7 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
     private void runSideEffectOnce(ApprovalResultDTO dto, String effectKey, Runnable action) {
         WfCallbackSideEffect marker = new WfCallbackSideEffect();
         marker.setTenantId(dto.getTenantId());
-        marker.setBusinessType(normalizeBusinessType(dto.getBusinessType()));
+        marker.setBusinessType(dto.getBusinessType());
         marker.setBusinessId(dto.getBusinessId());
         marker.setProcessInstanceId(dto.getProcessInstanceId());
         marker.setEffectKey(effectKey);
@@ -577,11 +574,6 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             }
         }
         return "EMP" + System.nanoTime();
-    }
-
-    private String normalizeBusinessType(String businessType) {
-        String upper = String.valueOf(businessType).trim().toUpperCase(Locale.ROOT).replace('-', '_');
-        return upper.startsWith("HR_") ? upper.substring(3) : upper;
     }
 
     private void validateApprovalResult(ApprovalResultDTO dto) {
