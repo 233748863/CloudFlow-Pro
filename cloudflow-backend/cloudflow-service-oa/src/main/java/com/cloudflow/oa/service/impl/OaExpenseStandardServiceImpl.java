@@ -29,8 +29,6 @@ import java.util.*;
 @RequiredArgsConstructor
 public class OaExpenseStandardServiceImpl implements IOaExpenseStandardService {
 
-    private static final Long DEFAULT_TENANT_ID = 100000L;
-
     private final OaExpenseStandardMapper standardMapper;
 
     @Override
@@ -77,9 +75,7 @@ public class OaExpenseStandardServiceImpl implements IOaExpenseStandardService {
         if (standard == null || !StringUtils.hasText(standard.getCategory()) || standard.getLimitAmount() == null) {
             throw new IllegalArgumentException("类别和限额必填");
         }
-        if (standard.getTenantId() == null) {
-            standard.setTenantId(DEFAULT_TENANT_ID);
-        }
+        standard.setTenantId(requireTenantId());
         if (!StringUtils.hasText(standard.getStatus())) {
             standard.setStatus("ACTIVE");
         }
@@ -98,6 +94,7 @@ public class OaExpenseStandardServiceImpl implements IOaExpenseStandardService {
         if (standard == null || standard.getStandardId() == null) {
             throw new IllegalArgumentException("ID 必填");
         }
+        standard.setTenantId(requireTenantId());
         standard.setUpdateBy(UserContext.getUserName());
         standard.setUpdateTime(LocalDateTime.now());
         return standardMapper.updateById(standard) > 0;
@@ -168,6 +165,14 @@ public class OaExpenseStandardServiceImpl implements IOaExpenseStandardService {
         result.setTotalExceededAmount(totalExceeded);
         result.setDetails(details);
         return result;
+    }
+
+    private Long requireTenantId() {
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
     }
 
     private OaExpenseStandard matchStandard(List<OaExpenseStandard> standards, String positionLevel,

@@ -40,7 +40,6 @@ export interface OaMeetingAttendance {
   id?: number;
   tenantId?: number;
   minutesId?: number;
-  meetingId?: number;
   userId?: number;
   userName?: string;
   attendStatus: MeetingAttendStatus;

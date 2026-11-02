@@ -208,19 +208,12 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
             if (isSealBorrowLocked(id, seal)) {
                 throw new IllegalArgumentException("借出中的印章不能删除");
             }
-            Long usageCount = sealApplicationMapper.selectCount(new LambdaQueryWrapper<OaSealApplication>()
-                    .eq(OaSealApplication::getSealId, id)
-                    .eq(OaSealApplication::getDeleted, "0"));
             OaSeal update = new OaSeal();
             update.setSealId(id);
             update.setUpdateBy(UserContext.getUserName());
             update.setUpdateTime(now);
-            if (usageCount != null && usageCount > 0) {
-                update.setDeleted(1);
-                updateById(update);
-            } else {
-                removeById(id);
-            }
+            update.setDeleted(1);
+            updateById(update);
         }
         return true;
     }

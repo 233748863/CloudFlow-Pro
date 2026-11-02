@@ -64,6 +64,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -561,11 +562,15 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         if (nodes == null || nodes.isEmpty()) {
             return true;
         }
+        List<Long> taskIds = nodes.stream().filter(Objects::nonNull)
+                .map(ProjectWbsTreeNodeDTO::getTaskId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, WorkTask> tasks = taskIds.isEmpty() ? Map.of() : workTaskService.listByIds(taskIds)
+                .stream().collect(Collectors.toMap(WorkTask::getTaskId, task -> task));
         for (ProjectWbsTreeNodeDTO node : nodes) {
             if (node == null || node.getTaskId() == null) {
                 continue;
             }
-            WorkTask task = workTaskService.getById(node.getTaskId());
+            WorkTask task = tasks.get(node.getTaskId());
             if (task == null || !Objects.equals(task.getProjectId(), projectId) || !Integer.valueOf(0).equals(task.getDeleted())) {
                 throw new IllegalArgumentException("WBS任务不存在或不属于当前项目");
             }
@@ -579,10 +584,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         if (ids == null || ids.isEmpty()) {
             return true;
         }
-        List<WorkTask> tasks = ids.stream()
-                .map(workTaskService::getById)
-                .filter(Objects::nonNull)
-                .toList();
+        List<WorkTask> tasks = workTaskService.listByIds(ids);
         boolean removed = workTaskService.removeProjectTasks(ids);
         if (removed) {
             tasks.stream()

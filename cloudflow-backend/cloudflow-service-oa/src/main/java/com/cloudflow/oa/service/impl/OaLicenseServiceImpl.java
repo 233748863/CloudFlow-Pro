@@ -198,19 +198,12 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
             if (isLicenseBorrowLocked(id, license)) {
                 throw new IllegalArgumentException("借出中的证照不能删除");
             }
-            Long usageCount = licenseBorrowMapper.selectCount(new LambdaQueryWrapper<OaLicenseBorrow>()
-                    .eq(OaLicenseBorrow::getLicenseId, id)
-                    .eq(OaLicenseBorrow::getDeleted, "0"));
             OaLicense update = new OaLicense();
             update.setLicenseId(id);
             update.setUpdateBy(UserContext.getUserName());
             update.setUpdateTime(now);
-            if (usageCount != null && usageCount > 0) {
-                update.setDeleted(1);
-                updateById(update);
-            } else {
-                removeById(id);
-            }
+            update.setDeleted(1);
+            updateById(update);
         }
         return true;
     }

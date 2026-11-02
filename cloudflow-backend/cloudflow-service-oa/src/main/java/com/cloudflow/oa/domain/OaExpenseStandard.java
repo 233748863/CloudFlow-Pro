@@ -23,13 +23,13 @@ public class OaExpenseStandard implements Serializable {
     private Long standardId;
 
     private Long tenantId;
-    /** 职级编码(对应 hr_emp_position_level.level_code 或自由文本) */
+    /** 职级编码(可空表示通用) */
     private String positionLevel;
     /** 报销类别 TRAVEL/OFFICE/ENTERTAIN/TRANSPORT/OTHER */
     private String category;
-    /** 城市/区域(可空表示通用) */
+    /** 具体城市(可空表示通用) */
     private String city;
-    /** 限额(单笔或日累计, 按 limitType 区分) */
+    /** 限额金额，周期由 limitType 指定 */
     private BigDecimal limitAmount;
     /** 限额类型 PER_ITEM/DAILY/MONTHLY/YEARLY */
     private String limitType;
