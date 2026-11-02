@@ -22,7 +22,7 @@
         WHERE account.user_id = #{id} AND account.tenant_id = #{tenantId} AND account.deleted = 0 AND account.status = '0'
     </select>
     <select id="department" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
-        SELECT dept_id AS id, tenant_id, dept_name AS name, dept_id, dept_name, parent_id, leader
+        SELECT dept_id AS id, tenant_id, dept_name AS name, dept_id, dept_name, parent_id, leader_user_id
         FROM sys_dept WHERE dept_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 AND status = '0'
     </select>
     <select id="userForUpdate" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
@@ -60,11 +60,5 @@
         INNER JOIN sys_user account ON account.user_id = employee.user_id
             AND account.tenant_id = employee.tenant_id AND account.deleted = 0
         WHERE employee.tenant_id = #{tenantId} AND employee.user_id = #{userId} AND employee.deleted = 0
-    </select>
-    <select id="leaderCandidates" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
-        SELECT user_id AS id, tenant_id, user_id, nick_name AS name, dept_id
-        FROM sys_user WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0'
-          AND (CAST(user_id AS CHAR) = #{value} OR user_name = #{value} OR nick_name = #{value})
-        ORDER BY CASE WHEN CAST(user_id AS CHAR) = #{value} THEN 0 WHEN user_name = #{value} THEN 1 ELSE 2 END, user_id
     </select>
 </mapper>

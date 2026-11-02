@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -170,7 +171,7 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_TALENT_SUCCESSION_PROCESS_KEY,
                 "wf_hr_talent_succession"));
-        dto.setBusinessType("HR_TALENT_SUCCESSION");
+        dto.setBusinessType(HrWorkflowBusinessTypes.TALENT_SUCCESSION);
         dto.setBusinessId(plan.getId());
         dto.setBusinessNo(plan.getPlanNo());
         dto.setProcessTitle("继任计划发布-" + plan.getPlanName());

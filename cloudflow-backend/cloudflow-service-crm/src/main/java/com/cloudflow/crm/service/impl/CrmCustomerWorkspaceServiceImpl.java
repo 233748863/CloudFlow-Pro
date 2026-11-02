@@ -7,6 +7,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmContact;
 import com.cloudflow.crm.domain.CrmCustomer;
+import com.cloudflow.crm.domain.CrmCustomerHealth;
 import com.cloudflow.crm.domain.CrmFollowUp;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.domain.CrmQuote;
@@ -83,12 +84,9 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     @Override
     public CrmCustomerWorkspaceVO getWorkspace(Long customerId) {
         CrmCustomer customer = requireCustomer(customerId);
-        crmCustomerService.refreshHealth(customerId);
-        customer = requireCustomer(customerId);
 
         CrmCustomerWorkspaceVO workspace = new CrmCustomerWorkspaceVO();
         workspace.setCustomer(customer);
-        workspace.setHealthReasons(buildHealthReasons(customerId, customer));
         workspace.setContacts(contactMapper.selectList(new LambdaQueryWrapper<CrmContact>()
                 .eq(CrmContact::getCustomerId, customerId)
                 .eq(CrmContact::getDeleted, CrmConstants.DelFlag.NORMAL)
@@ -114,12 +112,16 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .eq(CrmRenewal::getCustomerId, customerId)
                 .eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByAsc(CrmRenewal::getCurrentExpireDate));
-        renewals.forEach(r -> CrmRenewalRiskEvaluator.enrich(r, sysDictHelper));
+        CrmRenewalRiskEvaluator.enrichAll(renewals, sysDictHelper);
         workspace.setRenewals(renewals);
         workspace.setTickets(serviceTicketMapper.selectList(new LambdaQueryWrapper<CrmServiceTicket>()
                 .eq(CrmServiceTicket::getCustomerId, customerId)
                 .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByDesc(CrmServiceTicket::getUpdateTime)));
+        CrmCustomerHealth health = CrmHealthCalculator.calculate(workspace.getFollowUps(), renewals,
+                workspace.getReceivables(), workspace.getTickets(), LocalDateTime.now());
+        crmCustomerService.refreshHealth(customer, health);
+        workspace.setHealthReasons(buildHealthReasons(customer, health));
         workspace.setContracts(loadContracts(customerId));
         workspace.setInvoices(loadInvoices(customerId));
         workspace.setProjects(loadProjects(customerId));
@@ -166,7 +168,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .in(CrmRenewal::getCustomerId, accessibleCustomerIds)
                 .orderByAsc(CrmRenewal::getCurrentExpireDate));
-        renewals.forEach(r -> CrmRenewalRiskEvaluator.enrich(r, sysDictHelper));
+        CrmRenewalRiskEvaluator.enrichAll(renewals, sysDictHelper);
         LocalDate today = LocalDate.now();
         summary.setRenewalWindows(renewals.stream()
                 .filter(item -> item.getCurrentExpireDate() != null)
@@ -207,18 +209,20 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .filter(item -> resolveStageStayDays(item) >= 14)
                 .limit(10)
                 .toList());
-        summary.setCrossModuleTodos(buildDashboardTodos());
-        summary.setCrossModuleRisks(buildDashboardRisks());
-        summary.setBudgetAlerts(loadBudgetAlerts());
-        summary.setInvoiceExceptions(loadInvoiceExceptions());
+        List<CrmCustomerWorkspaceVO> workspaces = loadDashboardWorkspaces();
+        summary.setCrossModuleTodos(buildDashboardTodos(workspaces));
+        summary.setCrossModuleRisks(buildDashboardRisks(workspaces));
+        summary.setBudgetAlerts(loadBudgetAlerts(workspaces));
+        summary.setInvoiceExceptions(loadInvoiceExceptions(workspaces));
         return summary;
     }
 
     @Override
     public CrmDashboardWorkplaceVO getDashboardWorkplace() {
         CrmDashboardWorkplaceVO summary = new CrmDashboardWorkplaceVO();
-        summary.setTodos(buildDashboardTodos());
-        summary.setRisks(buildDashboardRisks());
+        List<CrmCustomerWorkspaceVO> workspaces = loadDashboardWorkspaces();
+        summary.setTodos(buildDashboardTodos(workspaces));
+        summary.setRisks(buildDashboardRisks(workspaces));
         summary.setActivities(buildDashboardActivities());
         return summary;
     }
@@ -227,10 +231,11 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
         return crmCustomerService.getAccessibleCustomer(customerId);
     }
 
-    private List<CrmHealthReasonItemVO> buildHealthReasons(Long customerId, CrmCustomer customer) {
+    private List<CrmHealthReasonItemVO> buildHealthReasons(CrmCustomer customer, CrmCustomerHealth health) {
+        Long customerId = customer.getCustomerId();
         List<CrmHealthReasonItemVO> reasons = new ArrayList<>();
-        LocalDate today = LocalDate.now();
-        LocalDate renewalDate = CrmHealthCalculator.resolveRenewalWindowDate(renewalMapper, customerId);
+        LocalDate today = health.calculatedAt().toLocalDate();
+        LocalDate renewalDate = health.renewalWindowDate();
         if (renewalDate != null) {
             long days = ChronoUnit.DAYS.between(today, renewalDate);
             if (days <= 90) {
@@ -240,19 +245,19 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                         "/office/crm/customer/" + customerId + "#renewal"));
             }
         }
-        int overdueDays = CrmHealthCalculator.resolveMaxOverdueDays(receivableMapper, customerId, today);
+        int overdueDays = health.overdueDays();
         if (overdueDays > 0) {
             reasons.add(buildReason("RECEIVABLE", "RECEIVABLE_OVERDUE",
                     overdueDays > 30 ? "回款逾期超过30天" : "回款逾期未超过30天",
                     overdueDays > 30 ? CrmConstants.HealthLevel.RED : CrmConstants.HealthLevel.YELLOW,
                     "/office/crm/customer/" + customerId + "#cashflow"));
         }
-        if (CrmHealthCalculator.hasHighSeverityOpenTicket(serviceTicketMapper, customerId)) {
+        if (health.highSeverityOpenTicket()) {
             reasons.add(buildReason("TICKET", "HIGH_SEVERITY_OPEN", "存在高严重度未关闭工单",
                     CrmConstants.HealthLevel.RED,
                     "/office/crm/customer/" + customerId + "#ticket"));
         }
-        if (CrmHealthCalculator.hasOverdueOpenTicket(serviceTicketMapper, customerId, LocalDateTime.now())) {
+        if (health.overdueOpenTicket()) {
             reasons.add(buildReason("TICKET", "SLA_OVERDUE", "存在SLA已超时未关闭工单",
                     CrmConstants.HealthLevel.RED,
                     "/office/crm/customer/" + customerId + "#ticket"));
@@ -364,11 +369,9 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
         Map<String, CrmReceivableAgingBucketVO> buckets = new LinkedHashMap<>();
         buckets.put("CURRENT", createBucket("CURRENT", "未逾期"));
         // A6 治理：按 crm_receivable_overdue_tier 字典 dict_sort 动态生成档位 buckets
-        List<com.cloudflow.common.redis.core.SysDictHelper.DictItem> tiers =
-                sysDictHelper.getDictData("crm_receivable_overdue_tier");
-        if (tiers != null && !tiers.isEmpty()) {
-            List<com.cloudflow.common.redis.core.SysDictHelper.DictItem> sorted =
-                    CrmHealthCalculator.sortedTiers(tiers);
+        List<com.cloudflow.common.redis.core.SysDictHelper.DictItem> sorted =
+                CrmHealthCalculator.sortedTiers(sysDictHelper.getDictData("crm_receivable_overdue_tier"));
+        if (!sorted.isEmpty()) {
             for (com.cloudflow.common.redis.core.SysDictHelper.DictItem item : sorted) {
                 String code = CrmHealthCalculator.tierCodeOf(item, sorted);
                 String name = item.getLabel() != null ? item.getLabel() : code;
@@ -397,7 +400,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
             if (item.getOutstandingAmount() == null || item.getOutstandingAmount().signum() <= 0) {
                 continue;
             }
-            String bucketCode = CrmHealthCalculator.resolveAgingBucket(item.getDueDate(), today, sysDictHelper);
+            String bucketCode = CrmHealthCalculator.resolveAgingBucket(item.getDueDate(), today, sorted);
             CrmReceivableAgingBucketVO bucket = buckets.get(bucketCode);
             if (bucket == null) {
                 continue;
@@ -617,42 +620,30 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
         return summary;
     }
 
-    private List<CrmWorkspaceTodoItemVO> buildDashboardTodos() {
-        List<CrmWorkspaceTodoItemVO> todos = new ArrayList<>();
-        topActiveCustomers().forEach(customer -> {
-            CrmCustomerWorkspaceVO workspace = getWorkspace(customer.getCustomerId());
-            todos.addAll(workspace.getCrossModuleTodos());
-        });
-        return todos.stream().limit(8).toList();
+    private List<CrmWorkspaceTodoItemVO> buildDashboardTodos(List<CrmCustomerWorkspaceVO> workspaces) {
+        return workspaces.stream().flatMap(workspace -> workspace.getCrossModuleTodos().stream())
+                .limit(8).toList();
     }
 
-    private List<CrmWorkspaceRiskItemVO> buildDashboardRisks() {
-        List<CrmWorkspaceRiskItemVO> risks = new ArrayList<>();
-        topActiveCustomers().forEach(customer -> {
-            CrmCustomerWorkspaceVO workspace = getWorkspace(customer.getCustomerId());
-            risks.addAll(workspace.getCrossModuleRisks());
-        });
-        return risks.stream().limit(8).toList();
+    private List<CrmWorkspaceRiskItemVO> buildDashboardRisks(List<CrmCustomerWorkspaceVO> workspaces) {
+        return workspaces.stream().flatMap(workspace -> workspace.getCrossModuleRisks().stream())
+                .limit(8).toList();
     }
 
-    private List<RemoteBudgetLinkVO> loadBudgetAlerts() {
-        List<RemoteBudgetLinkVO> alerts = new ArrayList<>();
-        topActiveCustomers().forEach(customer -> getWorkspace(customer.getCustomerId()).getBudgets().stream()
+    private List<RemoteBudgetLinkVO> loadBudgetAlerts(List<CrmCustomerWorkspaceVO> workspaces) {
+        return workspaces.stream().flatMap(workspace -> workspace.getBudgets().stream())
                 .filter(item -> isBudgetThresholdRisk(item.getThresholdStatus()))
-                .forEach(alerts::add));
-        return alerts.stream().limit(8).toList();
+                .limit(8).toList();
     }
 
-    private List<RemoteInvoiceLinkVO> loadInvoiceExceptions() {
-        List<RemoteInvoiceLinkVO> invoices = new ArrayList<>();
-        topActiveCustomers().forEach(customer -> getWorkspace(customer.getCustomerId()).getInvoices().stream()
+    private List<RemoteInvoiceLinkVO> loadInvoiceExceptions(List<CrmCustomerWorkspaceVO> workspaces) {
+        return workspaces.stream().flatMap(workspace -> workspace.getInvoices().stream())
                 .filter(item -> isInvoiceExceptionStatus(item.getStatus()))
-                .forEach(invoices::add));
-        return invoices.stream().limit(8).toList();
+                .limit(8).toList();
     }
 
-    private List<CrmCustomer> topActiveCustomers() {
-        return accessibleCustomers(8);
+    private List<CrmCustomerWorkspaceVO> loadDashboardWorkspaces() {
+        return accessibleCustomers(8).stream().map(customer -> getWorkspace(customer.getCustomerId())).toList();
     }
 
     private List<Long> accessibleCustomerIds(int limit) {

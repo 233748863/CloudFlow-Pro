@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.crm.domain.CrmCustomer;
+import com.cloudflow.crm.domain.CrmCustomerHealth;
 
 /**
  * 客户域服务，仅负责 CrmCustomer 本身的 CRUD 与健康度刷新。
@@ -24,4 +25,6 @@ public interface ICrmCustomerService extends IService<CrmCustomer> {
     boolean deleteCustomers(java.util.List<Long> ids);
 
     void refreshHealth(Long customerId);
+
+    void refreshHealth(CrmCustomer customer, CrmCustomerHealth health);
 }

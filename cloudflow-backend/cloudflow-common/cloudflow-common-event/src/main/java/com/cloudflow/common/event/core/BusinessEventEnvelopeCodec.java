@@ -4,9 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 
 public final class BusinessEventEnvelopeCodec {
     private BusinessEventEnvelopeCodec() { }
@@ -44,12 +42,6 @@ public final class BusinessEventEnvelopeCodec {
     }
 
     private static LocalDateTime timestamp(String value) {
-        String normalized = value.trim();
-        try { return LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME); }
-        catch (DateTimeParseException ignored) { }
-        try { return OffsetDateTime.parse(normalized, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toLocalDateTime(); }
-        catch (DateTimeParseException ignored) { }
-        try { return LocalDateTime.parse(normalized, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")); }
-        catch (DateTimeParseException failure) { throw new IllegalArgumentException("business event occurredAt is invalid: " + normalized, failure); }
+        return LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 }

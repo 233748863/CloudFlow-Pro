@@ -152,7 +152,7 @@ public class TotpService {
     public void disable(SysUser user) {
         SysUserTotp record = requireRecord(user.getUserId(), user.getTenantId());
         TenantBroker.applyWithoutTenant(ignored -> totpMapper.deleteById(record.getId()));
-        securityChangeNoticeService.notifyTotpDisabled(user);
+        securityChangeNoticeService.sendTotpDeactivationNotice(user);
     }
 
     public boolean isEnabled(Long userId, Long tenantId) {

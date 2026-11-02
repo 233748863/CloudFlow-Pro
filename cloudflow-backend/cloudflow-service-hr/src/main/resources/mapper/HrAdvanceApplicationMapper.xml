@@ -34,11 +34,10 @@
     <select id="departmentLeaders" resultType="long" flushCache="true" useCache="false">
         SELECT user_row.user_id FROM sys_dept department
         JOIN sys_user user_row ON user_row.tenant_id = department.tenant_id
-          AND (CAST(user_row.user_id AS CHAR) = TRIM(department.leader)
-            OR user_row.user_name = TRIM(department.leader) OR user_row.nick_name = TRIM(department.leader))
+          AND user_row.user_id = department.leader_user_id
         WHERE department.tenant_id = #{tenantId} AND department.dept_id = #{departmentId}
-          AND department.deleted = 0 AND department.status = '0' AND department.leader IS NOT NULL
-          AND TRIM(department.leader) != '' AND user_row.deleted = 0 AND user_row.status = '0'
+          AND department.deleted = 0 AND department.status = '0'
+          AND user_row.deleted = 0 AND user_row.status = '0'
         ORDER BY user_row.user_id
     </select>
     <select id="occupiedAmount" resultType="java.math.BigDecimal" flushCache="true" useCache="false">

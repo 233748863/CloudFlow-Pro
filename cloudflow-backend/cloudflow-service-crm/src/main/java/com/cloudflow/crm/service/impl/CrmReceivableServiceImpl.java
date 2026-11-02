@@ -253,9 +253,9 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         Map<String, CrmReceivableAgingBucketVO> buckets = new LinkedHashMap<>();
         buckets.put("CURRENT", createBucket("CURRENT", "未逾期"));
         // A6 治理：按字典动态生成档位桶
-        List<SysDictHelper.DictItem> tiers = sysDictHelper.getDictData("crm_receivable_overdue_tier");
-        if (tiers != null && !tiers.isEmpty()) {
-            List<SysDictHelper.DictItem> sorted = CrmHealthCalculator.sortedTiers(tiers);
+        List<SysDictHelper.DictItem> sorted = CrmHealthCalculator.sortedTiers(
+                sysDictHelper.getDictData("crm_receivable_overdue_tier"));
+        if (!sorted.isEmpty()) {
             for (SysDictHelper.DictItem item : sorted) {
                 String code = CrmHealthCalculator.tierCodeOf(item, sorted);
                 String name = item.getLabel() != null ? item.getLabel() : code;
@@ -283,7 +283,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
             if (outstanding.signum() <= 0) {
                 continue;
             }
-            String bucketCode = resolveAgingBucket(item.getDueDate(), today);
+            String bucketCode = CrmHealthCalculator.resolveAgingBucket(item.getDueDate(), today, sorted);
             CrmReceivableAgingBucketVO bucket = buckets.get(bucketCode);
             if (bucket == null) {
                 continue;
@@ -426,10 +426,6 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         bucket.setReceivableCount(0);
         bucket.setOutstandingAmount(BigDecimal.ZERO);
         return bucket;
-    }
-
-    private String resolveAgingBucket(LocalDate dueDate, LocalDate today) {
-        return CrmHealthCalculator.resolveAgingBucket(dueDate, today, sysDictHelper);
     }
 
     private void fillBindingSnapshot(CrmReceivable receivable) {

@@ -52,7 +52,9 @@ public class DeptVO implements Serializable {
     /**
      * 负责人
      */
-    private String leader;
+    private Long leaderUserId;
+
+    private String leaderName;
     
     /**
      * 联系电话

@@ -6,6 +6,12 @@ import type { PageResult } from '@/types';
 // ============================================================
 export type ResumeParsedStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
 
+export interface HrResumeExperience {
+  start: string;
+  end: string;
+  segment: string;
+}
+
 export interface HrResumeParsedRecord {
   id: number;
   candidateId: number;
@@ -14,15 +20,15 @@ export interface HrResumeParsedRecord {
   parsedPhone?: string;
   parsedEmail?: string;
   parsedEducation?: string;
-  parsedWorkExperience?: string;
-  parsedSkills?: string;
+  parsedSchool?: string;
+  parsedExperiences?: HrResumeExperience[];
+  parsedSkills?: string[];
   rawText?: string;
-  status: ResumeParsedStatus;
+  reviewStatus: ResumeParsedStatus;
   confidence?: number;
   reviewerId?: number;
   reviewerName?: string;
   reviewTime?: string;
-  reviewRemark?: string;
   createTime?: string;
   updateTime?: string;
 }
@@ -32,8 +38,9 @@ export interface HrResumeParsedFieldsPayload {
   parsedPhone?: string;
   parsedEmail?: string;
   parsedEducation?: string;
-  parsedWorkExperience?: string;
-  parsedSkills?: string;
+  parsedSchool?: string;
+  parsedExperiences?: HrResumeExperience[];
+  parsedSkills?: string[];
 }
 
 export const hrResumeApi = {

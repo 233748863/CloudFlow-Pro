@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
@@ -190,7 +191,7 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_CERTIFICATE_PROCESS_KEY,
                 "wf_hr_certificate_request"));
-        dto.setBusinessType("HR_CERTIFICATE_REQUEST");
+        dto.setBusinessType(HrWorkflowBusinessTypes.CERTIFICATE_REQUEST);
         dto.setBusinessId(request.getId());
         dto.setBusinessNo(request.getRequestNo());
         dto.setProcessTitle("证明开具申请-" + request.getRequestNo());
@@ -222,7 +223,7 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
             return;
         }
         R<Void> cancelResult = workflowServiceClient.cancelProcess(
-                request.getTenantId(), request.getProcessInstanceId(), "HR_CERTIFICATE_REQUEST", request.getId());
+                request.getTenantId(), request.getProcessInstanceId(), HrWorkflowBusinessTypes.CERTIFICATE_REQUEST, request.getId());
         if (cancelResult == null || !cancelResult.isSuccess()) {
             String msg = cancelResult == null ? "Workflow 服务无响应" : cancelResult.getMsg();
             throw new HrBusinessException("WORKFLOW_CANCEL_FAILED", "撤销证明开具流程失败：" + msg);

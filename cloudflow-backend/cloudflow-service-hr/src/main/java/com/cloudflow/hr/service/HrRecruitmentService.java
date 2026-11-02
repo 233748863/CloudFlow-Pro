@@ -101,7 +101,7 @@ public class HrRecruitmentService {
         payload.setName(String.valueOf(offer.getOrDefault("candidateName", "")));
         payload.setDeptId(viewSupport.toLong(offer.get("deptId")));
         payload.setPositionId(viewSupport.toLong(offer.get("positionId")));
-        payload.setEffectiveDate((java.time.LocalDate) viewSupport.firstValue(offer, "expectedDate", "expectedArrivalDate"));
+        payload.setEffectiveDate(objectMapper.convertValue(offer.get("expectedArrivalDate"), java.time.LocalDate.class));
         payload.setStatus("DRAFT");
         payload.setRemark("Offer转入入职办理");
         return lifecycleService.createApplication(payload);
@@ -112,9 +112,6 @@ public class HrRecruitmentService {
             return row;
         }
         Map<String, Object> result = new LinkedHashMap<>(row);
-        result.put("requestNo", viewSupport.firstValue(result, "requestNo", "requisitionNo"));
-        result.put("expectedDate", viewSupport.firstValue(result, "expectedDate", "expectedArrivalDate"));
-        result.put("jobRequirements", viewSupport.firstValue(result, "jobRequirements", "requirements"));
         viewSupport.putStatusDesc(result);
         viewSupport.putDeptName(result);
         viewSupport.putPositionSnapshot(result);
@@ -126,19 +123,17 @@ public class HrRecruitmentService {
             return row;
         }
         Map<String, Object> result = new LinkedHashMap<>(row);
-        result.put("requestId", viewSupport.firstValue(result, "requestId", "requisitionId"));
         viewSupport.putStatusDesc(result);
         result.put("sourceDesc", viewSupport.sourceDesc(result.get("source")));
-        Long requisitionId = viewSupport.toLong(viewSupport.firstValue(result, "requisitionId", "requestId"));
+        Long requisitionId = viewSupport.toLong(result.get("requisitionId"));
         if (requisitionId != null) {
             Map<String, Object> requisition = enrichRecruitmentRequisition(crudService.get(HrRecruitmentRequisition.class, requisitionId));
             result.putIfAbsent("requisitionNo", requisition.get("requisitionNo"));
-            result.putIfAbsent("requestNo", requisition.get("requestNo"));
             result.putIfAbsent("deptId", requisition.get("deptId"));
             result.putIfAbsent("deptName", requisition.get("deptName"));
             result.putIfAbsent("positionId", requisition.get("positionId"));
             result.putIfAbsent("positionName", requisition.get("positionName"));
-            result.putIfAbsent("expectedDate", requisition.get("expectedDate"));
+            result.putIfAbsent("expectedArrivalDate", requisition.get("expectedArrivalDate"));
         }
         return result;
     }
@@ -166,8 +161,6 @@ public class HrRecruitmentService {
             return row;
         }
         Map<String, Object> result = new LinkedHashMap<>(row);
-        result.put("expectedDate", viewSupport.firstValue(result, "expectedDate", "expectedArrivalDate"));
-        result.put("expiryDate", viewSupport.firstValue(result, "expiryDate", "expireDate"));
         viewSupport.putStatusDesc(result);
         viewSupport.putPositionSnapshot(result);
         Long candidateId = viewSupport.toLong(result.get("candidateId"));

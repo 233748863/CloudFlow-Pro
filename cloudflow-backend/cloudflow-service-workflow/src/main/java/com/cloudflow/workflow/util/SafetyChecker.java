@@ -9,12 +9,13 @@ import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -24,16 +25,14 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class SafetyChecker {
 
-    @Autowired
-    private WfProcessDefinitionMapper definitionMapper;
+    private final WfProcessDefinitionMapper definitionMapper;
 
-    @Autowired
-    private WfProcessInstanceMapper instanceMapper;
+    private final WfProcessInstanceMapper instanceMapper;
 
-    @Autowired
-    private WorkflowPermissionService permissionService;
+    private final WorkflowPermissionService permissionService;
 
     /**
      * 检查流程是否可安全归档或永久删除。
@@ -52,10 +51,12 @@ public class SafetyChecker {
             return result;
         }
 
-        checkWorkflowsExist(workflowIds, result);
-        checkRunningInstances(workflowIds, result);
-        checkDependencies(workflowIds, result);
-        checkPermissions(workflowIds, result);
+        Map<String, WfProcessDefinition> definitions = definitionMapper.selectBatchIds(workflowIds).stream()
+                .collect(Collectors.toMap(WfProcessDefinition::getDefinitionId, definition -> definition));
+        checkWorkflowsExist(workflowIds, definitions, result);
+        checkRunningInstances(workflowIds, definitions, result);
+        checkDependencies(workflowIds, definitions, result);
+        checkPermissions(workflowIds, definitions, result);
         generateMessage(result);
 
         log.info("安全检查完成, safe={}, warnings={}, errors={}",
@@ -64,9 +65,9 @@ public class SafetyChecker {
         return result;
     }
 
-    private void checkWorkflowsExist(List<String> workflowIds, SafetyCheckResultDTO result) {
+    private void checkWorkflowsExist(List<String> workflowIds, Map<String, WfProcessDefinition> definitions, SafetyCheckResultDTO result) {
         for (String workflowId : workflowIds) {
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+            WfProcessDefinition definition = definitions.get(workflowId);
             if (definition == null) {
                 result.setSafe(false);
                 result.getErrors().add("流程不存在: " + workflowId);
@@ -75,9 +76,9 @@ public class SafetyChecker {
         }
     }
 
-    private void checkRunningInstances(List<String> workflowIds, SafetyCheckResultDTO result) {
+    private void checkRunningInstances(List<String> workflowIds, Map<String, WfProcessDefinition> definitions, SafetyCheckResultDTO result) {
         for (String workflowId : workflowIds) {
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+            WfProcessDefinition definition = definitions.get(workflowId);
             if (definition == null) {
                 continue;
             }
@@ -98,11 +99,11 @@ public class SafetyChecker {
         }
     }
 
-    private void checkDependencies(List<String> workflowIds, SafetyCheckResultDTO result) {
+    private void checkDependencies(List<String> workflowIds, Map<String, WfProcessDefinition> definitions, SafetyCheckResultDTO result) {
         Set<String> selectedWorkflowIds = new HashSet<>(workflowIds);
 
         for (String workflowId : workflowIds) {
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+            WfProcessDefinition definition = definitions.get(workflowId);
             if (definition == null) {
                 continue;
             }
@@ -133,7 +134,7 @@ public class SafetyChecker {
         }
     }
 
-    private void checkPermissions(List<String> workflowIds, SafetyCheckResultDTO result) {
+    private void checkPermissions(List<String> workflowIds, Map<String, WfProcessDefinition> definitions, SafetyCheckResultDTO result) {
         Long currentUserId = UserContext.getUserId();
         Long currentTenantId = UserContext.getTenantId();
 
@@ -146,7 +147,7 @@ public class SafetyChecker {
         boolean isAdmin = permissionService.isAdmin(currentUserId);
 
         for (String workflowId : workflowIds) {
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+            WfProcessDefinition definition = definitions.get(workflowId);
             if (definition == null) {
                 continue;
             }

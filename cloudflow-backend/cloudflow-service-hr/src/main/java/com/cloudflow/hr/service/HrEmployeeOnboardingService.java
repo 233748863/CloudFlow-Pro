@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
@@ -166,7 +167,7 @@ public class HrEmployeeOnboardingService {
         dto.setTenantId(currentTenantId());
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_ONBOARDING_PROCESS_KEY, DEFAULT_PROCESS_KEY));
-        dto.setBusinessType("ONBOARDING");
+        dto.setBusinessType(HrWorkflowBusinessTypes.LIFECYCLE);
         dto.setBusinessId(applicationId);
         dto.setBusinessNo(application.getApplicationNo());
         dto.setProcessTitle("员工入职审批-" + employee.getName());
@@ -244,7 +245,7 @@ public class HrEmployeeOnboardingService {
     private void validateWorkflowRequest(ProcessStartDTO request) {
         Long tenantId = TenantContext.getTenantId() != null ? TenantContext.getTenantId() : UserContext.getTenantId();
         if (request == null || request.getBusinessId() == null || request.getStartUserId() == null
-                || !"ONBOARDING".equals(request.getBusinessType())
+                || !HrWorkflowBusinessTypes.LIFECYCLE.equals(request.getBusinessType())
                 || !StringUtils.hasText(request.getBusinessNo())
                 || !StringUtils.hasText(request.getProcessDefinitionKey())
                 || tenantId == null || !tenantId.equals(request.getTenantId())
@@ -290,11 +291,18 @@ public class HrEmployeeOnboardingService {
                         .eq("type", "ONBOARDING")
                         .in("status", ACTIVE_APPLICATION_STATUSES)
                         .eq("deleted", 0));
-        for (HrLifecycleApplication application : applications) {
-            if (currentApplicationId != null && currentApplicationId.equals(application.getId())) {
-                continue;
-            }
-            HrLifecycleDetail detail = findOnboardingDetail(application.getId());
+        List<Long> applicationIds = applications.stream()
+                .map(HrLifecycleApplication::getId)
+                .filter(id -> !id.equals(currentApplicationId))
+                .toList();
+        if (applicationIds.isEmpty()) {
+            return;
+        }
+        List<HrLifecycleDetail> details = lifecycleDetailMapper.selectList(new QueryWrapper<HrLifecycleDetail>()
+                .eq("tenant_id", tenantId)
+                .in("application_id", applicationIds)
+                .eq("detail_type", "ONBOARDING"));
+        for (HrLifecycleDetail detail : details) {
             if (detail == null || detail.getDetailJson() == null) {
                 continue;
             }

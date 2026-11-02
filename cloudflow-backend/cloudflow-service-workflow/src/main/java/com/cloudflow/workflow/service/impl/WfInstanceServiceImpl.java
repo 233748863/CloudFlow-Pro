@@ -1100,7 +1100,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 Map<String, Object> nodeData = new HashMap<>();
                 nodeData.put("id", nodeId);
                 nodeData.put("type", jsonText(node, "type"));
-                nodeData.put("label", firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), "未命名节点"));
+                nodeData.put("title", firstNotBlank(jsonText(node, "title"), "未命名节点"));
                 nodeData.put("status", status);
                 nodeData.put("x", node.hasNonNull("x") ? node.get("x").asInt() : 250);
                 nodeData.put("y", node.hasNonNull("y") ? node.get("y").asInt() : (index * 120 + 60));
@@ -1122,8 +1122,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             }
 
             for (JsonNode edge : modelEdges) {
-                String source = firstNotBlank(jsonText(edge, "source"), jsonText(edge, "from"));
-                String target = firstNotBlank(jsonText(edge, "target"), jsonText(edge, "to"));
+                String source = jsonText(edge, "source");
+                String target = jsonText(edge, "target");
                 if (!StringUtils.hasText(source) || !StringUtils.hasText(target)) {
                     continue;
                 }
@@ -1139,14 +1139,9 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 String targetStatus = nodeStatus.getOrDefault(target, "pending");
                 edgeData.put("status", ("completed".equals(targetStatus) || "active".equals(targetStatus)) ? "active" : "pending");
 
-                String condition = firstNotBlank(
-                    jsonText(edge, "condition"),
-                    jsonText(edge, "expression"),
-                    jsonText(edge, "expr"),
-                    jsonText(edge, "label")
-                );
+                String condition = jsonText(edge, "condition");
                 if (StringUtils.hasText(condition)) {
-                    edgeData.put("label", condition);
+                    edgeData.put("condition", condition);
                 }
                 edges.add(edgeData);
             }
@@ -1585,17 +1580,10 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (rawType == null || rawId == null) {
             throw WorkflowException.validationError("流程缺少业务绑定变量，拒绝业务作废");
         }
-        String expectedType = normalizeBusinessType(businessType);
-        String actualType = normalizeBusinessType(String.valueOf(rawType));
         Long actualId = parseLong(rawId);
-        if (!Objects.equals(expectedType, actualType) || !Objects.equals(businessId, actualId)) {
+        if (!Objects.equals(businessType, rawType) || !Objects.equals(businessId, actualId)) {
             throw new PermissionDeniedException("业务单据与流程实例不匹配");
         }
-    }
-
-    private String normalizeBusinessType(String businessType) {
-        String value = businessType == null ? "" : businessType.trim().toUpperCase(Locale.ROOT);
-        return value.startsWith("HR_") ? value.substring(3) : value;
     }
 
     private Long parseLong(Object value) {

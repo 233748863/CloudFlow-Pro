@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service;
 
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
@@ -65,15 +66,15 @@ public class HrRuleWorkflowService {
         String configKey = switch (businessType) {
             case "HR_TIME_REQUEST" -> "sys.hr.leave.processKey";
             case "HR_PAYROLL_CORRECTION" -> "sys.hr.payroll.correctionProcessKey";
-            case "OFFER" -> "sys.hr.offer.processKey";
+            case HrWorkflowBusinessTypes.OFFER -> "sys.hr.offer.processKey";
             default -> throw HrHException.invalid("审批类型无效");
         };
-        String defaultKey = "OFFER".equals(businessType) ? "offer_approval" : "HR_TIME_REQUEST".equals(businessType) ? "wf_hr_leave" : "wf_hr_payroll_correction";
+        String defaultKey = HrWorkflowBusinessTypes.OFFER.equals(businessType) ? "offer_approval" : "HR_TIME_REQUEST".equals(businessType) ? "wf_hr_leave" : "wf_hr_payroll_correction";
         ProcessStartDTO request = new ProcessStartDTO();
         request.setTenantId(tenantId()); request.setBusinessType(businessType); request.setBusinessId(id); request.setBusinessNo(businessNo);
         request.setProcessTitle(title); request.setStartUserId(UserContext.getUserId()); request.setVariables(variables);
         request.setProcessDefinitionKey(settings.getString(configKey, defaultKey));
-        if ("OFFER".equals(businessType)) verifyOfferStart(request, false);
+        if (HrWorkflowBusinessTypes.OFFER.equals(businessType)) verifyOfferStart(request, false);
         if (!StringUtils.hasText(request.getProcessDefinitionKey())) throw new HrBusinessException("WORKFLOW_NOT_CONFIGURED", "请先配置审批流程");
         publish(request);
     }
@@ -145,7 +146,7 @@ public class HrRuleWorkflowService {
                 return null;
             }
             if (hType(request.getBusinessType())) verifyStart(request, hBinding(request.getBusinessType(), request.getBusinessId(), false), !attempted);
-            if ("OFFER".equals(request.getBusinessType())) verifyOfferStart(request, !attempted);
+            if (HrWorkflowBusinessTypes.OFFER.equals(request.getBusinessType())) verifyOfferStart(request, !attempted);
             if (hCorrection(request.getBusinessType(), request.getBusinessId())) verifyCorrectionStart(request, !attempted);
             if (!attempted) support.transaction(() -> {
                 support.audit(request.getBusinessType(), request.getBusinessId(), "WORKFLOW_START_ATTEMPT", Map.of("requested", true));
@@ -162,7 +163,7 @@ public class HrRuleWorkflowService {
                 String existing = (String) latest.get(target.instanceField());
                 if (StringUtils.hasText(existing) && !existing.equals(instanceId)) throw new HrBusinessException("WORKFLOW_BINDING_CONFLICT", "审批实例绑定发生冲突");
                 if (hType(request.getBusinessType())) bindH(request.getBusinessType(), request.getBusinessId(), instanceId);
-                else if ("OFFER".equals(request.getBusinessType())) {
+                else if (HrWorkflowBusinessTypes.OFFER.equals(request.getBusinessType())) {
                     com.cloudflow.hr.domain.entity.HrOffer offer = offerMapper.lockOffer(tenantId(), request.getBusinessId());
                     if (offer == null || !"APPROVING".equals(offer.getStatus()) || offer.getProcessInstanceId() != null && !instanceId.equals(offer.getProcessInstanceId())) throw HrHException.conflict("WORKFLOW_BINDING_CONFLICT", "录用审批绑定冲突");
                     offer.setProcessInstanceId(instanceId);
@@ -222,7 +223,7 @@ public class HrRuleWorkflowService {
     }
 
     private void verifyOfferStart(ProcessStartDTO request, boolean current) {
-        Map<String, Object> submission = support.auditDetail("OFFER", request.getBusinessId(), "SUBMITTED");
+        Map<String, Object> submission = support.auditDetail(HrWorkflowBusinessTypes.OFFER, request.getBusinessId(), "SUBMITTED");
         com.cloudflow.hr.domain.entity.HrOffer offer = offerMapper.selectById(request.getBusinessId());
         if (offer == null || !Objects.equals(offer.getTenantId(), tenantId()) || !Objects.equals(offer.getOfferNo(), request.getBusinessNo())
                 || !Objects.equals(request.getStartUserId(), HrHSupport.number(submission.get("applicantUserId")))
@@ -378,7 +379,7 @@ public class HrRuleWorkflowService {
             case "HR_SHIFT_REQUEST" -> new Target(HrShiftRequest.class, "instanceId");
             case "HR_REFERRAL" -> new Target(com.cloudflow.hr.domain.entity.HrEmployeeReferral.class, "instanceId");
             case "HR_ADVANCE" -> new Target(com.cloudflow.hr.domain.entity.HrEmployeeAdvance.class, "instanceId");
-            case "OFFER" -> new Target(com.cloudflow.hr.domain.entity.HrOffer.class, "processInstanceId");
+            case HrWorkflowBusinessTypes.OFFER -> new Target(com.cloudflow.hr.domain.entity.HrOffer.class, "processInstanceId");
             default -> throw new HrBusinessException("INVALID_WORKFLOW_TYPE", "不支持的HR规则审批类型");
         };
     }

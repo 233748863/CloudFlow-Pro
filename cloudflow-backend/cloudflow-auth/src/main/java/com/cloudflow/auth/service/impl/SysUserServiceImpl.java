@@ -58,6 +58,8 @@ import java.time.LocalDateTime;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -238,17 +240,37 @@ public class SysUserServiceImpl implements ISysUserService {
 
         List<SysUser> users = sysUserMapper.selectList(wrapper);
 
+        if (users.isEmpty()) {
+            return users;
+        }
+        List<Long> userIds = users.stream().map(SysUser::getUserId).toList();
+        List<SysUserRole> bindings = sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
+                .in(SysUserRole::getUserId, userIds));
+        Map<Long, Set<Long>> usersByRole = new HashMap<>();
+        for (SysUserRole binding : bindings) {
+            usersByRole.computeIfAbsent(binding.getRoleId(), key -> new HashSet<>()).add(binding.getUserId());
+        }
+        Map<Long, List<SysRole>> rolesByUser = new HashMap<>();
+        if (!usersByRole.isEmpty()) {
+            for (SysRole role : sysRoleMapper.selectBatchIds(usersByRole.keySet())) {
+                for (Long userId : usersByRole.get(role.getRoleId())) {
+                    rolesByUser.computeIfAbsent(userId, key -> new ArrayList<>()).add(role);
+                }
+            }
+        }
+        Set<Long> deptIds = users.stream().map(SysUser::getDeptId)
+                .filter(id -> id != null && id > 0).collect(Collectors.toSet());
+        Map<Long, SysDept> departments = deptIds.isEmpty() ? Map.of() : sysDeptMapper.selectBatchIds(deptIds)
+                .stream().collect(Collectors.toMap(SysDept::getDeptId, dept -> dept));
         for (SysUser u : users) {
-            List<SysRole> roles = selectRolesByUserId(u.getUserId());
+            List<SysRole> roles = rolesByUser.getOrDefault(u.getUserId(), List.of());
             if (!roles.isEmpty()) {
                 u.setRole(roles.get(0).getRoleName());
                 u.setRoleIds(roles.stream().map(SysRole::getRoleId).toArray(Long[]::new));
             }
-            if (u.getDeptId() != null && u.getDeptId() > 0) {
-                SysDept dept = sysDeptMapper.selectById(u.getDeptId());
-                if (dept != null) {
-                    u.setDeptName(dept.getDeptName());
-                }
+            SysDept dept = u.getDeptId() == null ? null : departments.get(u.getDeptId());
+            if (dept != null) {
+                u.setDeptName(dept.getDeptName());
             }
         }
 

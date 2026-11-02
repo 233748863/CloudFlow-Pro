@@ -24,9 +24,6 @@ public class HrPerfEvaluatorResponse {
 
     private Long tenantId;
     private Long evaluatorId;
-    private Long objectiveId;
-    private Long evaluateeId;
-    private String evaluatorSource;
     private BigDecimal score;
 
     @TableField(typeHandler = JacksonTypeHandler.class)

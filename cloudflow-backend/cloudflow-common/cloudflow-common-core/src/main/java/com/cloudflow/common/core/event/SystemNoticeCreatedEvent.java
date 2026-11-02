@@ -1,5 +1,6 @@
 package com.cloudflow.common.core.event;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -20,5 +21,6 @@ public class SystemNoticeCreatedEvent implements Serializable {
     private String type;
     private String status;
     private String linkUrl;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS")
     private LocalDateTime createTime;
 }

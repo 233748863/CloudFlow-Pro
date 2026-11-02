@@ -92,7 +92,7 @@ export interface SignatureChangeRequest {
 export interface FlowchartNode {
   id: string;
   type: string;
-  label: string;
+  title: string;
   status?: "completed" | "active" | "pending";
   x: number;
   y: number;
@@ -112,7 +112,7 @@ export interface FlowchartEdge {
   source: string;
   target: string;
   status?: "active" | "pending";
-  label?: string;
+  condition?: string;
   isDefault?: boolean;
 }
 

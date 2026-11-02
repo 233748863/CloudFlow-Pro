@@ -195,7 +195,7 @@ public class VersionComparisonServiceImpl implements IVersionComparisonService {
     private VersionComparisonDTO.NodeChange createNodeChange(JsonNode node, JsonNode oldNode) {
         VersionComparisonDTO.NodeChange change = new VersionComparisonDTO.NodeChange();
         change.setNodeId(node.has("id") ? node.get("id").asText() : "");
-        change.setNodeName(node.has("name") ? node.get("name").asText() : "");
+        change.setNodeName(node.path("title").asText());
         change.setNodeType(node.has("type") ? node.get("type").asText() : "");
         return change;
     }
@@ -278,10 +278,8 @@ public class VersionComparisonServiceImpl implements IVersionComparisonService {
         Set<String> edgeSet = new HashSet<>();
         if (edges != null && edges.isArray()) {
             for (JsonNode edge : edges) {
-                String source = edge.has("source") ? edge.get("source").asText() : 
-                               edge.has("from") ? edge.get("from").asText() : "";
-                String target = edge.has("target") ? edge.get("target").asText() : 
-                               edge.has("to") ? edge.get("to").asText() : "";
+                String source = edge.path("source").asText();
+                String target = edge.path("target").asText();
                 
                 if (!source.isEmpty() && !target.isEmpty()) {
                     String edgeKey = source + "->" + target;

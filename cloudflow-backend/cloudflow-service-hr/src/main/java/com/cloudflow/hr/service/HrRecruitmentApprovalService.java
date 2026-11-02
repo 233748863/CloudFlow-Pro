@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service;
 
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.cloudflow.common.redis.config.RuntimeSysConfigService;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.hr.domain.entity.HrCandidate;
@@ -41,7 +42,7 @@ public class HrRecruitmentApprovalService {
             HrOffer offer = offers.lockOffer(tenantId(), offerId);
             if (offer == null || !Integer.valueOf(0).equals(offer.getDeleted())) throw forbidden();
             HrCandidate candidate = identities.requireCandidate(offer.getCandidateId());
-            if ("APPROVING".equals(offer.getStatus()) && !support.auditDetail("OFFER", offerId, "SUBMITTED").isEmpty()) return null;
+            if ("APPROVING".equals(offer.getStatus()) && !support.auditDetail(HrWorkflowBusinessTypes.OFFER, offerId, "SUBMITTED").isEmpty()) return null;
             if (!"DRAFT".equals(offer.getStatus()) || offer.getProcessInstanceId() != null) throw conflict("OFFER_STATE", "仅尚未提交的录用草稿可以发起审批");
             if (offer.getExpectedArrivalDate() == null || offer.getOfferNo() == null || offer.getOfferNo().isBlank()) throw invalid("请补齐录用单号与预计入职日期");
             HrPosition position = offer.getPositionId() == null ? null : positions.selectById(offer.getPositionId());
@@ -65,19 +66,19 @@ public class HrRecruitmentApprovalService {
             snapshot.put("processKey", processKey); snapshot.put("definitionId", definition.get("definitionId"));
             snapshot.put("definitionVersion", definition.get("version")); snapshot.put("modelDigest", access.digest(model));
             snapshot.put("offerTermsDigest", access.digest(terms));
-            support.audit("OFFER", offerId, "SUBMITTED", snapshot);
+            support.audit(HrWorkflowBusinessTypes.OFFER, offerId, "SUBMITTED", snapshot);
             offer.setStatus("APPROVING");
             if (offers.updateById(offer) != 1) throw conflict("VERSION_CONFLICT", "录用单已变化，请重试");
             Map<String, Object> variables = new LinkedHashMap<>(terms);
             variables.put("detailPath", "/hr/recruitment");
             for (String field : List.of("applicantUserId", "offerApproverIds", HrHSupport.EXCLUDED_USERS, "definitionId", "definitionVersion", "modelDigest", "offerTermsDigest")) variables.put(field, snapshot.get(field));
-            workflow.enqueue("OFFER", offerId, offer.getOfferNo(), "录用审批", variables);
+            workflow.enqueue(HrWorkflowBusinessTypes.OFFER, offerId, offer.getOfferNo(), "录用审批", variables);
             return null;
         });
     }
 
     public void verifyResult(ApprovalResultDTO result) {
-        Map<String, Object> submission = support.auditDetail("OFFER", result.getBusinessId(), "SUBMITTED");
+        Map<String, Object> submission = support.auditDetail(HrWorkflowBusinessTypes.OFFER, result.getBusinessId(), "SUBMITTED");
         if (submission.isEmpty()) throw conflict("OFFER_SUBMISSION_MISSING", "录用审批缺少服务器提交依据");
         Long actor = result.getApproverId();
         if (actor == null || Objects.equals(actor, HrHSupport.number(submission.get("applicantUserId")))
@@ -104,7 +105,7 @@ public class HrRecruitmentApprovalService {
             offer.setStatus(next);
             if (offers.updateById(offer) != 1) throw conflict("VERSION_CONFLICT", "录用状态已变化，请重试");
             progress.recruitmentChanged(offer);
-            support.audit("OFFER", offerId, next, Map.of("candidateId", offer.getCandidateId())); return null;
+            support.audit(HrWorkflowBusinessTypes.OFFER, offerId, next, Map.of("candidateId", offer.getCandidateId())); return null;
         });
     }
 }

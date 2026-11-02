@@ -65,6 +65,9 @@ public @interface Audit {
      */
     String newVal() default "";
 
+    /** 业务通过 AuditChangeScope 提供前后记录，审计不再执行取值查询。 */
+    boolean captureChanges() default false;
+
     /**
      * 是否记录完整 JSON diff（M0-5：before_json / after_json / diff_json）
      * <p>默认 false，仅记录字段级差异（beforeVal / afterVal）</p>

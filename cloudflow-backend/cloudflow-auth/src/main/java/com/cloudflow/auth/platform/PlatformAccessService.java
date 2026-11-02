@@ -86,7 +86,7 @@ public class PlatformAccessService {
         }
         boolean passwordMatched;
         try {
-            passwordMatched = passwords.matchesPassword(request.getPassword(), actor.user().getPassword()).matched();
+            passwordMatched = passwords.matchesPassword(request.getPassword(), actor.user().getPassword());
         } catch (IllegalArgumentException failure) {
             throw rejected();
         }

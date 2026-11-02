@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
@@ -132,7 +133,7 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_INJURY_DETERMINATION_PROCESS_KEY,
                 "wf_hr_work_injury"));
-        dto.setBusinessType("HR_WORK_INJURY");
+        dto.setBusinessType(HrWorkflowBusinessTypes.WORK_INJURY);
         dto.setBusinessId(injury.getId());
         dto.setBusinessNo(injury.getInjuryNo());
         dto.setProcessTitle("工伤认定-" + injury.getInjuryNo());

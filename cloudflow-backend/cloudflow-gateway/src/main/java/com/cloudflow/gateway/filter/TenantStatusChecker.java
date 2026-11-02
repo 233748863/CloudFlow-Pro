@@ -13,7 +13,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.Map;
 
 /**
  * 租户运营状态网关侧拦截器（P2.4）。
@@ -75,11 +74,11 @@ public class TenantStatusChecker implements SysConfigChangeListener {
         return webClient.get()
                 .uri("http://" + AUTH_SERVICE_NAME + "/inner/auth/tenant/status/{id}", tenantId)
                 .retrieve()
-                .bodyToMono(Map.class)
+                .bodyToMono(TenantStatusResponse.class)
                 .timeout(Duration.ofSeconds(runtimeSysConfigService.getLong(
                         SysConfigKeys.GATEWAY_TENANT_STATUS_TIMEOUT_SECONDS,
                         3L)))
-                .map(this::parseAvailable)
+                .map(response -> !Boolean.FALSE.equals(response.data().available()))
                 .doOnNext(ok -> cache.put(tenantId, ok))
                 .onErrorResume(ex -> {
                     log.warn("查询租户状态失败，fail-open 放行: tenantId={}, err={}", tenantId, ex.getMessage());
@@ -88,20 +87,9 @@ public class TenantStatusChecker implements SysConfigChangeListener {
                 });
     }
 
-    @SuppressWarnings("rawtypes")
-    private boolean parseAvailable(Map body) {
-        if (body == null) {
-            return true;
-        }
-        Object data = body.get("data");
-        if (data instanceof Map<?, ?> map) {
-            Object available = map.get("available");
-            return !Boolean.FALSE.equals(available);
-        }
-        // 兼容直接返回 {available, reason} 不包 R 的情况
-        Object available = body.get("available");
-        return !Boolean.FALSE.equals(available);
-    }
+    private record TenantStatusResponse(TenantStatus data) {}
+
+    private record TenantStatus(Boolean available) {}
 
     @Override
     public void onSysConfigChanged(SysConfigChangeEvent event) {

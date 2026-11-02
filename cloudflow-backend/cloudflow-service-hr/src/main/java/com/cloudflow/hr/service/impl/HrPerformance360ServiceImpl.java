@@ -185,9 +185,6 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
             HrPerfEvaluatorResponse resp = new HrPerfEvaluatorResponse();
             resp.setTenantId(tenantId());
             resp.setEvaluatorId(payload.getEvaluatorId());
-            resp.setObjectiveId(evaluator.getObjectiveId());
-            resp.setEvaluateeId(evaluator.getEvaluateeId());
-            resp.setEvaluatorSource(evaluator.getEvaluatorSource());
             resp.setScore(payload.getScore());
             resp.setDimensionScores(dimensionScores);
             resp.setCommentText(payload.getCommentText());

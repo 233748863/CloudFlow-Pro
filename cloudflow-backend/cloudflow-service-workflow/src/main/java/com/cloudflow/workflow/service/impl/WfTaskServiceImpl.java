@@ -1631,6 +1631,21 @@ public class WfTaskServiceImpl implements IWfTaskService {
         Map<String, List<WfTaskHistory>> historiesByInstance = allHistories.stream()
             .collect(Collectors.groupingBy(WfTaskHistory::getInstanceId));
 
+        Map<String, WfNodeConfig> rootsByDefinition = new HashMap<>();
+        Map<String, List<Map<String, String>>> stepsByDefinition = new HashMap<>();
+        for (WfProcessDefinition definition : defById.values()) {
+            if (!StringUtils.hasText(definition.getModelJson())) {
+                continue;
+            }
+            try {
+                WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(definition.getModelJson());
+                rootsByDefinition.put(definition.getDefinitionId(), root);
+                stepsByDefinition.put(definition.getDefinitionId(), nodeExecutionService.extractApprovalSteps(root));
+            } catch (Exception e) {
+                log.warn("[enrichDoneTasks] 解析流程步骤失败, definitionId={}: {}", definition.getDefinitionId(), e.getMessage());
+            }
+        }
+
         for (WfTask task : tasks) {
             WfProcessInstance instance = instanceMap.get(task.getInstanceId());
             if (instance == null) {
@@ -1655,9 +1670,10 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     log.warn("[enrichDoneTasks] 解析流程变量失败, instanceId={}: {}", instance.getInstanceId(), e.getMessage());
                 }
             }
-            if (def != null && StringUtils.hasText(def.getModelJson())) {
+            List<Map<String, String>> steps = stepsByDefinition.get(instance.getDefinitionId());
+            if (steps != null && !steps.isEmpty()) {
                 try {
-                    WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
+                    WfNodeConfig root = rootsByDefinition.get(instance.getDefinitionId());
                     WfTaskHistory history = historiesByInstance.getOrDefault(instance.getInstanceId(), List.of()).stream()
                             .filter(candidate -> Objects.equals(candidate.getHistoryId(), task.getHistoryId())).findFirst().orElse(null);
                     WfNodeConfig historyNode = nodeExecutionService.findNode(root, task.getNodeKey());
@@ -1665,10 +1681,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                             && Objects.equals(history.getOperatorId(), UserContext.getUserId())
                             && WorkflowHistoryState.effectiveApproval(instance, history) && historyNode != null
                             && WorkflowNodePolicy.allows(historyNode, "allowRollback"));
-                    List<Map<String, String>> steps = nodeExecutionService.extractApprovalSteps(root);
-                    if (steps != null && !steps.isEmpty()) {
-                        enrichTaskStepInfo(task, steps, historiesByInstance.getOrDefault(task.getInstanceId(), new ArrayList<>()));
-                    }
+                    enrichTaskStepInfo(task, steps, historiesByInstance.getOrDefault(task.getInstanceId(), List.of()));
                 } catch (Exception e) {
                     log.warn("[enrichDoneTasks] 填充步骤信息失败, taskId={}: {}", task.getTaskId(), e.getMessage());
                 }

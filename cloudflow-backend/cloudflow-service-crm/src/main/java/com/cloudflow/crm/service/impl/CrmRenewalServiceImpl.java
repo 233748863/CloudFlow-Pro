@@ -57,7 +57,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
                 query,
                 DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)));
         if (result.getRows() != null) {
-            result.getRows().forEach(r -> CrmRenewalRiskEvaluator.enrich(r, sysDictHelper));
+            CrmRenewalRiskEvaluator.enrichAll(result.getRows(), sysDictHelper);
         }
         return result;
     }

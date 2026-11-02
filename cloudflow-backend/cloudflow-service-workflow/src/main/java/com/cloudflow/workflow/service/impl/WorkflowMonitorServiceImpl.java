@@ -665,27 +665,8 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
     }
 
     private SysUser resolveLeaderFromDeptField(SysDept dept, Long tenantId) {
-        if (dept == null || !StringUtils.hasText(dept.getLeader())) {
-            return null;
-        }
-
-        String leaderValue = dept.getLeader().trim();
-        try {
-            SysUser leaderById = selectActiveUser(Long.valueOf(leaderValue), tenantId);
-            if (leaderById != null) {
-                return leaderById;
-            }
-        } catch (NumberFormatException ignored) {
-            // leader 字段兼容 userName / nickName。
-        }
-
-        LambdaQueryWrapper<SysUser> wrapper = activeUserWrapper(tenantId)
-                .and(query -> query.eq(SysUser::getUserName, leaderValue)
-                        .or()
-                        .eq(SysUser::getNickName, leaderValue))
-                .orderByAsc(SysUser::getUserId);
-        return sysUserMapper.selectPage(new Page<>(1, 1, false), wrapper)
-                .getRecords().stream().findFirst().orElse(null);
+        return dept == null || dept.getLeaderUserId() == null
+                ? null : selectActiveUser(dept.getLeaderUserId(), tenantId);
     }
 
     private SysUser resolveFirstUserByRole(String roleKey, Long tenantId, Long preferredDeptId) {

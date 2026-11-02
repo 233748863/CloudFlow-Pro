@@ -10,6 +10,7 @@ import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
+import com.cloudflow.crm.domain.CrmCustomerHealth;
 import com.cloudflow.crm.domain.CrmFollowUp;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.domain.CrmQuote;
@@ -257,6 +258,22 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
         boolean hasHighSeverityOpenTicket = CrmHealthCalculator.hasHighSeverityOpenTicket(serviceTicketMapper, customerId);
         boolean hasOverdueOpenTicket = CrmHealthCalculator.hasOverdueOpenTicket(serviceTicketMapper, customerId, currentTime);
 
+        refreshHealth(customer, new CrmCustomerHealth(lastFollowUpTime, nextFollowUpTime,
+                renewalWindowDate, overdueDays, hasHighSeverityOpenTicket, hasOverdueOpenTicket, currentTime));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void refreshHealth(CrmCustomer customer, CrmCustomerHealth health) {
+        LocalDateTime currentTime = health.calculatedAt();
+        LocalDate today = currentTime.toLocalDate();
+        LocalDateTime lastFollowUpTime = health.lastFollowUpTime();
+        LocalDateTime nextFollowUpTime = health.nextFollowUpTime();
+        LocalDate renewalWindowDate = health.renewalWindowDate();
+        int overdueDays = health.overdueDays();
+        boolean hasHighSeverityOpenTicket = health.highSeverityOpenTicket();
+        boolean hasOverdueOpenTicket = health.overdueOpenTicket();
+
         List<String> redReasons = new ArrayList<>();
         List<String> yellowReasons = new ArrayList<>();
 
@@ -301,14 +318,21 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
         }
 
         LambdaUpdateWrapper<CrmCustomer> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(CrmCustomer::getCustomerId, customerId)
+        String operator = currentUserName();
+        wrapper.eq(CrmCustomer::getCustomerId, customer.getCustomerId())
                 .set(CrmCustomer::getHealthLevel, healthLevel)
                 .set(CrmCustomer::getHealthReason, healthReason)
                 .set(CrmCustomer::getLastFollowUpTime, lastFollowUpTime)
                 .set(CrmCustomer::getNextFollowUpTime, nextFollowUpTime)
-                .set(CrmCustomer::getUpdateBy, currentUserName())
+                .set(CrmCustomer::getUpdateBy, operator)
                 .set(CrmCustomer::getUpdateTime, currentTime);
         update(null, wrapper);
+        customer.setHealthLevel(healthLevel);
+        customer.setHealthReason(healthReason);
+        customer.setLastFollowUpTime(lastFollowUpTime);
+        customer.setNextFollowUpTime(nextFollowUpTime);
+        customer.setUpdateBy(operator);
+        customer.setUpdateTime(currentTime);
     }
 
     private void validate(CrmCustomer customer) {

@@ -15,6 +15,7 @@ import {
   hrResumeApi,
   type HrResumeParsedRecord,
   type HrResumeParsedFieldsPayload,
+  type HrResumeExperience,
 } from '@/services/api/hr/batch2';
 import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
@@ -26,6 +27,10 @@ interface Props {
   onClose: () => void;
 }
 
+type ResumeEditForm = Omit<HrResumeParsedFieldsPayload, 'parsedSkills'> & {
+  skillsText?: string;
+};
+
 const formatConfidence = (value?: number) => {
   if (value === undefined || value === null) return '-';
   return `${Math.round(value * 100)}%`;
@@ -36,7 +41,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<HrResumeParsedFieldsPayload>({});
+  const [editForm, setEditForm] = useState<ResumeEditForm>({});
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [detailRecord, setDetailRecord] = useState<HrResumeParsedRecord | null>(null);
@@ -94,8 +99,9 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
       parsedPhone: record.parsedPhone || '',
       parsedEmail: record.parsedEmail || '',
       parsedEducation: record.parsedEducation || '',
-      parsedWorkExperience: record.parsedWorkExperience || '',
-      parsedSkills: record.parsedSkills || '',
+      parsedSchool: record.parsedSchool || '',
+      parsedExperiences: record.parsedExperiences ?? [],
+      skillsText: record.parsedSkills?.join('\n') ?? '',
     });
   };
 
@@ -104,10 +110,21 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
     setEditForm({});
   };
 
+  const updateExperience = (index: number, field: keyof HrResumeExperience, value: string) => {
+    setEditForm((form) => ({
+      ...form,
+      parsedExperiences: form.parsedExperiences?.map((item, i) => i === index ? { ...item, [field]: value } : item),
+    }));
+  };
+
   const saveEdit = async (id: number) => {
     setSubmitting(true);
     try {
-      await hrResumeApi.updateParsed(id, editForm);
+      const { skillsText, ...fields } = editForm;
+      await hrResumeApi.updateParsed(id, {
+        ...fields,
+        parsedSkills: (skillsText ?? '').split(/\r?\n/).map((skill) => skill.trim()).filter(Boolean),
+      });
       toast.success('已保存');
       setEditingId(null);
       setEditForm({});
@@ -202,7 +219,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
                       <>
                         <tr key={record.id}>
                           <td>
-                            <DictBadge dictType="hr_resume_parse_status" value={String(record.status || 'PENDING')} />
+                            <DictBadge dictType="hr_resume_parse_status" value={record.reviewStatus} />
                             {record.createTime ? <div className="mt-1 text-xs text-cf-subtle">{record.createTime}</div> : null}
                           </td>
                           <td>
@@ -212,15 +229,16 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
                           </td>
                           <td className="max-w-[240px]">
                             <div className="text-sm text-cf-body">{record.parsedEducation || '-'}</div>
-                            <div className="line-clamp-2 whitespace-pre-wrap text-xs text-cf-subtle">{record.parsedSkills || '-'}</div>
+                            <div className="text-xs text-cf-subtle">{record.parsedSchool || '-'}</div>
+                            <div className="line-clamp-2 whitespace-pre-wrap text-xs text-cf-subtle">{record.parsedSkills?.join('、') || '-'}</div>
                           </td>
                           <td className="max-w-[320px]">
-                            <div className="line-clamp-3 whitespace-pre-wrap text-xs text-cf-muted">
-                              {record.parsedWorkExperience || '-'}
-                            </div>
-                            {record.reviewRemark ? (
-                              <div className="mt-1 text-xs text-cf-subtle">复核意见：{record.reviewRemark}</div>
-                            ) : null}
+                            {record.parsedExperiences?.length ? record.parsedExperiences.map((experience, index) => (
+                              <div key={index} className="mb-2 text-xs text-cf-muted">
+                                <div>{experience.start} — {experience.end}</div>
+                                <div className="line-clamp-3 whitespace-pre-wrap">{experience.segment}</div>
+                              </div>
+                            )) : '-'}
                           </td>
                           <td className="tabular-nums">{formatConfidence(record.confidence)}</td>
                           <td>
@@ -231,7 +249,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
                                 <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRecord(record)}>
                                   <Eye size={15} />
                                 </button>
-                                {record.status === 'PENDING' ? (
+                                {record.reviewStatus === 'PENDING' ? (
                                   <>
                                     <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => startEdit(record)} disabled={submitting}>
                                       <Edit size={15} />
@@ -299,20 +317,55 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
                                     onChange={(e) => setEditForm((f) => ({ ...f, parsedEducation: e.target.value }))}
                                   />
                                 </div>
-                                <div className="admin-source-form-wide space-y-1">
-                                  <Label className="text-xs">工作经历</Label>
-                                  <Textarea
-                                    rows={3}
-                                    value={editForm.parsedWorkExperience || ''}
-                                    onChange={(e) => setEditForm((f) => ({ ...f, parsedWorkExperience: e.target.value }))}
+                                <div className="space-y-1">
+                                  <Label className="text-xs">毕业院校</Label>
+                                  <Input
+                                    value={editForm.parsedSchool || ''}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, parsedSchool: e.target.value }))}
                                   />
                                 </div>
+                                <div className="admin-source-form-wide space-y-2">
+                                  <Label className="text-xs">工作经历</Label>
+                                  {editForm.parsedExperiences?.map((experience, index) => (
+                                    <div key={index} className="space-y-2 rounded border border-slate-200 p-3 dark:border-slate-800">
+                                      <div className="flex items-center gap-2">
+                                        <Input
+                                          aria-label={`第 ${index + 1} 项经历开始时间`}
+                                          placeholder="开始时间"
+                                          value={experience.start}
+                                          onChange={(e) => updateExperience(index, 'start', e.target.value)}
+                                        />
+                                        <Input
+                                          aria-label={`第 ${index + 1} 项经历结束时间`}
+                                          placeholder="结束时间或至今"
+                                          value={experience.end}
+                                          onChange={(e) => updateExperience(index, 'end', e.target.value)}
+                                        />
+                                        <Button type="button" variant="outline" onClick={() => setEditForm((f) => ({
+                                          ...f,
+                                          parsedExperiences: f.parsedExperiences?.filter((_, i) => i !== index),
+                                        }))}>删除</Button>
+                                      </div>
+                                      <Textarea
+                                        rows={3}
+                                        aria-label={`第 ${index + 1} 项经历内容`}
+                                        placeholder="工作经历内容"
+                                        value={experience.segment}
+                                        onChange={(e) => updateExperience(index, 'segment', e.target.value)}
+                                      />
+                                    </div>
+                                  ))}
+                                  <Button type="button" variant="outline" onClick={() => setEditForm((f) => ({
+                                    ...f,
+                                    parsedExperiences: [...(f.parsedExperiences ?? []), { start: '', end: '', segment: '' }],
+                                  }))}>添加经历</Button>
+                                </div>
                                 <div className="admin-source-form-wide space-y-1">
-                                  <Label className="text-xs">技能</Label>
+                                  <Label className="text-xs">技能（每行一项）</Label>
                                   <Textarea
                                     rows={2}
-                                    value={editForm.parsedSkills || ''}
-                                    onChange={(e) => setEditForm((f) => ({ ...f, parsedSkills: e.target.value }))}
+                                    value={editForm.skillsText || ''}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, skillsText: e.target.value }))}
                                   />
                                 </div>
                               </div>
@@ -352,7 +405,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
         heading={detailRecord?.parsedName || candidateName}
         subheading={detailRecord?.createTime ? `解析于 ${detailRecord.createTime}` : undefined}
         headingAside={detailRecord ? (
-          <DictBadge dictType="hr_resume_parse_status" value={String(detailRecord.status || 'PENDING')} />
+          <DictBadge dictType="hr_resume_parse_status" value={String(detailRecord.reviewStatus || 'PENDING')} />
         ) : undefined}
         sections={detailRecord ? [
           {
@@ -363,18 +416,17 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
               { label: '邮箱', value: detailRecord.parsedEmail },
               { label: '学历', value: detailRecord.parsedEducation },
               { label: '置信度', value: formatConfidence(detailRecord.confidence) },
-              { label: '状态', value: <DictBadge dictType="hr_resume_parse_status" value={String(detailRecord.status || 'PENDING')} /> },
-              { label: '技能', value: <span className="whitespace-pre-wrap">{detailRecord.parsedSkills}</span>, wide: true },
-              { label: '工作经历', value: <span className="whitespace-pre-wrap">{detailRecord.parsedWorkExperience}</span>, wide: true },
+              { label: '状态', value: <DictBadge dictType="hr_resume_parse_status" value={String(detailRecord.reviewStatus || 'PENDING')} /> },
+              { label: '技能', value: <span className="whitespace-pre-wrap">{detailRecord.parsedSkills?.join('、')}</span>, wide: true },
+              { label: '工作经历', value: <span className="whitespace-pre-wrap">{detailRecord.parsedExperiences?.map((experience) => `${experience.start} — ${experience.end}\n${experience.segment}`).join('\n\n')}</span>, wide: true },
             ],
           },
           {
             title: '复核信息',
-            visible: Boolean(detailRecord.reviewerName || detailRecord.reviewTime || detailRecord.reviewRemark),
+            visible: Boolean(detailRecord.reviewerName || detailRecord.reviewTime),
             items: [
               { label: '复核人', value: detailRecord.reviewerName },
               { label: '复核时间', value: detailRecord.reviewTime },
-              { label: '复核意见', value: <span className="whitespace-pre-wrap">{detailRecord.reviewRemark}</span>, wide: true },
             ],
           },
           {

@@ -22,7 +22,8 @@ export interface DeptNode {
   parent_id: number;
   dept_name: string;
   order_num: number;
-  leader?: string;
+  leader_user_id?: number;
+  leader_name?: string;
   phone?: string;
   email?: string;
   children?: DeptNode[];

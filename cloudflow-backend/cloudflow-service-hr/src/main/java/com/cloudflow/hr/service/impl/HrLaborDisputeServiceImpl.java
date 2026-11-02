@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
@@ -209,7 +210,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_DISPUTE_PROCESS_KEY,
                 "wf_hr_labor_dispute"));
-        dto.setBusinessType("HR_LABOR_DISPUTE");
+        dto.setBusinessType(HrWorkflowBusinessTypes.LABOR_DISPUTE);
         dto.setBusinessId(dispute.getId());
         dto.setBusinessNo(dispute.getDisputeNo());
         dto.setProcessTitle("劳动争议-" + dispute.getDisputeNo());

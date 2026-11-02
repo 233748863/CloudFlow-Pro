@@ -27,6 +27,7 @@ import com.cloudflow.workflow.service.WorkflowAuditService;
 import com.cloudflow.workflow.service.WorkflowConfigurationLockService;
 import com.cloudflow.workflow.service.WorkflowConfigurationLockService.LockedConfiguration;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
+import com.cloudflow.workflow.util.StartPermissionValues;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -98,6 +99,10 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (!StringUtils.hasText(definition.getProcessName())) {
             throw WorkflowException.validationError("流程名称不能为空");
         }
+
+        StartPermissionValues.validate(definition.getStartPermissionType(), definition.getStartPermissionValue());
+        if (definition.getStartPermissionType() == null) definition.setStartPermissionType("ALL");
+        if ("ALL".equals(definition.getStartPermissionType())) definition.setStartPermissionValue("[]");
 
         // XSS 防护
         definition.setProcessName(securityUtils.sanitizeXss(definition.getProcessName()));
@@ -252,6 +257,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             throw WorkflowException.validationError("流程定义模型为空，无法发布");
         }
         locked.requireBoundForm(def.getFormId());
+        StartPermissionValues.validate(def.getStartPermissionType(), def.getStartPermissionValue());
 
         workflowGraphModelResolver.parseRuntimeGraph(def.getModelJson());
         scriptExecutionPolicy.assertModelDeployable(def.getModelJson());
@@ -486,7 +492,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                 Map<String, Object> nodeData = new HashMap<>();
                 nodeData.put("id", nodeId);
                 nodeData.put("type", jsonText(node, "type"));
-                nodeData.put("label", firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), "未命名节点"));
+                nodeData.put("title", firstNotBlank(jsonText(node, "title"), "未命名节点"));
                 nodeData.put("x", node.hasNonNull("x") ? node.get("x").asInt() : 250);
                 nodeData.put("y", node.hasNonNull("y") ? node.get("y").asInt() : (idx * 120 + 60));
 
@@ -508,8 +514,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             }
 
             for (JsonNode edge : modelEdges) {
-                String source = firstNotBlank(jsonText(edge, "source"), jsonText(edge, "from"));
-                String target = firstNotBlank(jsonText(edge, "target"), jsonText(edge, "to"));
+                String source = jsonText(edge, "source");
+                String target = jsonText(edge, "target");
                 if (!StringUtils.hasText(source) || !StringUtils.hasText(target)) {
                     continue;
                 }
@@ -517,14 +523,9 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                 edgeData.put("id", firstNotBlank(jsonText(edge, "id"), source + "->" + target));
                 edgeData.put("source", source);
                 edgeData.put("target", target);
-                String condition = firstNotBlank(
-                    jsonText(edge, "condition"),
-                    jsonText(edge, "expression"),
-                    jsonText(edge, "expr"),
-                    jsonText(edge, "label")
-                );
+                String condition = jsonText(edge, "condition");
                 if (StringUtils.hasText(condition)) {
-                    edgeData.put("label", condition);
+                    edgeData.put("condition", condition);
                 }
                 edges.add(edgeData);
             }
@@ -706,8 +707,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
             Map<String, Boolean> incomingHasCondition = new HashMap<>();
             for (JsonNode edge : edgesNode) {
-                String source = firstNotBlank(jsonText(edge, "source"), jsonText(edge, "from"));
-                String target = firstNotBlank(jsonText(edge, "target"), jsonText(edge, "to"));
+                String source = jsonText(edge, "source");
+                String target = jsonText(edge, "target");
                 if (!StringUtils.hasText(source) || !StringUtils.hasText(target)) {
                     throw WorkflowException.validationError("存在 source/target 缺失的连线");
                 }
@@ -728,7 +729,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                         && !StringUtils.hasText(jsonText(node, "condition"))
                         && !Boolean.TRUE.equals(incomingHasCondition.get(entry.getKey()))) {
                     throw WorkflowException.validationError(
-                        "条件分支 [" + firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), entry.getKey())
+                        "条件分支 [" + firstNotBlank(jsonText(node, "title"), entry.getKey())
                         + "] 未配置触发条件");
                 }
                 if (!"PARALLEL".equalsIgnoreCase(jsonText(node, "type"))) {
@@ -739,7 +740,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                 int branchCount = outgoingCount.getOrDefault(entry.getKey(), 0);
                 if (hasSignType && branchCount > 1) {
                     throw WorkflowException.validationError(
-                        "并行节点 [" + firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), entry.getKey())
+                        "并行节点 [" + firstNotBlank(jsonText(node, "title"), entry.getKey())
                         + "] 同时配置了会签模式(" + signType
                         + ")和分支(" + branchCount + "个)，两者互斥，请移除分支或取消会签配置");
                 }
@@ -819,7 +820,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
     private void validateNodeModel(JsonNode node) {
         String nodeType = jsonText(node, "type");
-        String nodeTitle = firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), jsonText(node, "id"), "未命名节点");
+        String nodeTitle = firstNotBlank(jsonText(node, "title"), jsonText(node, "id"), "未命名节点");
         String approverType = jsonText(node, "approverType");
         String approverValue = jsonText(node, "approverValue");
 

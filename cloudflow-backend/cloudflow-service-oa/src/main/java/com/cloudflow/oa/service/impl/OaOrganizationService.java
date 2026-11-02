@@ -2,7 +2,6 @@ package com.cloudflow.oa.service.impl;
 
 import com.cloudflow.oa.domain.vo.OaIdentityReference;
 import com.cloudflow.oa.mapper.OaIdentityReferenceMapper;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.HashSet;
@@ -14,18 +13,17 @@ public class OaOrganizationService {
     private final OaIdentityReferenceMapper identities;
 
     public OaIdentityReference manager(Long userId) {
-        OaIdentityReference person = identities.user(userId, OaRecordSupport.tenantId());
+        Long tenantId = OaRecordSupport.tenantId();
+        OaIdentityReference person = identities.user(userId, tenantId);
         if (person == null) return null;
         Long departmentId = person.getDeptId(); Set<Long> seen = new HashSet<>();
         while (departmentId != null && departmentId > 0 && seen.add(departmentId)) {
-            OaIdentityReference department = identities.department(departmentId, OaRecordSupport.tenantId());
+            OaIdentityReference department = identities.department(departmentId, tenantId);
             if (department == null) return null;
-            if (department.getLeader() != null && !department.getLeader().isBlank()) {
-                List<OaIdentityReference> candidates = identities.leaderCandidates(department.getLeader().trim(), OaRecordSupport.tenantId());
-                if (!candidates.isEmpty()) {
-                    OaIdentityReference manager = candidates.get(0);
-                    if ((candidates.size() == 1 || manager.getId().toString().equals(department.getLeader().trim())) && !manager.getId().equals(userId)) return manager;
-                }
+            Long leaderUserId = department.getLeaderUserId();
+            if (leaderUserId != null && !leaderUserId.equals(userId)) {
+                OaIdentityReference manager = identities.user(leaderUserId, tenantId);
+                if (manager != null) return manager;
             }
             departmentId = department.getParentId();
         }

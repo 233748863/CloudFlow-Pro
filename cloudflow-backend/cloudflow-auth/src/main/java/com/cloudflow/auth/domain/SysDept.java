@@ -2,6 +2,7 @@ package com.cloudflow.auth.domain;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
@@ -24,7 +25,10 @@ public class SysDept {
     private String ancestors;
     private String deptName;
     private Integer orderNum;
-    private String leader;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private Long leaderUserId;
+    @TableField(exist = false)
+    private String leaderName;
     private String phone;
     private String email;
     /** 节假日日历归属，空值时回退租户默认日历。 */

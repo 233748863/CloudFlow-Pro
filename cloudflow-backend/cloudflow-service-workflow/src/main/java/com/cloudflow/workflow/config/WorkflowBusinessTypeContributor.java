@@ -2,6 +2,7 @@ package com.cloudflow.workflow.config;
 
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeContributor;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeDef;
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeRegistry;
 import org.springframework.context.annotation.Configuration;
 import java.util.List;
@@ -26,100 +27,102 @@ public class WorkflowBusinessTypeContributor implements BusinessTypeContributor 
     public void contribute(BusinessTypeRegistry registry) {
         // ===== HR =====
         registry.register(BusinessTypeDef.builder()
-                .code("HR_RECRUITMENT").module("hr").businessTable("hr_recruitment_requisition")
+                .code(HrWorkflowBusinessTypes.RECRUITMENT).module("hr").businessTable("hr_recruitment_requisition")
                 .finishedStatuses(finished("RECRUITING"))
                 .displayName("招聘需求审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_LIFECYCLE").module("hr").businessTable("hr_lifecycle_application")
+                .code(HrWorkflowBusinessTypes.LIFECYCLE).module("hr").businessTable("hr_lifecycle_application")
                 .displayName("员工生命周期申请").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_TIME_REQUEST").module("hr").businessTable("hr_time_request")
+                .code(HrWorkflowBusinessTypes.TIME_REQUEST).module("hr").businessTable("hr_time_request")
                 .displayName("考勤请假申请").build());
         registry.register(BusinessTypeDef.builder()
-                .code("OFFER").module("hr").businessTable("hr_offer")
+                .code(HrWorkflowBusinessTypes.OFFER).module("hr").businessTable("hr_offer")
                 .finishedStatuses(finished("SENT", "ACCEPTED", "EXPIRED"))
                 .displayName("录用 Offer 审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_COMP_CHANGE").module("hr").businessTable("hr_comp_change")
+                .code(HrWorkflowBusinessTypes.COMP_CHANGE).module("hr").businessTable("hr_comp_change")
                 .displayName("薪酬调整审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_PERFORMANCE_PLAN").module("hr").businessTable("hr_performance_objective")
+                .code(HrWorkflowBusinessTypes.PERFORMANCE_PLAN).module("hr").businessTable("hr_performance_objective")
                 .processInstanceIdField("plan_process_instance_id").pendingStatuses(List.of("PLAN_APPROVING"))
                 .finishedStatuses(List.of("PLAN_APPROVED", "RESULT_APPROVING", "RESULT_APPROVED", "COMPLETED", "REJECTED", "CANCELLED"))
                 .displayName("绩效计划审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_PERFORMANCE_RESULT").module("hr").businessTable("hr_performance_objective")
+                .code(HrWorkflowBusinessTypes.PERFORMANCE_RESULT).module("hr").businessTable("hr_performance_objective")
                 .processInstanceIdField("result_process_instance_id").pendingStatuses(List.of("RESULT_APPROVING"))
                 .finishedStatuses(List.of("RESULT_APPROVED", "COMPLETED", "REJECTED", "CANCELLED"))
                 .displayName("绩效结果审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_CERTIFICATE_REQUEST").module("hr").businessTable("hr_certificate_request")
+                .code(HrWorkflowBusinessTypes.CERTIFICATE_REQUEST).module("hr").businessTable("hr_certificate_request")
                 .finishedStatuses(finished("ISSUED"))
                 .displayName("证明开具审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_CONTRACT_SIGN").module("hr").businessTable("hr_contract_signature")
+                .code(HrWorkflowBusinessTypes.CONTRACT_SIGN).module("hr").businessTable("hr_contract_signature")
                 .statusField("sign_status").pendingStatuses(List.of("PENDING", "SIGNING"))
                 .finishedStatuses(List.of("SIGNED", "REJECTED", "EXPIRED", "CANCELLED"))
                 .displayName("电子合同签署").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_TRAINING_ENROLLMENT").module("hr").businessTable("hr_training_enrollment")
+                .code(HrWorkflowBusinessTypes.TRAINING_ENROLLMENT).module("hr").businessTable("hr_training_enrollment")
                 .finishedStatuses(finished("ATTENDED", "PASSED", "WITHDRAWN"))
                 .displayName("培训报名审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_TALENT_REVIEW").module("hr").businessTable("hr_talent_review")
+                .code(HrWorkflowBusinessTypes.TALENT_REVIEW).module("hr").businessTable("hr_talent_review")
                 .finishedStatuses(finished("PUBLISHED", "ARCHIVED"))
                 .displayName("人才盘点发布审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_TALENT_SUCCESSION").module("hr").businessTable("hr_talent_succession_plan")
+                .code(HrWorkflowBusinessTypes.TALENT_SUCCESSION).module("hr").businessTable("hr_talent_succession_plan")
+                .pendingStatuses(List.of("IN_PROGRESS"))
                 .finishedStatuses(finished("PUBLISHED", "ARCHIVED"))
                 .displayName("继任计划发布审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_BENEFIT_REQUEST").module("hr").businessTable("hr_benefit_request")
+                .code(HrWorkflowBusinessTypes.BENEFIT_REQUEST).module("hr").businessTable("hr_benefit_request")
                 .finishedStatuses(finished("PAID"))
                 .displayName("福利申领审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_MALL_ORDER").module("hr").businessTable("hr_mall_order")
+                .code(HrWorkflowBusinessTypes.MALL_ORDER).module("hr").businessTable("hr_mall_order")
                 .finishedStatuses(finished("SHIPPED"))
                 .displayName("积分商城订单审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_WORK_INJURY").module("hr").businessTable("hr_work_injury")
+                .code(HrWorkflowBusinessTypes.WORK_INJURY).module("hr").businessTable("hr_work_injury")
+                .pendingStatuses(List.of("DETERMINING"))
                 .finishedStatuses(finished("DETERMINED", "COMPENSATING", "REHABILITATING", "CLOSED"))
                 .displayName("工伤认定审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_LABOR_DISPUTE").module("hr").businessTable("hr_labor_dispute")
+                .code(HrWorkflowBusinessTypes.LABOR_DISPUTE).module("hr").businessTable("hr_labor_dispute")
                 .finishedStatuses(finished("AWARDED", "EXECUTED", "CLOSED"))
                 .displayName("劳动争议处理审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_ATTENDANCE_APPEAL").module("hr").businessTable("hr_attendance_appeal")
+                .code(HrWorkflowBusinessTypes.ATTENDANCE_APPEAL).module("hr").businessTable("hr_attendance_appeal")
                 .processInstanceIdField("instance_id")
                 .displayName("考勤异常申诉审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_PAYROLL_CORRECTION").module("hr").businessTable("hr_payroll_correction")
+                .code(HrWorkflowBusinessTypes.PAYROLL_CORRECTION).module("hr").businessTable("hr_payroll_correction")
                 .idField("correction_id").processInstanceIdField("instance_id")
                 .finishedStatuses(finished("APPLIED"))
                 .displayName("工资补正审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_OVERTIME").module("hr").businessTable("hr_overtime_request")
+                .code(HrWorkflowBusinessTypes.OVERTIME).module("hr").businessTable("hr_overtime_request")
                 .idField("request_id").processInstanceIdField("instance_id")
                 .displayName("加班申请审批").build());
         registry.register(BusinessTypeDef.builder()
-                .code("HR_SHIFT_REQUEST").module("hr").businessTable("hr_shift_request")
+                .code(HrWorkflowBusinessTypes.SHIFT_REQUEST).module("hr").businessTable("hr_shift_request")
                 .idField("request_id").processInstanceIdField("instance_id")
                 .displayName("调班申请审批").build());
 
         registry.register(BusinessTypeDef.builder()
-                .code("HR_REFERRAL").module("hr").businessTable("hr_employee_referral")
+                .code(HrWorkflowBusinessTypes.REFERRAL).module("hr").businessTable("hr_employee_referral")
                 .idField("referral_id").statusField("bonus_status").processInstanceIdField("instance_id")
                 .finishedStatuses(finished("PAID"))
                 .displayName("内推奖金审批").build());
 
         registry.register(BusinessTypeDef.builder()
-                .code("HR_ADVANCE").module("hr").businessTable("hr_employee_advance")
+                .code(HrWorkflowBusinessTypes.ADVANCE).module("hr").businessTable("hr_employee_advance")
                 .idField("advance_id").statusField("approval_status").processInstanceIdField("instance_id")
                 .displayName("员工借款审批").build());
 
         registry.register(BusinessTypeDef.builder()
-                .code("HR_SETTLEMENT").module("hr").businessTable("hr_final_settlement")
+                .code(HrWorkflowBusinessTypes.SETTLEMENT).module("hr").businessTable("hr_final_settlement")
                 .idField("settlement_id").statusField("approval_status").processInstanceIdField("instance_id")
                 .displayName("离职结算财务复核").build());
 

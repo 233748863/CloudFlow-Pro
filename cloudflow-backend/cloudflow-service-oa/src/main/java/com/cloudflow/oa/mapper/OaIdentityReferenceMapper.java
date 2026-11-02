@@ -17,5 +17,4 @@ public interface OaIdentityReferenceMapper {
     java.util.List<OaIdentityReference> employees(@Param("tenantId") Long tenantId);
     java.util.List<OaIdentityReference> jobLevels(@Param("tenantId") Long tenantId);
     OaIdentityReference department(@Param("id") Long id, @Param("tenantId") Long tenantId);
-    java.util.List<OaIdentityReference> leaderCandidates(@Param("value") String value, @Param("tenantId") Long tenantId);
 }

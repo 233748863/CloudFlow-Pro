@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$OutputPath = (Join-Path $PSScriptRoot '..\cloudflow-backend\DB\07.cloudflow-demo-seed.sql'),
     [string]$SchemaPath = (Join-Path $PSScriptRoot '..\cloudflow-backend\DB'),
@@ -244,7 +244,7 @@ function Get-StringIdExpression([string]$table, [string]$suffix, [string]$tenant
 
 function Get-TargetTable([string]$column) {
     $map = @{
-        dept_id='sys_dept'; role_id='sys_role'; post_id='sys_post'; user_id='sys_user'; employee_id='hr_employee';
+        dept_id='sys_dept'; role_id='sys_role'; post_id='sys_post'; user_id='sys_user'; leader_user_id='sys_user'; employee_id='hr_employee';
         position_id='hr_position'; family_id='hr_position_family'; level_id='hr_job_level'; candidate_id='hr_candidate';
         requisition_id='hr_recruitment_requisition'; interview_id='hr_interview'; offer_id='hr_offer'; shift_id='hr_shift';
         rule_id='hr_attendance_rule'; record_id='hr_attendance_record'; attendance_record_id='hr_attendance_record';
@@ -397,6 +397,8 @@ function Get-StatusExpression([string]$table, [string]$column, [string]$type, [i
         return "'0'"
     }
     if ($table -in @('sys_tenant','sys_user','sys_role','sys_post','sys_menu','sys_dict_type','sys_dict_data','sys_config')) { return "'0'" }
+    # 每租户首行为管理员：保留已解除样例，避免初始化后管理员无法登录。
+    if ($table -eq 'sys_user_blacklist' -and $column -eq 'status') { return "ELT(MOD(r.n,2)+1,'ACTIVE','INACTIVE')" }
     if ($table -eq 'sys_legal_release') { return "'PUBLISHED'" }
     if ($table -eq 'sys_legal_document') { return "'0'" }
     if ($table -eq 'wf_task') { return "ELT(MOD(r.n,6)+1,'TODO','COMPLETED','REJECTED','REVOKED','SUSPENDED','DELEGATED')" }
@@ -443,7 +445,7 @@ function Get-TextExpression($definition, $column) {
     if ($name -eq 'pwd_reset_required') { return "'0'" }
     if ($name -match '(?i)(email)$') { return "CONCAT('user',LPAD(r.n+1,2,'0'),'@',$(Get-TenantFieldExpression 'Code'),'.cn')" }
     if ($name -match '(?i)(phone|phonenumber)$') { return "CONCAT('139',LPAD(MOD(t.n*100+r.n,100000000),8,'0'))" }
-    if ($name -match '(?i)(nick_name|contact_name|employee_name|evaluatee_name|evaluator_name|interviewer_name|reviewer_name|driver_name|owner_name|approver_name|operator_name|leader|member_name)$') {
+    if ($name -match '(?i)(nick_name|contact_name|employee_name|evaluatee_name|evaluator_name|interviewer_name|reviewer_name|driver_name|owner_name|approver_name|operator_name|member_name)$') {
         return Get-PersonExpression
     }
     if ($name -match '(?i)(dept_name|department_name)$') { return Get-DepartmentExpression }
@@ -628,6 +630,7 @@ function Get-JsonColumnExpression($definition, $column, [hashtable]$indexes, [ha
         'wf_form_definition.checksum' { return 'NULL' }
         'wf_process_instance.form_version' { return '1' }
         'wf_process_definition.model_json' { return $modelJsonExpression }
+        'wf_template.definition' { return $modelJsonExpression }
         # 注释只写了「标签」，但 ExportServiceImpl 是 objectMapper.readValue(tags, List.class)，
         # 前端 ProcessManagement 也按数组解析，所以这列是 JSON 数组不是逗号串。
         'wf_process_definition.tags' { return "JSON_ARRAY('演示数据',$(Get-CatalogExpression @('审批','行政','人事','财务','采购') 'r.n'))" }
@@ -662,11 +665,10 @@ function Get-JsonColumnExpression($definition, $column, [hashtable]$indexes, [ha
             if (-not $draftAssignee) { $draftAssignee = 'r.n+1' }
             return "JSON_ARRAY($draftAssignee)"
         }
-        'hr_candidate.resume_attachment_urls' { return "JSON_ARRAY(CONCAT('/upload/hr/resume/demo50_t',LPAD(t.n,2,'0'),'_',LPAD(r.n+1,3,'0'),'.pdf'))" }
-        'hr_employee_contract.attachment_urls' { return "JSON_ARRAY(CONCAT('/upload/hr/contracts/demo50_t',LPAD(t.n,2,'0'),'_',LPAD(r.n+1,3,'0'),'.pdf'))" }
-        'hr_employee_document.attachment_urls' { return "JSON_ARRAY(CONCAT('/upload/hr/documents/demo50_t',LPAD(t.n,2,'0'),'_',LPAD(r.n+1,3,'0'),'.pdf'))" }
     }
 
+    $jsonArrayExpression = $jsonArrayExpressions[$key]
+    if ($null -ne $jsonArrayExpression) { return $jsonArrayExpression }
     return Get-JsonColumnFallbackExpression $definition $column $indexes $definitionMap
 }
 
@@ -1183,10 +1185,74 @@ function Get-PlatformFoundationDemoExpression($definition, [string]$name, [hasht
     return $null
 }
 
+# 持久化 List 和业务约定数组列必须写数组；没有真实附件/子项时保留空集合。
+$jsonArrayExpressions = @{
+    'hr_attendance_appeal.evidence_urls' = 'JSON_ARRAY()'
+    'hr_attendance_rule.work_days' = 'JSON_ARRAY(1,2,3,4,5)'
+    'hr_attendance_rule.check_methods' = "JSON_ARRAY('GPS','WIFI','FACE')"
+    'hr_benefit_payment.items' = 'JSON_ARRAY()'
+    'hr_benefit_request.attachments' = 'JSON_ARRAY()'
+    'hr_candidate.resume_attachment_urls' = 'JSON_ARRAY()'
+    'hr_dispute_arbitration.hearing_dates' = 'JSON_ARRAY()'
+    'hr_employee_contract.attachment_urls' = 'JSON_ARRAY()'
+    'hr_employee_document.attachment_urls' = 'JSON_ARRAY()'
+    'hr_exam_attempt.answers' = 'JSON_ARRAY()'
+    'hr_exam_paper.question_ids' = 'JSON_ARRAY()'
+    'hr_exam_question_bank.options' = 'JSON_ARRAY()'
+    'hr_exam_question_bank.answer' = 'JSON_ARRAY()'
+    'hr_interview.interviewer_ids' = 'JSON_ARRAY()'
+    'hr_interview.interviewer_names' = 'JSON_ARRAY()'
+    'hr_mall_item.images' = 'JSON_ARRAY()'
+    'hr_performance_interview.improvement_items' = 'JSON_ARRAY()'
+    'hr_performance_interview.attachment_urls' = 'JSON_ARRAY()'
+    'hr_resume_parsed_fields.parsed_skills' = 'JSON_ARRAY()'
+    'hr_resume_parsed_fields.parsed_experiences' = 'JSON_ARRAY()'
+    'hr_salary_slip.components' = 'JSON_ARRAY()'
+    'hr_talent_calibration_session.participants' = 'JSON_ARRAY()'
+    'hr_training_certificate_template.fields' = 'JSON_ARRAY()'
+    'hr_training_course.materials' = 'JSON_ARRAY()'
+    'hr_work_injury_investigation.scene_photos' = 'JSON_ARRAY()'
+    'hr_work_injury_treatment.receipts' = 'JSON_ARRAY()'
+    'hr_perf_distribution_rule.distribution' = 'JSON_ARRAY()'
+    'hr_perf_evaluator_response.dimension_scores' = 'JSON_ARRAY()'
+}
+
 function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashtable]$definitionMap) {
     $table = $definition.Table
     $name = $column.Name
     $type = $column.Type
+    # 演示消息只展示已完成历史；保留新版跨表关系，避免调度器重发虚构任务。
+    if ($table -eq 'outbox_event') {
+        $eventId = Get-StringIdExpression $table 'event_id'
+        $sourceId = Get-TargetIdExpression 'crm_customer' $indexes $definitionMap
+        switch ($name) {
+            'aggregate_type' { return "'CUSTOMER'" }
+            'aggregate_id' { return $sourceId }
+            'event_id' { return $eventId }
+            'event_type' { return "'DemoArchivedEvent'" }
+            'payload_json' { return "JSON_OBJECT('eventId',$eventId,'eventType','DemoArchivedEvent','sourceModule','demo-seed','sourceId',$sourceId,'payload',CAST(JSON_OBJECT('source','demo50','archived',true) AS CHAR),'occurredAt',DATE_FORMAT(DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY),'%Y-%m-%dT%H:%i:%s'),'tenantId',$tenantBase+t.n)" }
+            'status' { return "'PUBLISHED'" }
+            'retry_count' { return '0' }
+            { $_ -in @('next_retry_at','created_at','published_at') } { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY)' }
+            { $_ -in @('last_error','locked_by','locked_until') } { return 'NULL' }
+        }
+    }
+    if ($table -eq 'wf_transaction_message') {
+        switch ($name) {
+            'business_type' { return "'HR_CONTRACT_RENEW'" }
+            'business_id' { return Get-TargetIdExpression 'hr_employee_contract' $indexes $definitionMap }
+            'content' { return "JSON_OBJECT('source','demo50','archived',true,'businessType','HR_CONTRACT_RENEW','businessId',$(Get-TargetIdExpression 'hr_employee_contract' $indexes $definitionMap))" }
+            'status' { return "'SUCCESS'" }
+            'retry_count' { return '0' }
+            'max_retry_count' { return '5' }
+            { $_ -in @('next_retry_time','error_message') } { return 'NULL' }
+            { $_ -in @('create_time','update_time') } { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY)' }
+        }
+    }
+    if ($table -eq 'wf_process_definition') {
+        if ($name -eq 'start_permission_type') { return "'ALL'" }
+        if ($name -eq 'start_permission_value') { return 'JSON_ARRAY()' }
+    }
     # 停用释放来源只由真实停用事件建立，演示待办不得虚构可接续来源。
     if ($table -eq 'wf_task' -and $name -in @('disabled_from_user_id','disabled_from_user_name','disabled_release_version','disabled_release_event_id')) { return 'NULL' }
     # 普通演示付款没有经过人事业务确认，来源只允许由真实业务建立。
@@ -1210,15 +1276,10 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     if ($null -ne $crmOperationsExpression) { return $crmOperationsExpression }
     $hrRuleExpression = Get-HrRuleDemoExpression $table $name $indexes
     if ($null -ne $hrRuleExpression) { return $hrRuleExpression }
-    if ($table -eq 'sys_ip_acl' -and $name -eq 'rule_type') {
-        # ip_pattern 统一生成 /32 CIDR，匹配类型必须与值的格式保持一致。
-        return "'CIDR'"
-    }
-    if ($table -eq 'sys_ip_acl' -and $name -eq 'ip_pattern') {
-        # IP/CIDR/区间表达式是格式说明，不是枚举；不能回落到通用文本模板，
-        # 否则会灌入公司名称并让网关在每个请求中尝试 DNS 解析。
-        # 使用 RFC 5737 的 TEST-NET 保留地址，既是合法 IPv4/CIDR，又不会命中真实网络。
-        return "CONCAT('198.51.',100+MOD(t.n,50),'.',MOD(r.n,250)+1,'/32')"
+    # 使用文档专用地址，并与精确匹配类型保持一致。
+    if ($table -eq 'sys_ip_acl') {
+        if ($name -eq 'rule_type') { return "'EXACT'" }
+        if ($name -eq 'ip_pattern') { return "CONCAT('192.0.2.',r.n+1)" }
     }
     if ($name -eq 'tenant_id') {
         # 所有带租户列的表都必须跟 sys_tenant.tenant_id 同一套编号。
@@ -1233,6 +1294,7 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     switch ($table) {
         'oa_expense_standard' {
             switch ($name) {
+                'limit_type' { return "ELT(MOD(r.n,4)+1,'PER_ITEM','DAILY','MONTHLY','YEARLY')" }
                 'position_level' { return "IF(MOD(r.n,5)=0,NULL,CONCAT('P',1+MOD(r.n,9)))" }
                 'city' { return "IF(MOD(r.n,5)=0,NULL,$(Get-TenantFieldExpression 'City'))" }
                 'limit_amount' { return 'CAST(200+MOD(r.n,10)*100 AS DECIMAL(12,2))' }
@@ -1533,7 +1595,6 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     # 而 /auth/tenant/options 带 expire_time > NOW() 过滤，
     # 灌数据当天能登录、次日登录页租户下拉全空。
     if ($table -eq 'sys_tenant' -and $name -eq 'expire_time') { return 'DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR)' }
-    if ($table -eq 'sys_role' -and $name -eq 'data_scope') { return "IF(r.n=0,'1','3')" }
     if ($table -eq 'sys_role' -and $name -eq 'ds_type') { return 'IF(r.n=0,0,3)' }
     if ($table -eq 'sys_menu' -and $name -eq 'status') { return "'1'" }
     if ($table -eq 'sys_menu' -and $name -eq 'perms') { return "CONCAT('system:demo-menu:view-',LPAD(r.n+1,3,'0'))" }

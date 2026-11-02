@@ -248,18 +248,20 @@ public class CrmSlaService {
     }
 
     private Long leader(Long userId) {
-        Long deptId = staffMapper.selectUserDept(userId);
+        Long tenantId = CrmRecordSupport.tenantId();
+        Long deptId = staffMapper.selectUserDept(userId, tenantId);
         Set<Long> visited = new HashSet<>();
         while (deptId != null && deptId > 0 && visited.add(deptId)) {
-            CrmStaffMapper.Department department = staffMapper.selectDepartment(deptId);
+            CrmStaffMapper.Department department = staffMapper.selectDepartment(deptId, tenantId);
             if (department == null) return null;
-            if (department.getLeader() != null && !department.getLeader().isBlank()) {
-                List<Long> matches = staffMapper.selectLeaderUsers(department.getLeader());
-                if (matches.size() == 1 && !userId.equals(matches.get(0))) return matches.get(0);
+            Long leaderUserId = department.getLeaderUserId();
+            if (leaderUserId != null && !leaderUserId.equals(userId)) {
+                Long managerId = staffMapper.selectActiveUserId(leaderUserId, tenantId);
+                if (managerId != null) return managerId;
             }
             deptId = department.getParentId();
         }
-        log.warn("工单负责人{}未配置可唯一识别的上级，SLA告警仅发负责人", userId);
+        log.warn("工单负责人{}未配置有效上级，SLA告警仅发负责人", userId);
         return null;
     }
 }

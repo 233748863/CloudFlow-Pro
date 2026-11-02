@@ -7,8 +7,6 @@ import com.cloudflow.crm.domain.CrmRenewal;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -30,9 +28,19 @@ final class CrmRenewalRiskEvaluator {
     }
 
     static void enrich(CrmRenewal renewal, SysDictHelper sysDictHelper) {
-        if (renewal == null) {
+        enrichAll(List.of(renewal), sysDictHelper);
+    }
+
+    static void enrichAll(List<CrmRenewal> renewals, SysDictHelper sysDictHelper) {
+        if (renewals.isEmpty()) {
             return;
         }
+        List<SysDictHelper.DictItem> tiers = CrmHealthCalculator.sortedTiers(sysDictHelper.getDictData(EXPIRE_DICT_TYPE));
+        LocalDate today = LocalDate.now();
+        renewals.forEach(renewal -> enrich(renewal, tiers, today));
+    }
+
+    private static void enrich(CrmRenewal renewal, List<SysDictHelper.DictItem> sorted, LocalDate today) {
         String status = renewal.getStatus();
         if (CrmConstants.RenewalStatus.WON.equalsIgnoreCase(status)
                 || CrmConstants.RenewalStatus.CLOSED.equalsIgnoreCase(status)) {
@@ -46,7 +54,6 @@ final class CrmRenewalRiskEvaluator {
             return;
         }
 
-        LocalDate today = LocalDate.now();
         if (renewal.getCurrentExpireDate() != null) {
             long daysToExpire = ChronoUnit.DAYS.between(today, renewal.getCurrentExpireDate());
             if (daysToExpire < 0) {
@@ -55,15 +62,7 @@ final class CrmRenewalRiskEvaluator {
                 return;
             }
             // 按字典 crm_contract_expire_tier 升序匹配（dict_value=本档天数上限），首档 -> HIGH，第二档 -> MEDIUM
-            List<SysDictHelper.DictItem> tiers = sysDictHelper != null
-                    ? sysDictHelper.getDictData(EXPIRE_DICT_TYPE)
-                    : null;
-            if (tiers != null && !tiers.isEmpty()) {
-                List<SysDictHelper.DictItem> sorted = new ArrayList<>(tiers);
-                sorted.sort(Comparator.comparing(d -> {
-                    BigDecimal v = d.getValueAsDecimal();
-                    return v == null ? BigDecimal.valueOf(Long.MAX_VALUE) : v;
-                }));
+            if (!sorted.isEmpty()) {
                 String[] riskLevels = {CrmConstants.RiskLevel.HIGH, CrmConstants.RiskLevel.MEDIUM};
                 for (int i = 0; i < sorted.size() && i < riskLevels.length; i++) {
                     SysDictHelper.DictItem tier = sorted.get(i);

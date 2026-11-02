@@ -1,5 +1,7 @@
 package com.cloudflow.workflow.service;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfNodeConfig;
@@ -41,7 +43,7 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class WorkflowHParticipantPolicy {
     private static final Set<String> BUSINESS_TYPES = Set.of(
-            "HR_OVERTIME", "HR_SHIFT_REQUEST", "HR_REFERRAL", "HR_ADVANCE", "HR_SETTLEMENT", "OFFER", "OA_CONSUMABLE_REQUEST", "OA_MEETING_BOOKING", "crm_refund");
+            "HR_OVERTIME", "HR_SHIFT_REQUEST", "HR_REFERRAL", "HR_ADVANCE", "HR_SETTLEMENT", HrWorkflowBusinessTypes.OFFER, "OA_CONSUMABLE_REQUEST", "OA_MEETING_BOOKING", "crm_refund");
     private static final String EXCLUDED_USERS = "_hExcludedUserIds";
     private static final String FROZEN_DEFINITION = "_hDefinition";
     private static final String CORRECTION_APPROVERS = "hCorrectionApproverIds";
@@ -314,14 +316,14 @@ public class WorkflowHParticipantPolicy {
             stringId(variables.get("referralId"));
         }
         boolean refund = "crm_refund".equals(type);
-        Long applicant = stringId(variables.get(hr || correction || "OFFER".equals(type) ? "applicantUserId" : "applicantId"));
+        Long applicant = stringId(variables.get(hr || correction || HrWorkflowBusinessTypes.OFFER.equals(type) ? "applicantUserId" : "applicantId"));
         if (!Objects.equals(applicant, startUserId) || excluded.size() != participantCount || !excluded.contains(startUserId)) {
             throw failure("H_EXCLUSIONS_INVALID", "排除名单必须包含原申请人，互换调班还必须包含对方登录用户");
         }
         Map<String, List<Long>> approvers = new LinkedHashMap<>();
         for (String field : settlement ? List.of("financeApproverIds") : hr ? List.of("responsibleApproverIds", "HR_ADVANCE".equals(type) ? "financeApproverIds" : "hrApproverIds")
                 : refund ? List.of("customerOwnerApproverIds", "financeReviewerIds")
-                : List.of(correction ? CORRECTION_APPROVERS : "OFFER".equals(type) ? "offerApproverIds" : "approverIds")) {
+                : List.of(correction ? CORRECTION_APPROVERS : HrWorkflowBusinessTypes.OFFER.equals(type) ? "offerApproverIds" : "approverIds")) {
             List<Long> users = stringIds(variables.get(field));
             if (hr && !"financeApproverIds".equals(field) && users.size() != 1) throw failure("H_APPROVER_INVALID", "HR 首审节点必须配置一位独立审批人");
             if (refund && "customerOwnerApproverIds".equals(field) && users.size() != 1)
@@ -338,7 +340,7 @@ public class WorkflowHParticipantPolicy {
         }
         assertActive(tenantId, uniqueApprovers);
         if (correction) assertFinance(tenantId, uniqueApprovers);
-        if ("OFFER".equals(type)) assertRole(tenantId, uniqueApprovers, "admin");
+        if (HrWorkflowBusinessTypes.OFFER.equals(type)) assertRole(tenantId, uniqueApprovers, "admin");
         if (refund) assertFinance(tenantId, new LinkedHashSet<>(approvers.get("financeReviewerIds")));
         if ("HR_ADVANCE".equals(type) || settlement) assertFinance(tenantId, new LinkedHashSet<>(approvers.get("financeApproverIds")));
         return new Context(instance, variables, hr, correction, new LinkedHashSet<>(excluded), approvers);
@@ -383,7 +385,7 @@ public class WorkflowHParticipantPolicy {
         return (context.correction() || offer(context)) && !StringUtils.hasText(node.getSignType()) ? List.of(expected.get(0)) : expected;
     }
 
-    private boolean offer(Context context) { return "OFFER".equals(context.variables().get("businessType")); }
+    private boolean offer(Context context) { return HrWorkflowBusinessTypes.OFFER.equals(context.variables().get("businessType")); }
 
     private void assertFinance(Long tenantId, Set<Long> userIds) { assertRole(tenantId, userIds, "finance"); }
 

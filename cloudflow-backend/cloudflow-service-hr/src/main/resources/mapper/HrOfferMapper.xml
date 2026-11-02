@@ -10,7 +10,7 @@
           AND instance.instance_id = offer.process_instance_id AND instance.deleted = 0
         WHERE offer.tenant_id = #{tenantId} AND offer.id = #{offerId} AND offer.deleted = 0
           AND instance.instance_id = #{instanceId} AND instance.status = #{status}
-          AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessType')) = 'OFFER'
+          AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessType')) = 'HR_OFFER'
           AND JSON_UNQUOTE(JSON_EXTRACT(instance.variables, '$.businessId')) = CAST(#{offerId} AS CHAR)
           AND EXISTS (SELECT 1 FROM wf_task_history history WHERE history.tenant_id = instance.tenant_id
             AND history.instance_id = instance.instance_id AND history.operator_id = #{actor}

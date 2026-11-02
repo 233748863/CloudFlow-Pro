@@ -19,6 +19,7 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { toast } from 'sonner';
 import { logWorkflow } from '../lib/logger';
 import {
+  assertWorkflowGraphIntegrity,
   createDefaultWorkflowGraph,
   parseWorkflowGraphDefinition,
 } from '../utils/workflowGraph';
@@ -147,6 +148,7 @@ const parseWorkflowGraph = (raw: unknown, workflowName: string) => {
   if (!graph) {
     throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
   }
+  assertWorkflowGraphIntegrity(graph);
   return graph;
 };
 
@@ -220,8 +222,8 @@ const buildWorkflowContentSignature = (wf: WorkflowDefinition | null | undefined
     description: wf.description || '',
     category: wf.category || '',
     tags: wf.tags || '',
-    startPermissionType: wf.startPermissionType || '',
-    startPermissionValue: wf.startPermissionValue || '',
+    startPermissionType: wf.startPermissionType || 'ALL',
+    startPermissionValue: wf.startPermissionValue || '[]',
     deptId: wf.deptId ?? null,
   });
 };

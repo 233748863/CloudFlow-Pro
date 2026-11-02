@@ -1,7 +1,7 @@
 package com.cloudflow.hr.event.consumer;
 
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.workflow.WorkflowFallbackRetryContext;
@@ -49,7 +49,7 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
 
     private void validateTenant(BusinessEventEnvelope envelope, Map<String, Object> payload, Long requestTenantId) {
         Long payloadTenantId = parseTenantId(payload.get("tenantId"));
-        Long contextTenantId = UserContext.getTenantId();
+        Long contextTenantId = TenantContext.getTenantId();
         if (requestTenantId == null || envelope.getTenantId() == null || contextTenantId == null
                 || !requestTenantId.equals(envelope.getTenantId())
                 || !requestTenantId.equals(payloadTenantId)

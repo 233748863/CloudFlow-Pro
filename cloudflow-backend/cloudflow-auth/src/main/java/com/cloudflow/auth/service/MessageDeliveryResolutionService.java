@@ -36,7 +36,7 @@ public class MessageDeliveryResolutionService {
         if (tenantId == null || userId == null) throw new ServiceException("登录上下文无效", 401);
         SysUser user = users.selectOne(new LambdaQueryWrapper<SysUser>().eq(SysUser::getTenantId, tenantId)
                 .eq(SysUser::getUserId, userId).eq(SysUser::getStatus, "0").eq(SysUser::getDeleted, 0));
-        if (user == null || !passwords.matchesPassword(request.getPassword(), user.getPassword()).matched()
+        if (user == null || !passwords.matchesPassword(request.getPassword(), user.getPassword())
                 || totp.isEnabled(userId, tenantId) && !totp.verifyLoginCode(userId, tenantId, request.getTotpCode())) {
             throw new ServiceException("再次身份验证失败", 403);
         }

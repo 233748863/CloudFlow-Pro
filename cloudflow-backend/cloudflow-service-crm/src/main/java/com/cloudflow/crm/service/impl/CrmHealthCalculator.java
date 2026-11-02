@@ -3,6 +3,8 @@ package com.cloudflow.crm.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.redis.core.SysDictHelper;
 import com.cloudflow.crm.constant.CrmConstants;
+import com.cloudflow.crm.domain.CrmCustomerHealth;
+import com.cloudflow.crm.domain.CrmFollowUp;
 import com.cloudflow.crm.domain.CrmReceivable;
 import com.cloudflow.crm.domain.CrmRenewal;
 import com.cloudflow.crm.domain.CrmServiceTicket;
@@ -26,9 +28,46 @@ import java.util.Objects;
 final class CrmHealthCalculator {
 
     /** 应收逾期档位字典类型，由 {@link SysDictHelper} 加载，缺失时回退到 30/60/90 内置档 */
-    private static final String OVERDUE_DICT_TYPE = "crm_receivable_overdue_tier";
 
     private CrmHealthCalculator() {
+    }
+
+    static CrmCustomerHealth calculate(List<CrmFollowUp> followUps, List<CrmRenewal> renewals,
+                                        List<CrmReceivable> receivables, List<CrmServiceTicket> tickets,
+                                        LocalDateTime now) {
+        LocalDateTime lastFollowUp = null;
+        LocalDateTime nextFollowUp = null;
+        for (CrmFollowUp followUp : followUps) {
+            LocalDateTime last = followUp.getFollowUpTime();
+            LocalDateTime next = followUp.getNextFollowUpTime();
+            if (last != null && (lastFollowUp == null || last.isAfter(lastFollowUp))) {
+                lastFollowUp = last;
+            }
+            if (next != null && !next.isBefore(now) && (nextFollowUp == null || next.isBefore(nextFollowUp))) {
+                nextFollowUp = next;
+            }
+        }
+        LocalDate renewalDate = renewals.stream()
+                .filter(item -> !CrmConstants.RenewalStatus.LOST.equalsIgnoreCase(item.getStatus()))
+                .map(CrmHealthCalculator::resolveRenewalDate).filter(Objects::nonNull)
+                .min(Comparator.naturalOrder()).orElse(null);
+        int overdueDays = (int) receivables.stream()
+                .filter(item -> item.getDueDate() != null && item.getDueDate().isBefore(now.toLocalDate()))
+                .filter(item -> item.getOutstandingAmount() != null && item.getOutstandingAmount().signum() > 0)
+                .mapToLong(item -> ChronoUnit.DAYS.between(item.getDueDate(), now.toLocalDate())).max().orElse(0);
+        boolean highSeverity = false;
+        boolean overdue = false;
+        for (CrmServiceTicket ticket : tickets) {
+            if (ticket.getStatus() == null || CrmConstants.TicketStatus.RESOLVED.equals(ticket.getStatus())
+                    || CrmConstants.TicketStatus.CLOSED.equals(ticket.getStatus())) {
+                continue;
+            }
+            highSeverity |= CrmConstants.TicketSeverity.P2.equals(ticket.getSeverity())
+                    || CrmConstants.TicketSeverity.P1.equals(ticket.getSeverity());
+            overdue |= ticket.getDueTime() != null && ticket.getDueTime().isBefore(now);
+        }
+        return new CrmCustomerHealth(lastFollowUp, nextFollowUp, renewalDate, overdueDays,
+                highSeverity, overdue, now);
     }
 
     static LocalDate resolveRenewalWindowDate(CrmRenewalMapper renewalMapper, Long customerId) {
@@ -108,17 +147,13 @@ final class CrmHealthCalculator {
      * 新增/删档字典即可，无需改 Java；前端通过 bucketName（dict_label，如"30天内"）显示。
      * 字典缺失时回退到 4 档兼容方案 DUE_30 / DUE_60 / DUE_90 / DUE_90_PLUS。
      */
-    static String resolveAgingBucket(LocalDate dueDate, LocalDate today, SysDictHelper sysDictHelper) {
+    static String resolveAgingBucket(LocalDate dueDate, LocalDate today, List<SysDictHelper.DictItem> sorted) {
         if (dueDate == null || !dueDate.isBefore(today)) {
             return "CURRENT";
         }
         long overdueDays = ChronoUnit.DAYS.between(dueDate, today);
-        List<SysDictHelper.DictItem> tiers = sysDictHelper != null
-                ? sysDictHelper.getDictData(OVERDUE_DICT_TYPE)
-                : null;
-        if (tiers != null && !tiers.isEmpty()) {
+        if (!sorted.isEmpty()) {
             // 按阈值升序遍历，命中第一个 overdueDays <= value 的档；返回 DUE_TIER_${sort}
-            List<SysDictHelper.DictItem> sorted = sortedTiers(tiers);
             for (SysDictHelper.DictItem item : sorted) {
                 BigDecimal threshold = item.getValueAsDecimal();
                 if (threshold != null && overdueDays <= threshold.longValue()) {

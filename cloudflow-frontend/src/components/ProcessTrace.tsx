@@ -195,8 +195,8 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
       // 实例参与人通过原实例权限读取展示结构，无需流程定义管理权限。
       const diagram = await getFlowchartData(instanceId);
       const parsed = parseWorkflowGraph({
-        nodes: diagram.nodes.map(node => ({ ...node, title: node.label })),
-        edges: diagram.edges.map(edge => ({ ...edge, condition: edge.label })),
+        nodes: diagram.nodes,
+        edges: diagram.edges,
       });
       setGraphModel(parsed);
       if (!parsed || parsed.nodes.length === 0) {

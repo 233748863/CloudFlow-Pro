@@ -3,18 +3,17 @@ package com.cloudflow.crm.mapper;
 import lombok.Data;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import java.util.List;
 
 @Mapper
 public interface CrmStaffMapper {
-    Long selectUserDept(@Param("userId") Long userId);
-    Department selectDepartment(@Param("deptId") Long deptId);
-    List<Long> selectLeaderUsers(@Param("leader") String leader);
+    Long selectUserDept(@Param("userId") Long userId, @Param("tenantId") Long tenantId);
+    Department selectDepartment(@Param("deptId") Long deptId, @Param("tenantId") Long tenantId);
+    Long selectActiveUserId(@Param("userId") Long userId, @Param("tenantId") Long tenantId);
 
     @Data
     class Department {
         private Long deptId;
         private Long parentId;
-        private String leader;
+        private Long leaderUserId;
     }
 }

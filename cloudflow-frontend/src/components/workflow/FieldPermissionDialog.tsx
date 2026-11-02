@@ -36,7 +36,7 @@ export const FieldPermissionDialog: React.FC<{ definitionId: string; onClose: ()
       if (!form) throw new Error('绑定表单定义无法读取');
       const graph = parseWorkflowGraphDefinition(definition.modelJson ?? definition.graph);
       const nodes: PermissionNode[] = [{ key: '__START__', label: '发起环节', editable: true }, ...graph.nodes.filter((node) => node.type !== 'START' && node.type !== 'END')
-        .map((node) => ({ key: node.id, label: node.title || (typeof node.label === 'string' ? node.label : node.id), editable: node.allowEdit === true || Boolean(node.props && typeof node.props === 'object' && 'allowEdit' in node.props && node.props.allowEdit === true) }))];
+        .map((node) => ({ key: node.id, label: node.title || node.id, editable: node.allowEdit === true || Boolean(node.props && typeof node.props === 'object' && 'allowEdit' in node.props && node.props.allowEdit === true) }))];
       if (!cancelled) {
         const next = new Map(values.map((permission) => [keyFor(permission.nodeKey, permission.fieldId), permission]));
         setPermissions(next); setSaved(signature(next));

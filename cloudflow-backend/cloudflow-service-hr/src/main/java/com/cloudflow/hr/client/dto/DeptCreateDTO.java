@@ -39,7 +39,7 @@ public class DeptCreateDTO implements Serializable {
     /**
      * 负责人
      */
-    private String leader;
+    private Long leaderUserId;
     
     /**
      * 联系电话

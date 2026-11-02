@@ -24,9 +24,7 @@ public class HrOfferVO {
     @Schema(description = "岗位名称") private String positionName;
     @Schema(description = "薪资（按 hr:comp:view 权限脱敏）") private Object salary;
     @Schema(description = "预计到岗日期") private LocalDate expectedArrivalDate;
-    @Schema(description = "预计到岗日期") private LocalDate expectedDate;
     @Schema(description = "Offer 过期日期") private LocalDate expireDate;
-    @Schema(description = "Offer 过期日期") private LocalDate expiryDate;
     @Schema(description = "Offer 内容") private String offerContent;
     @Schema(description = "状态") private String status;
     @Schema(description = "状态描述") private String statusDesc;

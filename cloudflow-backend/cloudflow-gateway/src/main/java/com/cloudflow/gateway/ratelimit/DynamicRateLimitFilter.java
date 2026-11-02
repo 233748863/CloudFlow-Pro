@@ -142,17 +142,17 @@ public class DynamicRateLimitFilter implements GlobalFilter, Ordered {
                             .switchIfEmpty(reactiveStringRedisTemplate.expire(
                                     counterKey, Duration.ofSeconds(windowSeconds)))
                             .onErrorReturn(true);
-                    return ensureTtl.then(Mono.just(count == null ? 0L : count));
+                    return ensureTtl.thenReturn(count);
+                })
+                .onErrorResume(err -> {
+                    log.warn("API 限流计数异常 rule={} key={} err={}", hit.getRuleCode(), counterKey, err.getMessage());
+                    return Mono.just(0L);
                 })
                 .flatMap(count -> {
                     if (count <= burst) {
                         return chain.filter(exchange);
                     }
                     return onExceeded(exchange, chain, hit, count);
-                })
-                .onErrorResume(err -> {
-                    log.warn("API 限流计数异常 rule={} key={} err={}", hit.getRuleCode(), counterKey, err.getMessage());
-                    return chain.filter(exchange);
                 });
     }
 

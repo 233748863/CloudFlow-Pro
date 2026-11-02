@@ -3,9 +3,12 @@ package com.cloudflow.auth.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysDept;
+import com.cloudflow.auth.util.DeptTreeBuilder;
 import com.cloudflow.auth.domain.dto.DeptMigrateRequest;
 import com.cloudflow.auth.mapper.SysDeptMapper;
 import com.cloudflow.auth.service.SysDeptAdminService;
+import com.cloudflow.auth.service.SysDeptLeaderService;
+import cn.dev33.satoken.annotation.SaMode;
 import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
@@ -14,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,6 +33,9 @@ public class SysDeptController {
     @Autowired
     private SysDeptAdminService sysDeptAdminService;
 
+    @Autowired
+    private SysDeptLeaderService deptLeaderService;
+
     /**
      * 获取部门树
      */
@@ -39,74 +44,24 @@ public class SysDeptController {
     public R<List<SysDept>> getDeptTree() {
         List<SysDept> depts = sysDeptMapper.selectList(new LambdaQueryWrapper<SysDept>()
                 .orderByAsc(SysDept::getOrderNum));
-        return R.ok(buildDeptTree(depts));
+        deptLeaderService.fillNames(depts);
+        return R.ok(DeptTreeBuilder.build(depts));
     }
 
     /**
      * 构建部门树
      */
-    private List<SysDept> buildDeptTree(List<SysDept> depts) {
-        List<SysDept> returnList = new ArrayList<>();
-        List<Long> tempList = new ArrayList<>();
-        for (SysDept dept : depts) {
-            tempList.add(dept.getDeptId());
-        }
-        for (SysDept dept : depts) {
-            // 如果是顶级节点, 遍历该父节点的所有子节点
-            if (!tempList.contains(dept.getParentId())) {
-                recursionFn(depts, dept);
-                returnList.add(dept);
-            }
-        }
-        if (returnList.isEmpty()) {
-            returnList = depts;
-        }
-        return returnList;
-    }
-
-    /**
-     * 递归列表
-     */
-    private void recursionFn(List<SysDept> list, SysDept t) {
-        // 得到子节点列表
-        List<SysDept> childList = getChildList(list, t);
-        t.setChildren(childList);
-        for (SysDept tChild : childList) {
-            if (hasChild(list, tChild)) {
-                recursionFn(list, tChild);
-            }
-        }
-    }
-
-    /**
-     * 得到子节点列表
-     */
-    private List<SysDept> getChildList(List<SysDept> list, SysDept t) {
-        List<SysDept> tlist = new ArrayList<>();
-        Iterator<SysDept> it = list.iterator();
-        while (it.hasNext()) {
-            SysDept n = it.next();
-            if (n.getParentId() != null && n.getParentId().longValue() == t.getDeptId().longValue()) {
-                tlist.add(n);
-            }
-        }
-        return tlist;
-    }
-
-    /**
-     * 判断是否有子节点
-     */
-    private boolean hasChild(List<SysDept> list, SysDept t) {
-        return getChildList(list, t).size() > 0;
-    }
-
     /**
      * 获取部门详情
      */
     @GetMapping("/{deptId}")
     @SaCheckPermission("system:dept:query")
     public R<SysDept> getById(@PathVariable Long deptId) {
-        return R.ok(sysDeptMapper.selectById(deptId));
+        SysDept dept = sysDeptMapper.selectById(deptId);
+        if (dept != null) {
+            deptLeaderService.fillNames(List.of(dept));
+        }
+        return R.ok(dept);
     }
 
     /**
@@ -117,6 +72,7 @@ public class SysDeptController {
     @SysLog("新增部门")
     @SaCheckPermission("system:dept:add")
     public R<Boolean> add(@RequestBody SysDept dept) {
+        deptLeaderService.validate(dept);
         // 设置ancestors
         if (dept.getParentId() != null && dept.getParentId() > 0) {
             SysDept parent = sysDeptMapper.selectById(dept.getParentId());
@@ -145,6 +101,7 @@ public class SysDeptController {
     @SysLog("修改部门")
     @SaCheckPermission("system:dept:edit")
     public R<Boolean> edit(@RequestBody SysDept dept) {
+        deptLeaderService.validate(dept);
         // 更新ancestors
         if (dept.getParentId() != null && dept.getParentId() > 0) {
             SysDept parent = sysDeptMapper.selectById(dept.getParentId());
@@ -162,6 +119,12 @@ public class SysDeptController {
             }
         }
         return R.ok(success);
+    }
+
+    @GetMapping("/leader-options")
+    @SaCheckPermission(value = {"system:dept:add", "system:dept:edit"}, mode = SaMode.OR)
+    public R<List<SysDeptLeaderService.LeaderOption>> leaderOptions() {
+        return R.ok(deptLeaderService.options());
     }
 
     @PostMapping("/migrate")

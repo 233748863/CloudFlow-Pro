@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -30,7 +31,6 @@ import com.cloudflow.hr.mapper.HrMallOrderMapper;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.hr.service.IHrMallItemService;
 import com.cloudflow.hr.service.IHrMallOrderService;
-import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.hr.service.IHrPointAccountService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -254,7 +254,7 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
         processStartDTO.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_MALL_ORDER_PROCESS_KEY,
                 "wf_hr_mall_order"));
-        processStartDTO.setBusinessType("HR_MALL_ORDER");
+        processStartDTO.setBusinessType(HrWorkflowBusinessTypes.MALL_ORDER);
         processStartDTO.setBusinessId(order.getId());
         processStartDTO.setBusinessNo(order.getOrderNo());
         processStartDTO.setProcessTitle("积分商城兑换-" + order.getOrderNo());

@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -94,19 +93,13 @@ public class SysDeptAdminService {
             return 0;
         }
 
-        List<Long> userIds = users.stream()
-                .map(SysUser::getUserId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
         for (SysUser user : users) {
             SysUser update = new SysUser();
             update.setUserId(user.getUserId());
             update.setDeptId(targetDeptId);
             sysUserMapper.updateById(update);
         }
-        userIds.forEach(userDataScopeService::refresh);
-        userDataScopeService.refreshByDeptId(sourceDeptId);
-        userDataScopeService.refreshByDeptId(targetDeptId);
+        userDataScopeService.refreshByDeptIds(List.of(sourceDeptId, targetDeptId));
         return users.size();
     }
 

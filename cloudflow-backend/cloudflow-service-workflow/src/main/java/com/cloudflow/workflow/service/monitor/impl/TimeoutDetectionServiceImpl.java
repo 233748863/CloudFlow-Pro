@@ -358,17 +358,8 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     }
 
     private SysUser resolveLeaderFromDept(SysDept dept, Long tenantId) {
-        if (dept == null || !StringUtils.hasText(dept.getLeader())) {
-            return null;
-        }
-        String leader = dept.getLeader().trim();
-        Long leaderId = parseLong(leader);
-        if (leaderId != null) {
-            return selectActiveUser(leaderId, tenantId);
-        }
-        return sysUserMapper.selectPage(new Page<>(1, 1, false), activeUserWrapper(tenantId)
-                .and(query -> query.eq(SysUser::getUserName, leader).or().eq(SysUser::getNickName, leader)))
-                .getRecords().stream().findFirst().orElse(null);
+        return dept == null || dept.getLeaderUserId() == null
+                ? null : selectActiveUser(dept.getLeaderUserId(), tenantId);
     }
 
     private SysUser resolveFirstRoleUser(String roleKey, Long tenantId, Long deptId) {

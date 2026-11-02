@@ -465,7 +465,7 @@ export const TaskHandleModal = ({
           const executedNodes = new Set(trace.historyDetails?.map((detail) => detail.nodeKey) ?? []);
           const nodes = currentNodeKey ? getWorkflowUpstreamNodes(graph, currentNodeKey)
             .filter((node) => executedNodes.has(node.id))
-            .map((node) => ({ key: node.id, name: node.label })) : [];
+            .map((node) => ({ key: node.id, name: node.title })) : [];
           setHistoryNodes(nodes);
           setRejectTargetNode((selected) => nodes.some((node) => node.key === selected) ? selected : '');
           setHistoryNodesLoaded(true);

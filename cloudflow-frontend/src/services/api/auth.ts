@@ -3,6 +3,14 @@ import { CanceledError, type AxiosRequestConfig } from 'axios';
 import { Role } from '@/types';
 import { getAuthSessionVersion } from '@/utils/authStorage';
 
+export interface DeptLeaderOption {
+  userId: number;
+  name: string;
+}
+
+export const getDeptLeaderOptions = () =>
+  request.get('/auth/system/dept/leader-options') as Promise<DeptLeaderOption[]>;
+
 // ==================== 系统管理类型定义 ====================
 
 /** 部门数据 */
@@ -11,7 +19,8 @@ export interface SysDept {
   parentId?: number;
   deptName: string;
   orderNum?: number;
-  leader?: string;
+  leaderUserId?: number | null;
+  leaderName?: string;
   phone?: string;
   email?: string;
   status?: string;

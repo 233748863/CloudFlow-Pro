@@ -26,7 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/common';
-import { addDept, deleteDept, getDeptTree, getUserList, migrateDeptUsers, updateDept, updateUser, deleteUser } from '../services/api/auth';
+import { addDept, deleteDept, getDeptTree, getDeptLeaderOptions, getUserList, migrateDeptUsers, updateDept, updateUser, deleteUser } from '../services/api/auth';
+import type { DeptLeaderOption } from '../services/api/auth';
 import { getConfigIntSync } from '@/hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '@/constants/sysConfig';
 import { cn } from '@/utils/cn';
@@ -44,7 +45,8 @@ interface DeptItem {
   parentId: number;
   deptName: string;
   orderNum: number;
-  leader: string;
+  leaderUserId: number | null;
+  leaderName?: string;
   phone: string;
   email: string;
   status: string;
@@ -74,7 +76,7 @@ interface DeptFormState {
   parentId: number;
   deptName: string;
   orderNum: number;
-  leader: string;
+  leaderUserId: number | null;
   phone: string;
   email: string;
   status: string;
@@ -109,7 +111,7 @@ const createDeptForm = (defaultParentId = 0): DeptFormState => ({
   parentId: defaultParentId,
   deptName: '',
   orderNum: 0,
-  leader: '',
+  leaderUserId: null,
   phone: '',
   email: '',
   status: '0',
@@ -166,7 +168,7 @@ const collectDeptMatches = (
 ): DeptMatch[] => {
   depts.forEach((dept) => {
     const name = dept.deptName || '';
-    const leader = dept.leader || '';
+    const leader = dept.leaderName || '';
     if (name.toLowerCase().includes(keyword) || leader.toLowerCase().includes(keyword)) {
       out.push({ dept, path: trail });
     }
@@ -221,7 +223,7 @@ const filterDeptTree = (depts: DeptItem[], keyword: string): DeptItem[] => {
       const matchesSelf =
         dept.deptName.toLowerCase().includes(normalized) ||
         String(dept.deptId).includes(normalized) ||
-        String(dept.leader || '').toLowerCase().includes(normalized);
+        String(dept.leaderName || '').toLowerCase().includes(normalized);
 
       if (!matchesSelf && children.length === 0) {
         return [];
@@ -354,7 +356,7 @@ const DepartmentPickerList: React.FC<{
 
       return (
         dept.deptName.toLowerCase().includes(normalized) ||
-        String(dept.leader || '').toLowerCase().includes(normalized)
+        String(dept.leaderName || '').toLowerCase().includes(normalized)
       );
     });
   }, [deptTree, keyword]);
@@ -613,6 +615,18 @@ const DeptFormDialog: React.FC<{
       .finally(() => { if (active) setCalendarLoading(false); });
     return () => { active = false; };
   }, [open, canSelectCalendar, calendarReload]);
+  const [leaderOptions, setLeaderOptions] = useState<DeptLeaderOption[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    getDeptLeaderOptions().then((options) => {
+      if (active) setLeaderOptions(options);
+    }).catch(() => {
+      if (active) toast.error('负责人列表加载失败');
+    });
+    return () => { active = false; };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -623,7 +637,7 @@ const DeptFormDialog: React.FC<{
         parentId: editing.parentId ?? 0,
         deptName: editing.deptName,
         orderNum: editing.orderNum ?? 0,
-        leader: editing.leader || '',
+        leaderUserId: editing.leaderUserId ?? null,
         phone: editing.phone || '',
         email: editing.email || '',
         status: editing.status || '0',
@@ -667,7 +681,6 @@ const DeptFormDialog: React.FC<{
               onSubmit({
                 ...form,
                 deptName: form.deptName.trim(),
-                leader: form.leader.trim(),
                 phone: form.phone.trim(),
                 email: form.email.trim(),
               });
@@ -781,11 +794,20 @@ const DeptFormDialog: React.FC<{
         </div>
         <div>
           <label className={fieldLabelClassName}>负责人</label>
-          <Input
-            value={form.leader}
-            onChange={(event) => setForm((prev) => ({ ...prev, leader: event.target.value }))}
-            placeholder="负责人"
-          />
+          <Select
+            value={form.leaderUserId == null ? 'none' : String(form.leaderUserId)}
+            onValueChange={(value) => setForm((prev) => ({ ...prev, leaderUserId: value === 'none' ? null : Number(value) }))}
+          >
+            <SelectTrigger className="rounded-md">
+              <SelectValue placeholder="请选择负责人" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">未指定</SelectItem>
+              {leaderOptions.map((user) => (
+                <SelectItem key={user.userId} value={String(user.userId)}>{user.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <label className={fieldLabelClassName}>电话</label>
@@ -951,7 +973,7 @@ const ChangeDeptDialog: React.FC<{
                 {targetDept?.deptName || '未选择'}
               </div>
               <div className="mt-1 text-xs text-cf-subtle">
-                {targetDept?.leader ? `负责人 ${targetDept.leader}` : '从部门列表选择目标部门'}
+                {targetDept?.leaderName ? `负责人 ${targetDept.leaderName}` : '从部门列表选择目标部门'}
               </div>
             </div>
           </div>
@@ -1042,7 +1064,7 @@ const MigrateDeptDialog: React.FC<{
                 {targetDept?.deptName || '未选择'}
               </div>
               <div className="mt-1 text-xs text-cf-subtle">
-                {targetDept?.leader ? `负责人 ${targetDept.leader}` : '从部门列表选择目标部门'}
+                {targetDept?.leaderName ? `负责人 ${targetDept.leaderName}` : '从部门列表选择目标部门'}
               </div>
             </div>
           </div>
@@ -1469,7 +1491,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                   </span>
                 </div>
                 <div className="mt-1 text-xs text-cf-subtle font-medium">
-                  包含 {countDeptChildren(selectedDept)} 个子部门 · 负责人: <span className="font-semibold text-cf-body">{selectedDept.leader || '未指定'}</span> {selectedDept.phone ? `· 电话: ${selectedDept.phone}` : ''}
+                  包含 {countDeptChildren(selectedDept)} 个子部门 · 负责人: <span className="font-semibold text-cf-body">{selectedDept.leaderName || '未指定'}</span> {selectedDept.phone ? `· 电话: ${selectedDept.phone}` : ''}
                 </div>
               </div>
             ) : (

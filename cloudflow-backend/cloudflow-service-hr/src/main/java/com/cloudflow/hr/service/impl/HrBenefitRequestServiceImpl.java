@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
@@ -160,7 +161,7 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_BENEFIT_REQUEST_PROCESS_KEY,
                 "wf_hr_benefit_request"));
-        dto.setBusinessType("HR_BENEFIT_REQUEST");
+        dto.setBusinessType(HrWorkflowBusinessTypes.BENEFIT_REQUEST);
         dto.setBusinessId(request.getId());
         dto.setBusinessNo(request.getRequestNo());
         dto.setProcessTitle("福利申领-" + request.getRequestNo());

@@ -12,5 +12,5 @@ public class OaIdentityReference {
     private Long userId;
     private Long jobLevelId;
     private Long parentId;
-    private String leader;
+    private Long leaderUserId;
 }

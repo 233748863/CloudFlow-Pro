@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.cloudflow.common.workflow.callback.registry.HrWorkflowBusinessTypes;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
@@ -20,7 +21,6 @@ import com.cloudflow.hr.mapper.HrContractSignatureMapper;
 import com.cloudflow.hr.mapper.HrEmployeeContractMapper;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.IHrContractSignatureService;
-import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -116,7 +116,7 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
             return;
         }
         R<Void> cancelResult = workflowServiceClient.cancelProcess(
-                signature.getTenantId(), processInstanceId, "HR_CONTRACT_SIGN", signature.getId());
+                signature.getTenantId(), processInstanceId, HrWorkflowBusinessTypes.CONTRACT_SIGN, signature.getId());
         if (cancelResult == null || !cancelResult.isSuccess()) {
             String msg = cancelResult == null ? "Workflow 服务无响应" : cancelResult.getMsg();
             throw new HrBusinessException("WORKFLOW_CANCEL_FAILED", "撤销合同签署流程失败：" + msg);
@@ -184,7 +184,7 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_CONTRACT_SIGN_PROCESS_KEY,
                 "wf_hr_contract_sign"));
-        dto.setBusinessType("HR_CONTRACT_SIGN");
+        dto.setBusinessType(HrWorkflowBusinessTypes.CONTRACT_SIGN);
         dto.setBusinessId(signature.getId());
         dto.setBusinessNo(String.valueOf(signature.getContractId()));
         dto.setProcessTitle("员工电子合同签署-合同 " + signature.getContractId());

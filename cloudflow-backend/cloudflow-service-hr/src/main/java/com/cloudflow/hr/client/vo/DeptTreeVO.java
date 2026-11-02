@@ -42,7 +42,9 @@ public class DeptTreeVO implements Serializable {
     /**
      * 负责人
      */
-    private String leader;
+    private Long leaderUserId;
+
+    private String leaderName;
     
     /**
      * 部门状态（0正常 1停用）
