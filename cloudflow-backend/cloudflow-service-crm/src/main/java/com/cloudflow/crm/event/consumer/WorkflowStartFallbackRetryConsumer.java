@@ -1,5 +1,7 @@
 package com.cloudflow.crm.event.consumer;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
@@ -42,24 +44,24 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
         }
         String operation = String.valueOf(payload.get("operation"));
         Object request = payload.get("request");
-        final R<?>[] result = new R<?>[1];
+        java.util.concurrent.atomic.AtomicReference<R<ProcessStartResult>> result = new java.util.concurrent.atomic.AtomicReference<>();
         InternalWorkflowStartDTO internalRequest = null;
         if ("startProcess".equals(operation)) {
             WorkflowProcessStartDTO dto = objectMapper.convertValue(request, WorkflowProcessStartDTO.class);
             validateTenant(envelope, payload, dto.getTenantId());
-            WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcess(dto));
+            WorkflowFallbackRetryContext.runRetrying(() -> result.set(remoteWorkflowService.startProcess(dto)));
         } else if ("startProcessInternal".equals(operation)) {
             InternalWorkflowStartDTO dto = objectMapper.convertValue(request, InternalWorkflowStartDTO.class);
             validateTenant(envelope, payload, dto.getTenantId());
-            WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcessInternal(dto));
+            WorkflowFallbackRetryContext.runRetrying(() -> result.set(remoteWorkflowService.startProcessInternal(dto)));
             internalRequest = dto;
         } else throw new IllegalStateException("workflow fallback retry operation is unsupported");
-        if (result[0] == null || !result[0].isSuccess()) {
-            throw new IllegalStateException("workflow fallback retry failed: " + (result[0] == null ? "null" : result[0].getMsg()));
+        if (result.get() == null || !result.get().isSuccess() || result.get().getData() == null) {
+            throw new IllegalStateException("workflow fallback retry failed: " + (result.get() == null ? "null" : result.get().getMsg()));
         }
         if (internalRequest != null) {
-            approvalInstances.bindOpportunityRetry(internalRequest, result[0].getData());
-            approvalInstances.bindRefundRetry(internalRequest, result[0].getData());
+            approvalInstances.bindOpportunityRetry(internalRequest, result.get().getData());
+            approvalInstances.bindRefundRetry(internalRequest, result.get().getData());
         }
         log.info("workflow fallback retry success, module={}, operation={}, eventId={}", SOURCE_MODULE, operation, envelope.getEventId());
     }

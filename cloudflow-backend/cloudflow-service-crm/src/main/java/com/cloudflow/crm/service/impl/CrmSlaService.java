@@ -33,7 +33,6 @@ public class CrmSlaService {
     private final CrmServiceTicketMapper ticketMapper;
     private final CrmStaffMapper staffMapper;
     private final MessageSender messageSender;
-    private final CrmAuditTrail auditTrail;
     private final RuntimeSysConfigService config;
     private final TransactionTemplate transactionTemplate;
 
@@ -130,8 +129,7 @@ public class CrmSlaService {
         try {
             return clock.add(policy.getHolidayCalendarId(), Integer.valueOf(1).equals(policy.getRoundTheClockFlag()), from, minutes);
         } catch (RuntimeException failure) {
-            calendarFailure(ticket, failure);
-            return from.truncatedTo(ChronoUnit.MINUTES).plusMinutes(minutes);
+            throw new com.cloudflow.crm.exception.CrmBusinessException("工作日历不可用，本次期限计算未保存，请恢复后重试", failure);
         }
     }
 
@@ -139,19 +137,7 @@ public class CrmSlaService {
         try {
             return clock.elapsed(policy.getHolidayCalendarId(), Integer.valueOf(1).equals(policy.getRoundTheClockFlag()), from, to);
         } catch (RuntimeException failure) {
-            calendarFailure(ticket, failure);
-            return Math.max(0, ChronoUnit.MINUTES.between(from.truncatedTo(ChronoUnit.MINUTES), to.truncatedTo(ChronoUnit.MINUTES)));
-        }
-    }
-
-    private void calendarFailure(CrmServiceTicket ticket, RuntimeException failure) {
-        String reference = ticket.getTicketId() == null ? ticket.getTicketNo() : String.valueOf(ticket.getTicketId());
-        log.error("SLA日历不可用，工单{}按自然分钟兜底，需要复核截止时间", reference, failure);
-        try {
-            auditTrail.recordAttempt("SLA_CALENDAR_FALLBACK", reference, "日历不可用，已按自然分钟兜底", false);
-            notice(ticket, "CALENDAR_FALLBACK", "SLA日历异常", "工单日历暂不可用，已按自然分钟兜底，请复核截止时间。", true);
-        } catch (RuntimeException noticeFailure) {
-            log.error("SLA日历降级告警写入失败，工单{}仍允许保存", reference, noticeFailure);
+            throw new com.cloudflow.crm.exception.CrmBusinessException("工作日历不可用，本次期限计算未保存，请恢复后重试", failure);
         }
     }
 
@@ -248,14 +234,15 @@ public class CrmSlaService {
     }
 
     private Long leader(Long userId) {
-        Long deptId = staffMapper.selectUserDept(userId);
+        Long tenantId = CrmRecordSupport.tenantId();
+        Long deptId = staffMapper.selectUserDept(userId, tenantId);
         Set<Long> visited = new HashSet<>();
         while (deptId != null && deptId > 0 && visited.add(deptId)) {
-            CrmStaffMapper.Department department = staffMapper.selectDepartment(deptId);
+            CrmStaffMapper.Department department = staffMapper.selectDepartment(deptId, tenantId);
             if (department == null) return null;
-            if (department.getLeader() != null && !department.getLeader().isBlank()) {
-                List<Long> matches = staffMapper.selectLeaderUsers(department.getLeader());
-                if (matches.size() == 1 && !userId.equals(matches.get(0))) return matches.get(0);
+            if (department.getLeaderUserId() != null && !department.getLeaderUserId().equals(userId)) {
+                Long leaderId = staffMapper.selectLeaderUser(department.getLeaderUserId(), tenantId);
+                if (leaderId != null) return leaderId;
             }
             deptId = department.getParentId();
         }

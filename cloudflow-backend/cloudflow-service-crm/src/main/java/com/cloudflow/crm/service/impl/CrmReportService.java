@@ -36,8 +36,8 @@ public class CrmReportService {
         List<ReportRow> rows = switch (code) {
             case "CRM_FUNNEL" -> mapper.funnel(UserContext.getTenantId(), scope, query);
             case "CRM_AGING" -> {
-                List<AgingTier> tiers = agingTiers();
-                AgingTier overflow = tiers.get(tiers.size() - 1);
+                List<CrmReceivableAging.Tier> tiers = agingTiers();
+                CrmReceivableAging.Tier overflow = tiers.get(tiers.size() - 1);
                 yield mapper.aging(UserContext.getTenantId(), scope, query, tiers, overflow);
             }
             default -> throw ReportValidation.invalid("该服务不提供此数据集");
@@ -45,24 +45,7 @@ public class CrmReportService {
         return ReportResult.from(dataset, query, rows);
     }
 
-    public List<AgingTier> agingTiers() {
-        List<SysDictHelper.DictItem> items = dictionaries.getDictData("crm_receivable_overdue_tier");
-        if (items == null || items.isEmpty()) {
-            return List.of(new AgingTier(30, "DUE_30", "逾期1—30天"), new AgingTier(60, "DUE_60", "逾期31—60天"),
-                    new AgingTier(90, "DUE_90", "逾期61—90天"), new AgingTier(Long.MAX_VALUE, "DUE_90_PLUS", "逾期90天以上"));
-        }
-        List<SysDictHelper.DictItem> sorted = CrmHealthCalculator.sortedTiers(items);
-        List<AgingTier> tiers = new ArrayList<>();
-        for (SysDictHelper.DictItem item : sorted) {
-            BigDecimal threshold = item.getValueAsDecimal();
-            if (threshold == null || threshold.signum() < 0 || threshold.compareTo(BigDecimal.valueOf(Long.MAX_VALUE)) > 0) {
-                throw ReportValidation.invalid("源业务账龄档位配置无效");
-            }
-            String code = CrmHealthCalculator.tierCodeOf(item, sorted);
-            tiers.add(new AgingTier(threshold.longValue(), code, item.getLabel() == null ? code : item.getLabel()));
-        }
-        return List.copyOf(tiers);
+    public List<CrmReceivableAging.Tier> agingTiers() {
+        return CrmReceivableAging.loadTiers(dictionaries);
     }
-
-    public record AgingTier(long days, String code, String name) { }
 }

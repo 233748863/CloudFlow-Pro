@@ -1,5 +1,7 @@
 package com.cloudflow.crm.service.remote;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.crm.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.crm.domain.dto.WorkflowProcessStartDTO;
@@ -15,8 +17,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface RemoteWorkflowService {
 
     @PostMapping("/wf/start")
-    R<?> startProcess(@RequestBody WorkflowProcessStartDTO req);
+    R<ProcessStartResult> startProcess(@RequestBody WorkflowProcessStartDTO req);
 
     @PostMapping("/inner/workflow/process/start")
-    R<?> startProcessInternal(@RequestBody InternalWorkflowStartDTO req);
+    R<ProcessStartResult> startProcessInternal(@RequestBody InternalWorkflowStartDTO req);
 }

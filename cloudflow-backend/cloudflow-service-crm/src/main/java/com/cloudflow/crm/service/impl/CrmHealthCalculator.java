@@ -1,16 +1,12 @@
 package com.cloudflow.crm.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cloudflow.common.redis.core.SysDictHelper;
 import com.cloudflow.crm.constant.CrmConstants;
+import com.cloudflow.crm.domain.CrmFollowUp;
 import com.cloudflow.crm.domain.CrmReceivable;
 import com.cloudflow.crm.domain.CrmRenewal;
 import com.cloudflow.crm.domain.CrmServiceTicket;
-import com.cloudflow.crm.mapper.CrmReceivableMapper;
-import com.cloudflow.crm.mapper.CrmRenewalMapper;
-import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
+import com.cloudflow.crm.domain.vo.CrmHealthReasonItemVO;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -18,148 +14,99 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
-/**
- * 健康度相关的无状态计算。
- * 抽出以便 {@link CrmCustomerServiceImpl} 与 {@link CrmCustomerWorkspaceServiceImpl} 共享。
- */
+/** 依据本次读取的有效业务记录计算健康状态，计算过程不再访问数据库。 */
 final class CrmHealthCalculator {
+    private CrmHealthCalculator() { }
 
-    /** 应收逾期档位字典类型，由 {@link SysDictHelper} 加载，缺失时回退到 30/60/90 内置档 */
-    private static final String OVERDUE_DICT_TYPE = "crm_receivable_overdue_tier";
-
-    private CrmHealthCalculator() {
-    }
-
-    static LocalDate resolveRenewalWindowDate(CrmRenewalMapper renewalMapper, Long customerId) {
-        return renewalMapper.selectList(new LambdaQueryWrapper<CrmRenewal>()
-                        .eq(CrmRenewal::getCustomerId, customerId)
-                        .eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL))
-                .stream()
+    static HealthSnapshot calculate(Long customerId, List<CrmFollowUp> followUps,
+                                    List<CrmRenewal> renewals, List<CrmReceivable> receivables,
+                                    List<CrmServiceTicket> tickets, LocalDateTime now) {
+        LocalDate today = now.toLocalDate();
+        LocalDateTime lastFollowUp = followUps.stream().map(CrmFollowUp::getFollowUpTime)
+                .filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
+        LocalDateTime nextFollowUp = followUps.stream().map(CrmFollowUp::getNextFollowUpTime)
+                .filter(Objects::nonNull).filter(time -> !time.isBefore(now))
+                .min(Comparator.naturalOrder()).orElse(null);
+        LocalDate renewalDate = renewals.stream()
                 .filter(item -> !CrmConstants.RenewalStatus.LOST.equalsIgnoreCase(item.getStatus()))
-                .map(CrmHealthCalculator::resolveRenewalDate)
-                .filter(Objects::nonNull)
-                .min(Comparator.naturalOrder())
-                .orElse(null);
+                .map(CrmHealthCalculator::resolveRenewalDate).filter(Objects::nonNull)
+                .min(Comparator.naturalOrder()).orElse(null);
+        long overdueDays = receivables.stream()
+                .filter(item -> item.getDueDate() != null && item.getDueDate().isBefore(today))
+                .filter(item -> item.getOutstandingAmount() != null && item.getOutstandingAmount().signum() > 0)
+                .mapToLong(item -> ChronoUnit.DAYS.between(item.getDueDate(), today)).max().orElse(0);
+        List<CrmHealthReasonItemVO> reasons = new ArrayList<>();
+        String customerLink = "/office/crm/customer/" + customerId;
+        if (renewalDate != null) {
+            long days = ChronoUnit.DAYS.between(today, renewalDate);
+            if (days <= 90) {
+                reasons.add(reason("RENEWAL", "RENEWAL_WINDOW", days <= 30 ? "30天内续约到期" : "90天内续约到期",
+                        days <= 30 ? CrmConstants.HealthLevel.RED : CrmConstants.HealthLevel.YELLOW,
+                        customerLink + "#renewal"));
+            }
+        }
+        if (overdueDays > 0) {
+            reasons.add(reason("RECEIVABLE", "RECEIVABLE_OVERDUE", overdueDays > 30 ? "回款逾期超过30天" : "回款逾期未超过30天",
+                    overdueDays > 30 ? CrmConstants.HealthLevel.RED : CrmConstants.HealthLevel.YELLOW,
+                    customerLink + "#cashflow"));
+        }
+        boolean highSeverity = false;
+        boolean overdueTicket = false;
+        for (CrmServiceTicket ticket : tickets) {
+            if (ticket.getStatus() == null || CrmConstants.TicketStatus.RESOLVED.equals(ticket.getStatus())
+                    || CrmConstants.TicketStatus.CLOSED.equals(ticket.getStatus())) {
+                continue;
+            }
+            highSeverity |= CrmConstants.TicketSeverity.P1.equals(ticket.getSeverity())
+                    || CrmConstants.TicketSeverity.P2.equals(ticket.getSeverity());
+            overdueTicket |= ticket.getDueTime() != null && ticket.getDueTime().isBefore(now);
+        }
+        if (highSeverity) {
+            reasons.add(reason("TICKET", "HIGH_SEVERITY_OPEN", "存在高严重度未关闭工单",
+                    CrmConstants.HealthLevel.RED, customerLink + "#ticket"));
+        }
+        if (overdueTicket) {
+            reasons.add(reason("TICKET", "SLA_OVERDUE", "存在SLA已超时未关闭工单",
+                    CrmConstants.HealthLevel.RED, customerLink + "#ticket"));
+        }
+        if (lastFollowUp == null || ChronoUnit.DAYS.between(lastFollowUp.toLocalDate(), today) >= 30) {
+            reasons.add(reason("FOLLOW_UP", "STALE_FOLLOW_UP", "30天未跟进",
+                    CrmConstants.HealthLevel.YELLOW, customerLink + "#follow-up"));
+        }
+        if (reasons.isEmpty()) {
+            reasons.add(reason("HEALTH", "NORMAL", "状态正常", CrmConstants.HealthLevel.GREEN, customerLink));
+        }
+        String level = reasons.stream().anyMatch(item -> CrmConstants.HealthLevel.RED.equals(item.getLevel()))
+                ? CrmConstants.HealthLevel.RED : reasons.get(0).getLevel();
+        String summary = reasons.stream().filter(item -> level.equals(item.getLevel()))
+                .map(CrmHealthReasonItemVO::getName).collect(Collectors.joining("；"));
+        return new HealthSnapshot(lastFollowUp, nextFollowUp, level, summary, List.copyOf(reasons));
     }
 
     static LocalDate resolveRenewalDate(CrmRenewal renewal) {
-        if (renewal == null) {
-            return null;
-        }
-        if (CrmConstants.RenewalStatus.WON.equalsIgnoreCase(renewal.getStatus())
-                || CrmConstants.RenewalStatus.CLOSED.equalsIgnoreCase(renewal.getStatus())) {
-            if (renewal.getNextExpireDate() != null) {
-                return renewal.getNextExpireDate();
-            }
+        if ((CrmConstants.RenewalStatus.WON.equalsIgnoreCase(renewal.getStatus())
+                || CrmConstants.RenewalStatus.CLOSED.equalsIgnoreCase(renewal.getStatus()))
+                && renewal.getNextExpireDate() != null) {
+            return renewal.getNextExpireDate();
         }
         if (renewal.getCurrentExpireDate() != null) {
             return renewal.getCurrentExpireDate();
         }
-        if (renewal.getNextExpireDate() != null) {
-            return renewal.getNextExpireDate();
-        }
-        return renewal.getExpectedSignDate();
+        return renewal.getNextExpireDate() != null ? renewal.getNextExpireDate() : renewal.getExpectedSignDate();
     }
 
-    static int resolveMaxOverdueDays(CrmReceivableMapper receivableMapper, Long customerId, LocalDate today) {
-        List<CrmReceivable> receivables = receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
-                .eq(CrmReceivable::getCustomerId, customerId)
-                .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL));
-        return (int) receivables.stream()
-                .filter(item -> item.getDueDate() != null)
-                .filter(item -> item.getOutstandingAmount() != null && item.getOutstandingAmount().signum() > 0)
-                .filter(item -> item.getDueDate().isBefore(today))
-                .mapToLong(item -> ChronoUnit.DAYS.between(item.getDueDate(), today))
-                .max()
-                .orElse(0L);
+    private static CrmHealthReasonItemVO reason(String type, String code, String name, String level, String link) {
+        CrmHealthReasonItemVO item = new CrmHealthReasonItemVO();
+        item.setType(type);
+        item.setCode(code);
+        item.setName(name);
+        item.setLevel(level);
+        item.setLinkTarget(link);
+        return item;
     }
 
-    static boolean hasHighSeverityOpenTicket(CrmServiceTicketMapper mapper, Long customerId) {
-        return mapper.selectCount(new LambdaQueryWrapper<CrmServiceTicket>()
-                .eq(CrmServiceTicket::getCustomerId, customerId)
-                .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
-                .in(CrmServiceTicket::getSeverity,
-                        CrmConstants.TicketSeverity.P2,
-                        CrmConstants.TicketSeverity.P1)
-                .notIn(CrmServiceTicket::getStatus,
-                        CrmConstants.TicketStatus.RESOLVED,
-                        CrmConstants.TicketStatus.CLOSED)) > 0;
-    }
-
-    static boolean hasOverdueOpenTicket(CrmServiceTicketMapper mapper, Long customerId, LocalDateTime now) {
-        return mapper.selectCount(new LambdaQueryWrapper<CrmServiceTicket>()
-                .eq(CrmServiceTicket::getCustomerId, customerId)
-                .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
-                .isNotNull(CrmServiceTicket::getDueTime)
-                .lt(CrmServiceTicket::getDueTime, now)
-                .notIn(CrmServiceTicket::getStatus,
-                        CrmConstants.TicketStatus.RESOLVED,
-                        CrmConstants.TicketStatus.CLOSED)) > 0;
-    }
-
-    /**
-     * 根据应收账款到期日和今日，按 {@code crm_receivable_overdue_tier} 字典阈值返回逾期分桶 code。
-     * <p>
-     * <b>字典约定</b>：dict_value = 本档天数 <b>上限</b>（含），按 dict_value 升序匹配第一个 overdueDays &lt;= value 的档。
-     * 字典末档建议保留 99999 作为不限兜底，避免运维误删后逾期超出最大档时落入 fallback。
-     * <p>
-     * <b>桶名约定（A6 治理后）</b>：桶名为 {@code DUE_TIER_${dict_sort}}，与字典 dict_sort 等长。
-     * 新增/删档字典即可，无需改 Java；前端通过 bucketName（dict_label，如"30天内"）显示。
-     * 字典缺失时回退到 4 档兼容方案 DUE_30 / DUE_60 / DUE_90 / DUE_90_PLUS。
-     */
-    static String resolveAgingBucket(LocalDate dueDate, LocalDate today, SysDictHelper sysDictHelper) {
-        if (dueDate == null || !dueDate.isBefore(today)) {
-            return "CURRENT";
-        }
-        long overdueDays = ChronoUnit.DAYS.between(dueDate, today);
-        List<SysDictHelper.DictItem> tiers = sysDictHelper != null
-                ? sysDictHelper.getDictData(OVERDUE_DICT_TYPE)
-                : null;
-        if (tiers != null && !tiers.isEmpty()) {
-            // 按阈值升序遍历，命中第一个 overdueDays <= value 的档；返回 DUE_TIER_${sort}
-            List<SysDictHelper.DictItem> sorted = sortedTiers(tiers);
-            for (SysDictHelper.DictItem item : sorted) {
-                BigDecimal threshold = item.getValueAsDecimal();
-                if (threshold != null && overdueDays <= threshold.longValue()) {
-                    return tierCodeOf(item, sorted);
-                }
-            }
-            // 超出最大档，归到末档
-            return tierCodeOf(sorted.get(sorted.size() - 1), sorted);
-        }
-        if (overdueDays <= 30) {
-            return "DUE_30";
-        }
-        if (overdueDays <= 60) {
-            return "DUE_60";
-        }
-        if (overdueDays <= 90) {
-            return "DUE_90";
-        }
-        return "DUE_90_PLUS";
-    }
-
-    /**
-     * 字典项升序排序（按 dict_value 数值升序）。
-     */
-    static List<SysDictHelper.DictItem> sortedTiers(List<SysDictHelper.DictItem> tiers) {
-        List<SysDictHelper.DictItem> sorted = new ArrayList<>(tiers);
-        sorted.sort(Comparator.comparing(d -> {
-            BigDecimal v = d.getValueAsDecimal();
-            return v == null ? BigDecimal.valueOf(Long.MAX_VALUE) : v;
-        }));
-        return sorted;
-    }
-
-    /**
-     * 生成档位 code：优先用 dict_sort，dict_sort 缺失时回退到 sorted 列表中的 1-based 索引。
-     */
-    static String tierCodeOf(SysDictHelper.DictItem item, List<SysDictHelper.DictItem> sorted) {
-        Integer sort = item.getSort();
-        if (sort != null && sort > 0) {
-            return "DUE_TIER_" + sort;
-        }
-        return "DUE_TIER_" + (sorted.indexOf(item) + 1);
-    }
+    record HealthSnapshot(LocalDateTime lastFollowUp, LocalDateTime nextFollowUp, String level,
+                          String summary, List<CrmHealthReasonItemVO> reasons) { }
 }

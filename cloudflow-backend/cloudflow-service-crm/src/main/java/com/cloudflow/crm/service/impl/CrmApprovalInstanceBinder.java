@@ -1,5 +1,7 @@
 package com.cloudflow.crm.service.impl;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.domain.CrmApproval;
@@ -23,16 +25,16 @@ public class CrmApprovalInstanceBinder {
     private final CrmCustomerCreditMapper creditMapper;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
-    public void bindOpportunityRetry(InternalWorkflowStartDTO request, Object response) {
+    public void bindOpportunityRetry(InternalWorkflowStartDTO request, ProcessStartResult response) {
         bindRetry(request, response, CrmBusinessTypes.CRM_OPPORTUNITY_DOWNGRADE, "opportunity_downgrade_review");
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
-    public void bindRefundRetry(InternalWorkflowStartDTO request, Object response) {
+    public void bindRefundRetry(InternalWorkflowStartDTO request, ProcessStartResult response) {
         bindRetry(request, response, CrmBusinessTypes.CRM_REFUND, "crm_refund_review");
     }
 
-    private void bindRetry(InternalWorkflowStartDTO request, Object response, String businessType, String processKey) {
+    private void bindRetry(InternalWorkflowStartDTO request, ProcessStartResult response, String businessType, String processKey) {
         if (request == null || request.getBusinessKey() == null
                 || !request.getBusinessKey().startsWith(businessType + ":")) return;
         if (!Objects.equals(CrmRecordSupport.tenantId(), request.getTenantId()) || request.getVariables() == null)
@@ -49,10 +51,8 @@ public class CrmApprovalInstanceBinder {
                 || !Objects.equals(identifier(variables.get("businessRefId")), approval.getBusinessRefId())
                 || !Objects.equals(variables.get("businessType"), approval.getBusinessType()))
             throw new IllegalStateException("CRM审批重试与原申请不一致");
-        Object value = response instanceof Map<?, ?> result
-                ? result.get("processInstanceId") == null ? result.get("instanceId") : result.get("processInstanceId") : response;
-        if (!(value instanceof String instanceId) || !StringUtils.hasText(instanceId) || instanceId.length() > 80
-                || instanceId.chars().anyMatch(character -> character < 32)) throw new IllegalStateException("CRM审批重试缺少有效流程实例");
+        if (response == null) throw new IllegalStateException("CRM审批重试缺少有效流程实例");
+        String instanceId = response.requireInstanceId();
         bind(approvalId, instanceId);
     }
 

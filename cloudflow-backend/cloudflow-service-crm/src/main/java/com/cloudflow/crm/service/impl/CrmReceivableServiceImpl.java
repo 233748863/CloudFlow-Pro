@@ -250,55 +250,12 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
 
     @Override
     public List<CrmReceivableAgingBucketVO> getAgingBuckets() {
-        Map<String, CrmReceivableAgingBucketVO> buckets = new LinkedHashMap<>();
-        buckets.put("CURRENT", createBucket("CURRENT", "未逾期"));
-        // A6 治理：按字典动态生成档位桶
-        List<SysDictHelper.DictItem> tiers = sysDictHelper.getDictData("crm_receivable_overdue_tier");
-        if (tiers != null && !tiers.isEmpty()) {
-            List<SysDictHelper.DictItem> sorted = CrmHealthCalculator.sortedTiers(tiers);
-            for (SysDictHelper.DictItem item : sorted) {
-                String code = CrmHealthCalculator.tierCodeOf(item, sorted);
-                String name = item.getLabel() != null ? item.getLabel() : code;
-                buckets.put(code, createBucket(code, name));
-            }
-        } else {
-            buckets.put("DUE_30", createBucket("DUE_30", "逾期1-30天"));
-            buckets.put("DUE_60", createBucket("DUE_60", "逾期31-60天"));
-            buckets.put("DUE_90", createBucket("DUE_90", "逾期61-90天"));
-            buckets.put("DUE_90_PLUS", createBucket("DUE_90_PLUS", "逾期90天以上"));
-        }
-
-        LocalDate today = LocalDate.now();
+        List<CrmReceivableAging.Tier> tiers = CrmReceivableAging.loadTiers(sysDictHelper);
         List<CrmReceivable> receivables = baseMapper.selectPageByDataScope(
-                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, Long.MAX_VALUE),
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, Long.MAX_VALUE, false),
                 new CrmReceivable(),
                 DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)).getRecords();
-        Map<String, java.util.Set<Long>> customerCounter = new LinkedHashMap<>();
-        for (String key : buckets.keySet()) {
-            customerCounter.put(key, new java.util.HashSet<>());
-        }
-
-        for (CrmReceivable item : receivables) {
-            BigDecimal outstanding = zeroIfNull(item.getOutstandingAmount());
-            if (outstanding.signum() <= 0) {
-                continue;
-            }
-            String bucketCode = resolveAgingBucket(item.getDueDate(), today);
-            CrmReceivableAgingBucketVO bucket = buckets.get(bucketCode);
-            if (bucket == null) {
-                continue;
-            }
-            bucket.setReceivableCount(bucket.getReceivableCount() + 1);
-            bucket.setOutstandingAmount(bucket.getOutstandingAmount().add(outstanding));
-            if (item.getCustomerId() != null) {
-                customerCounter.get(bucketCode).add(item.getCustomerId());
-            }
-        }
-
-        for (Map.Entry<String, CrmReceivableAgingBucketVO> entry : buckets.entrySet()) {
-            entry.getValue().setCustomerCount(customerCounter.get(entry.getKey()).size());
-        }
-        return new ArrayList<>(buckets.values());
+        return CrmReceivableAging.summarize(receivables, tiers, LocalDate.now());
     }
 
     private void validate(CrmReceivable receivable) {
@@ -416,20 +373,6 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
 
     private BigDecimal zeroIfNull(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
-    }
-
-    private CrmReceivableAgingBucketVO createBucket(String code, String name) {
-        CrmReceivableAgingBucketVO bucket = new CrmReceivableAgingBucketVO();
-        bucket.setBucketCode(code);
-        bucket.setBucketName(name);
-        bucket.setCustomerCount(0);
-        bucket.setReceivableCount(0);
-        bucket.setOutstandingAmount(BigDecimal.ZERO);
-        return bucket;
-    }
-
-    private String resolveAgingBucket(LocalDate dueDate, LocalDate today) {
-        return CrmHealthCalculator.resolveAgingBucket(dueDate, today, sysDictHelper);
     }
 
     private void fillBindingSnapshot(CrmReceivable receivable) {

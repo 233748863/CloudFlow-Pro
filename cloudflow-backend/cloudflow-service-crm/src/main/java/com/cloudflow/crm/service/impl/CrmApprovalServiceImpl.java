@@ -1,5 +1,7 @@
 package com.cloudflow.crm.service.impl;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
@@ -305,13 +307,13 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 "workflow:stream:approval-callback:crm");
         dto.setVariables(variables);
 
-        R<?> result = remoteWorkflowService.startProcessInternal(dto);
+        R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(dto);
         if (result == null || !result.isSuccess() || result.getData() == null) {
             throw new IllegalStateException("启动 CRM 审批流程失败: approvalId=" + current.getApprovalId()
                     + ", processDefKey=" + processDefKey
                     + ", msg=" + (result == null ? "null" : result.getMsg()));
         }
-        String instanceId = extractInstanceId(result.getData());
+        String instanceId = result.getData().requireInstanceId();
         if (!StringUtils.hasText(instanceId)) {
             throw new IllegalStateException("启动 CRM 审批流程未返回实例ID: approvalId=" + current.getApprovalId()
                     + ", processDefKey=" + processDefKey);
@@ -362,16 +364,6 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
         }
     }
 
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map<?, ?> dataMap) {
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
-        }
-        return data != null ? String.valueOf(data) : null;
-    }
 
     private String nextApprovalNo(String businessType) {
         String prefix = switch (businessType) {

@@ -14,6 +14,8 @@ import com.cloudflow.crm.domain.CrmFollowUp;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.domain.CrmQuote;
 import com.cloudflow.crm.domain.CrmReceivable;
+import com.cloudflow.crm.domain.CrmRenewal;
+import com.cloudflow.crm.domain.CrmServiceTicket;
 import com.cloudflow.crm.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
@@ -65,6 +67,7 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
     private final CrmEventPublisher crmEventPublisher;
     private final CrmProfileService profiles;
     private final CrmAuditTrail audit;
+    private final CrmCustomerHealthService healthService;
 
     @Override
     public PageResult<CrmCustomer> queryPage(CrmCustomer query, PageQuery pageQuery) {
@@ -233,82 +236,15 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
             return;
         }
 
-        LocalDate today = LocalDate.now();
-        LocalDateTime currentTime = now();
-
         List<CrmFollowUp> followUps = followUpMapper.selectList(new LambdaQueryWrapper<CrmFollowUp>()
-                .eq(CrmFollowUp::getCustomerId, customerId)
-                .eq(CrmFollowUp::getDeleted, CrmConstants.DelFlag.NORMAL));
-
-        LocalDateTime lastFollowUpTime = followUps.stream()
-                .map(CrmFollowUp::getFollowUpTime)
-                .filter(Objects::nonNull)
-                .max(Comparator.naturalOrder())
-                .orElse(null);
-        LocalDateTime nextFollowUpTime = followUps.stream()
-                .map(CrmFollowUp::getNextFollowUpTime)
-                .filter(Objects::nonNull)
-                .filter(value -> !value.isBefore(currentTime))
-                .min(Comparator.naturalOrder())
-                .orElse(null);
-
-        LocalDate renewalWindowDate = CrmHealthCalculator.resolveRenewalWindowDate(renewalMapper, customerId);
-        int overdueDays = CrmHealthCalculator.resolveMaxOverdueDays(receivableMapper, customerId, today);
-        boolean hasHighSeverityOpenTicket = CrmHealthCalculator.hasHighSeverityOpenTicket(serviceTicketMapper, customerId);
-        boolean hasOverdueOpenTicket = CrmHealthCalculator.hasOverdueOpenTicket(serviceTicketMapper, customerId, currentTime);
-
-        List<String> redReasons = new ArrayList<>();
-        List<String> yellowReasons = new ArrayList<>();
-
-        if (renewalWindowDate != null) {
-            long daysToRenewal = ChronoUnit.DAYS.between(today, renewalWindowDate);
-            if (daysToRenewal <= 30) {
-                redReasons.add("30天内续约到期");
-            } else if (daysToRenewal <= 90) {
-                yellowReasons.add("90天内续约到期");
-            }
-        }
-
-        if (overdueDays > 30) {
-            redReasons.add("回款逾期超过30天");
-        } else if (overdueDays > 0) {
-            yellowReasons.add("回款逾期未超过30天");
-        }
-
-        if (hasHighSeverityOpenTicket) {
-            redReasons.add("存在高严重度未关闭工单");
-        }
-        if (hasOverdueOpenTicket) {
-            redReasons.add("存在SLA已超时未关闭工单");
-        }
-
-        if (lastFollowUpTime == null
-                || ChronoUnit.DAYS.between(lastFollowUpTime.toLocalDate(), today) >= 30) {
-            yellowReasons.add("30天未跟进");
-        }
-
-        String healthLevel;
-        String healthReason;
-        if (!redReasons.isEmpty()) {
-            healthLevel = CrmConstants.HealthLevel.RED;
-            healthReason = String.join("；", redReasons);
-        } else if (!yellowReasons.isEmpty()) {
-            healthLevel = CrmConstants.HealthLevel.YELLOW;
-            healthReason = String.join("；", yellowReasons);
-        } else {
-            healthLevel = CrmConstants.HealthLevel.GREEN;
-            healthReason = "状态正常";
-        }
-
-        LambdaUpdateWrapper<CrmCustomer> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(CrmCustomer::getCustomerId, customerId)
-                .set(CrmCustomer::getHealthLevel, healthLevel)
-                .set(CrmCustomer::getHealthReason, healthReason)
-                .set(CrmCustomer::getLastFollowUpTime, lastFollowUpTime)
-                .set(CrmCustomer::getNextFollowUpTime, nextFollowUpTime)
-                .set(CrmCustomer::getUpdateBy, currentUserName())
-                .set(CrmCustomer::getUpdateTime, currentTime);
-        update(null, wrapper);
+                .eq(CrmFollowUp::getCustomerId, customerId).eq(CrmFollowUp::getDeleted, CrmConstants.DelFlag.NORMAL));
+        List<CrmRenewal> renewals = renewalMapper.selectList(new LambdaQueryWrapper<CrmRenewal>()
+                .eq(CrmRenewal::getCustomerId, customerId).eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL));
+        List<CrmReceivable> receivables = receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
+                .eq(CrmReceivable::getCustomerId, customerId).eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL));
+        List<CrmServiceTicket> tickets = serviceTicketMapper.selectList(new LambdaQueryWrapper<CrmServiceTicket>()
+                .eq(CrmServiceTicket::getCustomerId, customerId).eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL));
+        healthService.refresh(customer, followUps, renewals, receivables, tickets);
     }
 
     private void validate(CrmCustomer customer) {
