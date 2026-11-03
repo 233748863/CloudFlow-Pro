@@ -160,9 +160,9 @@ final class MessageOutboxRecoveryChecks {
 
     private void schedulerRecovery() {
         long id = insert("PROCESSING", now.minusMinutes(2), "interrupted-instance", now.minusSeconds(1));
-        List<Map<String, Object>> published = new CopyOnWriteArrayList<>();
+        List<Map<String, String>> published = new CopyOnWriteArrayList<>();
         RedisStreamUtil transport = new RedisStreamUtil() {
-            @Override public String publishGlobal(String key, Map<String, Object> content) {
+            @Override public String publishGlobalText(String key, Map<String, String> content) {
                 suite.check("a2:recovery:events".equals(key), "recovery scheduler uses configured stream");
                 published.add(Map.copyOf(content));
                 return published.size() + "-0";

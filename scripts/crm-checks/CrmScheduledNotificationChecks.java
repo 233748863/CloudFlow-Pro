@@ -97,7 +97,7 @@ public final class CrmScheduledNotificationChecks {
         for (boolean breach : List.of(false, true)) {
             List<Long> called = new ArrayList<>(); boolean[] reject = { false };
             RuntimeException original = new IllegalStateException("controlled tenant failure");
-            CrmSlaService sla = new CrmSlaService(null,null,null,null,null,null,null,null,null) {
+            CrmSlaService sla = new CrmSlaService(null,null,null,null,null,null,null,null) {
                 private int operation() {
                     Long tenant = TenantContext.getTenantId(); called.add(tenant);
                     if (reject[0] && tenant == 10L) throw original;
@@ -168,7 +168,7 @@ public final class CrmScheduledNotificationChecks {
     private static CrmSlaService service(CrmServiceTicketMapper mapper, MessageSender sender, RecordingTransactions transactions) {
         CrmSlaPolicy policy = new CrmSlaPolicy(); policy.setPolicyId(1L); policy.setRoundTheClockFlag(1);
         return new CrmSlaService(new CrmSlaClock(null), null, proxy(CrmSlaPolicyMapper.class,(proxy,method,values) -> policy), mapper,
-                proxy(CrmStaffMapper.class,(proxy,method,values) -> null), sender, null, CONFIG, new TransactionTemplate(transactions));
+                proxy(CrmStaffMapper.class,(proxy,method,values) -> null), sender, CONFIG, new TransactionTemplate(transactions));
     }
     private static final class RecordingTransactions extends AbstractPlatformTransactionManager {
         private int pendingMessages, pendingUpdates, committedMessages, committedUpdates, commits, rollbacks;

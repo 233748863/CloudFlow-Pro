@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
@@ -119,7 +120,7 @@ public final class OaApprovalIdentityChecks {
         RemoteWorkflowService workflow = proxy(RemoteWorkflowService.class, (method, arguments) -> {
             if (!"startProcessInternal".equals(method)) throw new IllegalStateException("Unexpected workflow call " + method);
             starts.add((InternalWorkflowStartDTO) arguments[0]);
-            return R.ok(Map.of("processInstanceId", "actual-returned-instance"));
+            return R.ok(new ProcessStartResult("actual-returned-instance", "WF-quality"));
         });
         OaApprovalSubmittedEventConsumer consumer = new OaApprovalSubmittedEventConsumer(JSON, workflow, List.of(participant));
         String originalPayload = JSON.writeValueAsString(request);

@@ -538,7 +538,7 @@ public class PlatformAccessChecks {
         final AtomicReference<String> currentToken = new AtomicReference<>();
         final MutableClock clock = new MutableClock();
         final MemoryProofs proofs = new MemoryProofs();
-        final PasswordService passwords = new PasswordService(null, null, null);
+        final PasswordService passwords = new PasswordService();
         final TokenService tokens = new TokenService() {
             @Override public String getCurrentTokenValue() { return currentToken.get(); }
         };

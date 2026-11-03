@@ -312,7 +312,7 @@ public final class HrSettlementReservationChecks {
             }
         };
         com.cloudflow.hr.client.WorkflowServiceClient remote = new com.cloudflow.hr.client.WorkflowServiceClient() {
-            @Override public com.cloudflow.common.core.domain.R<Map<String, String>> startProcessInternal(com.cloudflow.hr.client.dto.WorkflowStartRequest request) {
+            @Override public com.cloudflow.common.core.domain.R<com.cloudflow.common.core.domain.ProcessStartResult> startProcessInternal(com.cloudflow.hr.client.dto.WorkflowStartRequest request) {
                 String key = request.getBusinessKey(); String instance = "settlement-test-"
                         + (SETTLEMENT.toString().equals(request.getVariables().get("settlementId")) ? "" : request.getVariables().get("settlementId") + "-")
                         + "r" + request.getVariables().get("settlementRevision");
@@ -320,7 +320,7 @@ public final class HrSettlementReservationChecks {
                 for (String sensitive : List.of("netAmount", "salary", "severanceAmount", "sampling", "calculationSnapshot")) equal(false, request.getVariables().containsKey(sensitive), "workflow variables omit financial details");
                 jdbc.update("INSERT IGNORE INTO wf_process_instance(instance_id,tenant_id,process_def_key,definition_id,business_key,start_user_id,status,variables) VALUES(?,100000,'settlement_test','settlement-test-definition',?,994099,'RUNNING',?)", instance, key, access.json(request.getVariables()));
                 if (startResponseLost) { startResponseLost = false; return com.cloudflow.common.core.domain.R.fail("lost start response fixture"); }
-                return com.cloudflow.common.core.domain.R.ok(Map.of("instanceId", instance));
+                return com.cloudflow.common.core.domain.R.ok(new com.cloudflow.common.core.domain.ProcessStartResult(instance, "TEST-" + instance));
             }
             @Override public com.cloudflow.common.core.domain.R<com.cloudflow.hr.client.vo.ProcessInstanceVO> getProcessInstance(String id) { throw new AssertionError("unexpected remote read"); }
             @Override public com.cloudflow.common.core.domain.R<?> invalidateProcess(com.cloudflow.hr.client.dto.WorkflowInvalidateRequest request) {

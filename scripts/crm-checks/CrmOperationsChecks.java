@@ -140,7 +140,7 @@ public final class CrmOperationsChecks {
             @Override public List<CrmSlaStatusRule> rules(Long policyId) { return List.of(pause, fulfill); }
         };
         CrmSlaPolicyMapper policyMapper = proxy(CrmSlaPolicyMapper.class, (method, values) -> policy);
-        CrmSlaService service = new CrmSlaService(new CrmSlaClock(calendar()), policies, policyMapper, null, null, request -> {}, null, null, null);
+        CrmSlaService service = new CrmSlaService(new CrmSlaClock(calendar()), policies, policyMapper, null, null, request -> {}, null, null);
         LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
         CrmServiceTicket ticket = new CrmServiceTicket(); ticket.setOpenedTime(now.minusMinutes(180)); ticket.setSeverity("P1"); ticket.setStatus("OPEN");
         service.initialize(ticket);
@@ -151,7 +151,7 @@ public final class CrmOperationsChecks {
         equal(30, ticket.getFirstResponseMinutes(), "first response while paused excludes unfinished pause");
         equal(now.plusMinutes(30), ticket.getFirstResponseDue(), "paused first response extends its deadline");
         equal(0, ticket.getResponseBreachedFlag(), "paused response does not falsely breach");
-        CrmSlaService restarted = new CrmSlaService(new CrmSlaClock(calendar()), policies, policyMapper, null, null, request -> {}, null, null, null);
+        CrmSlaService restarted = new CrmSlaService(new CrmSlaClock(calendar()), policies, policyMapper, null, null, request -> {}, null, null);
         ticket.setStatus("IN_PROGRESS"); restarted.change(ticket, "WAITING_CUSTOMER", "P1", false);
         equal(150, ticket.getSlaPausedMinutes(), "restart resumes persisted pause once");
         equal(now.plusMinutes(210), ticket.getResolutionDue(), "pause extends resolution deadline");

@@ -99,7 +99,7 @@ final class ImBindingIdentityChecks {
         try {
             redis = template(first);
             proofs = new ImBindingProofs(redis, new ImSecretCipher(properties), new ObjectMapper());
-            PasswordService passwords = new PasswordService(sessions.getMapper(SysUserMapper.class), sessions.getMapper(SysAuditLogMapper.class), new TenantConfigProperties());
+            PasswordService passwords = new PasswordService();
             encodedPassword = passwords.encodePassword(password);
             fixtures();
             token = newSession();
@@ -238,9 +238,9 @@ final class ImBindingIdentityChecks {
         jdbc.update("UPDATE sys_user SET pwd_reset_required='1' WHERE user_id=?", userId);
         rejected(() -> service.requireRecent(ImBindingAction.BIND), "IM_AUTHENTICATION_REQUIRED");
         jdbc.update("UPDATE sys_user SET pwd_reset_required='0' WHERE user_id=?", userId);
-        PasswordService racing = new PasswordService(null, null, null) {
-            @Override public PasswordMatchResult matchesPassword(String incoming, String stored) {
-                PasswordMatchResult result = passwords.matchesPassword(incoming, stored);
+        PasswordService racing = new PasswordService() {
+            @Override public boolean matchesPassword(String incoming, String stored) {
+                boolean result = passwords.matchesPassword(incoming, stored);
                 jdbc.update("UPDATE sys_user SET version=version+1 WHERE user_id=?", userId);
                 return result;
             }

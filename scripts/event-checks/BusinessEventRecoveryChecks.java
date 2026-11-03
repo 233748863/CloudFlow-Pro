@@ -98,7 +98,10 @@ public final class BusinessEventRecoveryChecks {
                 String encoded = mapper.writeValueAsString(original);
                 equal(true, mapper.readTree(encoded).path("occurredAt").isTextual(), "envelope time is canonical text regardless of mapper timestamp setting");
                 equal(original, BusinessEventEnvelopeCodec.read(encoded, mapper), "event time including nanoseconds survives ordinary round trip");
-                equal(original, BusinessEventEnvelopeCodec.read(mapper.writeValueAsString(encoded), mapper), "event time survives Redis JSON-string round trip");
+                boolean wrappedRejected = false;
+                try { BusinessEventEnvelopeCodec.read(mapper.writeValueAsString(encoded), mapper); }
+                catch (com.fasterxml.jackson.core.JsonProcessingException expected) { wrappedRejected = true; }
+                equal(true, wrappedRejected, "double-encoded event is rejected after text transport normalization");
             }
         }
     }
@@ -390,6 +393,9 @@ public final class BusinessEventRecoveryChecks {
             Field field = RedisStreamUtil.class.getDeclaredField("redisTemplate");
             field.setAccessible(true);
             field.set(streams, template);
+            Field textField = RedisStreamUtil.class.getDeclaredField("stringRedisTemplate");
+            textField.setAccessible(true);
+            textField.set(streams, redis);
             redis.opsForStream().add(MapRecord.create(stream, Map.of("bootstrap", "1")));
             redis.opsForStream().createGroup(stream, ReadOffset.latest(), group);
             keys.add(stream); keys.add(deadLetters);
@@ -415,7 +421,7 @@ public final class BusinessEventRecoveryChecks {
         }
 
         void send(BusinessEventEnvelope envelope) throws Exception {
-            streams.publishGlobal(stream, Map.of("eventId", envelope.getEventId(), "payload", JSON.writeValueAsString(envelope)));
+            streams.publishGlobalText(stream, Map.of("eventId", envelope.getEventId(), "payload", JSON.writeValueAsString(envelope)));
         }
 
         MapRecord<String, String, String> publish(BusinessEventEnvelope envelope) throws Exception {

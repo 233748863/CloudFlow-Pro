@@ -49,7 +49,7 @@ public final class WorkflowStartableDefinitionChecks {
         nextDraft.setStatus("DRAFT");
         WfProcessDefinition restrictedOlder = definition("restricted-old", "restricted", 1, "ALL");
         WfProcessDefinition restrictedLatest = definition("restricted-new", "restricted", 2, "USER");
-        restrictedLatest.setStartPermissionValue("[8]");
+        restrictedLatest.setStartPermissionValue("[\"8\"]");
         WfProcessDefinition owned = definition("own", "own", 1, "USER");
         WfProcessDefinition foreign = definition("foreign", "foreign", 1, "ALL");
         foreign.setTenantId(200000L);
@@ -120,12 +120,7 @@ public final class WorkflowStartableDefinitionChecks {
                 });
         inject(service, "processDefinitionMapper", mapper);
         inject(service, "workflowGraphModelResolver", new WorkflowGraphModelResolver());
-        inject(service, "permissionService", new WorkflowPermissionService() {
-            @Override
-            public boolean canStartProcess(Long userId, String type, String value) {
-                return "ALL".equals(type) || "USER".equals(type) && ("[" + userId + "]").equals(value);
-            }
-        });
+        inject(service, "permissionService", new WorkflowPermissionService());
         return service;
     }
 
@@ -139,7 +134,7 @@ public final class WorkflowStartableDefinitionChecks {
         row.setVersion(version);
         row.setIsArchived(0);
         row.setStartPermissionType(permission);
-        row.setStartPermissionValue("[5]");
+        row.setStartPermissionValue("ALL".equals(permission) ? "" : "[\"5\"]");
         row.setModelJson("{\"nodes\":[],\"edges\":[],\"private\":\"CATALOG_PRIVATE_MODEL_MARKER\"}");
         return row;
     }

@@ -109,7 +109,7 @@ final class ImSyncWriteDatabaseChecks {
         });
         outbox = new OutboxPublisher(events, JSON);
         quotas = new TenantQuotaService(sessions.getMapper(TenantQuotaMapper.class));
-        passwords = new PasswordService(null, audits, new TenantConfigProperties());
+        passwords = new PasswordService();
         writer = new ImOrganizationWriter(writes, reader, codec, quotas, passwords, outbox, JSON);
         admin = jdbc.queryForObject("SELECT MIN(user_id) FROM sys_user_role WHERE tenant_id=100000 AND role_id=1", Long.class);
         employee = jdbc.queryForObject("SELECT MIN(user_id) FROM sys_user_role WHERE tenant_id=100000 AND role_id=5", Long.class);
@@ -233,7 +233,7 @@ final class ImSyncWriteDatabaseChecks {
         check(!hashes.get(0).equals(hashes.get(1)), "new accounts do not share password hash");
         for (String hash : hashes) {
             check(hash.startsWith("$2a$"), "stored password uses actual application bcrypt service");
-            for (String password : List.of("", "123456", "admin123", "CloudFlow@123")) check(!passwords.matchesPassword(password, hash).matched(), "common password cannot log in synchronized user");
+            for (String password : List.of("", "123456", "admin123", "CloudFlow@123")) check(!passwords.matchesPassword(password, hash), "common password cannot log in synchronized user");
         }
         equal(0, jdbc.queryForObject("SELECT COUNT(*) FROM sys_user_role WHERE user_id IN (SELECT user_id FROM sys_im_user_mapping WHERE tenant_id=100000 AND config_id=? AND im_user_id IN ('writer-a','writer-b'))", Integer.class, configId), "new synchronized users have zero roles");
         equal(0, jdbc.queryForObject("SELECT COUNT(*) FROM sys_user_post WHERE user_id IN (SELECT user_id FROM sys_im_user_mapping WHERE tenant_id=100000 AND config_id=? AND im_user_id IN ('writer-a','writer-b'))", Integer.class, configId), "new synchronized users have zero posts");
@@ -328,7 +328,7 @@ final class ImSyncWriteDatabaseChecks {
         equal(0, jdbc.queryForObject("SELECT COUNT(*) FROM sys_user_role WHERE user_id=?", Integer.class, sparse), "missing-field account has zero roles");
         equal(0, jdbc.queryForObject("SELECT COUNT(*) FROM sys_user_post WHERE user_id=?", Integer.class, sparse), "missing-field account has zero posts");
         String hash = jdbc.queryForObject("SELECT password FROM sys_user WHERE user_id=?", String.class, sparse);
-        check(hash.startsWith("$2a$") && !passwords.matchesPassword("admin123", hash).matched(), "new sparse account uses random bcrypt credential");
+        check(hash.startsWith("$2a$") && !passwords.matchesPassword("admin123", hash), "new sparse account uses random bcrypt credential");
         acknowledgeFixture(create);
         System.out.println("G4_IM_FIELD_PRESERVATION_DATABASE: assertions=" + (assertions - startedAssertions) + "; failed=0; combinations=8; explicit_empty=true; sparse_creation=true; real_mysql=true");
     }

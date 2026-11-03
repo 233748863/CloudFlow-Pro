@@ -30,7 +30,7 @@ import com.cloudflow.common.report.ReportDataScope;
 import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.crm.mapper.CrmReportMapper;
-import com.cloudflow.crm.service.impl.CrmReportService;
+import com.cloudflow.crm.service.impl.CrmReceivableAging;
 import com.cloudflow.hr.domain.entity.HrLeaveLedger;
 import com.cloudflow.hr.domain.entity.HrLeaveQuota;
 import com.cloudflow.hr.mapper.HrLeaveLedgerMapper;
@@ -161,7 +161,7 @@ public final class ReportDatabaseChecks implements AutoCloseable {
         jdbc.update("UPDATE crm_opportunity SET weighted_amount=65 WHERE opportunity_id=? AND tenant_id=?", BASE + 1, TENANT);
         sessions.clearCache();
         PreparedReportQuery aging = prepared("CRM_AGING", List.of("AGING_BUCKET"), List.of("PLANNED_AMOUNT:SUM", "RECEIVED_AMOUNT:SUM", "OUTSTANDING_AMOUNT:SUM"));
-        List<CrmReportService.AgingTier> tiers = List.of(new CrmReportService.AgingTier(30, "DUE_30", "逾期1—30天"), new CrmReportService.AgingTier(Long.MAX_VALUE, "OLDER", "逾期30天以上"));
+        List<CrmReceivableAging.Tier> tiers = List.of(new CrmReceivableAging.Tier(30, "DUE_30", "逾期1—30天"), new CrmReceivableAging.Tier(Long.MAX_VALUE, "OLDER", "逾期30天以上"));
         List<ReportRow> balances = valid("CRM_AGING", aging, mapper.aging(TENANT, self, aging, tiers, tiers.get(1)));
         equal(3, balances.size(), "undated current overdue are separate"); decimal("70", row(balances, "DUE_30").getMeasure3(), "outstanding source cumulative only"); equal("逾期1—30天", row(balances, "DUE_30").getLabel1(), "aging label retained"); decimal("150", row(balances, "CURRENT").getMeasure3(), "due today not overdue"); decimal("50", row(balances, "UNDATED").getMeasure1(), "undated balance not lost");
         System.out.println("REPORT_CRM_SQL: weighted=265.00; expected=300.00; overdue=70.00; current=150.00; undated=50.00; scope_before_aggregate=true");
@@ -386,7 +386,7 @@ public final class ReportDatabaseChecks implements AutoCloseable {
             case "WF_INSTANCE" -> sessions.getMapper(WorkflowReportMapper.class).instances(TENANT, USER, false, Set.of(), query);
             case "WF_TASK" -> sessions.getMapper(WorkflowReportMapper.class).tasks(TENANT, USER, false, Set.of(), true, true, query);
             case "CRM_FUNNEL" -> sessions.getMapper(CrmReportMapper.class).funnel(TENANT, self, query);
-            case "CRM_AGING" -> sessions.getMapper(CrmReportMapper.class).aging(TENANT, self, query, List.of(new CrmReportService.AgingTier(30, "DUE_30", "逾期1—30天")), new CrmReportService.AgingTier(Long.MAX_VALUE, "OLDER", "逾期30天以上"));
+            case "CRM_AGING" -> sessions.getMapper(CrmReportMapper.class).aging(TENANT, self, query, List.of(new CrmReceivableAging.Tier(30, "DUE_30", "逾期1—30天")), new CrmReceivableAging.Tier(Long.MAX_VALUE, "OLDER", "逾期30天以上"));
             case "HR_ATTENDANCE" -> sessions.getMapper(HrReportMapper.class).attendance(TENANT, self, query);
             case "HR_LEAVE" -> sessions.getMapper(HrReportMapper.class).leave(TENANT, self, query);
             case "OA_EXPENSE" -> sessions.getMapper(OaReportMapper.class).expense(TENANT, self, query);
@@ -413,6 +413,7 @@ public final class ReportDatabaseChecks implements AutoCloseable {
     }
 
     private void definitions() {
+        new com.cloudflow.auth.service.report.ReportDatasetRegistration(sessions.getMapper(SysReportDatasetMapper.class), json).registerTenant(TENANT);
         ReportDatasetService datasets = new ReportDatasetService(sessions.getMapper(SysReportDatasetMapper.class), json);
         ReportDefinitionService target = new ReportDefinitionService(sessions.getMapper(SysReportChartMapper.class), sessions.getMapper(SysReportDashboardMapper.class), sessions.getMapper(SysReportDashboardItemMapper.class), datasets, json);
         ProxyFactory proxy = new ProxyFactory(target); proxy.addAdvice(new TransactionInterceptor(manager, new AnnotationTransactionAttributeSource()));

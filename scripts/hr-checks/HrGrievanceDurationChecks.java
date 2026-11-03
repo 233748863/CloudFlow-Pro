@@ -74,7 +74,7 @@ public final class HrGrievanceDurationChecks {
             HrEssSupport ess = new HrEssSupport(null);
             HrGrievanceAccessService access = new HrGrievanceAccessService(employees, grievances, support, ess);
             HrGrievanceService service = new HrGrievanceService(grievances, sessions.getMapper(HrGrievanceRecordMapper.class), access, ess, support,
-                    null, null, null, null, null, null, null, json);
+                    null, null, null, null, null, null, null, json, null);
             try {
                 new TransactionTemplate(manager).executeWithoutResult(status -> {
                     try { verify(jdbc, service); } finally { status.setRollbackOnly(); }

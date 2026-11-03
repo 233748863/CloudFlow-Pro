@@ -79,7 +79,7 @@ try {
     Invoke-IsolatedSql "CREATE DATABASE $Database CHARACTER SET utf8mb4;" | Out-Null
     $Created = $true
     $Schema = [IO.File]::ReadAllText((Join-Path $Backend 'DB/01.cloudflow-common.sql'))
-    $Tables = @('sys_message_delivery','sys_message_record','sys_message_channel','sys_message_template','sys_message_subscribe','sys_sms_code','sys_user','sys_user_role','sys_user_totp','sys_dept','outbox_event','sys_audit_log','sys_portal_user','sys_tenant','sys_im_config','sys_im_user_mapping')
+    $Tables = @('sys_message_delivery','sys_message_delivery_attempt','sys_message_record','sys_message_channel','sys_message_template','sys_message_subscribe','sys_sms_code','sys_user','sys_user_role','sys_user_totp','sys_dept','outbox_event','sys_audit_log','sys_portal_user','sys_tenant','sys_im_config','sys_im_user_mapping')
     foreach ($Table in $Tables) {
         $Match = [regex]::Match($Schema, '(?ms)^CREATE TABLE ' + [regex]::Escape($Table) + '\s*\(.*?^\) ENGINE=.*?;')
         if (-not $Match.Success) { throw "Formal schema missing $Table" }

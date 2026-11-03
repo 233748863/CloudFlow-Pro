@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.cloudflow.common.config.MybatisPlusConfig;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import com.cloudflow.common.event.outbox.OutboxEventMapper;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.handler.MyMetaObjectHandler;
@@ -1093,10 +1094,11 @@ public final class WorkflowDraftDatabaseChecks {
 
     private static String instanceId(R<?> result) {
         check(result != null && Integer.valueOf(200).equals(result.getCode()), "Real workflow submission returns success");
-        guard(result.getData() instanceof Map<?, ?>, "Submission must return instance identifiers");
-        Object identifier = ((Map<?, ?>) result.getData()).get("instanceId");
-        check(identifier instanceof String && !((String) identifier).isBlank(), "Submission returns an actual instance identifier");
-        return (String) identifier;
+        guard(result.getData() instanceof ProcessStartResult, "Submission returns the shared start result");
+        ProcessStartResult started = (ProcessStartResult) result.getData();
+        check(started.getInstanceId() != null && !started.getInstanceId().isBlank(), "Submission returns an actual instance identifier");
+        check(started.getProcessNo() != null && !started.getProcessNo().isBlank(), "Submission returns the business process number");
+        return started.getInstanceId();
     }
 
     private static String environment(String name) {

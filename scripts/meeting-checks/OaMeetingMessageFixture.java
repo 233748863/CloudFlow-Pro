@@ -101,7 +101,7 @@ final class OaMeetingMessageFixture {
             @Override public R<MessageSourceResult> verify(JsonNode request) { return R.ok(reminders.verify(json.convertValue(request, MessageSourceCheck.class))); }
             @Override public R<List<MessageAttachment>> attachments(JsonNode request) { return R.ok(List.of()); }
         }, json);
-        senders = new MessageChannelSenderFactory(List.of(new InternalChannelSender((userId, payload) -> {
+        senders = new MessageChannelSenderFactory(List.of(new InternalChannelSender(event -> {
             if (TransactionSynchronizationManager.isActualTransactionActive()) throw new AssertionError("站内实时推送不得持有事务");
             pushCount.incrementAndGet();
             if (pushUnavailable.get()) throw new IllegalStateException("隔离实时推送故障");

@@ -81,9 +81,6 @@ final class CrmInvoiceReceiptDatabaseChecks {
                 .sourceId(invoiceId).sourceModule(InvoiceReceiptSource.SERVICE).tenantId(100000L).occurredAt(source.getOccurredTime())
                 .payload(payload).payloadDigest(InvoiceReceiptSource.digest(payload)).build();
         fixture.bean(OutboxPublisher.class).publishOnceAt(envelope, null);
-        com.fasterxml.jackson.databind.node.ObjectNode serialized = fixture.json.valueToTree(envelope);
-        serialized.put("occurredAt", source.getOccurredTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        fixture.jdbc.update("UPDATE outbox_event SET payload_json=? WHERE tenant_id=100000 AND event_id=?", serialized.toString(), envelope.getEventId());
         return envelope;
     }
 
@@ -91,12 +88,17 @@ final class CrmInvoiceReceiptDatabaseChecks {
         LocalDateTime expected = LocalDateTime.of(2026, 1, 2, 3, 4, 5);
         BusinessEventEnvelope envelope = BusinessEventEnvelope.builder().eventId(UUID.randomUUID().toString()).eventType(InvoiceReceiptSource.EVENT)
                 .tenantId(100000L).sourceModule(InvoiceReceiptSource.SERVICE).sourceId(1L).occurredAt(expected).payload("{ \"amount\" : 20 }").build();
-        for (String format : List.of("2026-01-02T03:04:05", "2026-01-02T03:04:05+08:00", "2026-01-02 03:04:05")) {
-            com.fasterxml.jackson.databind.node.ObjectNode serialized = fixture.json.valueToTree(envelope); serialized.put("occurredAt", format);
-            BusinessEventEnvelope decoded = BusinessEventEnvelopeCodec.read(serialized.toString(), fixture.json);
-            equal(expected, decoded.getOccurredAt(), "live and persisted envelopes share timestamp decoding: " + format);
-            equal(envelope.getPayload(), decoded.getPayload(), "timestamp normalization never rewrites signed payload bytes");
-            equal(expected, BusinessEventEnvelopeCodec.read(fixture.json.writeValueAsString(serialized.toString()), fixture.json).getOccurredAt(), "wrapped stream envelope uses the same decoder");
+        String encoded = fixture.json.writeValueAsString(envelope);
+        BusinessEventEnvelope decoded = BusinessEventEnvelopeCodec.read(encoded, fixture.json);
+        equal(expected, decoded.getOccurredAt(), "live and persisted envelopes share the canonical timestamp");
+        equal(envelope.getPayload(), decoded.getPayload(), "decoding never rewrites signed payload bytes");
+        for (String format : List.of("2026-01-02T03:04:05+08:00", "2026-01-02 03:04:05")) {
+            com.fasterxml.jackson.databind.node.ObjectNode serialized = fixture.json.valueToTree(envelope);
+            serialized.put("occurredAt", format);
+            boolean rejected = false;
+            try { BusinessEventEnvelopeCodec.read(serialized.toString(), fixture.json); }
+            catch (com.fasterxml.jackson.core.JsonProcessingException invalid) { rejected = true; }
+            equal(true, rejected, "noncanonical timestamp is rejected: " + format);
         }
     }
 

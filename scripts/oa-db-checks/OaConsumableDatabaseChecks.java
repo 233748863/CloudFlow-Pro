@@ -1246,12 +1246,12 @@ public final class OaConsumableDatabaseChecks implements AutoCloseable {
         final List<String> published = new java.util.concurrent.CopyOnWriteArrayList<>();
 
         @Override
-        public String publishGlobal(String key, Map<String, Object> content) {
+        public String publishGlobalText(String key, Map<String, String> content) {
             OaDatabaseIsolation.require("oa08:fixture:events".equals(key), "UNEXPECTED_TRANSPORT_DESTINATION");
             int attempt = attempts.incrementAndGet();
             if (failures.getAndUpdate(value -> Math.max(0, value - 1)) > 0) throw new IllegalStateException("OA08_TRANSPORT_EDGE_FAILURE");
-            OaDatabaseIsolation.require(content.get("payload") instanceof String, "REAL_OUTBOX_ENVELOPE_REQUIRED");
-            published.add((String) content.get("payload"));
+            OaDatabaseIsolation.require(content.get("payload") != null, "REAL_OUTBOX_ENVELOPE_REQUIRED");
+            published.add(content.get("payload"));
             return attempt + "-0";
         }
 
@@ -1272,10 +1272,10 @@ public final class OaConsumableDatabaseChecks implements AutoCloseable {
         final AtomicInteger attempts = new AtomicInteger();
         final AtomicInteger successes = new AtomicInteger();
 
-        void send(Long userId, Map<String, Object> message) {
+        void send(com.cloudflow.common.core.event.SystemNoticeCreatedEvent event) {
             attempts.incrementAndGet();
             if (failures.getAndUpdate(value -> Math.max(0, value - 1)) > 0) throw new IllegalStateException("OA08_PUSH_EDGE_FAILURE");
-            OaDatabaseIsolation.require(userId != null && "NOTICE".equals(message.get("type")), "REAL_INTERNAL_CHANNEL_MESSAGE_REQUIRED");
+            OaDatabaseIsolation.require(event.getRecipientId() != null && event.getNoticeId() != null, "REAL_INTERNAL_CHANNEL_MESSAGE_REQUIRED");
             successes.incrementAndGet();
         }
     }

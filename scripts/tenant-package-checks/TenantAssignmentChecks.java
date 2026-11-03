@@ -34,8 +34,13 @@ public final class TenantAssignmentChecks {
         this.jdbc = jdbc;
         this.codec = codec;
         this.failAuditName = failAuditName;
-        service = new TenantAssignmentService(identity(100000), store, codec, audits);
-        foreign = new TenantAssignmentService(identity(100001), store, codec, audits);
+        com.cloudflow.auth.service.report.ReportDatasetRegistration registrations = new com.cloudflow.auth.service.report.ReportDatasetRegistration(null, new ObjectMapper()) {
+            @Override public void registerTenant(Long tenantId) {
+                equal(tenantId, com.cloudflow.common.core.context.UserContext.getTenantId(), "new tenant registration uses its own context");
+            }
+        };
+        service = new TenantAssignmentService(identity(100000), store, codec, audits, registrations);
+        foreign = new TenantAssignmentService(identity(100001), store, codec, audits, registrations);
         PlatformAccessService creator = new PlatformAccessService(null, null, null, null, null, null, null, null) {
             @Override public Operator requireRecent(String permission) {
                 if (!"system:tenant-package:manage".equals(permission)) throw new AssertionError("Unexpected fixture setup permission");

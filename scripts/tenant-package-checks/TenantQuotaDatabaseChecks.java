@@ -154,7 +154,7 @@ final class TenantQuotaDatabaseChecks {
         field(users, "sysRoleMapper", sessions.getMapper(SysRoleMapper.class));
         field(users, "tenantQuotas", quotas);
         field(users, "passwordPolicyService", new PasswordPolicyService());
-        field(users, "passwordService", new PasswordService(null, null, new TenantConfigProperties()));
+        field(users, "passwordService", new PasswordService());
         field(users, "roleMutexService", new RoleMutexService(null, null) {
             @Override public void assertNoConflict(Long[] roles, Long tenantId) { }
         });

@@ -96,6 +96,8 @@ public final class WorkflowDatabaseTaskFixture {
         WorkflowDatabaseTaskFixture.DatabaseTaskService taskService = new DatabaseTaskService(transaction);
         inject(taskService, "taskMapper", mapper(WfTaskMapper.class));
         inject(taskService, "taskHistoryMapper", mapper(WfTaskHistoryMapper.class));
+        inject(taskService, "urgeEffectMapper", mapper(WfUrgeEffectMapper.class));
+        inject(taskService, "taskUrgeMapper", mapper(WfTaskUrgeMapper.class));
         inject(taskService, "taskReadMapper", mapper(WfTaskReadMapper.class));
         inject(taskService, "taskMonitorMapper", mapper(TaskMonitorMapper.class));
         inject(taskService, "processInstanceMapper", mapper(WfProcessInstanceMapper.class));

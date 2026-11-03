@@ -86,9 +86,9 @@ public final class WorkflowDraftReferenceChecks {
         WorkflowDraftReferenceChecks.Fixture fixture = new Fixture();
         fixture.fields("[{\"id\":\"person\",\"type\":\"EMPLOYEE\"}]");
         fixture.options("person", new PageQuery());
-        fixture.definition.setStartPermissionValue("[12]");
+        fixture.definition.setStartPermissionValue("[\"12\"]");
         denied(fixture, "DRAFT_UNAVAILABLE", () -> fixture.options("person", new PageQuery()));
-        fixture.definition.setStartPermissionValue("[11]");
+        fixture.definition.setStartPermissionValue("[\"11\"]");
         UserContext.setUserId(12L);
         denied(fixture, "DRAFT_UNAVAILABLE", () -> fixture.options("person", new PageQuery()));
         UserContext.setUserId(null);
@@ -297,9 +297,9 @@ public final class WorkflowDraftReferenceChecks {
         equal(Set.of("id", "label", "departmentId"), names, "serialized response exposes no employee management fields");
         equal("9007199254740993", option.get("id").asText(), "large employee id preserves every digit");
         check(option.get("departmentId").isNull(), "department metadata is explicitly null");
-        fixture.definition.setStartPermissionValue("[12]");
+        fixture.definition.setStartPermissionValue("[\"12\"]");
         denied(fixture, "DRAFT_UNAVAILABLE", () -> controller.referenceOptions(fixture.definition.getDefinitionId(), "person", new PageQuery()));
-        fixture.definition.setStartPermissionValue("[11]");
+        fixture.definition.setStartPermissionValue("[\"11\"]");
         fixture.permissions.add(permission("person", false));
         denied(fixture, "DRAFT_REFERENCE_UNAVAILABLE", () -> controller.referenceOptions(fixture.definition.getDefinitionId(), "person", new PageQuery()));
     }
@@ -378,7 +378,7 @@ public final class WorkflowDraftReferenceChecks {
         definition.setDeleted(0);
         definition.setIsArchived(0);
         definition.setStartPermissionType("USER");
-        definition.setStartPermissionValue("[11]");
+        definition.setStartPermissionValue("[\"11\"]");
         definition.setFormId("reference-form");
         definition.setModelJson("{\"nodes\":[{\"id\":\"start\",\"type\":\"START\",\"title\":\"start\"},"
                 + "{\"id\":\"end\",\"type\":\"END\",\"title\":\"end\"}],\"edges\":[{\"source\":\"start\",\"target\":\"end\"}]}");

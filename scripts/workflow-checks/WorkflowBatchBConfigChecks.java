@@ -487,6 +487,7 @@ public final class WorkflowBatchBConfigChecks {
             histories.add((WfTaskHistory) arguments[0]); return 1;
         });
         inject(service, "taskHistoryMapper", historyMapper);
+        inject(service, "urgeEffectMapper", proxy(WfUrgeEffectMapper.class, (method, arguments) -> 0));
         inject(service, "taskReadMapper", proxy(WfTaskReadMapper.class, (method, arguments) -> 1));
         inject(service, "taskMonitorMapper", proxy(TaskMonitorMapper.class, (method, arguments) -> method.startsWith("select") ? null : 1));
         inject(service, "processMonitorService", proxy(com.cloudflow.workflow.service.monitor.IProcessMonitorService.class, (method, arguments) -> null));

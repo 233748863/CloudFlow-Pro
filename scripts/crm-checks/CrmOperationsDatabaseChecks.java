@@ -229,7 +229,7 @@ public final class CrmOperationsDatabaseChecks {
         register(com.cloudflow.crm.service.email.CrmEmailStatisticsService.class); register(CrmCampaignService.class);
         StateMachineRegistry registry = new StateMachineRegistry(type -> Set.of(), new com.cloudflow.common.statemachine.config.StateMachineProperties());
         new CrmStateMachineConfig(registry).run(); beans.put(StateMachineRegistry.class, registry);
-        register(CrmCustomerServiceImpl.class); register(CrmFollowUpServiceImpl.class); register(CrmContactServiceImpl.class);
+        register(CrmCustomerHealthService.class); register(CrmCustomerServiceImpl.class); register(CrmFollowUpServiceImpl.class); register(CrmContactServiceImpl.class);
         beans.put(com.cloudflow.common.security.portal.PortalTokens.class, new com.cloudflow.common.security.portal.PortalTokens());
         beans.put(RemotePortalTicketFiles.class, proxy(RemotePortalTicketFiles.class, (method, values) -> { throw new IllegalStateException("File bytes require separate real HTTP verification"); }));
         register(CrmServiceTicketServiceImpl.class); register(CrmPortalTicketService.class); register(CrmPortalTicketManagement.class);

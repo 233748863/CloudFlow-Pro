@@ -34,7 +34,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 final class MessageDeliveryResolutionChecks {
     static void run(MessageDeliveryDatabaseChecks suite) throws Exception {
-        PasswordService passwords = new PasswordService(suite.mapper(SysUserMapper.class), null, new TenantConfigProperties());
+        PasswordService passwords = new PasswordService();
         String password = "fixture-resolution-password";
         suite.jdbc.update("INSERT INTO sys_user(user_id,tenant_id,user_name,nick_name,password,email) VALUES (1,?,'resolution-user','核验员',?,'reviewer@example.com')",
                 suite.TENANT, passwords.encodePassword(password));

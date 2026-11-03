@@ -56,16 +56,16 @@ public final class HrSettlementCalculationChecks {
 
         LocalDate exitDate = LocalDate.parse("2026-09-30");
         List<SalarySample> samples = samples(exitDate, "21750");
-        equal("3000", HrSettlementCalculation.leaveCash(actual, exitDate, samples, "DAY", decimal("3")));
-        equal("3000", HrSettlementCalculation.leaveCash(actual, exitDate, samples, "HOUR", decimal("24")));
-        equal("62.50", HrSettlementCalculation.leaveCash(actual, exitDate, samples, "HOUR", decimal("0.5")));
-        equal("50000", HrSettlementCalculation.leaveCash(capped, exitDate, samples(exitDate, "50000"), "DAY", decimal("21.75")));
-        rejects(() -> HrSettlementCalculation.leaveCash(actual, exitDate, samples, "MINUTE", decimal("1")));
-        rejects(() -> HrSettlementCalculation.leaveCash(actual, exitDate, samples, "DAY", decimal("-1")));
+        equal("3000", HrSettlementCalculation.leaveCash(actual, exitDate, samples, selectedMonths(exitDate), "DAY", decimal("3")));
+        equal("3000", HrSettlementCalculation.leaveCash(actual, exitDate, samples, selectedMonths(exitDate), "HOUR", decimal("24")));
+        equal("62.50", HrSettlementCalculation.leaveCash(actual, exitDate, samples, selectedMonths(exitDate), "HOUR", decimal("0.5")));
+        equal("50000", HrSettlementCalculation.leaveCash(capped, exitDate, samples(exitDate, "50000"), selectedMonths(exitDate), "DAY", decimal("21.75")));
+        rejects(() -> HrSettlementCalculation.leaveCash(actual, exitDate, samples, selectedMonths(exitDate), "MINUTE", decimal("1")));
+        rejects(() -> HrSettlementCalculation.leaveCash(actual, exitDate, samples, selectedMonths(exitDate), "DAY", decimal("-1")));
         Policy missingLeave = new Policy("CONFIRMED", exitDate, exitDate, 2, "ACTUAL_MONTHS", ANNUAL,
                 null, null, null, decimal("0"), null, null, null, RoundingMode.HALF_UP);
         equal("12000", calculate(missingLeave, "2025-09-30", "2026-09-30", "12000").severanceAmount());
-        rejects(() -> HrSettlementCalculation.leaveCash(missingLeave, exitDate, samples, "DAY", decimal("1")));
+        rejects(() -> HrSettlementCalculation.leaveCash(missingLeave, exitDate, samples, selectedMonths(exitDate), "DAY", decimal("1")));
 
         equal("80", HrSettlementCalculation.net(decimal("100"), decimal("50"), decimal("60"), decimal("10")));
         equal("0", HrSettlementCalculation.net(decimal("100"), decimal("50"), decimal("140"), decimal("10")));
@@ -115,11 +115,11 @@ public final class HrSettlementCalculationChecks {
         rejects(() -> calculate(draft, "2025-01-01", "2026-09-30", "12000"));
         rejects(() -> calculate(missingLeave, "2025-01-01", "2026-09-29", "12000"));
         rejects(() -> calculate(missingLeave, "2025-01-01", "2026-10-01", "12000"));
-        rejects(() -> HrSettlementCalculation.severance(actual, LocalDate.parse("2025-01-01"), exitDate, List.of(samples.get(0))));
-        rejects(() -> HrSettlementCalculation.severance(actual, LocalDate.parse("2025-01-01"), exitDate, List.of(samples.get(0), samples.get(0))));
+        rejects(() -> HrSettlementCalculation.severance(actual, LocalDate.parse("2025-01-01"), exitDate, List.of(samples.get(0)), selectedMonths(exitDate)));
+        rejects(() -> HrSettlementCalculation.severance(actual, LocalDate.parse("2025-01-01"), exitDate, List.of(samples.get(0), samples.get(0)), selectedMonths(exitDate)));
         rejects(() -> HrSettlementCalculation.severance(actual, LocalDate.parse("2025-01-01"), exitDate,
-                List.of(new SalarySample(YearMonth.of(2026, 6), decimal("100")), new SalarySample(YearMonth.of(2026, 8), decimal("100")))));
-        rejects(() -> HrSettlementCalculation.severance(actual, LocalDate.parse("2025-01-01"), exitDate, samples(LocalDate.parse("2026-11-30"), "12000")));
+                List.of(new SalarySample(YearMonth.of(2026, 6), decimal("100")), new SalarySample(YearMonth.of(2026, 8), decimal("100"))), selectedMonths(exitDate)));
+        rejects(() -> HrSettlementCalculation.severance(actual, LocalDate.parse("2025-01-01"), exitDate, samples(LocalDate.parse("2026-11-30"), "12000"), selectedMonths(exitDate)));
         for (List<Slab> invalid : invalidSlabs()) rejects(() -> HrSettlementCalculation.validatePolicy(policy("ACTUAL_MONTHS", invalid, null, null, null, "0", RoundingMode.HALF_UP)));
         rejects(() -> HrSettlementCalculation.validatePolicy(policy("UNKNOWN", ANNUAL, null, null, null, "0", RoundingMode.HALF_UP)));
         rejects(() -> HrSettlementCalculation.validatePolicy(policy("ACTUAL_MONTHS", ANNUAL, "1000", null, null, "0", RoundingMode.HALF_UP)));
@@ -186,12 +186,17 @@ public final class HrSettlementCalculationChecks {
     }
     private static Result calculate(Policy policy, String joined, String relieved, String monthlySalary) {
         LocalDate relievingDate = LocalDate.parse(relieved);
-        return HrSettlementCalculation.severance(policy, LocalDate.parse(joined), relievingDate, samples(relievingDate, monthlySalary));
+        return HrSettlementCalculation.severance(policy, LocalDate.parse(joined), relievingDate, samples(relievingDate, monthlySalary), selectedMonths(relievingDate));
     }
     private static List<SalarySample> samples(LocalDate relievingDate, String monthlySalary) {
         List<SalarySample> result = new ArrayList<>();
         for (int offset = 1; offset <= 2; offset++) result.add(new SalarySample(YearMonth.from(relievingDate).minusMonths(offset), decimal(monthlySalary)));
         return result;
+    }
+    private static SamplingSelection selectedMonths(LocalDate exitDate) {
+        YearMonth month = YearMonth.from(exitDate);
+        return new SamplingSelection(List.of(month.minusMonths(2), month.minusMonths(1)),
+                decimal("2"), "本测试明确核定离职前两个月及两个月分母");
     }
     private static BigDecimal decimal(String value) { return value == null ? null : new BigDecimal(value); }
     private static void equal(String expected, BigDecimal actual) { check(decimal(expected).compareTo(actual) == 0, "期望" + expected + "，实际" + actual); }

@@ -159,6 +159,7 @@ public final class WorkflowBatchBChecks {
             user.setUserId(identifier);
             user.setTenantId(100000L);
             user.setStatus("0");
+            user.setDeleted(0);
             user.setDeptId(10L);
             users.put(identifier, user);
         }
@@ -169,7 +170,9 @@ public final class WorkflowBatchBChecks {
             dept.setDeptId(identifier);
             dept.setTenantId(100000L);
             dept.setParentId(identifier == 10 ? 20L : 0L);
-            dept.setLeader(identifier == 10 ? "2" : "3");
+            dept.setLeaderUserId(identifier == 10 ? 2L : 3L);
+            dept.setStatus("0");
+            dept.setDeleted(0);
             departments.put(identifier, dept);
         }
         DeptManagerAssignStrategy deptStrategy = new DeptManagerAssignStrategy();
@@ -799,7 +802,8 @@ public final class WorkflowBatchBChecks {
             WorkflowTriggerExecutor execution = new com.cloudflow.workflow.service.WorkflowTriggerExecutor(http, secrets, sent::add,
                     proxy(SysUserMapper.class, (method, arguments) -> {
                         SysUser user = new SysUser(); user.setUserId((Long) arguments[0]);
-                        user.setTenantId(Long.valueOf(2).equals(arguments[0]) ? 200000L : 100000L); user.setStatus("0"); return user;
+                        user.setTenantId(Long.valueOf(2).equals(arguments[0]) ? 200000L : 100000L); user.setStatus("0");
+            user.setDeleted(0); return user;
                     }), mapper);
             Map<String, Object> request = execution.prepare(node, instance, Map.of("value", "kept"));
             equal("https://api.example/check?first=1&second=2", request.get("url"), "saved URL entity decoded before request");

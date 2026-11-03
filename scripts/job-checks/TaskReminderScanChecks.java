@@ -11,6 +11,7 @@ import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
+import com.cloudflow.workflow.mapper.WfTaskUrgeMapper;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
@@ -47,7 +48,7 @@ public final class TaskReminderScanChecks {
         Map<Long,Set<Object>> queues=new HashMap<>();
         queues.put(10L,new LinkedHashSet<>(List.of("failed:10","cleanup:30","done:10","no-owner:10","malformed","foreign:10")));
         queues.put(20L,new LinkedHashSet<>(List.of("other:10")));
-        boolean[] registrationFailure={true},cleanupFailure={true},readFailure={false},held={true},interrupted={false};
+        boolean[] registrationFailure={true},cleanupFailure={true},readFailure={false},held={true},interrupted={false},urgeFailure={false};
         RuntimeException registrationError=new IllegalStateException("controlled message registration failure");
         RuntimeException cleanupError=new IllegalStateException("controlled reminder removal failure");
         RecordingTransactions transactions=new RecordingTransactions();
@@ -86,9 +87,17 @@ public final class TaskReminderScanChecks {
             if(registrationFailure[0] && request.getBizId().startsWith("failed:"))throw registrationError;
             transactions.pending.add(request);
         };
+        WfTaskUrgeMapper urges=proxy(WfTaskUrgeMapper.class,(proxy,method,values)->{
+            check(method.getName().equals("recordReminder") && TransactionSynchronizationManager.isActualTransactionActive(),"reminder fact shares task and message transaction");
+            check(Objects.equals(values[0],TenantContext.getTenantId()) && Objects.equals(values[2],TenantContext.getTenantId()+1),"reminder fact uses exact tenant and current assignee");
+            if(urgeFailure[0])throw new IllegalStateException("controlled reminder fact failure");
+            transactions.pendingUrges.add(new ReminderFact((Long)values[0],(String)values[1],(Long)values[2],(String)values[3],(String)values[4]));
+            return 1;
+        });
         TaskReminderJob job=new TaskReminderJob();
         inject(job,"redisCache",cache);inject(job,"redissonClient",proxy(RedissonClient.class,(proxy,method,values)->lock));
         inject(job,"taskMapper",tasks);inject(job,"processInstanceMapper",instances);inject(job,"sysNoticeService",sender);
+        inject(job,"taskUrgeMapper",urges);
         inject(job,"transactionTemplate",new TransactionTemplate(transactions));
         inject(job,"tenantIterator",new TenantIterator(null){@Override public List<Long> listActiveTenantIds(){return List.of(10L,20L);}});
         RuntimeException failed=caught(job::scanTaskReminders);
@@ -99,6 +108,14 @@ public final class TaskReminderScanChecks {
         JobResult recovered=job.scanTaskReminders();
         check(recovered.getAffectedRows()==2 && "催办扫描完成：已提交2条提醒请求".equals(recovered.getResultMsg()),"recovery reports submitted request count");
         check(transactions.committed.size()==3 && transactions.replays==1 && queues.values().stream().allMatch(Set::isEmpty),"postcommit cleanup retry uses identical message identity and empties queues");
+        check(transactions.urges.size()==3 && transactions.urgeReplays==1,"postcommit cleanup retry preserves the reminder identity");
+        int committedBefore=transactions.committed.size(),urgesBefore=transactions.urges.size(),rollbacksBefore=transactions.rollbacks;
+        queues.get(10L).add("urge-failed:10");urgeFailure[0]=true;
+        check(caught(job::scanTaskReminders).getSuppressed().length==1,"reminder fact write failure is reported");
+        check(transactions.committed.size()==committedBefore && transactions.urges.size()==urgesBefore && transactions.rollbacks==rollbacksBefore+1,"reminder fact failure rolls back message registration");
+        check(queues.get(10L).contains("urge-failed:10"),"reminder fact failure retains the retry index");
+        urgeFailure[0]=false;
+        check(job.scanTaskReminders().getAffectedRows()==1 && transactions.committed.size()==committedBefore+1 && transactions.urges.size()==urgesBefore+1,"retry commits the message and reminder fact together");
         check(job.scanTaskReminders().getAffectedRows()==0,"empty queues produce zero requests");
         readFailure[0]=true;queues.get(20L).add("another:10");
         check(caught(job::scanTaskReminders).getSuppressed().length==1 && queues.get(20L).isEmpty(),"failed tenant queue does not stop other tenant");
@@ -127,12 +144,17 @@ public final class TaskReminderScanChecks {
         check(indexes.get(TaskReminderJob.REMINDER_ZSET_KEY).size()==3 && indexes.get("sys:task:timeouts").size()==1,"three reminder points and timeout retained");
         job.cancelReminders("registered");check(indexes.values().stream().allMatch(Set::isEmpty),"cancellation removes reminder and timeout indexes");
     }
+    private record ReminderFact(Long tenantId,String taskId,Long recipientId,String sourceKey,String reason) { }
     private static final class RecordingTransactions extends AbstractPlatformTransactionManager{
-        private final Map<String,MessageSendRequest> committed=new LinkedHashMap<>();private List<MessageSendRequest> pending;private int rollbacks,replays;
+        private final Map<String,MessageSendRequest> committed=new LinkedHashMap<>();private List<MessageSendRequest> pending;private int rollbacks,replays,urgeReplays;
+        private final Map<String,ReminderFact> urges=new LinkedHashMap<>();private List<ReminderFact> pendingUrges;
         @Override protected Object doGetTransaction(){return new Object();}
-        @Override protected void doBegin(Object transaction,TransactionDefinition definition){pending=new ArrayList<>();}
-        @Override protected void doCommit(DefaultTransactionStatus status){for(MessageSendRequest request:pending){MessageSendRequest old=committed.putIfAbsent(request.getDeduplicationKey(),request);if(old!=null){check(old.equals(request),"replay payload remains identical");replays++;}}}
-        @Override protected void doRollback(DefaultTransactionStatus status){pending.clear();rollbacks++;}
+        @Override protected void doBegin(Object transaction,TransactionDefinition definition){pending=new ArrayList<>();pendingUrges=new ArrayList<>();}
+        @Override protected void doCommit(DefaultTransactionStatus status){
+            for(MessageSendRequest request:pending){MessageSendRequest old=committed.putIfAbsent(request.getDeduplicationKey(),request);if(old!=null){check(old.equals(request),"replay payload remains identical");replays++;}}
+            for(ReminderFact fact:pendingUrges){ReminderFact old=urges.putIfAbsent(fact.tenantId()+":"+fact.sourceKey(),fact);if(old!=null){check(old.equals(fact),"replayed reminder parameters remain identical");urgeReplays++;}}
+        }
+        @Override protected void doRollback(DefaultTransactionStatus status){pending.clear();pendingUrges.clear();rollbacks++;}
     }
     private static void inject(Object target,String name,Object value)throws Exception{Field field=target.getClass().getDeclaredField(name);field.setAccessible(true);field.set(target,value);}
     private static RuntimeException caught(Runnable operation){try{operation.run();}catch(RuntimeException failure){return failure;}throw new AssertionError("expected failure");}
