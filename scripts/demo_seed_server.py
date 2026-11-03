@@ -1,5 +1,6 @@
 """Connection helpers for the existing, explicitly selected development database."""
 import os
+import shlex
 import paramiko
 import pymysql
 
@@ -23,7 +24,7 @@ def connect():
             with sftp.open("/data/cloudflow/native.env") as stream:
                 source = stream.read().decode("utf-8")
         env = dict(line.split("=", 1) for line in source.splitlines() if "=" in line and not line.startswith("#"))
-        env = {key: value.strip().strip('"').strip("'") for key, value in env.items()}
+        env = {key: (shlex.split(value)[0] if value.strip() else '') for key, value in env.items()}
         db = pymysql.connect(host=HOST, user="root", password=env["DB_PASSWORD"],
                              database=DATABASE, charset="utf8mb4", autocommit=True,
                              connect_timeout=15, read_timeout=120, write_timeout=120)
