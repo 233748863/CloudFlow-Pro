@@ -1,5 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -674,17 +676,14 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
             WorkflowCallbackConstants.applyCallbackMetadata(payload, OaBusinessTypes.BUDGET_PLAN, budget.getBudgetId(), budget.getBudgetNo(),
                     "workflow:stream:approval-callback:oa");
             dto.setVariables(payload);
-            R<?> result = remoteWorkflowService.startProcessInternal(dto);
-            if (result != null && result.isSuccess() && result.getData() instanceof Map<?, ?> resultMap) {
-                Object instanceId = resultMap.get("processInstanceId");
-                if (instanceId == null) {
-                    instanceId = resultMap.get("instanceId");
-                }
+            R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(dto);
+            if (result != null && result.isSuccess() && result.getData() != null) {
+                String instanceId = result.getData().requireInstanceId();
                 if (instanceId != null) {
                     LambdaUpdateWrapper<OaBudgetPlan> wrapper = new LambdaUpdateWrapper<>();
                     wrapper.eq(OaBudgetPlan::getBudgetId, budget.getBudgetId())
                             .and(w -> w.isNull(OaBudgetPlan::getInstanceId).or().eq(OaBudgetPlan::getInstanceId, ""))
-                            .set(OaBudgetPlan::getInstanceId, String.valueOf(instanceId))
+                            .set(OaBudgetPlan::getInstanceId, instanceId)
                             .set(OaBudgetPlan::getUpdateBy, "event-consumer")
                             .set(OaBudgetPlan::getUpdateTime, LocalDateTime.now());
                     update(null, wrapper);
@@ -729,17 +728,14 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
                     "workflow:stream:approval-callback:oa"
             );
             dto.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcessInternal(dto);
-            if (result != null && result.isSuccess() && result.getData() instanceof Map<?, ?> resultMap) {
-                Object instanceId = resultMap.get("processInstanceId");
-                if (instanceId == null) {
-                    instanceId = resultMap.get("instanceId");
-                }
+            R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(dto);
+            if (result != null && result.isSuccess() && result.getData() != null) {
+                String instanceId = result.getData().requireInstanceId();
                 if (instanceId != null) {
                     LambdaUpdateWrapper<OaBudgetAdjustment> wrapper = new LambdaUpdateWrapper<>();
                     wrapper.eq(OaBudgetAdjustment::getAdjustmentId, adjustment.getAdjustmentId())
                             .and(w -> w.isNull(OaBudgetAdjustment::getInstanceId).or().eq(OaBudgetAdjustment::getInstanceId, ""))
-                            .set(OaBudgetAdjustment::getInstanceId, String.valueOf(instanceId))
+                            .set(OaBudgetAdjustment::getInstanceId, instanceId)
                             .set(OaBudgetAdjustment::getUpdateBy, "event-consumer")
                             .set(OaBudgetAdjustment::getUpdateTime, LocalDateTime.now());
                     budgetAdjustmentMapper.update(null, wrapper);

@@ -194,7 +194,8 @@ public class OaMeetingBookingService {
         people.sort(Long::compareTo);
         String encodedPeople = write(people);
         OaMeetingRules.require(encodedPeople.length() <= 1000, "MEETING_ATTENDEES_LIMIT", "参会人标识数组超过1000字符");
-        for (Long userId : people) OaRecordSupport.require(identities.user(userId, OaRecordSupport.tenantId()), "参会人不存在或已停用");
+        OaMeetingRules.require(identities.users(people, OaRecordSupport.tenantId()).size() == people.size(),
+                "MEETING_ATTENDEES_INVALID", "参会人不存在或已停用");
         int expected = command.getExpectedAttendees() == null ? people.size() : command.getExpectedAttendees();
         OaMeetingRules.require(expected >= people.size(), "MEETING_ATTENDEES_INVALID", "预计人数不能少于发起人与受邀人员总数");
         SysScheduleEvent event = new SysScheduleEvent();

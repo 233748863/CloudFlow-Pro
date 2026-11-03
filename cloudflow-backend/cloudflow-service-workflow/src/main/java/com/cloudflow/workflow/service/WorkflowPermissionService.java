@@ -15,17 +15,13 @@ import com.cloudflow.workflow.mapper.WfProcessCopyMapper;
 import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -38,7 +34,6 @@ import java.util.stream.Collectors;
 public class WorkflowPermissionService {
 
     private static final Logger log = LoggerFactory.getLogger(WorkflowPermissionService.class);
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Autowired
     private SysUserRoleMapper sysUserRoleMapper;
@@ -213,52 +208,64 @@ public class WorkflowPermissionService {
         }
     }
 
-    /**
-     * 启动权限校验（ALL/ROLE/DEPT/USER）
-     * 说明：permissionValue 同时兼容 JSON 数组与逗号分隔字符串。
-     */
+    /** 每次调用独立鉴权；列表入口显式复用同请求内的身份事实。 */
     public boolean canStartProcess(Long userId, String permissionType, String permissionValue) {
-        if (userId == null) {
-            return false;
-        }
-        if (!StringUtils.hasText(permissionType) || "ALL".equalsIgnoreCase(permissionType)) {
-            return true;
+        return startPermissionCheck(userId).allows(permissionType, permissionValue);
+    }
+
+    public StartPermissionCheck startPermissionCheck(Long userId) {
+        return new StartUserPermissions(userId);
+    }
+
+    @FunctionalInterface
+    public interface StartPermissionCheck {
+        boolean allows(String permissionType, String permissionValue);
+    }
+
+    private final class StartUserPermissions implements StartPermissionCheck {
+        private final Long userId;
+        private final Long tenantId = UserContext.getTenantId();
+        private boolean departmentLoaded;
+        private Long departmentId;
+        private Set<Long> roleIds;
+
+        private StartUserPermissions(Long userId) {
+            this.userId = userId;
         }
 
-        Set<String> targets = parsePermissionValues(permissionValue);
-        if (targets.isEmpty()) {
-            return false;
-        }
-
-        String type = permissionType.trim().toUpperCase();
-        switch (type) {
-            case "USER":
-                return targets.contains(String.valueOf(userId));
-            case "DEPT": {
-                SysUser user = sysUserMapper.selectById(userId);
-                if (user == null || user.getDeptId() == null) {
-                    return false;
-                }
-                return targets.contains(String.valueOf(user.getDeptId()));
-            }
-            case "ROLE": {
-                List<SysRole> roles = getUserRoles(userId);
-                for (SysRole role : roles) {
-                    if (role == null) {
-                        continue;
-                    }
-                    if (role.getRoleId() != null && targets.contains(String.valueOf(role.getRoleId()))) {
-                        return true;
-                    }
-                    if (StringUtils.hasText(role.getRoleKey()) && targets.contains(role.getRoleKey())) {
-                        return true;
-                    }
-                }
+        @Override
+        public boolean allows(String permissionType, String permissionValue) {
+            if (userId == null || permissionType == null) return false;
+            if ("ALL".equals(permissionType)) return true;
+            Set<Long> targets;
+            try {
+                targets = WorkflowStartPermissions.identifiers(permissionValue);
+            } catch (com.cloudflow.workflow.exception.WorkflowException invalid) {
+                log.warn("启动权限配置无效，拒绝发起: {}", invalid.getMessage());
                 return false;
             }
-            default:
-                log.warn("[canStartProcess] 未知启动权限类型: {}", permissionType);
-                return false;
+            if (targets.isEmpty()) return false;
+            return switch (permissionType) {
+                case "USER" -> targets.contains(userId);
+                case "DEPT" -> {
+                    if (!departmentLoaded) {
+                        SysUser user = sysUserMapper.selectById(userId);
+                        if (user != null && (tenantId == null || Objects.equals(tenantId, user.getTenantId()))
+                                && "0".equals(user.getStatus()) && Integer.valueOf(0).equals(user.getDeleted())) {
+                            departmentId = user.getDeptId();
+                        }
+                        departmentLoaded = true;
+                    }
+                    yield departmentId != null && targets.contains(departmentId);
+                }
+                case "ROLE" -> {
+                    if (roleIds == null) {
+                        roleIds = getUserRoles(userId).stream().map(SysRole::getRoleId).collect(Collectors.toSet());
+                    }
+                    yield roleIds.stream().anyMatch(targets::contains);
+                }
+                default -> false;
+            };
         }
     }
 
@@ -306,40 +313,6 @@ public class WorkflowPermissionService {
         }
         List<SysRole> roles = sysRoleMapper.selectList(roleWrapper);
         return roles == null ? Collections.emptyList() : roles;
-    }
-
-    private Set<String> parsePermissionValues(String rawValue) {
-        if (!StringUtils.hasText(rawValue)) {
-            return Collections.emptySet();
-        }
-
-        String trimmed = rawValue.trim();
-        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-            try {
-                List<Object> arr = OBJECT_MAPPER.readValue(trimmed, new TypeReference<List<Object>>() {});
-                return arr.stream()
-                        .map(v -> normalizeToken(v == null ? "" : String.valueOf(v)))
-                        .filter(StringUtils::hasText)
-                        .collect(Collectors.toCollection(LinkedHashSet::new));
-            } catch (Exception e) {
-                log.warn("[parsePermissionValues] JSON 解析失败，将按逗号分隔处理, value={}", rawValue);
-            }
-        }
-
-        return Arrays.stream(trimmed.split(","))
-                .map(this::normalizeToken)
-                .filter(StringUtils::hasText)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-    }
-
-    private String normalizeToken(String token) {
-        String value = token == null ? "" : token.trim();
-        if (value.length() >= 2) {
-            if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
-                value = value.substring(1, value.length() - 1).trim();
-            }
-        }
-        return value;
     }
 
     private void checkTenantIsolation(Long resourceTenantId, String resourceName) {

@@ -1,5 +1,7 @@
 package com.cloudflow.oa.service;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.cloudflow.common.core.domain.R;
 
 import java.util.Map;
@@ -18,9 +20,9 @@ public interface IWorkflowService {
      * @param variables            流程变量
      * @return 结果
      */
-    R<?> startProcess(String processDefinitionKey, String businessKey, Map<String, Object> variables);
+    R<ProcessStartResult> startProcess(String processDefinitionKey, String businessKey, Map<String, Object> variables);
 
-    R<?> startProcess(String processDefinitionKey, String businessKey, Long startUserId,
+    R<ProcessStartResult> startProcess(String processDefinitionKey, String businessKey, Long startUserId,
                       String startUserName, Map<String, Object> variables);
 
     /**

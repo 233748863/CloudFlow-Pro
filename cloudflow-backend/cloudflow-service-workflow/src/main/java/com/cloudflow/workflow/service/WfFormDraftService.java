@@ -7,6 +7,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import com.cloudflow.workflow.domain.WfFormDraft;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.dto.DraftSaveRequest;
@@ -148,7 +149,7 @@ public class WfFormDraftService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public R<?> submit(String draftId, Integer expectedVersion) {
+    public R<ProcessStartResult> submit(String draftId, Integer expectedVersion) {
         requireIdentifier(draftId);
         checkVersion(expectedVersion);
         Long tenantId = WorkflowLaunchContextService.requireTenant();
@@ -164,7 +165,7 @@ public class WfFormDraftService {
         contexts.checkAssignees(context, selected, true);
         if (StringUtils.hasText(draft.getTitle())) variables.put("_title", draft.getTitle());
         variables.put("_draftVersion", expectedVersion);
-        R<?> result = instances.startProcessFromDraft(context.definitionId(), context.processDefKey(),
+        R<ProcessStartResult> result = instances.startProcessFromDraft(context.definitionId(), context.processDefKey(),
                 "WF_DRAFT:" + draftId, variables, selected);
         if (result == null || !Integer.valueOf(200).equals(result.getCode())) {
             throw new WorkflowException("START_FAILED", "草稿提交失败，内容已保留");
@@ -184,13 +185,12 @@ public class WfFormDraftService {
         return removed;
     }
 
-    private R<?> submitted(Long tenantId, Long userId, String draftId, Integer expectedVersion) {
+    private R<ProcessStartResult> submitted(Long tenantId, Long userId, String draftId, Integer expectedVersion) {
         WfProcessInstance instance = drafts.findSubmitted(tenantId, userId, "WF_DRAFT:" + draftId);
         if (instance == null) throw notFound();
         Object submittedVersion = json.readData(instance.getVariables()).get("_draftVersion");
         if (!String.valueOf(expectedVersion).equals(String.valueOf(submittedVersion))) throw conflict();
-        return R.ok(Map.of("instanceId", instance.getInstanceId(), "processInstanceId", instance.getInstanceId(),
-                "processNo", instance.getProcessNo()));
+        return R.ok(new ProcessStartResult(instance.getInstanceId(), instance.getProcessNo()));
     }
 
     private WfFormDraft owned(String draftId, boolean lock) {

@@ -2,6 +2,11 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.oa.mapper.BizExpenseClaimMapper">
 
+    <select id="lockClaim" resultType="com.cloudflow.oa.domain.BizExpenseClaim">
+        SELECT * FROM biz_expense_claim
+        WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+
     <resultMap id="ClaimWithItemsMap" type="com.cloudflow.oa.domain.BizExpenseClaim">
         <id property="id" column="id"/>
         <result property="tenantId" column="tenant_id"/>
@@ -33,6 +38,7 @@
             <result property="expenseType" column="expense_type"/>
             <result property="amount" column="item_amount"/>
             <result property="expenseDate" column="expense_date"/>
+            <result property="city" column="item_city"/>
             <result property="description" column="item_description"/>
             <result property="budgetSubjectCode" column="item_budget_subject_code"/>
             <result property="budgetSubjectName" column="item_budget_subject_name"/>
@@ -85,6 +91,7 @@
             i.expense_type,
             i.amount as item_amount,
             i.expense_date,
+            i.city as item_city,
             i.description as item_description,
             i.budget_subject_code as item_budget_subject_code,
             i.budget_subject_name as item_budget_subject_name,

@@ -71,6 +71,7 @@ public class WorkflowBusinessTypeContributor implements BusinessTypeContributor 
                 .displayName("人才盘点发布审批").build());
         registry.register(BusinessTypeDef.builder()
                 .code("HR_TALENT_SUCCESSION").module("hr").businessTable("hr_talent_succession_plan")
+                .pendingStatuses(List.of("IN_PROGRESS"))
                 .finishedStatuses(finished("PUBLISHED", "ARCHIVED"))
                 .displayName("继任计划发布审批").build());
         registry.register(BusinessTypeDef.builder()
@@ -83,6 +84,7 @@ public class WorkflowBusinessTypeContributor implements BusinessTypeContributor 
                 .displayName("积分商城订单审批").build());
         registry.register(BusinessTypeDef.builder()
                 .code("HR_WORK_INJURY").module("hr").businessTable("hr_work_injury")
+                .pendingStatuses(List.of("DETERMINING"))
                 .finishedStatuses(finished("DETERMINED", "COMPENSATING", "REHABILITATING", "CLOSED"))
                 .displayName("工伤认定审批").build());
         registry.register(BusinessTypeDef.builder()

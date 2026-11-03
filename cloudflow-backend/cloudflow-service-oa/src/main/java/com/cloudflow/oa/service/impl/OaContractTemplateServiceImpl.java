@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.OaContractTemplate;
@@ -16,6 +17,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,7 +31,6 @@ import java.util.regex.Pattern;
 public class OaContractTemplateServiceImpl implements IOaContractTemplateService {
 
     private static final Pattern VAR_PATTERN = Pattern.compile("\\{\\{\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\}\\}");
-    private static final Long DEFAULT_TENANT_ID = 100000L;
 
     private final OaContractTemplateMapper templateMapper;
 
@@ -49,7 +50,9 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
             wrapper.eq(OaContractTemplate::getStatus, status);
         }
         wrapper.orderByDesc(OaContractTemplate::getUpdateTime);
-        return templateMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        Page<OaContractTemplate> page = templateMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        populateUsage(page.getRecords());
+        return page;
     }
 
     @Override
@@ -61,7 +64,9 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
             wrapper.eq(OaContractTemplate::getCategory, category);
         }
         wrapper.orderByAsc(OaContractTemplate::getTemplateName);
-        return templateMapper.selectList(wrapper);
+        List<OaContractTemplate> templates = templateMapper.selectList(wrapper);
+        populateUsage(templates);
+        return templates;
     }
 
     @Override
@@ -69,7 +74,9 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
         if (id == null) {
             return null;
         }
-        return templateMapper.selectById(id);
+        OaContractTemplate template = templateMapper.selectById(id);
+        if (template != null) populateUsage(List.of(template));
+        return template;
     }
 
     @Override
@@ -78,9 +85,7 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
         if (template == null || !StringUtils.hasText(template.getTemplateName())) {
             throw new IllegalArgumentException("模板名称必填");
         }
-        if (template.getTenantId() == null) {
-            template.setTenantId(DEFAULT_TENANT_ID);
-        }
+        template.setTenantId(OaRecordSupport.tenantId());
         if (!StringUtils.hasText(template.getStatus())) {
             template.setStatus("ACTIVE");
         }
@@ -96,6 +101,7 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
         if (template == null || template.getId() == null) {
             throw new IllegalArgumentException("模板 ID 必填");
         }
+        template.setTenantId(OaRecordSupport.tenantId());
         template.setUpdateBy(UserContext.getUserName());
         template.setUpdateTime(LocalDateTime.now());
         return templateMapper.updateById(template) > 0;
@@ -112,15 +118,19 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
         if (template == null) {
             return false;
         }
-        template.setDeleted(1);
-        template.setUpdateBy(UserContext.getUserName());
-        template.setUpdateTime(LocalDateTime.now());
-        return templateMapper.updateById(template) > 0;
+        return templateMapper.update(null, new LambdaUpdateWrapper<OaContractTemplate>()
+                .eq(OaContractTemplate::getId, id)
+                .eq(OaContractTemplate::getTenantId, OaRecordSupport.tenantId())
+                .eq(OaContractTemplate::getVersion, template.getVersion())
+                .set(OaContractTemplate::getDeleted, 1)
+                .set(OaContractTemplate::getVersion, template.getVersion() + 1)
+                .set(OaContractTemplate::getUpdateBy, UserContext.getUserName())
+                .set(OaContractTemplate::getUpdateTime, LocalDateTime.now())) > 0;
     }
 
     @Override
     public String renderContent(Long id, Map<String, Object> variables) {
-        OaContractTemplate template = getById(id);
+        OaContractTemplate template = templateMapper.selectById(id);
         if (template == null || !StringUtils.hasText(template.getContent())) {
             return "";
         }
@@ -138,5 +148,15 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
         }
         matcher.appendTail(buffer);
         return buffer.toString();
+    }
+
+    private void populateUsage(List<OaContractTemplate> templates) {
+        if (templates.isEmpty()) return;
+        Map<Long, Long> counts = new HashMap<>();
+        for (OaContractTemplateMapper.Usage usage : templateMapper.usageCounts(OaRecordSupport.tenantId(),
+                templates.stream().map(OaContractTemplate::getId).toList())) {
+            counts.put(usage.templateId(), usage.usageCount());
+        }
+        for (OaContractTemplate template : templates) template.setUsageCount(counts.getOrDefault(template.getId(), 0L));
     }
 }

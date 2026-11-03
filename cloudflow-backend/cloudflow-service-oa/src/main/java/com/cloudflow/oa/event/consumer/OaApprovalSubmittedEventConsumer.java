@@ -1,5 +1,7 @@
 package com.cloudflow.oa.event.consumer;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
@@ -45,11 +47,9 @@ public class OaApprovalSubmittedEventConsumer implements BusinessEventConsumer {
         }
         start.setBusinessKey(businessKey);
         start.setStartUserId(request.getStartUserId()); start.setStartUserName(request.getStartUserName()); start.setVariables(request.getVariables());
-        R<?> response = workflow.startProcessInternal(start);
+        R<ProcessStartResult> response = workflow.startProcessInternal(start);
         if (response == null || !response.isSuccess() || response.getData() == null) throw new IllegalStateException("工作流启动失败，等待重试");
-        Object data = response.getData();
-        Object instance = data instanceof Map<?, ?> values ? (values.get("processInstanceId") != null ? values.get("processInstanceId") : values.get("instanceId")) : data;
-        String instanceId = OaRecordSupport.text(instance == null ? null : instance.toString(), 64, "审批实例");
+        String instanceId = response.getData().requireInstanceId();
         participant.bindInstance(request, instanceId);
     }
 }

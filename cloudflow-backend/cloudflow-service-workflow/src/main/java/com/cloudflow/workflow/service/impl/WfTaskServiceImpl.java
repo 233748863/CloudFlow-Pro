@@ -34,6 +34,7 @@ import com.cloudflow.workflow.processor.ApprovalPostProcessor;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.*;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -81,6 +82,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
     private WfTaskReadMapper taskReadMapper;
     @Autowired
     private WfTaskUrgeMapper taskUrgeMapper;
+
+    @Autowired
+    private WfUrgeEffectMapper urgeEffectMapper;
     @Autowired
     private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
     @Autowired
@@ -311,6 +315,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
         historyState.record(activeInstance, task, history);
         taskHistoryMapper.insert(history);
+        if (!"DELEGATE".equals(normalizedAction)) urgeEffectMapper.recordCompletion(history);
         completeTaskMonitor(task, history.getCreateTime(), normalizedAction);
 
         // 删除当前任务
@@ -488,6 +493,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
         historyState.record(instance, task, history);
         taskHistoryMapper.insert(history);
+        urgeEffectMapper.recordCompletion(history);
         completeTaskMonitor(task, history.getCreateTime(), "REJECT");
 
         // 删除当前任务
@@ -708,6 +714,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         applyAdminOverrideMetadata(history, task, UserContext.getUserId());
         historyState.record(instance, task, history);
         taskHistoryMapper.insert(history);
+        urgeEffectMapper.recordCompletion(history);
         workflowEventPublisher.publishTaskCompleted(instance, task.getTaskId(), task.getNodeKey(), task.getNodeName(),
                 "REJECT", comment, history.getTaskType());
         auditService.log(WorkflowAuditService.AuditAction.TASK_REJECT, task.getTaskId(), "strategy=" + strategy);
@@ -972,9 +979,12 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
         rateLimiterService.checkUrgeTaskLimit(currentUserId != null ? currentUserId : 0L);
 
-        WfTask task = taskMapper.selectById(taskId);
+        WfTask task = taskMapper.selectForUpdate(WorkflowLaunchContextService.requireTenant(), taskId);
         if (task == null) {
             throw WorkflowException.taskNotFound(taskId);
+        }
+        if (!WfTaskStatus.TODO.getCode().equals(task.getStatus()) || task.getAssignee() == null) {
+            throw WorkflowException.invalidState("只有已分派处理人的待办任务可以催办");
         }
 
         WfProcessInstance instance = requireTaskInstanceForOperation(task, "催办");
@@ -1090,6 +1100,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
         historyState.record(requireTaskInstanceForOperation(task, "会签记录"), task, history);
         taskHistoryMapper.insert(history);
+        urgeEffectMapper.recordCompletion(history);
         completeTaskMonitor(task, history.getCreateTime(), "COUNTERSIGN_" + voteResult);
 
         if ("PASSED".equals(countersignResult) || "REJECTED".equals(countersignResult)) {
@@ -1477,6 +1488,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         // 缓存已解析的步骤列表和节点树
         Map<String, List<Map<String, String>>> stepsCache = new HashMap<>();
         Map<String, WfNodeConfig> rootNodeCache = new HashMap<>();
+        Map<String, Map<String, Object>> variablesByInstance = parseVariablesByInstance(instances);
 
         for (WfTask task : tasks) {
             if (task.getProxyUserId() != null) agents.canRead(task, task.getProxyUserId());
@@ -1493,13 +1505,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     task.setFormId(def.getFormId());
                 }
 
-                if (StringUtils.hasText(instance.getVariables())) {
-                    try {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> vars = objectMapper.readValue(instance.getVariables(), Map.class);
-                        task.setVariables(vars);
-                    } catch (Exception e) { /* 忽略 */ }
-                }
+                task.setVariables(variablesByInstance.get(instance.getInstanceId()));
             }
 
             // 填充处理人用户名
@@ -1631,6 +1637,24 @@ public class WfTaskServiceImpl implements IWfTaskService {
         Map<String, List<WfTaskHistory>> historiesByInstance = allHistories.stream()
             .collect(Collectors.groupingBy(WfTaskHistory::getInstanceId));
 
+        Map<String, WfTaskHistory> historyById = allHistories.stream()
+                .collect(Collectors.toMap(WfTaskHistory::getHistoryId, history -> history));
+        Map<String, Map<String, Object>> variablesByInstance = parseVariablesByInstance(instances);
+        Map<String, WfNodeConfig> rootsByDefinition = new HashMap<>();
+        Map<String, List<Map<String, String>>> stepsByDefinition = new HashMap<>();
+        for (WfProcessDefinition definition : defById.values()) {
+            if (!StringUtils.hasText(definition.getModelJson())) {
+                continue;
+            }
+            try {
+                WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(definition.getModelJson());
+                rootsByDefinition.put(definition.getDefinitionId(), root);
+                stepsByDefinition.put(definition.getDefinitionId(), nodeExecutionService.extractApprovalSteps(root));
+            } catch (Exception failure) {
+                log.warn("[enrichDoneTasks] 解析流程定义失败, definitionId={}: {}", definition.getDefinitionId(), failure.getMessage());
+            }
+        }
+
         for (WfTask task : tasks) {
             WfProcessInstance instance = instanceMap.get(task.getInstanceId());
             if (instance == null) {
@@ -1646,26 +1670,20 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 task.setProcessName(def.getProcessName());
                 task.setFormId(def.getFormId());
             }
-            if (StringUtils.hasText(instance.getVariables())) {
-                try {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> vars = objectMapper.readValue(instance.getVariables(), Map.class);
-                    task.setVariables(vars);
-                } catch (Exception e) {
-                    log.warn("[enrichDoneTasks] 解析流程变量失败, instanceId={}: {}", instance.getInstanceId(), e.getMessage());
-                }
-            }
+            task.setVariables(variablesByInstance.get(instance.getInstanceId()));
             if (def != null && StringUtils.hasText(def.getModelJson())) {
                 try {
-                    WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
-                    WfTaskHistory history = historiesByInstance.getOrDefault(instance.getInstanceId(), List.of()).stream()
-                            .filter(candidate -> Objects.equals(candidate.getHistoryId(), task.getHistoryId())).findFirst().orElse(null);
+                    WfNodeConfig root = rootsByDefinition.get(def.getDefinitionId());
+                    if (root == null) {
+                        continue;
+                    }
+                    WfTaskHistory history = historyById.get(task.getHistoryId());
                     WfNodeConfig historyNode = nodeExecutionService.findNode(root, task.getNodeKey());
                     task.setCanWithdraw(WfProcessStatus.isActive(instance.getStatus()) && history != null
                             && Objects.equals(history.getOperatorId(), UserContext.getUserId())
                             && WorkflowHistoryState.effectiveApproval(instance, history) && historyNode != null
                             && WorkflowNodePolicy.allows(historyNode, "allowRollback"));
-                    List<Map<String, String>> steps = nodeExecutionService.extractApprovalSteps(root);
+                    List<Map<String, String>> steps = stepsByDefinition.get(def.getDefinitionId());
                     if (steps != null && !steps.isEmpty()) {
                         enrichTaskStepInfo(task, steps, historiesByInstance.getOrDefault(task.getInstanceId(), new ArrayList<>()));
                     }
@@ -1674,6 +1692,22 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 }
             }
         }
+    }
+
+    private Map<String, Map<String, Object>> parseVariablesByInstance(List<WfProcessInstance> instances) {
+        Map<String, Map<String, Object>> result = new HashMap<>();
+        for (WfProcessInstance instance : instances) {
+            if (!StringUtils.hasText(instance.getVariables())) {
+                continue;
+            }
+            try {
+                result.put(instance.getInstanceId(), objectMapper.readValue(instance.getVariables(),
+                        new TypeReference<Map<String, Object>>() {}));
+            } catch (Exception failure) {
+                log.warn("解析流程变量失败, instanceId={}: {}", instance.getInstanceId(), failure.getMessage());
+            }
+        }
+        return result;
     }
 
     /**

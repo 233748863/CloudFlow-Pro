@@ -195,7 +195,7 @@ public class VersionComparisonServiceImpl implements IVersionComparisonService {
     private VersionComparisonDTO.NodeChange createNodeChange(JsonNode node, JsonNode oldNode) {
         VersionComparisonDTO.NodeChange change = new VersionComparisonDTO.NodeChange();
         change.setNodeId(node.has("id") ? node.get("id").asText() : "");
-        change.setNodeName(node.has("name") ? node.get("name").asText() : "");
+        change.setNodeName(node.path("title").asText(""));
         change.setNodeType(node.has("type") ? node.get("type").asText() : "");
         return change;
     }

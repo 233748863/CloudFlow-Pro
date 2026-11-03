@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.exception.ServiceException;
@@ -10,6 +11,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.cloudflow.oa.domain.OaMeetingAttendance;
 import com.cloudflow.oa.domain.OaMeetingMinutes;
 import com.cloudflow.oa.domain.WorkTask;
+import com.cloudflow.oa.domain.dto.OaMeetingDecision;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.vo.OaIdentityReference;
 import com.cloudflow.oa.mapper.OaMeetingAttendanceMapper;
@@ -19,6 +21,8 @@ import com.cloudflow.oa.service.IOaMeetingMinutesService;
 import com.cloudflow.oa.service.IWorkTaskService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,13 +30,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -53,13 +53,13 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
     private final DataScopeHandle dataScopes;
 
     @Override
-    public Page<OaMeetingMinutes> page(String keyword, String status, Long meetingId, Integer pageNum, Integer pageSize) {
+    public Page<OaMeetingMinutes> page(String keyword, String status, Long scheduleEventId, Integer pageNum, Integer pageSize) {
         OaMeetingRules.require(pageNum != null && pageNum > 0 && pageSize != null && pageSize > 0 && pageSize <= 50,
                 "MEETING_PAGE_INVALID", "页码须大于0，每页最多50条");
         DataScope scope = new DataScope();
         boolean manager = StpUtil.hasPermission("oa:meeting:manage");
         boolean all = manager && Boolean.TRUE.equals(dataScopes.calcScope(scope));
-        return minutesMapper.visiblePage(new Page<>(pageNum, pageSize), OaRecordSupport.tenantId(), keyword, status, meetingId,
+        return minutesMapper.visiblePage(new Page<>(pageNum, pageSize), OaRecordSupport.tenantId(), keyword, status, scheduleEventId,
                 OaMeetingAccess.userId(), all, manager ? scope.getUserId() : null, manager ? scope.getDeptList() : List.of());
     }
 
@@ -67,7 +67,7 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
     public OaMeetingMinutes getDetail(Long id) {
         OaMeetingMinutes minutes = id == null ? null : minutesMapper.selectById(id);
         if (minutes == null || !Objects.equals(minutes.getTenantId(), OaRecordSupport.tenantId()) || !Integer.valueOf(0).equals(minutes.getDeleted())) throw unavailable();
-        Long eventId = linkedId(minutes);
+        Long eventId = minutes.getScheduleEventId();
         if (eventId != null && !meetingAccess.visible(meetingAccess.get(eventId))) throw unavailable();
         return minutes;
     }
@@ -76,7 +76,7 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
     @Transactional
     public boolean save(OaMeetingMinutes minutes) {
         OaRecordSupport.require(minutes, "纪要不能为空");
-        Long eventId = linkedId(minutes);
+        Long eventId = minutes.getScheduleEventId();
         if (eventId != null) {
             SysScheduleEvent event = lockEvent(eventId);
             requireOccurred(event);
@@ -84,6 +84,7 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
             association(minutes, event);
         } else organizer(minutes);
         minutes.setMeetingTitle(OaRecordSupport.text(minutes.getMeetingTitle(), 200, "会议标题"));
+        minutes.setDecisions(normalizeDraftDecisions(minutes.getDecisions()));
         OaRecordSupport.create(minutes, "id"); minutes.setStatus("DRAFT"); minutes.setConfirmedTime(null);
         OaRecordSupport.saved(minutesMapper.insert(minutes));
         if (eventId != null) minutesMapper.bindAttendance(OaRecordSupport.tenantId(), eventId, minutes.getId());
@@ -98,13 +99,13 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
         OaMeetingMinutes original = lock(minutes.getId());
         OaMeetingAccess.version(minutes.getVersion(), original.getVersion());
         if ("CONFIRMED".equals(original.getStatus())) throw new ServiceException("已确认纪要不能直接编辑", 409);
-        if (!Objects.equals(linkedId(minutes), linkedId(original))) throw new ServiceException("纪要关联的会议不可修改", 409);
-        if (linkedId(original) == null) {
+        if (!Objects.equals(minutes.getScheduleEventId(), original.getScheduleEventId())) throw new ServiceException("纪要关联的会议不可修改", 409);
+        if (original.getScheduleEventId() == null) {
             original.setMeetingTitle(OaRecordSupport.text(minutes.getMeetingTitle(), 200, "会议标题"));
             original.setMeetingTime(minutes.getMeetingTime()); original.setRoomId(minutes.getRoomId()); original.setLocation(minutes.getLocation());
             original.setOrganizerId(minutes.getOrganizerId()); organizer(original);
         }
-        original.setMinutesContent(minutes.getMinutesContent()); original.setDecisions(minutes.getDecisions()); original.setAttachmentUrl(minutes.getAttachmentUrl());
+        original.setMinutesContent(minutes.getMinutesContent()); original.setDecisions(normalizeDraftDecisions(minutes.getDecisions())); original.setAttachmentUrl(minutes.getAttachmentUrl());
         OaRecordSupport.touch(original); OaRecordSupport.saved(minutesMapper.updateById(original));
         return true;
     }
@@ -114,11 +115,13 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
     @Audit(name = "删除会议纪要", highRisk = true)
     public boolean remove(Long id) {
         OaMeetingMinutes exist = lock(id);
-        exist.setDeleted(1);
-        exist.setUpdateBy(UserContext.getUserName());
-        exist.setUpdateTime(LocalDateTime.now());
-        OaRecordSupport.saved(minutesMapper.updateById(exist));
-        if (linkedId(exist) != null) minutesMapper.unlinkAttendance(OaRecordSupport.tenantId(), id);
+        OaRecordSupport.saved(minutesMapper.update(null, new LambdaUpdateWrapper<OaMeetingMinutes>()
+                .eq(OaMeetingMinutes::getId, id).eq(OaMeetingMinutes::getTenantId, OaRecordSupport.tenantId())
+                .eq(OaMeetingMinutes::getVersion, exist.getVersion())
+                .set(OaMeetingMinutes::getDeleted, 1).set(OaMeetingMinutes::getVersion, exist.getVersion() + 1)
+                .set(OaMeetingMinutes::getUpdateBy, UserContext.getUserName())
+                .set(OaMeetingMinutes::getUpdateTime, LocalDateTime.now())));
+        if (exist.getScheduleEventId() != null) minutesMapper.unlinkAttendance(OaRecordSupport.tenantId(), id);
         return true;
     }
 
@@ -151,7 +154,7 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
             throw new IllegalArgumentException("纪要ID与参会人ID必填");
         }
         OaMeetingMinutes minutes = lock(attendance.getMinutesId());
-        Long eventId = linkedId(minutes);
+        Long eventId = minutes.getScheduleEventId();
         String status = OaRecordSupport.code(attendance.getAttendStatus(), "NOT_CHECKED", Set.of("ATTEND", "ABSENT", "LATE", "LEAVE", "NOT_CHECKED"));
         OaIdentityReference user = OaRecordSupport.require(identities.user(attendance.getUserId(), OaRecordSupport.tenantId()), "参会人员不存在或已停用");
         OaMeetingAttendance exist;
@@ -187,7 +190,7 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
         OaMeetingMinutes minutes = lock(observed.getMinutesId());
         OaMeetingAttendance exist = minutesMapper.lockAttendance(OaRecordSupport.tenantId(), id);
         if (exist == null || !Objects.equals(exist.getMinutesId(), minutes.getId())) throw unavailable();
-        if (linkedId(minutes) == null) exist.setDeleted(1);
+        if (minutes.getScheduleEventId() == null) exist.setDeleted(1);
         else { exist.setAttendStatus("NOT_CHECKED"); exist.setCheckInTime(null); exist.setRemark(null); }
         exist.setUpdateBy(UserContext.getUserName());
         exist.setUpdateTime(LocalDateTime.now());
@@ -196,69 +199,44 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
 
     @Override
     @Transactional
-    public List<Long> dispatchDecisionsToWorkTasks(Long minutesId, List<Map<String, Object>> decisionOverrides) {
+    public List<Long> dispatchDecisionsToWorkTasks(Long minutesId, List<OaMeetingDecision> decisionOverrides) {
         OaMeetingMinutes minutes = lock(minutesId);
         if (!"CONFIRMED".equals(minutes.getStatus())) throw new ServiceException("请先确认会议纪要，再派发决议项", 409);
-        // 优先使用前端覆盖的 decisions 数组（用于一键派发前的微调），否则读库内已存的 JSON。
-        List<Map<String, Object>> decisions = decisionOverrides;
-        if (decisions == null || decisions.isEmpty()) {
-            decisions = parseDecisionsJson(minutes.getDecisions());
-        }
-        if (decisions == null || decisions.isEmpty()) {
-            return List.of();
-        }
+        List<OaMeetingDecision> persisted = parseDecisionsJson(minutes.getDecisions());
+        List<OaMeetingDecision> decisions = new ArrayList<>(decisionOverrides == null || decisionOverrides.isEmpty() ? persisted : decisionOverrides);
+        if (decisions.size() != persisted.size()) throw new ServiceException("决议项已变化，请刷新纪要后重试", 409);
         List<Long> taskIds = new ArrayList<>();
-        for (Map<String, Object> decision : decisions) {
-            // 已派发过则跳过（幂等：decision.workTaskId 已存在则不再创建）
-            Object existingTaskId = decision.get("workTaskId");
-            if (existingTaskId != null) {
-                taskIds.add(Long.valueOf(String.valueOf(existingTaskId)));
+        for (int index = 0; index < decisions.size(); index++) {
+            OaMeetingDecision stored = persisted.get(index);
+            OaMeetingDecision decision = OaRecordSupport.require(decisions.get(index), "决议项不能为空");
+            if (stored.getWorkTaskId() != null) {
+                decisions.set(index, stored);
+                taskIds.add(stored.getWorkTaskId());
                 continue;
             }
+            if (decision.getWorkTaskId() != null) throw new ServiceException("任务编号由服务端派发生成", 400);
+            validateDecision(decision);
+            Long ownerId = decision.getOwnerId() == null ? minutes.getOrganizerId() : decision.getOwnerId();
+            OaIdentityReference owner = OaRecordSupport.require(identities.user(ownerId, minutes.getTenantId()), "决议负责人不存在或已停用");
             WorkTask task = new WorkTask();
             task.setTenantId(minutes.getTenantId());
-            task.setTitle(stringOrFallback(decision.get("title"), "会议决议项"));
-            String description = stringOrFallback(decision.get("description"),
-                    "来源会议: " + Objects.toString(minutes.getMeetingTitle(), "未命名"));
-            task.setDescription(description);
-            Long ownerId = parseLong(decision.get("ownerId"));
-            if (ownerId == null) {
-                ownerId = minutes.getOrganizerId();
-            }
-            task.setAssigneeId(ownerId);
-            task.setOwnerId(minutes.getOrganizerId());
-            task.setPriority(parseInt(decision.get("priority"), 1));
-            task.setStatus("TODO");
-            LocalDate deadline = parseDate(decision.get("deadline"));
-            if (deadline != null) {
-                task.setDueDate(deadline.atStartOfDay());
-            }
-            task.setCreateBy(UserContext.getUserName());
-            task.setUpdateBy(UserContext.getUserName());
-            task.setCreateTime(LocalDateTime.now());
-            task.setUpdateTime(LocalDateTime.now());
-            workTaskService.save(task);
+            task.setTitle(decision.getTitle());
+            String origin = "来源会议: " + minutes.getMeetingTitle();
+            task.setDescription(StringUtils.hasText(decision.getRemark()) ? origin + "\n" + decision.getRemark() : origin);
+            task.setAssigneeId(ownerId); task.setOwnerId(minutes.getOrganizerId());
+            task.setPriority(1); task.setStatus("TODO");
+            if (decision.getDueDate() != null) task.setDueDate(decision.getDueDate().atStartOfDay());
+            task.setCreateBy(UserContext.getUserName()); task.setUpdateBy(UserContext.getUserName());
+            task.setCreateTime(LocalDateTime.now()); task.setUpdateTime(task.getCreateTime());
+            if (!workTaskService.save(task)) throw new IllegalStateException("会议决议任务保存失败");
             taskIds.add(task.getTaskId());
-            decision.put("workTaskId", task.getTaskId());
-            decision.put("status", "DISPATCHED");
+            decision.setOwnerId(ownerId); decision.setOwnerName(owner.getName());
+            decision.setWorkTaskId(task.getTaskId()); decision.setStatus("DISPATCHED");
         }
-        // 回写决议 JSON，让前端读到 workTaskId
-        try {
-            minutes.setDecisions(objectMapper.writeValueAsString(decisions));
-            minutes.setUpdateBy(UserContext.getUserName());
-            minutes.setUpdateTime(LocalDateTime.now());
-            OaRecordSupport.saved(minutesMapper.updateById(minutes));
-        } catch (Exception e) {
-            throw new IllegalStateException("会议决议派发记录保存失败", e);
-        }
+        minutes.setDecisions(writeDecisions(decisions));
+        OaRecordSupport.touch(minutes);
+        OaRecordSupport.saved(minutesMapper.updateById(minutes));
         return taskIds;
-    }
-
-    private Long linkedId(OaMeetingMinutes minutes) {
-        if (minutes.getMeetingId() != null && minutes.getScheduleEventId() != null && !Objects.equals(minutes.getMeetingId(), minutes.getScheduleEventId())) {
-            throw new ServiceException("纪要会议标识不一致", 400);
-        }
-        return minutes.getScheduleEventId() == null ? minutes.getMeetingId() : minutes.getScheduleEventId();
     }
 
     private SysScheduleEvent lockEvent(Long id) {
@@ -273,10 +251,10 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
 
     private OaMeetingMinutes lock(Long id) {
         OaMeetingMinutes observed = getDetail(id);
-        Long eventId = linkedId(observed);
+        Long eventId = observed.getScheduleEventId();
         if (eventId != null) lockEvent(eventId);
         OaMeetingMinutes minutes = minutesMapper.lock(OaRecordSupport.tenantId(), id);
-        if (minutes == null || !Objects.equals(eventId, linkedId(minutes))) throw unavailable();
+        if (minutes == null || !Objects.equals(eventId, minutes.getScheduleEventId())) throw unavailable();
         return minutes;
     }
 
@@ -289,7 +267,7 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
     }
 
     private void association(OaMeetingMinutes minutes, SysScheduleEvent event) {
-        minutes.setMeetingId(event.getEventId()); minutes.setScheduleEventId(event.getEventId()); minutes.setMeetingTitle(event.getTitle());
+        minutes.setScheduleEventId(event.getEventId()); minutes.setMeetingTitle(event.getTitle());
         minutes.setMeetingTime(event.getStartTime()); minutes.setRoomId(event.getRoomId() == null ? null : event.getRoomId().toString());
         minutes.setOrganizerId(event.getCreatorId()); organizer(minutes);
     }
@@ -302,71 +280,38 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
 
     private ServiceException unavailable() { return new ServiceException("会议纪要不存在或无权访问", 404); }
 
-    private List<Map<String, Object>> parseDecisionsJson(String json) {
-        if (!StringUtils.hasText(json)) {
-            return new ArrayList<>();
-        }
+    private List<OaMeetingDecision> parseDecisionsJson(String json) {
+        if (!StringUtils.hasText(json)) return new ArrayList<>();
         try {
-            return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {
-            });
-        } catch (Exception e) {
-            log.warn("解析 decisions JSON 失败: {}", json, e);
-            return new ArrayList<>();
+            List<OaMeetingDecision> decisions = objectMapper.readerFor(new TypeReference<List<OaMeetingDecision>>() {})
+                    .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).readValue(json);
+            return OaRecordSupport.require(decisions, "决议必须是数组");
+        } catch (JsonProcessingException failure) {
+            throw new ServiceException("决议格式无效，请检查负责人和截止日期", 400);
         }
     }
 
-    private String stringOrFallback(Object value, String fallback) {
-        if (value == null) {
-            return fallback;
+    private String normalizeDraftDecisions(String json) {
+        List<OaMeetingDecision> decisions = parseDecisionsJson(json);
+        for (OaMeetingDecision decision : decisions) {
+            validateDecision(decision);
+            if (decision.getWorkTaskId() != null) throw new ServiceException("任务编号由服务端派发生成", 400);
+            decision.setStatus("PENDING");
         }
-        String s = String.valueOf(value).trim();
-        return s.isEmpty() ? fallback : s;
+        return writeDecisions(decisions);
     }
 
-    private Long parseLong(Object value) {
-        if (value == null) {
-            return null;
-        }
+    private void validateDecision(OaMeetingDecision decision) {
+        OaRecordSupport.require(decision, "决议项不能为空");
+        decision.setTitle(OaRecordSupport.text(decision.getTitle(), 200, "决议标题"));
+        if (decision.getOwnerId() != null && decision.getOwnerId() <= 0) throw new ServiceException("决议负责人标识无效", 400);
+    }
+
+    private String writeDecisions(List<OaMeetingDecision> decisions) {
         try {
-            return Long.valueOf(String.valueOf(value));
-        } catch (Exception ignored) {
-            return null;
+            return objectMapper.writeValueAsString(decisions);
+        } catch (JsonProcessingException failure) {
+            throw new IllegalStateException("会议决议保存失败", failure);
         }
-    }
-
-    private int parseInt(Object value, int defaultValue) {
-        if (value == null) {
-            return defaultValue;
-        }
-        try {
-            return Integer.parseInt(String.valueOf(value));
-        } catch (Exception ignored) {
-            return defaultValue;
-        }
-    }
-
-    private LocalDate parseDate(Object value) {
-        if (value == null) {
-            return null;
-        }
-        try {
-            String s = String.valueOf(value).trim();
-            if (s.isEmpty()) {
-                return null;
-            }
-            // 兼容 yyyy-MM-dd 或 yyyy-MM-dd HH:mm:ss
-            return s.length() > 10
-                    ? LocalDateTime.parse(s.replace(' ', 'T')).atZone(ZoneId.systemDefault()).toLocalDate()
-                    : LocalDate.parse(s);
-        } catch (Exception ignored) {
-            // 留意：兜底返回 null 是为了避免一次坏值卡住整个一键派发，调用方仍可在 UI 提示
-            return null;
-        }
-    }
-
-    // 静态工具方法消除未读告警的占位（保持类内部 import 不被裁剪）
-    @SuppressWarnings("unused")
-    private void __unused__() {
-        new LinkedHashMap<String, Object>();
     }
 }

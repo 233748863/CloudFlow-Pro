@@ -48,6 +48,9 @@ public class WfDeployRollbackHistory {
     /** 回滚操作人ID */
     private Long rollbackBy;
 
+    /** 操作发生时的姓名快照，不随后续用户改名更新。 */
+    private String rollbackByName;
+
     /** 回滚时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime rollbackTime;

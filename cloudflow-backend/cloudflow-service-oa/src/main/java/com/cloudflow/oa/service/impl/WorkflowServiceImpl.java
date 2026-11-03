@@ -1,5 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
@@ -26,12 +28,12 @@ public class WorkflowServiceImpl implements IWorkflowService {
     private RemoteWorkflowService remoteWorkflowService;
 
     @Override
-    public R<?> startProcess(String processDefinitionKey, String businessKey, Map<String, Object> variables) {
+    public R<ProcessStartResult> startProcess(String processDefinitionKey, String businessKey, Map<String, Object> variables) {
         return startProcess(processDefinitionKey, businessKey, null, null, variables);
     }
 
     @Override
-    public R<?> startProcess(String processDefinitionKey, String businessKey, Long startUserId,
+    public R<ProcessStartResult> startProcess(String processDefinitionKey, String businessKey, Long startUserId,
                              String startUserName, Map<String, Object> variables) {
         try {
             if (startUserId != null) {
@@ -42,7 +44,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 req.setStartUserId(startUserId);
                 req.setStartUserName(startUserName);
                 req.setVariables(variables);
-                R<?> result = remoteWorkflowService.startProcessInternal(req);
+                R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(req);
                 log.info("工作流内部启动成功，流程定义Key: {}, 业务Key: {}, 发起人: {}",
                         processDefinitionKey, businessKey, startUserId);
                 return result;
@@ -54,7 +56,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
             req.setBusinessKey(businessKey);
             req.setVariables(variables);
             
-            R<?> result = remoteWorkflowService.startProcess(req);
+            R<ProcessStartResult> result = remoteWorkflowService.startProcess(req);
             log.info("工作流启动成功，流程定义Key: {}, 业务Key: {}", processDefinitionKey, businessKey);
             return result;
         } catch (Exception e) {

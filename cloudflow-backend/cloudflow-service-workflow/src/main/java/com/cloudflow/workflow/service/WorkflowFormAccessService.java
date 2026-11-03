@@ -80,10 +80,11 @@ public class WorkflowFormAccessService {
         if (StringUtils.hasText(instanceId)) context = instance(instanceId, taskId);
         else if (StringUtils.hasText(definitionId)) context = start(definitionId);
         else {
+            WorkflowPermissionService.StartPermissionCheck startPermission = authorization.startPermissionCheck(WorkflowLaunchContextService.requireUser());
             List<WfProcessDefinition> accessible = definitions.selectList(new LambdaQueryWrapper<WfProcessDefinition>()
                             .eq(WfProcessDefinition::getTenantId, WorkflowLaunchContextService.requireTenant())
                             .eq(WfProcessDefinition::getFormId, formId).eq(WfProcessDefinition::getStatus, "PUBLISHED"))
-                    .stream().filter(definition -> authorization.canStartProcess(WorkflowLaunchContextService.requireUser(), definition.getStartPermissionType(), definition.getStartPermissionValue())).toList();
+                    .stream().filter(definition -> startPermission.allows(definition.getStartPermissionType(), definition.getStartPermissionValue())).toList();
             if (accessible.size() != 1) throw WorkflowException.permissionDenied("请指定有权访问的流程定义或实例后读取表单");
             context = start(accessible.get(0).getDefinitionId());
         }

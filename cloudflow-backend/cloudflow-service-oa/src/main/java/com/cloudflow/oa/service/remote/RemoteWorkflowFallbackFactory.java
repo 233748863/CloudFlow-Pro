@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.remote;
 
-import com.cloudflow.common.core.domain.ProcessFallbackResponse;
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.workflow.WorkflowFallbackRetryPublisher;
 import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
@@ -35,17 +36,17 @@ public class RemoteWorkflowFallbackFactory implements FallbackFactory<RemoteWork
         
         return new RemoteWorkflowService() {
             @Override
-            public R<?> startProcess(WorkflowProcessStartDTO req) {
+            public R<ProcessStartResult> startProcess(WorkflowProcessStartDTO req) {
                 log.error("启动工作流失败，请求参数: {}", req);
                 retryPublisher.publish("cloudflow-oa", "startProcess", req, cause);
-                return retryResponse(req != null ? req.getProcessDefKey() : null, req != null ? req.getBusinessKey() : null);
+                return R.fail("workflow service unavailable, retry submitted to outbox");
             }
 
             @Override
-            public R<?> startProcessInternal(InternalWorkflowStartDTO req) {
+            public R<ProcessStartResult> startProcessInternal(InternalWorkflowStartDTO req) {
                 log.error("内部启动工作流失败，请求参数: {}", req);
                 retryPublisher.publish("cloudflow-oa", "startProcessInternal", req, cause);
-                return retryResponse(req != null ? req.getProcessDefKey() : null, req != null ? req.getBusinessKey() : null);
+                return R.fail("workflow service unavailable, retry submitted to outbox");
             }
 
             @Override
@@ -96,9 +97,4 @@ public class RemoteWorkflowFallbackFactory implements FallbackFactory<RemoteWork
         };
     }
 
-    private R<ProcessFallbackResponse> retryResponse(String processDefKey, String businessKey) {
-        R<ProcessFallbackResponse> response = R.fail("workflow service unavailable, retry submitted to outbox");
-        response.setData(ProcessFallbackResponse.retry("workflow service unavailable", processDefKey, businessKey));
-        return response;
-    }
 }

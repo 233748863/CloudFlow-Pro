@@ -2,6 +2,7 @@ package com.cloudflow.workflow.service;
 
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
@@ -27,18 +28,18 @@ public interface IWfInstanceService {
      * @param variables     流程变量
      * @return 结果（包含实例ID）
      */
-    R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables);
+    R<ProcessStartResult> startProcess(String processDefKey, String businessKey, Map<String, Object> variables);
 
-    R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables,
+    R<ProcessStartResult> startProcess(String processDefKey, String businessKey, Map<String, Object> variables,
                       Map<String, List<Long>> nodeAssignees);
 
-    R<?> startProcessFromDraft(String expectedDefinitionId, String processDefKey, String businessKey,
+    R<ProcessStartResult> startProcessFromDraft(String expectedDefinitionId, String processDefKey, String businessKey,
                                Map<String, Object> variables, Map<String, List<Long>> nodeAssignees);
 
-    R<?> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
+    R<ProcessStartResult> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
                               String startUserName, Map<String, Object> variables);
 
-    R<?> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
+    R<ProcessStartResult> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
                               String startUserName, Map<String, Object> variables,
                               Map<String, List<Long>> nodeAssignees);
 

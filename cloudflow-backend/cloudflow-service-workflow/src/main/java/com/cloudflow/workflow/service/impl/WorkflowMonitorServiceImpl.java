@@ -649,43 +649,8 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
     }
 
     private SysUser resolveDeptLeader(SysUser sourceUser, Long tenantId) {
-        if (sourceUser == null || sourceUser.getDeptId() == null) {
-            return null;
-        }
-
-        SysDept dept = sysDeptMapper.selectById(sourceUser.getDeptId());
-        if (dept != null && isSameTenant(dept.getTenantId(), tenantId)) {
-            SysUser leader = resolveLeaderFromDeptField(dept, tenantId);
-            if (leader != null) {
-                return leader;
-            }
-        }
-
-        return null;
-    }
-
-    private SysUser resolveLeaderFromDeptField(SysDept dept, Long tenantId) {
-        if (dept == null || !StringUtils.hasText(dept.getLeader())) {
-            return null;
-        }
-
-        String leaderValue = dept.getLeader().trim();
-        try {
-            SysUser leaderById = selectActiveUser(Long.valueOf(leaderValue), tenantId);
-            if (leaderById != null) {
-                return leaderById;
-            }
-        } catch (NumberFormatException ignored) {
-            // leader 字段兼容 userName / nickName。
-        }
-
-        LambdaQueryWrapper<SysUser> wrapper = activeUserWrapper(tenantId)
-                .and(query -> query.eq(SysUser::getUserName, leaderValue)
-                        .or()
-                        .eq(SysUser::getNickName, leaderValue))
-                .orderByAsc(SysUser::getUserId);
-        return sysUserMapper.selectPage(new Page<>(1, 1, false), wrapper)
-                .getRecords().stream().findFirst().orElse(null);
+        return sourceUser == null ? null : com.cloudflow.workflow.service.WorkflowDepartmentLeaders.find(
+                sourceUser.getDeptId(), tenantId, sysDeptMapper, sysUserMapper);
     }
 
     private SysUser resolveFirstUserByRole(String roleKey, Long tenantId, Long preferredDeptId) {

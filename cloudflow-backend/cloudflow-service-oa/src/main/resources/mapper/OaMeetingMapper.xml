@@ -47,7 +47,7 @@
         ORDER BY schedule_version DESC, due_time, reminder_id
     </select>
     <select id="minutesId" resultType="long">
-        SELECT id FROM oa_meeting_minutes WHERE tenant_id = #{tenantId} AND COALESCE(schedule_event_id, meeting_id) = #{id} AND deleted = 0
+        SELECT id FROM oa_meeting_minutes WHERE tenant_id = #{tenantId} AND schedule_event_id = #{id} AND deleted = 0
         ORDER BY id LIMIT 1
     </select>
     <select id="photoAllowed" resultType="int">

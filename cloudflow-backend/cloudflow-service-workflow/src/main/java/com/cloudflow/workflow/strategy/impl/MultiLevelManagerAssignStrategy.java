@@ -32,6 +32,7 @@ public class MultiLevelManagerAssignStrategy implements AssignUserStrategy {
         }
         SysUser starter = instance.getStartUserId() == null ? null : userMapper.selectById(instance.getStartUserId());
         Long deptId = starter != null && Objects.equals(starter.getTenantId(), instance.getTenantId())
+                && "0".equals(starter.getStatus()) && Integer.valueOf(0).equals(starter.getDeleted())
                 ? starter.getDeptId() : null;
         Set<Long> visited = new HashSet<>();
         Long highestLeader = null;
@@ -42,8 +43,7 @@ public class MultiLevelManagerAssignStrategy implements AssignUserStrategy {
                 break;
             }
             Long leaderId = deptManagerStrategy.resolveLeaderFromDeptField(dept);
-            SysUser leader = leaderId == null ? null : userMapper.selectById(leaderId);
-            if (leader != null && Objects.equals(leader.getTenantId(), instance.getTenantId())) {
+            if (leaderId != null) {
                 highestLeader = leaderId;
                 if (++foundLevel == targetLevel) {
                     return leaderId;

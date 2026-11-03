@@ -1,5 +1,7 @@
 package com.cloudflow.oa.service.remote;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.BusinessProcessInvalidateDTO;
@@ -28,10 +30,10 @@ import java.util.Map;
 public interface RemoteWorkflowService {
 
     @PostMapping("/wf/start")
-    R<?> startProcess(@RequestBody WorkflowProcessStartDTO req);
+    R<ProcessStartResult> startProcess(@RequestBody WorkflowProcessStartDTO req);
 
     @PostMapping("/inner/workflow/process/start")
-    R<?> startProcessInternal(@RequestBody InternalWorkflowStartDTO req);
+    R<ProcessStartResult> startProcessInternal(@RequestBody InternalWorkflowStartDTO req);
 
     @PostMapping("/inner/workflow/process/invalidate-by-business")
     R<?> invalidateByBusiness(@RequestBody BusinessProcessInvalidateDTO req);

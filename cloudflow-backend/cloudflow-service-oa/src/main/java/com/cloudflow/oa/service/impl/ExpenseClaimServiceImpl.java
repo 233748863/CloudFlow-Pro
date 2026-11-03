@@ -21,6 +21,7 @@ import com.cloudflow.oa.domain.vo.OaExpenseExceedDetailVO;
 import com.cloudflow.oa.domain.vo.OaExpenseExceedResultVO;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
 import com.cloudflow.oa.mapper.BizExpenseItemMapper;
+import com.cloudflow.oa.mapper.OaIdentityReferenceMapper;
 import com.cloudflow.oa.mapper.VehicleExpenseMapper;
 import com.cloudflow.oa.service.BudgetReserveResult;
 import com.cloudflow.oa.service.IExpenseClaimService;
@@ -44,6 +45,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -68,6 +70,9 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
     @Autowired
     private BizExpenseItemMapper expenseItemMapper;
+
+    @Autowired
+    private OaIdentityReferenceMapper identities;
     
     @Autowired
     private VehicleExpenseMapper vehicleExpenseMapper;
@@ -169,7 +174,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     public boolean updateClaim(BizExpenseClaim claim) {
         normalizeClaimItems(claim);
         // M1-4: 所有权校验
-        BizExpenseClaim existing = getById(claim.getId());
+        BizExpenseClaim existing = baseMapper.lockClaim(claim.getId(), requireTenantId());
         if (existing == null || !Integer.valueOf(0).equals(existing.getDeleted())) {
             throw new IllegalArgumentException("报销申请不存在");
         }
@@ -235,40 +240,26 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
     @Override
     @Audit(name = "提交报销申请", spel = "#id", oldVal = "@expenseClaimServiceImpl.getById(#id)")
-    @Transactional(rollbackFor = Exception.class)
-    // M1-5: 防并发冲突
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
+    // 同一单据防重入；申请人数据库行锁覆盖不同单据的额度累计直至事务提交。
     @DistributedLock(key = "'expense:claim:' + #id + ':submit'")
     public boolean submitClaim(Long id) {
-        BizExpenseClaim claim = getById(id);
+        BizExpenseClaim claim = baseMapper.lockClaim(id, requireTenantId());
         if (claim == null) {
             return false;
         }
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(claim, BizExpenseClaim::getUserId, "报销单");
-        
-        // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
-        if (!StringUtils.hasText(claim.getDeptName())) {
-            claim.setDeptName(UserContext.getDeptName());
-        }
-        if (claim.getDeptId() == null) {
-            claim.setDeptId(UserContext.getDeptId());
-        }
-        if (!StringUtils.hasText(claim.getUserName())) {
-            claim.setUserName(UserContext.getUserName());
-        }
-        if (claim.getUserId() == null) {
-            claim.setUserId(UserContext.getUserId());
-        }
-
+        StateMachine<ExpenseClaimStatus, ExpenseClaimEvent> stateMachine = stateMachineRegistry.require("ExpenseClaim");
+        ExpenseClaimStatus newStatus = stateMachine.fire(ExpenseClaimStatus.valueOf(claim.getStatus()), ExpenseClaimEvent.SUBMIT);
+        OaRecordSupport.require(identities.userForUpdate(claim.getUserId(), claim.getTenantId()), "报销申请人不存在");
+        claim.setItems(getClaimWithItems(id).getItems());
+        validateSubmissionItems(claim);
         evaluateExpenseAmountRule(claim);
         // OA-P0-3 超标校验, 命中后落表用于流程 CONDITION 分支
         OaExpenseExceedResultVO exceedResult = evaluateExpenseStandard(claim);
         reserveBudget(claim);
 
-        // M1-6: 使用状态机进行状态转换
-        StateMachine<ExpenseClaimStatus, ExpenseClaimEvent> stateMachine = stateMachineRegistry.require("ExpenseClaim");
-        ExpenseClaimStatus currentStatus = ExpenseClaimStatus.valueOf(claim.getStatus());
-        ExpenseClaimStatus newStatus = stateMachine.fire(currentStatus, ExpenseClaimEvent.SUBMIT);
         claim.setStatus(newStatus.name());
         
         boolean updated = updateById(claim);
@@ -300,7 +291,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                         .build();
                 outboxPublisher.publish(envelope);
             } catch (Exception e) {
-                log.warn("报销单提交事件发布失败, claimId=" + claim.getId() + ", error=" + e.getMessage());
+                throw new IllegalStateException("报销提交事件保存失败，本次提交已回滚", e);
             }
         }
 
@@ -483,28 +474,6 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                 .values().stream().toList();
     }
     
-    /**
-     * 从工作流启动结果中提取流程实例ID
-     * 
-     * @param data 工作流返回的数据
-     * @return 流程实例ID，提取失败返回null
-     */
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> dataMap = (Map<String, Object>) data;
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
-        }
-        if (data instanceof String) {
-            return (String) data;
-        }
-        return null;
-    }
-
     private void normalizeClaimItems(BizExpenseClaim claim) {
         if (claim == null) {
             throw new IllegalArgumentException("报销申请不能为空");
@@ -513,6 +482,10 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             return;
         }
         for (BizExpenseItem item : claim.getItems()) {
+            if (item.getCity() != null) {
+                item.setCity(item.getCity().strip());
+                if (item.getCity().length() > 60) throw new IllegalArgumentException("费用发生城市最多60个字符");
+            }
             item.setReceiptUrl(
                     OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(item.getReceiptUrl(), "报销明细凭证附件")
             );
@@ -544,37 +517,28 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
      * OA-P0-3 超标校验, 返回 standard 服务结果, 同时把超标标记写入 claim 字段。
      */
     private OaExpenseExceedResultVO evaluateExpenseStandard(BizExpenseClaim claim) {
-        if (claim == null) {
-            return null;
-        }
-        if (claim.getItems() == null || claim.getItems().isEmpty()) {
-            BizExpenseClaim detail = getClaimWithItems(claim.getId());
-            if (detail != null) {
-                claim.setItems(detail.getItems());
-            }
-        }
-        // 当前 UserContext 未携带职级/城市, 先按通用规则匹配; 后续可扩展为远程取员工档案
-        String applicantLevel = null;
-        String city = null;
-        OaExpenseExceedResultVO result = oaExpenseStandardService.validateExceed(claim, applicantLevel, city);
-        boolean exceeded = result.isExceeded();
-        claim.setExceededStandard(exceeded ? 1 : 0);
-        BigDecimal total = result.getTotalExceededAmount();
-        if (total != null) {
-            claim.setExceededAmount(total);
-        }
-        List<OaExpenseExceedDetailVO> details = result.getDetails();
-        if (exceeded && details != null && !details.isEmpty()) {
-            try {
-                claim.setExceededDetail(objectMapper.writeValueAsString(details));
-            } catch (Exception e) {
-                log.warn("超标明细 JSON 序列化失败, claimId={}", claim.getId(), e);
-            }
-        }
-        if (exceeded) {
-            log.info("报销超标: claimId={}, totalExceeded={}", claim.getId(), total);
+        OaExpenseExceedResultVO result = oaExpenseStandardService.validateExceed(claim);
+        claim.setExceededStandard(result.isExceeded() ? 1 : 0);
+        claim.setExceededAmount(result.getTotalExceededAmount());
+        try {
+            claim.setExceededDetail(objectMapper.writeValueAsString(result.getDetails()));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException failure) {
+            throw new IllegalStateException("报销超标明细保存失败", failure);
         }
         return result;
+    }
+
+    private void validateSubmissionItems(BizExpenseClaim claim) {
+        if (claim.getItems() == null || claim.getItems().isEmpty()) throw new IllegalArgumentException("请至少填写一条报销明细");
+        BigDecimal total = BigDecimal.ZERO;
+        for (BizExpenseItem item : claim.getItems()) {
+            if (!StringUtils.hasText(item.getExpenseType()) || item.getExpenseDate() == null
+                    || !StringUtils.hasText(item.getCity()) || item.getAmount() == null || item.getAmount().signum() <= 0) {
+                throw new IllegalArgumentException("每条报销明细必须填写费用类型、发生日期、发生城市和正数金额");
+            }
+            total = total.add(item.getAmount());
+        }
+        claim.setTotalAmount(total);
     }
 
     private void evaluateExpenseAmountRule(BizExpenseClaim claim) {

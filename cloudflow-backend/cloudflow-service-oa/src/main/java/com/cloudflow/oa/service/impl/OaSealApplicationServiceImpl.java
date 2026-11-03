@@ -1,5 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -255,9 +257,9 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
                     "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcessInternal(req);
+            R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                String instanceId = extractInstanceId(result.getData());
+                String instanceId = result.getData().requireInstanceId();
                 if (StringUtils.hasText(instanceId)) {
                     LambdaUpdateWrapper<OaSealApplication> wrapper = new LambdaUpdateWrapper<>();
                     wrapper.eq(OaSealApplication::getId, application.getId())
@@ -609,18 +611,6 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
                 UserContext.getUserId(), StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system", null);
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map) {
-            Map<String, Object> dataMap = (Map<String, Object>) data;
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
-        }
-        return data instanceof String ? (String) data : null;
-    }
 
     private String formatDateTime(LocalDateTime value) {
         return value == null ? null : DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(value);

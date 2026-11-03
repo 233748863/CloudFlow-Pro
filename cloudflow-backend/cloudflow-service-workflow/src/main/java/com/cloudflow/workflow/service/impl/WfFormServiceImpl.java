@@ -89,10 +89,10 @@ public class WfFormServiceImpl implements IWfFormService {
             }
 
             // 允许具备流程发起权限的用户访问绑定表单，支持首次发起流程
+            WorkflowPermissionService.StartPermissionCheck startPermission = permissionService.startPermissionCheck(currentUserId);
             boolean canStartPublishedProcess = relatedDefs.stream()
                     .filter(def -> "PUBLISHED".equals(def.getStatus()))
-                    .anyMatch(def -> permissionService.canStartProcess(
-                            currentUserId,
+                    .anyMatch(def -> startPermission.allows(
                             def.getStartPermissionType(),
                             def.getStartPermissionValue()));
             if (canStartPublishedProcess) {

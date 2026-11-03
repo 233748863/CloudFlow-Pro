@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.controller;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.security.annotation.Inner;
 import com.cloudflow.common.tenant.TenantBroker;
@@ -28,7 +29,7 @@ public class WorkflowInnerController {
     @Inner(allowedServices = {INTERNAL_START_CALLERS})
     @RepeatSubmit
     @PostMapping("/start")
-    public R<?> startProcess(@RequestBody InternalProcessStartReq req) {
+    public R<ProcessStartResult> startProcess(@RequestBody InternalProcessStartReq req) {
         if (req == null || req.getTenantId() == null) {
             return R.fail("tenantId不能为空");
         }

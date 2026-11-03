@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.util;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -52,10 +55,14 @@ public class SafetyChecker {
             return result;
         }
 
-        checkWorkflowsExist(workflowIds, result);
-        checkRunningInstances(workflowIds, result);
-        checkDependencies(workflowIds, result);
-        checkPermissions(workflowIds, result);
+        List<String> requestedIds = workflowIds.stream().filter(Objects::nonNull).distinct().toList();
+        Map<String, WfProcessDefinition> definitions = requestedIds.isEmpty() ? Map.of()
+            : definitionMapper.selectBatchIds(requestedIds).stream()
+                .collect(Collectors.toMap(WfProcessDefinition::getDefinitionId, definition -> definition));
+        checkWorkflowsExist(workflowIds, definitions, result);
+        checkRunningInstances(workflowIds, definitions, result);
+        checkDependencies(workflowIds, definitions, result);
+        checkPermissions(workflowIds, definitions, result);
         generateMessage(result);
 
         log.info("安全检查完成, safe={}, warnings={}, errors={}",
@@ -64,9 +71,10 @@ public class SafetyChecker {
         return result;
     }
 
-    private void checkWorkflowsExist(List<String> workflowIds, SafetyCheckResultDTO result) {
+    private void checkWorkflowsExist(List<String> workflowIds, Map<String, WfProcessDefinition> definitions,
+                                     SafetyCheckResultDTO result) {
         for (String workflowId : workflowIds) {
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+            WfProcessDefinition definition = definitions.get(workflowId);
             if (definition == null) {
                 result.setSafe(false);
                 result.getErrors().add("流程不存在: " + workflowId);
@@ -75,19 +83,28 @@ public class SafetyChecker {
         }
     }
 
-    private void checkRunningInstances(List<String> workflowIds, SafetyCheckResultDTO result) {
+    private void checkRunningInstances(List<String> workflowIds, Map<String, WfProcessDefinition> definitions,
+                                       SafetyCheckResultDTO result) {
+        if (definitions.isEmpty()) {
+            return;
+        }
+        Map<String, Long> runningCounts = new HashMap<>();
+        List<Map<String, Object>> counts = instanceMapper.selectMaps(new QueryWrapper<WfProcessInstance>()
+            .select("definition_id AS definitionId", "COUNT(*) AS runningCount")
+            .in("definition_id", definitions.keySet())
+            .in("status", com.cloudflow.workflow.domain.enums.WfProcessStatus.openCodes())
+            .groupBy("definition_id"));
+        for (Map<String, Object> count : counts) {
+            runningCounts.put((String) count.get("definitionId"), ((Number) count.get("runningCount")).longValue());
+        }
         for (String workflowId : workflowIds) {
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+            WfProcessDefinition definition = definitions.get(workflowId);
             if (definition == null) {
                 continue;
             }
 
-            LambdaQueryWrapper<WfProcessInstance> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(WfProcessInstance::getDefinitionId, workflowId)
-                .in(WfProcessInstance::getStatus, com.cloudflow.workflow.domain.enums.WfProcessStatus.openCodes());
-
-            Long runningCount = instanceMapper.selectCount(queryWrapper);
-            if (runningCount != null && runningCount > 0) {
+            long runningCount = runningCounts.getOrDefault(workflowId, 0L);
+            if (runningCount > 0) {
                 result.setSafe(false);
                 result.getWorkflowsWithRunningInstances().add(workflowId);
                 result.getErrors().add(String.format(
@@ -98,11 +115,12 @@ public class SafetyChecker {
         }
     }
 
-    private void checkDependencies(List<String> workflowIds, SafetyCheckResultDTO result) {
+    private void checkDependencies(List<String> workflowIds, Map<String, WfProcessDefinition> definitions,
+                                   SafetyCheckResultDTO result) {
         Set<String> selectedWorkflowIds = new HashSet<>(workflowIds);
 
         for (String workflowId : workflowIds) {
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+            WfProcessDefinition definition = definitions.get(workflowId);
             if (definition == null) {
                 continue;
             }
@@ -133,7 +151,8 @@ public class SafetyChecker {
         }
     }
 
-    private void checkPermissions(List<String> workflowIds, SafetyCheckResultDTO result) {
+    private void checkPermissions(List<String> workflowIds, Map<String, WfProcessDefinition> definitions,
+                                  SafetyCheckResultDTO result) {
         Long currentUserId = UserContext.getUserId();
         Long currentTenantId = UserContext.getTenantId();
 
@@ -146,7 +165,7 @@ public class SafetyChecker {
         boolean isAdmin = permissionService.isAdmin(currentUserId);
 
         for (String workflowId : workflowIds) {
-            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+            WfProcessDefinition definition = definitions.get(workflowId);
             if (definition == null) {
                 continue;
             }

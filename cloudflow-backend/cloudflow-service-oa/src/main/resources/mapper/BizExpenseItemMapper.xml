@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.BizExpenseItemMapper">
+    <select id="selectCommittedUsage" resultType="com.cloudflow.oa.domain.BizExpenseItem">
+        SELECT i.expense_type, i.city, i.expense_date, SUM(i.amount) AS amount
+        FROM biz_expense_claim c
+        JOIN biz_expense_item i ON i.claim_id = c.id AND i.tenant_id = c.tenant_id
+        WHERE c.tenant_id = #{tenantId} AND c.user_id = #{userId}
+          AND c.deleted = 0 AND c.status IN ('PENDING', 'APPROVED', 'PAID')
+          AND c.id != #{excludeClaimId}
+          AND i.expense_date &gt;= #{from} AND i.expense_date &lt; #{until}
+          AND i.expense_type IN
+          <foreach collection="expenseTypes" item="type" open="(" separator="," close=")">#{type}</foreach>
+        GROUP BY i.expense_type, i.city, i.expense_date
+    </select>
+</mapper>

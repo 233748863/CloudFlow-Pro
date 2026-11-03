@@ -35,6 +35,9 @@ public class BizExpenseItem implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate expenseDate;
 
+    /** 费用发生城市；草稿可补填，提交时必填。 */
+    private String city;
+
     /** 费用说明 */
     private String description;
 

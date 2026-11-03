@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.List;
 import java.util.Objects;
@@ -175,6 +176,7 @@ public class OaProjectTaskService {
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "删除项目任务", highRisk = true, spel = "#ids")
     public void removeTasks(List<Long> ids) {
+        Set<Long> affectedProjects = new LinkedHashSet<>();
         for (Long id : ids) {
             OaProjectTask reference = detail(id); lockWritableProject(reference.getProjectId());
             OaProjectTask task = OaRecordSupport.active(taskMapper.selectForUpdate(id, OaRecordSupport.tenantId()));
@@ -189,7 +191,10 @@ public class OaProjectTaskService {
                     .eq(OaProjectTask::getDeleted, 0).eq(OaProjectTask::getVersion, task.getVersion())
                     .set(OaProjectTask::getDeleted, 1).set(OaProjectTask::getVersion, task.getVersion() + 1)
                     .set(OaProjectTask::getUpdateBy, task.getUpdateBy()).set(OaProjectTask::getUpdateTime, task.getUpdateTime())));
-            refreshTree(task.getProjectId()); execution.syncProjectStatus(task.getProjectId(), OaRecordSupport.userName());
+            affectedProjects.add(task.getProjectId());
+        }
+        for (Long projectId : affectedProjects) {
+            refreshTree(projectId); execution.syncProjectStatus(projectId, OaRecordSupport.userName());
         }
     }
 

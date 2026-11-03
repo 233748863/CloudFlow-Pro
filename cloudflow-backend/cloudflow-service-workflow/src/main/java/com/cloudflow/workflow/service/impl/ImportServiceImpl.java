@@ -319,7 +319,9 @@ public class ImportServiceImpl implements IImportService {
             existing.setStartPermissionType(startPermissionType);
         }
         String startPermissionValue = resolveStartPermissionValue(workflow);
-        if (StringUtils.hasText(startPermissionValue)) {
+        if ("ALL".equals(existing.getStartPermissionType())) {
+            existing.setStartPermissionValue("");
+        } else if (startPermissionValue != null) {
             existing.setStartPermissionValue(startPermissionValue);
         }
         Long deptId = resolveDeptId(workflow);
@@ -331,6 +333,8 @@ public class ImportServiceImpl implements IImportService {
         existing.setUpdateTime(LocalDateTime.now());
         existing.setUpdateBy(UserContext.getUserId() != null ? 
             UserContext.getUserId().toString() : "system");
+
+        com.cloudflow.workflow.service.WorkflowStartPermissions.validate(existing);
 
         // 保存到数据库
         if (definitionMapper.updateById(existing) != 1) {
@@ -426,6 +430,7 @@ public class ImportServiceImpl implements IImportService {
         }
         
         // 保存到数据库
+        com.cloudflow.workflow.service.WorkflowStartPermissions.validate(definition);
         if (definitionMapper.insert(definition) != 1) {
             throw WorkflowException.invalidState("导入流程创建失败");
         }

@@ -7,6 +7,7 @@ import com.cloudflow.workflow.domain.dto.WorkflowExportFormat;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
+import com.cloudflow.workflow.service.WorkflowStartPermissions;
 import com.cloudflow.workflow.util.ExportFormatUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -155,6 +156,11 @@ public class ImportValidator {
         }
 
         WorkflowExportFormat.WorkflowData workflow = exportFormat.getWorkflow();
+        try {
+            WorkflowStartPermissions.validate(workflow.getStartPermissionType(), workflow.getStartPermissionValue());
+        } catch (WorkflowException e) {
+            errors.add(e.getMessage());
+        }
 
         if (workflow.getName() == null || workflow.getName().trim().isEmpty()) {
             errors.add("流程名称不能为空");

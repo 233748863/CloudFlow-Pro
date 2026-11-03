@@ -22,7 +22,6 @@ public class OaMeetingMinutes implements Serializable {
     private Long id;
 
     private Long tenantId;
-    private Long meetingId;
     private String meetingTitle;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

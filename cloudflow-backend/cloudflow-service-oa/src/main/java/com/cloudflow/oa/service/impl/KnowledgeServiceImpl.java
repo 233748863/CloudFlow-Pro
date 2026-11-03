@@ -1,5 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -250,7 +252,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         req.setStartUserName(document.getSubmitterName());
         req.setVariables(workflowVariables(document));
 
-        R<?> result = remoteWorkflowService.startProcessInternal(req);
+        R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(req);
         String instanceId = requireWorkflowInstanceId(document, result);
         LambdaUpdateWrapper<KnowledgeDocument> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(KnowledgeDocument::getDocumentId, document.getDocumentId())
@@ -465,20 +467,8 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         return Math.toIntExact(readMapper.selectCount(wrapper));
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map) {
-            Map<String, Object> dataMap = (Map<String, Object>) data;
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
-        }
-        return data instanceof String ? (String) data : null;
-    }
 
-    private String requireWorkflowInstanceId(KnowledgeDocument document, R<?> result) {
+    private String requireWorkflowInstanceId(KnowledgeDocument document, R<ProcessStartResult> result) {
         if (result == null) {
             throw new IllegalArgumentException("流程启动失败：工作流服务无响应");
         }
@@ -488,7 +478,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         if (result.getData() == null) {
             throw new IllegalArgumentException("流程启动失败：未返回流程实例");
         }
-        String instanceId = extractInstanceId(result.getData());
+        String instanceId = result.getData().requireInstanceId();
         if (!StringUtils.hasText(instanceId)) {
             throw new IllegalArgumentException("流程启动失败：未返回流程实例ID");
         }

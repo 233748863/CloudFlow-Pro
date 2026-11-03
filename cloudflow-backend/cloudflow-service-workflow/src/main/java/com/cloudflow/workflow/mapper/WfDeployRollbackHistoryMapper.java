@@ -13,6 +13,9 @@ import java.util.List;
 @Mapper
 public interface WfDeployRollbackHistoryMapper extends BaseMapper<WfDeployRollbackHistory> {
 
+    List<WfDeployRollbackHistory> listByProcessDefinition(@Param("definitionId") String definitionId,
+                                                         @Param("tenantId") Long tenantId);
+
     List<WfDeployRollbackHistory> listByOriginalDeployId(@Param("deployId") Long deployId);
 
     WfDeployRollbackHistory selectByRollbackDeployId(@Param("deployId") Long deployId);

@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
@@ -198,19 +199,11 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
             if (isLicenseBorrowLocked(id, license)) {
                 throw new IllegalArgumentException("借出中的证照不能删除");
             }
-            Long usageCount = licenseBorrowMapper.selectCount(new LambdaQueryWrapper<OaLicenseBorrow>()
-                    .eq(OaLicenseBorrow::getLicenseId, id)
-                    .eq(OaLicenseBorrow::getDeleted, "0"));
-            OaLicense update = new OaLicense();
-            update.setLicenseId(id);
-            update.setUpdateBy(UserContext.getUserName());
-            update.setUpdateTime(now);
-            if (usageCount != null && usageCount > 0) {
-                update.setDeleted(1);
-                updateById(update);
-            } else {
-                removeById(id);
-            }
+            OaRecordSupport.saved(baseMapper.update(null, new LambdaUpdateWrapper<OaLicense>()
+                    .eq(OaLicense::getLicenseId, id).eq(OaLicense::getTenantId, OaRecordSupport.tenantId())
+                    .eq(OaLicense::getVersion, license.getVersion())
+                    .set(OaLicense::getDeleted, 1).set(OaLicense::getVersion, license.getVersion() + 1)
+                    .set(OaLicense::getUpdateBy, UserContext.getUserName()).set(OaLicense::getUpdateTime, now)));
         }
         return true;
     }

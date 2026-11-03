@@ -23,6 +23,9 @@ public class WfTaskUrge {
     private Long recipientId;
     
     private String reason;
+
+    /** 自动提醒的稳定身份；人工催办留空，每次保存独立记录。 */
+    private String sourceKey;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
 

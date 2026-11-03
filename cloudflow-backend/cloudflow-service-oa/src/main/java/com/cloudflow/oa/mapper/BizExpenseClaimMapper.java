@@ -17,6 +17,8 @@ import java.util.Map;
 @Mapper
 public interface BizExpenseClaimMapper extends BaseMapper<BizExpenseClaim> {
 
+    BizExpenseClaim lockClaim(@Param("id") Long id, @Param("tenantId") Long tenantId);
+
     IPage<BizExpenseClaim> selectPageByDataScope(Page<BizExpenseClaim> page,
                                                  @Param("status") String status,
                                                  @Param("category") String category,

@@ -69,17 +69,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectDeptTree" resultType="java.util.HashMap">
         SELECT
-            dept_id,
-            parent_id,
-            dept_name,
-            order_num,
-            leader,
-            phone,
-            email
-        FROM sys_dept
-        WHERE deleted = '0'
-          AND status = '0'
-        ORDER BY parent_id, order_num
+            d.dept_id,
+            d.parent_id,
+            d.dept_name,
+            d.order_num,
+            d.leader_user_id,
+            COALESCE(NULLIF(u.nick_name, ''), u.user_name) AS leader_name,
+            d.phone,
+            d.email
+        FROM sys_dept d
+        LEFT JOIN sys_user u ON u.user_id = d.leader_user_id
+          AND u.tenant_id = d.tenant_id AND u.deleted = 0 AND u.status = '0'
+        WHERE d.deleted = '0'
+          AND d.status = '0'
+        ORDER BY d.parent_id, d.order_num
     </select>
 
     <select id="selectUserDetail" resultType="java.util.HashMap">

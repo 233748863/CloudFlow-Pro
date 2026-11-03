@@ -22,12 +22,27 @@
         WHERE account.user_id = #{id} AND account.tenant_id = #{tenantId} AND account.deleted = 0 AND account.status = '0'
     </select>
     <select id="department" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
-        SELECT dept_id AS id, tenant_id, dept_name AS name, dept_id, dept_name, parent_id, leader
+        SELECT dept_id AS id, tenant_id, dept_name AS name, dept_id, dept_name, parent_id, leader_user_id
         FROM sys_dept WHERE dept_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 AND status = '0'
+    </select>
+    <select id="users" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
+        SELECT user_id AS id, tenant_id, nick_name AS name, user_id, dept_id
+        FROM sys_user WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0'
+        AND user_id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
     </select>
     <select id="userForUpdate" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
         SELECT user_id AS id, tenant_id, user_id, dept_id, nick_name AS name
         FROM sys_user WHERE user_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="applicantPositionLevel" resultType="java.lang.String">
+        SELECT level_entry.level_code
+        FROM hr_employee employee
+        LEFT JOIN hr_position position_entry ON position_entry.id = employee.position_id
+            AND position_entry.tenant_id = employee.tenant_id AND position_entry.status = 1
+        LEFT JOIN hr_job_level level_entry ON level_entry.id = position_entry.level_id
+            AND level_entry.tenant_id = employee.tenant_id AND level_entry.status = 1
+        WHERE employee.user_id = #{userId} AND employee.tenant_id = #{tenantId} AND employee.deleted = 0
+          AND employee.employee_status NOT IN ('RESIGNED', 'TERMINATED')
     </select>
     <sql id="employeeColumns">
         SELECT employee.id, employee.tenant_id, employee.name, employee.user_id, employee.dept_id,
@@ -60,11 +75,5 @@
         INNER JOIN sys_user account ON account.user_id = employee.user_id
             AND account.tenant_id = employee.tenant_id AND account.deleted = 0
         WHERE employee.tenant_id = #{tenantId} AND employee.user_id = #{userId} AND employee.deleted = 0
-    </select>
-    <select id="leaderCandidates" resultType="com.cloudflow.oa.domain.vo.OaIdentityReference">
-        SELECT user_id AS id, tenant_id, user_id, nick_name AS name, dept_id
-        FROM sys_user WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0'
-          AND (CAST(user_id AS CHAR) = #{value} OR user_name = #{value} OR nick_name = #{value})
-        ORDER BY CASE WHEN CAST(user_id AS CHAR) = #{value} THEN 0 WHEN user_name = #{value} THEN 1 ELSE 2 END, user_id
     </select>
 </mapper>

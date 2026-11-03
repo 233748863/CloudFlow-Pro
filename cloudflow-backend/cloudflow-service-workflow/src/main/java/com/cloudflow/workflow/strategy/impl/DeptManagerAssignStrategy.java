@@ -1,101 +1,50 @@
 package com.cloudflow.workflow.strategy.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.system.SysDept;
-import com.cloudflow.workflow.domain.system.SysRole;
 import com.cloudflow.workflow.domain.system.SysUser;
-import com.cloudflow.workflow.domain.system.SysUserRole;
 import com.cloudflow.workflow.mapper.system.SysDeptMapper;
-import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
-import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
+import com.cloudflow.workflow.service.WorkflowDepartmentLeaders;
 import com.cloudflow.workflow.strategy.AssignUserStrategy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.cloudflow.workflow.strategy.AssigneeResolutionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
-/**
- * 部门经理/直属领导分配策略
- * approverType = "DEPT_MANAGER" 或 "DIRECT_LEADER"
- *
- * 逻辑：根据流程发起人所在部门，查找该部门的 leader 字段对应的用户
- * 借鉴 poco-flow 的 AssignUserLeaderStrategyImpl 设计
- */
+/** 部门缺少有效负责人时逐级找上级负责人，仍无人则阻止发起。 */
 @Component
 public class DeptManagerAssignStrategy implements AssignUserStrategy {
-
-    private static final Logger log = LoggerFactory.getLogger(DeptManagerAssignStrategy.class);
-
     @Autowired
     private SysUserMapper sysUserMapper;
-
     @Autowired
     private SysDeptMapper sysDeptMapper;
 
-    @Autowired
-    private SysUserRoleMapper sysUserRoleMapper;
-
-    @Autowired
-    private SysRoleMapper sysRoleMapper;
-
     @Override
     public Long resolve(WfNodeConfig node, WfProcessInstance instance) {
-        Long startUserId = instance.getStartUserId();
-        if (startUserId == null) {
-            log.warn("[DeptManagerAssignStrategy] 流程发起人ID为空");
-            return null;
+        SysUser starter = instance.getStartUserId() == null ? null : sysUserMapper.selectById(instance.getStartUserId());
+        if (starter == null || !Objects.equals(starter.getTenantId(), instance.getTenantId())
+                || !"0".equals(starter.getStatus()) || !Integer.valueOf(0).equals(starter.getDeleted())) {
+            throw new AssigneeResolutionException("流程发起人不存在或已停用");
         }
-
-        // 查询发起人信息
-        SysUser startUser = sysUserMapper.selectById(startUserId);
-        if (startUser == null || startUser.getDeptId() == null) {
-            log.warn("[DeptManagerAssignStrategy] 发起人不存在或未分配部门, userId={}", startUserId);
-            return null;
+        SysUser leader = WorkflowDepartmentLeaders.find(starter.getDeptId(), instance.getTenantId(), sysDeptMapper, sysUserMapper);
+        if (leader == null) {
+            throw new AssigneeResolutionException("本部门及上级部门均无有效负责人，请补齐部门负责人后发起");
         }
+        return leader.getUserId();
+    }
 
-        // 查询部门信息
-        SysDept dept = sysDeptMapper.selectById(startUser.getDeptId());
-        if (dept == null) {
-            log.warn("[DeptManagerAssignStrategy] 部门不存在, deptId={}", startUser.getDeptId());
-            return null;
-        }
-
-        // 优先使用部门 leader 字段；兼容 leader 可能存 userId / userName / nickName 的情况。
-        Long leaderUserId = resolveLeaderFromDeptField(dept);
-        if (leaderUserId != null) {
-            return leaderUserId;
-        }
-
-        // 兜底策略：如果 leader 字段不可用，则回退到“当前部门/上级部门的 manager 用户”。
-        Long managerUserId = resolveManagerFromDeptChain(startUser.getDeptId(), new HashSet<>());
-        if (managerUserId != null) {
-            return managerUserId;
-        }
-
-        log.warn("[DeptManagerAssignStrategy] 无法为部门 {} 解析经理审批人", dept.getDeptName());
-        return null;
+    public Long resolveLeaderFromDeptField(SysDept department) {
+        SysUser leader = WorkflowDepartmentLeaders.activeLeader(department, sysUserMapper);
+        return leader == null ? null : leader.getUserId();
     }
 
     @Override
     public List<Long> resolveMultiple(WfNodeConfig node, WfProcessInstance instance) {
-        List<Long> list = new ArrayList<>();
-        Long id = resolve(node, instance);
-        if (id != null) {
-            list.add(id);
-        }
-        return list;
+        return List.of(resolve(node, instance));
     }
 
     @Override
@@ -105,75 +54,6 @@ public class DeptManagerAssignStrategy implements AssignUserStrategy {
 
     @Override
     public String getDescription(String approverType, String approverValue) {
-        if ("DIRECT_LEADER".equals(approverType)) {
-            return "直属领导";
-        }
-        return "部门经理";
-    }
-
-    public Long resolveLeaderFromDeptField(SysDept dept) {
-        String leaderValue = dept.getLeader();
-        if (!StringUtils.hasText(leaderValue)) {
-            log.warn("[DeptManagerAssignStrategy] 部门 {} 未设置负责人", dept.getDeptName());
-            return null;
-        }
-
-        String normalized = leaderValue.trim();
-        try {
-            SysUser leaderById = sysUserMapper.selectById(Long.valueOf(normalized));
-            if (leaderById != null) {
-                return leaderById.getUserId();
-            }
-        } catch (NumberFormatException ignored) {
-        }
-
-        SysUser leader = sysUserMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<SysUser>()
-                .eq(SysUser::getUserName, normalized)
-                .or()
-                .eq(SysUser::getNickName, normalized))
-                .getRecords().stream().findFirst().orElse(null);
-        if (leader != null) {
-            return leader.getUserId();
-        }
-
-        log.warn("[DeptManagerAssignStrategy] 部门负责人无法映射到系统用户: {}", normalized);
-        return null;
-    }
-
-    private Long resolveManagerFromDeptChain(Long deptId, Set<Long> visitedDeptIds) {
-        if (deptId == null || !visitedDeptIds.add(deptId)) {
-            return null;
-        }
-
-        List<Long> managerRoleIds = sysRoleMapper.selectList(new LambdaQueryWrapper<SysRole>()
-                        .eq(SysRole::getRoleKey, "manager"))
-                .stream()
-                .map(SysRole::getRoleId)
-                .collect(Collectors.toList());
-        if (!managerRoleIds.isEmpty()) {
-            List<Long> managerUserIds = sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
-                            .in(SysUserRole::getRoleId, managerRoleIds))
-                    .stream()
-                    .map(SysUserRole::getUserId)
-                    .distinct()
-                    .collect(Collectors.toList());
-            if (!managerUserIds.isEmpty()) {
-                List<SysUser> deptManagers = sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>()
-                                .eq(SysUser::getDeptId, deptId)
-                                .in(SysUser::getUserId, managerUserIds))
-                        .stream()
-                        .sorted(Comparator.comparing(SysUser::getUserId))
-                        .collect(Collectors.toList());
-                if (!deptManagers.isEmpty()) {
-                    return deptManagers.get(0).getUserId();
-                }
-            }
-        }
-
-        SysDept currentDept = sysDeptMapper.selectById(deptId);
-        if (currentDept == null || currentDept.getParentId() == null || currentDept.getParentId() <= 0) {
-            return null;
-        }
-        return resolveManagerFromDeptChain(currentDept.getParentId(), visitedDeptIds);
+        return "DIRECT_LEADER".equals(approverType) ? "直属领导" : "部门经理";
     }
 }

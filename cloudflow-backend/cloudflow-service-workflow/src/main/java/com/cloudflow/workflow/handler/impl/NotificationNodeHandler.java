@@ -118,8 +118,12 @@ public class NotificationNodeHandler implements INodeHandler {
                             new LambdaQueryWrapper<SysUserRole>()
                                     .eq(SysUserRole::getTenantId, tenantId)
                                     .eq(SysUserRole::getRoleId, role.getRoleId()));
-                    for (SysUserRole ur : userRoles) {
-                        addActiveUser(recipientIds, tenantId, ur.getUserId());
+                    List<Long> candidates = userRoles.stream().map(SysUserRole::getUserId)
+                            .filter(java.util.Objects::nonNull).distinct().toList();
+                    if (!candidates.isEmpty()) {
+                        Set<Long> activeIds = sysUserMapper.selectList(activeUserQuery(tenantId).in(SysUser::getUserId, candidates))
+                                .stream().map(SysUser::getUserId).collect(java.util.stream.Collectors.toSet());
+                        candidates.stream().filter(activeIds::contains).forEach(recipientIds::add);
                     }
                 }
             }

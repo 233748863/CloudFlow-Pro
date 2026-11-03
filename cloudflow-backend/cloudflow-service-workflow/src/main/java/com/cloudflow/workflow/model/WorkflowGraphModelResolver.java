@@ -293,7 +293,7 @@ public class WorkflowGraphModelResolver {
         }
 
         Set<String> reachable = new LinkedHashSet<>();
-        collectReachable(startId, outgoing, reachable, new HashSet<>());
+        collectReachable(startId, outgoing, reachable);
         if (reachable.size() != nodeMap.size()) {
             throw WorkflowException.validationError("流程图存在不可达节点，请删除孤立节点后重试");
         }
@@ -393,17 +393,13 @@ public class WorkflowGraphModelResolver {
 
     private void collectReachable(String current,
                                   Map<String, List<EdgeLink>> outgoing,
-                                  Set<String> reachable,
-                                  Set<String> path) {
-        if (!StringUtils.hasText(current) || path.contains(current)) {
+                                  Set<String> reachable) {
+        if (!StringUtils.hasText(current) || !reachable.add(current)) {
             return;
         }
-        path.add(current);
-        reachable.add(current);
         for (EdgeLink next : outgoing.getOrDefault(current, List.of())) {
-            collectReachable(next.targetId(), outgoing, reachable, path);
+            collectReachable(next.targetId(), outgoing, reachable);
         }
-        path.remove(current);
     }
 
     private WfNodeConfig toNodeConfig(JsonNode node) {

@@ -6,12 +6,14 @@ import com.cloudflow.workflow.service.WorkflowBusinessLockService.BusinessLock;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.workflow.domain.vo.DraftLaunchContextVO;
 import com.cloudflow.workflow.domain.vo.WorkflowGatewayTrace;
+import com.cloudflow.workflow.domain.vo.WorkflowUrgeTiming;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.workflow.domain.*;
@@ -78,6 +80,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @Autowired
     private WfTaskHistoryMapper taskHistoryMapper;
     @Autowired
+    private WfUrgeEffectMapper urgeEffectMapper;
+    @Autowired
     private WfNodeRecordMapper nodeRecordMapper;
     @Autowired
     private WorkflowPermissionService permissionService;
@@ -139,13 +143,13 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables) {
+    public R<ProcessStartResult> startProcess(String processDefKey, String businessKey, Map<String, Object> variables) {
         return startProcess(processDefKey, businessKey, variables, null);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables,
+    public R<ProcessStartResult> startProcess(String processDefKey, String businessKey, Map<String, Object> variables,
                              Map<String, List<Long>> nodeAssignees) {
         if (businessKey != null && businessKey.startsWith("WF_DRAFT:")) {
             throw WorkflowException.validationError("该业务键前缀仅供草稿提交使用");
@@ -159,7 +163,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public R<?> startProcessFromDraft(String expectedDefinitionId, String processDefKey, String businessKey,
+    public R<ProcessStartResult> startProcessFromDraft(String expectedDefinitionId, String processDefKey, String businessKey,
                                       Map<String, Object> variables, Map<String, List<Long>> nodeAssignees) {
         if (!StringUtils.hasText(expectedDefinitionId) || businessKey == null || !businessKey.startsWith("WF_DRAFT:")) {
             throw WorkflowException.validationError("草稿启动上下文无效");
@@ -170,14 +174,14 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public R<?> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
+    public R<ProcessStartResult> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
                                      String startUserName, Map<String, Object> variables) {
         return startProcessInternal(tenantId, processDefKey, businessKey, startUserId, startUserName, variables, null);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public R<?> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
+    public R<ProcessStartResult> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
                                      String startUserName, Map<String, Object> variables,
                                      Map<String, List<Long>> nodeAssignees) {
         if (tenantId == null) {
@@ -367,6 +371,20 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         // 构建历史详情
         List<Map<String, Object>> historyDetails = buildTraceHistoryDetails(
             histories, nodeRecords, instance.getStatus());
+        if (!histories.isEmpty()) {
+            List<String> historyIds = histories.stream().map(WfTaskHistory::getHistoryId).collect(Collectors.toList());
+            Map<String, WorkflowUrgeTiming> timingsByHistory = new HashMap<>();
+            for (WorkflowUrgeTiming timing : urgeEffectMapper.selectTimings(instance.getTenantId(), historyIds)) {
+                timingsByHistory.put(timing.getHistoryId(), timing);
+            }
+            for (Map<String, Object> detail : historyDetails) {
+                WorkflowUrgeTiming timing = timingsByHistory.get(detail.get("historyId"));
+                if (timing != null) {
+                    detail.put("lastUrgeTime", timing.getUrgeTime());
+                    detail.put("urgeElapsedSeconds", timing.getElapsedSeconds());
+                }
+            }
+        }
 
         // 构建活动任务详情（统一聚合：人工任务、自动节点与网关节点都进入 trace）
         List<Map<String, Object>> activeDetails = buildTraceActiveDetails(
@@ -1327,7 +1345,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         }
     }
 
-    private R<?> doStartProcess(String processDefKey, String businessKey, Long currentUserId,
+    private R<ProcessStartResult> doStartProcess(String processDefKey, String businessKey, Long currentUserId,
                                 String currentUserName, Long currentTenantId, Map<String, Object> variables,
                                 boolean externalRequest, Map<String, List<Long>> nodeAssignees, String expectedDefinitionId) {
         log.info("[startProcess] 开始发起流程, processDefKey={}, userId={}", processDefKey, currentUserId);
@@ -1518,12 +1536,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 .getRecords().stream().findFirst().orElse(null);
     }
 
-    private Map<String, String> buildStartResult(WfProcessInstance instance) {
-        Map<String, String> result = new HashMap<>();
-        result.put("instanceId", instance.getInstanceId());
-        result.put("processInstanceId", instance.getInstanceId());
-        result.put("processNo", instance.getProcessNo());
-        return result;
+    private ProcessStartResult buildStartResult(WfProcessInstance instance) {
+        return new ProcessStartResult(instance.getInstanceId(), instance.getProcessNo());
     }
 
     private void runFirstNode(WfProcessDefinition def, WfProcessInstance instance, Map<String, Object> variables) {

@@ -32,13 +32,17 @@ public class OaMeetingInvitationService {
         OaMeetingAccess.transaction();
         Map<Long, OaMeetingAttendance> previous = new LinkedHashMap<>();
         meetings.attendees(event.getTenantId(), event.getEventId()).forEach(invitation -> previous.put(invitation.getUserId(), invitation));
+        Map<Long, OaIdentityReference> users = new LinkedHashMap<>();
+        if (!userIds.isEmpty()) {
+            for (OaIdentityReference user : identities.users(userIds, event.getTenantId())) users.put(user.getId(), user);
+        }
         for (Long userId : userIds) {
-            OaIdentityReference user = OaRecordSupport.require(identities.user(userId, event.getTenantId()), "参会人不存在或已停用");
+            OaIdentityReference user = OaRecordSupport.require(users.get(userId), "参会人不存在或已停用");
             OaMeetingAttendance invitation = previous.remove(userId);
             if (invitation == null) {
                 invitation = new OaMeetingAttendance();
                 OaRecordSupport.create(invitation, "id");
-                invitation.setScheduleEventId(event.getEventId()); invitation.setMeetingId(event.getEventId());
+                invitation.setScheduleEventId(event.getEventId());
                 invitation.setUserId(userId); invitation.setUserName(user.getName()); invitation.setAttendStatus("NOT_CHECKED");
                 invitation.setAcceptanceStatus("NONE"); invitation.setInvitationVersion(event.getScheduleVersion());
                 OaRecordSupport.saved(attendance.insert(invitation));

@@ -4,6 +4,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.workflow.mapper.WfDeployRollbackHistoryMapper">
 
+    <select id="listByProcessDefinition" resultType="com.cloudflow.workflow.domain.WfDeployRollbackHistory">
+        SELECT history.*
+        FROM wf_deploy_rollback_history history
+        JOIN wf_deploy_record deployment ON deployment.id = history.original_deploy_id
+            AND deployment.tenant_id = history.tenant_id
+        WHERE deployment.process_def_id = #{definitionId}
+          AND deployment.tenant_id = #{tenantId}
+          AND history.tenant_id = #{tenantId}
+        ORDER BY history.rollback_time DESC, history.id DESC
+    </select>
+
     <select id="listByOriginalDeployId" resultType="com.cloudflow.workflow.domain.WfDeployRollbackHistory">
         SELECT *
         FROM wf_deploy_rollback_history

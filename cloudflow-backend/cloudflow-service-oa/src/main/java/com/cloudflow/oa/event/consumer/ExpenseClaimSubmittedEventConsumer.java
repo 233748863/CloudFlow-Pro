@@ -1,5 +1,7 @@
 package com.cloudflow.oa.event.consumer;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
@@ -83,9 +85,9 @@ public class ExpenseClaimSubmittedEventConsumer implements BusinessEventConsumer
             );
             req.setVariables(variables);
 
-            R<?> result = remoteWorkflowService.startProcessInternal(req);
+            R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                String instanceId = extractInstanceId(result.getData());
+                String instanceId = result.getData().requireInstanceId();
                 if (instanceId != null) {
                     LambdaUpdateWrapper<BizExpenseClaim> wrapper = new LambdaUpdateWrapper<>();
                     wrapper.eq(BizExpenseClaim::getId, claim.getId())
@@ -115,16 +117,4 @@ public class ExpenseClaimSubmittedEventConsumer implements BusinessEventConsumer
         return tenantId;
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map) {
-            Map<String, Object> dataMap = (Map<String, Object>) data;
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
-        }
-        return data instanceof String ? (String) data : null;
-    }
 }

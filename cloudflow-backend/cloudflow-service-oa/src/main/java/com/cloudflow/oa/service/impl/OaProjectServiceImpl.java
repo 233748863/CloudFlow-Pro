@@ -1,5 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -233,9 +235,9 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
                     "workflow:stream:approval-callback:oa"
             );
             dto.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcessInternal(dto);
+            R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(dto);
             if (result != null && result.isSuccess() && result.getData() != null) {
-                String instanceId = extractInstanceId(result.getData());
+                String instanceId = result.getData().requireInstanceId();
                 if (StringUtils.hasText(instanceId)) {
                     LambdaUpdateWrapper<OaProject> wrapper = new LambdaUpdateWrapper<>();
                     wrapper.eq(OaProject::getProjectId, project.getProjectId())
@@ -566,16 +568,6 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
     }
 
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map<?, ?> dataMap) {
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
-        }
-        return data != null ? String.valueOf(data) : null;
-    }
 
 
 

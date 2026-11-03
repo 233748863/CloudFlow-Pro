@@ -124,14 +124,13 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         for (Long id : ids) {
             BusinessTrip existing = getAccessibleTrip(id);
             assertStatus(existing, Set.of("DRAFT", "REJECTED", "CANCELLED"), "当前状态不允许删除");
-            BusinessTrip update = new BusinessTrip();
-            update.setDeleted(1);
-            update.setUpdateBy(UserContext.getUserName());
-            update.setUpdateTime(LocalDateTime.now());
-            boolean updated = update(update, new LambdaUpdateWrapper<BusinessTrip>()
+            boolean updated = update(new LambdaUpdateWrapper<BusinessTrip>()
                     .eq(BusinessTrip::getId, id)
                     .eq(BusinessTrip::getTenantId, tenantId)
-                    .eq(BusinessTrip::getDeleted, 0));
+                    .eq(BusinessTrip::getDeleted, 0).eq(BusinessTrip::getVersion, existing.getVersion())
+                    .set(BusinessTrip::getDeleted, 1).set(BusinessTrip::getVersion, existing.getVersion() + 1)
+                    .set(BusinessTrip::getUpdateBy, UserContext.getUserName())
+                    .set(BusinessTrip::getUpdateTime, LocalDateTime.now()));
             if (!updated) {
                 throw new IllegalStateException("出差申请删除失败: " + id);
             }
@@ -149,20 +148,6 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         }
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(trip, BusinessTrip::getUserId, "出差申请");
-        // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
-        if (!StringUtils.hasText(trip.getDeptName())) {
-            trip.setDeptName(UserContext.getDeptName());
-        }
-        if (trip.getDeptId() == null) {
-            trip.setDeptId(UserContext.getDeptId());
-        }
-        if (!StringUtils.hasText(trip.getUserName())) {
-            trip.setUserName(UserContext.getUserName());
-        }
-        if (trip.getUserId() == null) {
-            trip.setUserId(UserContext.getUserId());
-        }
-
         // M1-6: 使用状态机进行状态转换
         StateMachine<BusinessTripStatus, BusinessTripEvent> stateMachine = stateMachineRegistry.require("BusinessTrip");
         BusinessTripStatus currentStatus = BusinessTripStatus.valueOf(trip.getStatus());

@@ -16,6 +16,7 @@ import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
+import com.cloudflow.workflow.mapper.WfTaskUrgeMapper;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -66,6 +67,9 @@ public class TaskReminderJob {
 
     @Autowired
     private WfTaskMapper taskMapper;
+
+    @Autowired
+    private WfTaskUrgeMapper taskUrgeMapper;
 
     @Autowired
     private WfProcessInstanceMapper processInstanceMapper;
@@ -171,6 +175,8 @@ public class TaskReminderJob {
                     .deduplicationKey("wf:task:urge:" + reference + ":" + task.getAssignee())
                     .params(Map.of("processTitle", processTitle, "nodeName", nodeName, "taskId", taskId))
                     .title(title).content(content).build());
+            taskUrgeMapper.recordReminder(tenantId, taskId, task.getAssignee(),
+                    reference + ":" + task.getAssignee(), "到期前" + formatMinutes(minutesBefore) + "自动提醒");
             return 1;
         });
         return submitted == null ? 0 : submitted;

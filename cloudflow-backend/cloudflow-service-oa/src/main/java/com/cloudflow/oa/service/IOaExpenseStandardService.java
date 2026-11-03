@@ -25,9 +25,6 @@ public interface IOaExpenseStandardService {
 
     boolean remove(Long standardId);
 
-    /**
-     * 对单据进行超标校验, 返回 {exceeded(bool), totalExceededAmount, details(List<Map>)}。
-     * 命中规则按 (positionLevel,category,city) 精确 → (positionLevel,category,'') 通用城市 → null 顺序匹配。
-     */
-    OaExpenseExceedResultVO validateExceed(BizExpenseClaim claim, String applicantPositionLevel, String applicantCity);
+    /** 按每笔发生城市与日期匹配各周期标准，累计同申请人已提交、已通过、已付款费用。 */
+    OaExpenseExceedResultVO validateExceed(BizExpenseClaim claim);
 }

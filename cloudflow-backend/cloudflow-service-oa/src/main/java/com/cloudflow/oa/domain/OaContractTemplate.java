@@ -2,6 +2,7 @@ package com.cloudflow.oa.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -30,6 +31,9 @@ public class OaContractTemplate implements Serializable {
     /** 变量定义 JSON, 形如 [{"key":"partyA","label":"甲方","required":true}, ...] */
     private String variables;
     private String status;
+    /** 当前实际引用此模板的有效合同数，查询时聚合。 */
+    @TableField(exist = false)
+    private Long usageCount;
     private String remark;
     private Integer deleted;
     @Version

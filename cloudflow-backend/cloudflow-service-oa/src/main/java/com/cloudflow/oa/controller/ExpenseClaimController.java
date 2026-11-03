@@ -77,9 +77,9 @@ public class ExpenseClaimController {
     @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:expense:add")
-    public R<Void> add(@RequestBody BizExpenseClaim claim) {
+    public R<Long> add(@RequestBody BizExpenseClaim claim) {
         try {
-            return expenseClaimService.createClaim(claim) ? R.ok() : R.fail("创建失败");
+            return expenseClaimService.createClaim(claim) ? R.ok(claim.getId()) : R.fail("创建失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

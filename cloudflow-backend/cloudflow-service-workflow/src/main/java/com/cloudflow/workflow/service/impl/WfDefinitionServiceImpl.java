@@ -99,6 +99,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             throw WorkflowException.validationError("流程名称不能为空");
         }
 
+        com.cloudflow.workflow.service.WorkflowStartPermissions.validate(definition);
+
         // XSS 防护
         definition.setProcessName(securityUtils.sanitizeXss(definition.getProcessName()));
 
@@ -426,8 +428,9 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                                 > Objects.requireNonNullElse(previous.getVersion(), 0) ? candidate : previous);
             }
         }
+        WorkflowPermissionService.StartPermissionCheck startPermission = permissionService.startPermissionCheck(userId);
         List<StartableDefinitionVO> visible = latest.values().stream()
-                .filter(definition -> permissionService.canStartProcess(userId,
+                .filter(definition -> startPermission.allows(
                         definition.getStartPermissionType(), definition.getStartPermissionValue()))
                 .map(definition -> new StartableDefinitionVO(definition.getDefinitionId(), definition.getProcessKey(),
                         definition.getProcessName(), definition.getVersion(), definition.getFormId(),

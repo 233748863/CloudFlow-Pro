@@ -1,5 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -121,7 +123,7 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
                 "workflow:stream:approval-callback:oa"
         );
 
-        R<?> wfResult = workflowService.startProcess(
+        R<ProcessStartResult> wfResult = workflowService.startProcess(
                 "vehicle_approval",
                 usage.getUsageId().toString(),
                 usage.getApplicantId(),
@@ -131,7 +133,7 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
             throw new RuntimeException("用车工作流启动失败: " + wfResult.getMsg());
         }
 
-        String instanceId = extractInstanceId(wfResult.getData());
+        String instanceId = wfResult.getData().requireInstanceId();
         if (instanceId != null) {
             LambdaUpdateWrapper<VehicleUsage> wrapper = new LambdaUpdateWrapper<>();
             wrapper.eq(VehicleUsage::getUsageId, usage.getUsageId())
@@ -352,17 +354,6 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
         return !target.isBefore(now) && !target.isAfter(now.plusDays(days));
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map<?, ?> dataMap) {
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
-        }
-        return data instanceof String ? (String) data : null;
-    }
 
     private void publishVehicleUsageSubmittedEvent(VehicleUsage usage, VehicleUsageSubmittedEvent event) {
         try {

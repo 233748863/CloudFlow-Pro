@@ -10,6 +10,7 @@ import com.cloudflow.oa.domain.OaContractPaymentSchedule;
 import com.cloudflow.oa.domain.OaKnowledgeTemplate;
 import com.cloudflow.oa.domain.OaMeetingAttendance;
 import com.cloudflow.oa.domain.OaMeetingMinutes;
+import com.cloudflow.oa.domain.dto.OaMeetingDecision;
 import com.cloudflow.oa.service.IOaContractMilestoneService;
 import com.cloudflow.oa.service.IOaKnowledgeTemplateService;
 import com.cloudflow.oa.service.IOaMeetingMinutesService;
@@ -164,10 +165,10 @@ class OaMeetingMinutesController {
     @SaCheckPermission("oa:meeting:list")
     public R<Page<OaMeetingMinutes>> page(@RequestParam(required = false) String keyword,
                                           @RequestParam(required = false) String status,
-                                          @RequestParam(required = false) Long meetingId,
+                                          @RequestParam(required = false) Long scheduleEventId,
                                           @RequestParam(defaultValue = "1") Integer pageNum,
                                           @RequestParam(defaultValue = "10") Integer pageSize) {
-        return R.ok(oaMeetingMinutesService.page(keyword, status, meetingId, pageNum, pageSize));
+        return R.ok(oaMeetingMinutesService.page(keyword, status, scheduleEventId, pageNum, pageSize));
     }
 
     @GetMapping("/{id}")
@@ -236,7 +237,7 @@ class OaMeetingMinutesController {
     @PostMapping("/{id}/dispatch-decisions")
     @SaCheckPermission("oa:meeting:edit")
     public R<List<Long>> dispatch(@PathVariable Long id,
-                                  @RequestBody(required = false) List<Map<String, Object>> decisions) {
+                                  @RequestBody(required = false) List<OaMeetingDecision> decisions) {
         return R.ok(oaMeetingMinutesService.dispatchDecisionsToWorkTasks(id, decisions));
     }
 }

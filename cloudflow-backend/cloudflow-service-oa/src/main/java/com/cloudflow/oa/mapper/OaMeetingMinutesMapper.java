@@ -11,7 +11,7 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface OaMeetingMinutesMapper extends BaseMapper<OaMeetingMinutes> {
     Page<OaMeetingMinutes> visiblePage(Page<OaMeetingMinutes> page, @Param("tenantId") Long tenantId,
-            @Param("keyword") String keyword, @Param("status") String status, @Param("meetingId") Long meetingId,
+            @Param("keyword") String keyword, @Param("status") String status, @Param("scheduleEventId") Long scheduleEventId,
             @Param("userId") Long userId, @Param("managerAll") boolean managerAll,
             @Param("managerUser") Long managerUser, @Param("managerDepartments") List<Long> managerDepartments);
     OaMeetingMinutes lock(@Param("tenantId") Long tenantId, @Param("id") Long id);

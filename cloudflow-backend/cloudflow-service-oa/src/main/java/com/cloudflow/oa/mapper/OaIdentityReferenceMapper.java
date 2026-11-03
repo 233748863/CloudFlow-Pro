@@ -8,7 +8,9 @@ import org.apache.ibatis.annotations.Param;
 public interface OaIdentityReferenceMapper {
     boolean mayInviteRfq(@Param("actorId") Long actorId, @Param("ownerId") Long ownerId, @Param("tenantId") Long tenantId);
     OaIdentityReference user(@Param("id") Long id, @Param("tenantId") Long tenantId);
+    java.util.List<OaIdentityReference> users(@Param("ids") java.util.List<Long> ids, @Param("tenantId") Long tenantId);
     OaIdentityReference userForUpdate(@Param("id") Long id, @Param("tenantId") Long tenantId);
+    String applicantPositionLevel(@Param("userId") Long userId, @Param("tenantId") Long tenantId);
     java.util.List<OaIdentityReference> employeesForUser(@Param("userId") Long userId, @Param("tenantId") Long tenantId);
     OaIdentityReference employee(@Param("id") Long id, @Param("tenantId") Long tenantId);
     OaIdentityReference employeeRecord(@Param("id") Long id, @Param("tenantId") Long tenantId);
@@ -17,5 +19,4 @@ public interface OaIdentityReferenceMapper {
     java.util.List<OaIdentityReference> employees(@Param("tenantId") Long tenantId);
     java.util.List<OaIdentityReference> jobLevels(@Param("tenantId") Long tenantId);
     OaIdentityReference department(@Param("id") Long id, @Param("tenantId") Long tenantId);
-    java.util.List<OaIdentityReference> leaderCandidates(@Param("value") String value, @Param("tenantId") Long tenantId);
 }

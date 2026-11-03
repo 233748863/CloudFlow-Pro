@@ -19,7 +19,6 @@ import com.cloudflow.workflow.service.WorkflowHParticipantPolicy;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.domain.monitor.TimeoutAlert;
-import com.cloudflow.workflow.domain.system.SysDept;
 import com.cloudflow.workflow.domain.system.SysRole;
 import com.cloudflow.workflow.domain.system.SysUser;
 import com.cloudflow.workflow.domain.system.SysUserRole;
@@ -340,11 +339,8 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
         if (sourceUser == null || sourceUser.getDeptId() == null) {
             return new EscalationTarget(null, null);
         }
-        SysDept dept = sysDeptMapper.selectById(sourceUser.getDeptId());
-        SysUser leader = resolveLeaderFromDept(dept, tenantId);
-        if (leader == null) {
-            leader = resolveFirstRoleUser("manager", tenantId, sourceUser.getDeptId());
-        }
+        SysUser leader = com.cloudflow.workflow.service.WorkflowDepartmentLeaders.find(
+                sourceUser.getDeptId(), tenantId, sysDeptMapper, sysUserMapper);
         return leader == null
                 ? new EscalationTarget(null, null)
                 : new EscalationTarget(leader.getUserId(), resolveUserName(leader));
@@ -355,20 +351,6 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
         return user == null
                 ? new EscalationTarget(null, null)
                 : new EscalationTarget(user.getUserId(), resolveUserName(user));
-    }
-
-    private SysUser resolveLeaderFromDept(SysDept dept, Long tenantId) {
-        if (dept == null || !StringUtils.hasText(dept.getLeader())) {
-            return null;
-        }
-        String leader = dept.getLeader().trim();
-        Long leaderId = parseLong(leader);
-        if (leaderId != null) {
-            return selectActiveUser(leaderId, tenantId);
-        }
-        return sysUserMapper.selectPage(new Page<>(1, 1, false), activeUserWrapper(tenantId)
-                .and(query -> query.eq(SysUser::getUserName, leader).or().eq(SysUser::getNickName, leader)))
-                .getRecords().stream().findFirst().orElse(null);
     }
 
     private SysUser resolveFirstRoleUser(String roleKey, Long tenantId, Long deptId) {

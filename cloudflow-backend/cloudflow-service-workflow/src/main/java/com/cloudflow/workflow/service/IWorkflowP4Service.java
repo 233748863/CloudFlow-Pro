@@ -132,9 +132,6 @@ public interface IWorkflowP4Service {
     /** P4.26: 催办记录查询 */
     R<?> getUrgeRecords(String taskId);
 
-    /** P4.27: 催办效果跟踪 */
-    void recordUrgeEffect(String urgeId, String taskId, Long beforeDuration, Long afterDuration);
-
     /** P4.28: 发送通知 */
     void sendNotification(String eventType, Long recipientId, String title, String content);
 }

@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.controller;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
@@ -94,7 +95,7 @@ public class WorkflowController {
     @SaCheckPermission("workflow:process:start")
     @RepeatSubmit.Disabled
     @com.cloudflow.common.log.annotation.SysLog(value = "发起流程", logParams = false)
-    public R<?> startProcess(@RequestBody String body) {
+    public R<ProcessStartResult> startProcess(@RequestBody String body) {
         ProcessStartReq req = draftJson.readStartRequest(body);
         if (req.getDraftId() != null) {
             cn.dev33.satoken.stp.StpUtil.checkPermission("workflow:draft:submit");

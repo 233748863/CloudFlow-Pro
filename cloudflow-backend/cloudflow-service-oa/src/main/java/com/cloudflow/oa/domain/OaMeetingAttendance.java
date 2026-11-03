@@ -22,7 +22,6 @@ public class OaMeetingAttendance implements Serializable {
 
     private Long tenantId;
     private Long minutesId;
-    private Long meetingId;
     private Long scheduleEventId;
     private String acceptanceStatus;
 

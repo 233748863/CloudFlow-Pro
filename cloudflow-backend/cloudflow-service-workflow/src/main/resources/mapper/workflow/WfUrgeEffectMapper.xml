@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfUrgeEffectMapper">
+    <insert id="recordCompletion">
+        INSERT INTO wf_urge_effect (history_id, tenant_id, urge_id)
+        SELECT history.history_id, history.tenant_id, urge.id
+        FROM wf_task_history history
+        JOIN wf_task_urge urge ON urge.tenant_id = history.tenant_id AND urge.task_id = history.task_id
+        WHERE history.history_id = #{history.historyId}
+          AND history.tenant_id = #{history.tenantId}
+          AND urge.create_time &lt;= history.create_time
+        ORDER BY urge.create_time DESC, urge.id DESC
+        LIMIT 1
+        ON DUPLICATE KEY UPDATE history_id = wf_urge_effect.history_id
+    </insert>
+
+    <select id="selectTimings" resultType="com.cloudflow.workflow.domain.vo.WorkflowUrgeTiming">
+        SELECT effect.history_id, urge.create_time AS urge_time,
+               TIMESTAMPDIFF(SECOND, urge.create_time, history.create_time) AS elapsed_seconds
+        FROM wf_urge_effect effect
+        JOIN wf_task_history history ON history.history_id = effect.history_id
+            AND history.tenant_id = effect.tenant_id
+        JOIN wf_task_urge urge ON urge.id = effect.urge_id
+            AND urge.tenant_id = effect.tenant_id AND urge.task_id = history.task_id
+        WHERE effect.tenant_id = #{tenantId}
+          AND effect.history_id IN
+          <foreach collection="historyIds" item="historyId" open="(" separator="," close=")">#{historyId}</foreach>
+    </select>
+</mapper>

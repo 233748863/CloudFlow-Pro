@@ -1,5 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -215,9 +217,9 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
                     "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcessInternal(req);
+            R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                String instanceId = extractInstanceId(result.getData());
+                String instanceId = result.getData().requireInstanceId();
                 if (StringUtils.hasText(instanceId)) {
                     LambdaUpdateWrapper<OaLicenseRenewal> wrapper = new LambdaUpdateWrapper<>();
                     wrapper.eq(OaLicenseRenewal::getId, renewal.getId())
@@ -388,18 +390,6 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map) {
-            Map<String, Object> dataMap = (Map<String, Object>) data;
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
-        }
-        return data instanceof String ? (String) data : null;
-    }
 
     private String formatDate(LocalDate value) {
         return value == null ? null : DateTimeFormatter.ISO_LOCAL_DATE.format(value);

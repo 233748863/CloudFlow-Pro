@@ -4,13 +4,13 @@
     <select id="visiblePage" resultType="com.cloudflow.oa.domain.OaMeetingMinutes">
         SELECT minutes.* FROM oa_meeting_minutes minutes
         LEFT JOIN oa_schedule_event meeting ON meeting.tenant_id = minutes.tenant_id
-            AND meeting.event_id = COALESCE(minutes.schedule_event_id, minutes.meeting_id) AND meeting.deleted = 0
+            AND meeting.event_id = minutes.schedule_event_id AND meeting.deleted = 0
         LEFT JOIN sys_user creator ON creator.tenant_id = meeting.tenant_id AND creator.user_id = meeting.creator_id
         WHERE minutes.tenant_id = #{tenantId} AND minutes.deleted = 0
         <if test="keyword != null and keyword != ''">AND minutes.meeting_title LIKE CONCAT('%', #{keyword}, '%')</if>
         <if test="status != null and status != ''">AND minutes.status = #{status}</if>
-        <if test="meetingId != null">AND COALESCE(minutes.schedule_event_id, minutes.meeting_id) = #{meetingId}</if>
-        AND (COALESCE(minutes.schedule_event_id, minutes.meeting_id) IS NULL OR (meeting.event_id IS NOT NULL AND (
+        <if test="scheduleEventId != null">AND minutes.schedule_event_id = #{scheduleEventId}</if>
+        AND (minutes.schedule_event_id IS NULL OR (meeting.event_id IS NOT NULL AND (
             meeting.creator_id = #{userId}
             OR EXISTS (SELECT 1 FROM oa_meeting_attendance invitation WHERE invitation.tenant_id = meeting.tenant_id
                 AND invitation.schedule_event_id = meeting.event_id AND invitation.user_id = #{userId} AND invitation.deleted = 0)
@@ -26,7 +26,7 @@
     </select>
     <select id="forEvent" resultType="long">
         SELECT id FROM oa_meeting_minutes WHERE tenant_id = #{tenantId}
-            AND COALESCE(schedule_event_id, meeting_id) = #{eventId} AND deleted = 0 FOR UPDATE
+            AND schedule_event_id = #{eventId} AND deleted = 0 FOR UPDATE
     </select>
     <select id="eventAttendance" resultType="com.cloudflow.oa.domain.OaMeetingAttendance">
         SELECT * FROM oa_meeting_attendance WHERE tenant_id = #{tenantId} AND schedule_event_id = #{eventId} AND user_id = #{userId} FOR UPDATE

@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * 报销超标明细 VO。
@@ -20,4 +21,6 @@ public class OaExpenseExceedDetailVO {
     @Schema(description = "超标金额") private BigDecimal exceededAmount;
     @Schema(description = "城市") private String city;
     @Schema(description = "限制类型") private String limitType;
+    @Schema(description = "累计周期起始日") private LocalDate periodStart;
+    @Schema(description = "累计周期结束日（不含）") private LocalDate periodEnd;
 }

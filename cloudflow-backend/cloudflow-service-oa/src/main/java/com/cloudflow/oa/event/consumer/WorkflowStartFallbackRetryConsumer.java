@@ -1,5 +1,7 @@
 package com.cloudflow.oa.event.consumer;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
@@ -46,7 +48,7 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
         }
         String operation = String.valueOf(payload.get("operation"));
         Object request = payload.get("request");
-        final R<?>[] result = new R<?>[1];
+        java.util.concurrent.atomic.AtomicReference<R<ProcessStartResult>> result = new java.util.concurrent.atomic.AtomicReference<>();
         String businessKey;
         if ("startProcess".equals(operation)) {
             WorkflowProcessStartDTO dto = objectMapper.convertValue(request, WorkflowProcessStartDTO.class);
@@ -55,7 +57,7 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
             if (shouldSkipStartRetry(businessKey)) {
                 return;
             }
-            WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcess(dto));
+            WorkflowFallbackRetryContext.runRetrying(() -> result.set(remoteWorkflowService.startProcess(dto)));
         } else {
             InternalWorkflowStartDTO dto = objectMapper.convertValue(request, InternalWorkflowStartDTO.class);
             validateTenant(envelope, payload, dto.getTenantId());
@@ -63,12 +65,12 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
             if (shouldSkipStartRetry(businessKey)) {
                 return;
             }
-            WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcessInternal(dto));
+            WorkflowFallbackRetryContext.runRetrying(() -> result.set(remoteWorkflowService.startProcessInternal(dto)));
         }
-        if (result[0] == null || !result[0].isSuccess()) {
-            throw new IllegalStateException("workflow fallback retry failed: " + (result[0] == null ? "null" : result[0].getMsg()));
+        if (result.get() == null || !result.get().isSuccess() || result.get().getData() == null) {
+            throw new IllegalStateException("workflow fallback retry failed: " + (result.get() == null ? "null" : result.get().getMsg()));
         }
-        backfillBusinessInstanceId(businessKey, extractInstanceId(result[0].getData()));
+        backfillBusinessInstanceId(businessKey, result.get().getData().requireInstanceId());
         log.info("workflow fallback retry success, module={}, operation={}, eventId={}", SOURCE_MODULE, operation, envelope.getEventId());
     }
 
@@ -122,16 +124,6 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
         log.debug("skip workflow fallback backfill, no binding for businessKey={}", businessKey);
     }
 
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map<?, ?> dataMap) {
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId == null ? null : String.valueOf(instanceId);
-        }
-        return null;
-    }
 
     private Long parseBusinessId(String rawId) {
         try {

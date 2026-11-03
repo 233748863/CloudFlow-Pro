@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.*;
@@ -329,19 +330,41 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     private List<Long> resolveNotificationRecipients(WfDeployNotification notification) {
         Long tenantId = resolveTenantId(notification.getTenantId());
-        Set<Long> recipientIds = new LinkedHashSet<>();
-        List<Long> rawIds = parseRecipientIds(notification.getRecipientIds());
+        List<Long> rawIds = parseRecipientIds(notification.getRecipientIds()).stream().filter(Objects::nonNull).distinct().toList();
         String recipientType = StringUtils.hasText(notification.getRecipientType())
-                ? notification.getRecipientType().trim().toUpperCase(Locale.ROOT)
-                : "USER";
+                ? notification.getRecipientType().trim().toUpperCase(Locale.ROOT) : "USER";
+        Set<Long> candidateIds = new LinkedHashSet<>();
         switch (recipientType) {
-            case "USER" -> rawIds.forEach(userId -> addActiveUser(recipientIds, tenantId, userId));
-            case "ROLE" -> rawIds.forEach(roleId -> addUsersByRole(recipientIds, tenantId, roleId));
-            case "DEPT" -> rawIds.forEach(deptId -> addUsersByDept(recipientIds, tenantId, deptId));
-            case "ALL" -> addAllActiveUsers(recipientIds, tenantId);
+            case "USER" -> candidateIds.addAll(rawIds);
+            case "ROLE" -> {
+                if (!rawIds.isEmpty()) {
+                    List<SysUserRole> memberships = sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
+                            .eq(SysUserRole::getTenantId, tenantId).in(SysUserRole::getRoleId, rawIds));
+                    Map<Long, List<SysUserRole>> byRole = memberships.stream().collect(Collectors.groupingBy(SysUserRole::getRoleId));
+                    for (Long roleId : rawIds) {
+                        byRole.getOrDefault(roleId, List.of()).stream().map(SysUserRole::getUserId)
+                                .filter(Objects::nonNull).forEach(candidateIds::add);
+                    }
+                }
+            }
+            case "DEPT" -> {
+                if (rawIds.isEmpty()) return List.of();
+                List<SysUser> users = sysUserMapper.selectList(activeUserQuery(tenantId).in(SysUser::getDeptId, rawIds));
+                Map<Long, List<SysUser>> byDepartment = users.stream().collect(Collectors.groupingBy(SysUser::getDeptId));
+                for (Long departmentId : rawIds) {
+                    byDepartment.getOrDefault(departmentId, List.of()).stream().map(SysUser::getUserId).forEach(candidateIds::add);
+                }
+                return new ArrayList<>(candidateIds);
+            }
+            case "ALL" -> {
+                return sysUserMapper.selectList(activeUserQuery(tenantId)).stream().map(SysUser::getUserId).distinct().toList();
+            }
             default -> throw WorkflowException.validationError("不支持的接收人类型: " + recipientType);
         }
-        return new ArrayList<>(recipientIds);
+        if (candidateIds.isEmpty()) return List.of();
+        Set<Long> activeIds = sysUserMapper.selectList(activeUserQuery(tenantId).in(SysUser::getUserId, candidateIds))
+                .stream().map(SysUser::getUserId).collect(Collectors.toSet());
+        return candidateIds.stream().filter(activeIds::contains).toList();
     }
 
     private List<Long> parseRecipientIds(String json) {
@@ -352,47 +375,6 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             return objectMapper.readValue(json, new TypeReference<List<Long>>() {});
         } catch (Exception e) {
             throw WorkflowException.validationError("解析通知接收人失败: " + e.getMessage());
-        }
-    }
-
-    private void addUsersByRole(Set<Long> recipientIds, Long tenantId, Long roleId) {
-        if (roleId == null) {
-            return;
-        }
-        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
-                .eq(SysUserRole::getTenantId, tenantId)
-                .eq(SysUserRole::getRoleId, roleId));
-        for (SysUserRole userRole : userRoles) {
-            addActiveUser(recipientIds, tenantId, userRole.getUserId());
-        }
-    }
-
-    private void addUsersByDept(Set<Long> recipientIds, Long tenantId, Long deptId) {
-        if (deptId == null) {
-            return;
-        }
-        List<SysUser> users = sysUserMapper.selectList(activeUserQuery(tenantId)
-                .eq(SysUser::getDeptId, deptId));
-        for (SysUser user : users) {
-            recipientIds.add(user.getUserId());
-        }
-    }
-
-    private void addAllActiveUsers(Set<Long> recipientIds, Long tenantId) {
-        List<SysUser> users = sysUserMapper.selectList(activeUserQuery(tenantId));
-        for (SysUser user : users) {
-            recipientIds.add(user.getUserId());
-        }
-    }
-
-    private void addActiveUser(Set<Long> recipientIds, Long tenantId, Long userId) {
-        if (userId == null) {
-            return;
-        }
-        SysUser user = sysUserMapper.selectOne(activeUserQuery(tenantId)
-                .eq(SysUser::getUserId, userId));
-        if (user != null) {
-            recipientIds.add(user.getUserId());
         }
     }
 
@@ -484,6 +466,12 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         history.setRollbackType(RollbackType.MANUAL.getCode());
         history.setRollbackStatus(RollbackStatus.SUCCESS.getCode());
         history.setRollbackBy(userId);
+        SysUser rollbackUser = userId == null ? null : sysUserMapper.selectById(userId);
+        if (rollbackUser == null || !Objects.equals(rollbackUser.getTenantId(), history.getTenantId())) {
+            throw WorkflowException.permissionDenied("回滚操作人身份无效");
+        }
+        history.setRollbackByName(StringUtils.hasText(rollbackUser.getNickName())
+                ? rollbackUser.getNickName() : rollbackUser.getUserName());
         history.setRollbackTime(LocalDateTime.now());
         if (rollbackHistoryMapper.insert(history) != 1) {
             throw WorkflowException.invalidState("回滚历史记录创建失败");
@@ -549,24 +537,8 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         }
         assertTenantAccess(definition.getTenantId(), "查看回滚历史");
         Long currentTenantId = UserContext.getTenantId();
-        // 通过发布记录关联查询回滚历史
-        LambdaQueryWrapper<WfDeployRecord> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WfDeployRecord::getProcessDefId, processDefId);
-        if (currentTenantId != null) {
-            wrapper.eq(WfDeployRecord::getTenantId, currentTenantId);
-        }
-        List<WfDeployRecord> records = deployRecordMapper.selectList(wrapper);
-        
-        List<WfDeployRollbackHistory> allHistory = new ArrayList<>();
-        for (WfDeployRecord record : records) {
-            List<WfDeployRollbackHistory> histories = rollbackHistoryMapper
-                    .listByOriginalDeployId(record.getId()).stream()
-                    .filter(h -> currentTenantId == null || Objects.equals(currentTenantId, h.getTenantId()))
-                    .collect(Collectors.toList());
-            allHistory.addAll(histories);
-        }
-        allHistory.sort((a, b) -> b.getRollbackTime().compareTo(a.getRollbackTime()));
-        return R.ok(allHistory);
+        return R.ok(rollbackHistoryMapper.listByProcessDefinition(processDefId,
+                currentTenantId == null ? definition.getTenantId() : currentTenantId));
     }
 
     @Override
@@ -918,54 +890,22 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
         Map<String, Object> stats = new HashMap<>();
 
-        // 发布总次数
-        LambdaQueryWrapper<WfDeployRecord> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WfDeployRecord::getProcessDefId, processDefId);
+        QueryWrapper<WfDeployRecord> deployments = new QueryWrapper<WfDeployRecord>()
+                .select("COUNT(*) AS totalDeploys", "COUNT(CASE WHEN deploy_status = 'SUCCESS' THEN 1 END) AS successCount",
+                        "COUNT(rollback_time) AS rollbackCount")
+                .eq("process_def_id", processDefId);
         if (currentTenantId != null) {
-            wrapper.eq(WfDeployRecord::getTenantId, currentTenantId);
+            deployments.eq("tenant_id", currentTenantId);
         }
-        Long totalDeploys = deployRecordMapper.selectCount(wrapper);
-        stats.put("totalDeploys", totalDeploys);
+        stats.putAll(deployRecordMapper.selectMaps(deployments).get(0));
 
-        // 成功次数
-        wrapper.clear();
-        wrapper.eq(WfDeployRecord::getProcessDefId, processDefId)
-                .eq(WfDeployRecord::getDeployStatus, "SUCCESS");
+        QueryWrapper<WfProcessDefinition> versions = new QueryWrapper<WfProcessDefinition>()
+                .select("COUNT(*) AS snapshotCount", "COALESCE(MAX(version), 0) AS latestVersion")
+                .eq("process_key", definition.getProcessKey());
         if (currentTenantId != null) {
-            wrapper.eq(WfDeployRecord::getTenantId, currentTenantId);
+            versions.eq("tenant_id", currentTenantId);
         }
-        Long successCount = deployRecordMapper.selectCount(wrapper);
-        stats.put("successCount", successCount);
-
-        // 回滚次数
-        wrapper.clear();
-        wrapper.eq(WfDeployRecord::getProcessDefId, processDefId)
-                .isNotNull(WfDeployRecord::getRollbackTime);
-        if (currentTenantId != null) {
-            wrapper.eq(WfDeployRecord::getTenantId, currentTenantId);
-        }
-        Long rollbackCount = deployRecordMapper.selectCount(wrapper);
-        stats.put("rollbackCount", rollbackCount);
-
-        // 版本数与最新版本（C6: 同 key 定义版本行）
-        long versionRowCount = 0;
-        Integer latestVersionNo = 0;
-        WfProcessDefinition statsDefRow = processDefinitionMapper.selectById(processDefId);
-        if (statsDefRow != null) {
-            LambdaQueryWrapper<WfProcessDefinition> versionRowsWrapper = new LambdaQueryWrapper<WfProcessDefinition>()
-                    .eq(WfProcessDefinition::getProcessKey, statsDefRow.getProcessKey())
-                    .orderByDesc(WfProcessDefinition::getVersion);
-            if (currentTenantId != null) {
-                versionRowsWrapper.eq(WfProcessDefinition::getTenantId, currentTenantId);
-            }
-            List<WfProcessDefinition> versionRows = processDefinitionMapper.selectList(versionRowsWrapper);
-            versionRowCount = versionRows.size();
-            if (!versionRows.isEmpty() && versionRows.get(0).getVersion() != null) {
-                latestVersionNo = versionRows.get(0).getVersion();
-            }
-        }
-        stats.put("snapshotCount", versionRowCount);
-        stats.put("latestVersion", latestVersionNo);
+        stats.putAll(processDefinitionMapper.selectMaps(versions).get(0));
 
         return R.ok(DynamicMapVO.from(stats));
     }

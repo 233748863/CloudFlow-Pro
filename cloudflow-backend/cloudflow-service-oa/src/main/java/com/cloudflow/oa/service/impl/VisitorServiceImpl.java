@@ -1,5 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
+import com.cloudflow.common.core.domain.ProcessStartResult;
+
 import cn.hutool.extra.qrcode.QrCodeUtil;
 import cn.hutool.extra.qrcode.QrConfig;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -322,8 +324,8 @@ public class VisitorServiceImpl extends ServiceImpl<VisitorMapper, Visitor>
                 "VISITOR:" + visitor.getVisitorId(), CALLBACK_STREAM_KEY);
         dto.setVariables(variables);
 
-        R<?> result = remoteWorkflowService.startProcessInternal(dto);
-        String instanceId = result != null && result.isSuccess() ? extractInstanceId(result.getData()) : null;
+        R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(dto);
+        String instanceId = result != null && result.isSuccess() && result.getData() != null ? result.getData().requireInstanceId() : null;
         LambdaUpdateWrapper<Visitor> update = new LambdaUpdateWrapper<>();
         update.eq(Visitor::getVisitorId, visitor.getVisitorId())
                 .and(w -> w.isNull(Visitor::getProcessInstanceId).or().eq(Visitor::getProcessInstanceId, ""));
@@ -337,16 +339,6 @@ public class VisitorServiceImpl extends ServiceImpl<VisitorMapper, Visitor>
         update(update);
     }
 
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map<?, ?> map) {
-            Object value = map.get("processInstanceId");
-            if (value == null) {
-                value = map.get("instanceId");
-            }
-            return value == null ? null : String.valueOf(value);
-        }
-        return null;
-    }
 
     private Object mapValue(Map<String, Object> map, String key) {
         return map.get(key);
