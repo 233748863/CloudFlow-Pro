@@ -20,6 +20,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -240,17 +242,25 @@ public class HrPayrollBatchService {
     public List<HrPayrollBatch> list() {
         List<HrPayrollBatch> rows = batchMapper.selectList(new LambdaQueryWrapper<HrPayrollBatch>().eq(HrPayrollBatch::getTenantId, tenantId())
                 .eq(HrPayrollBatch::getDeleted, 0).orderByDesc(HrPayrollBatch::getCreateTime));
-        List<HrPayrollBatch> allowed = rows.stream().filter(batch -> {
-            try { assertScope(batch.getBatchId()); return true; }
-            catch (HrBusinessException forbidden) { return false; }
-        }).toList();
+        List<HrPayrollBatchEmployee> members = new ArrayList<>();
+        List<Long> batchIds = rows.stream().map(HrPayrollBatch::getBatchId).toList();
+        for (int offset = 0; offset < batchIds.size(); offset += 500) {
+            members.addAll(employeeMapper.selectList(new LambdaQueryWrapper<HrPayrollBatchEmployee>()
+                    .eq(HrPayrollBatchEmployee::getTenantId, tenantId())
+                    .in(HrPayrollBatchEmployee::getBatchId, batchIds.subList(offset, Math.min(offset + 500, batchIds.size())))));
+        }
+        Set<Long> allowedEmployees = support.accessibleEmployeeIds(members.stream().map(HrPayrollBatchEmployee::getEmployeeId).toList());
+        Map<Long, List<HrPayrollBatchEmployee>> byBatch = members.stream().collect(Collectors.groupingBy(HrPayrollBatchEmployee::getBatchId));
+        List<HrPayrollBatch> allowed = rows.stream().filter(batch ->
+                inScope(batch, byBatch.getOrDefault(batch.getBatchId(), List.of()), allowedEmployees)).toList();
         support.audit("PAYROLL_BATCH", null, "READ_LIST", Map.of("count", allowed.size()));
         return allowed;
     }
 
     public Map<String, Object> detail(Long id) {
-        HrPayrollBatch batch = get(id);
-        List<HrPayrollBatchEmployee> employees = employees(id);
+        BatchAccess access = loadAccess(id);
+        HrPayrollBatch batch = access.batch();
+        List<HrPayrollBatchEmployee> employees = access.employees();
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("batch", batch); result.put("employees", employees);
         result.put("processed", employees.stream().filter(row -> !"PENDING".equals(row.getCalcStatus())).count());
@@ -313,21 +323,27 @@ public class HrPayrollBatchService {
     }
 
     private HrPayrollBatch get(Long id) {
-        HrPayrollBatch batch = id == null ? null : batchMapper.selectById(id);
-        if (batch == null || flag(batch.getDeleted()) || !Objects.equals(batch.getTenantId(), tenantId())) throw new HrBusinessException("BATCH_NOT_FOUND", "薪资批次不存在");
-        assertScope(id);
-        return batch;
+        return loadAccess(id).batch();
     }
 
-    private void assertScope(Long id) {
-        List<HrPayrollBatchEmployee> employees = employees(id);
-        if (employees.isEmpty()) {
-            HrPayrollBatch batch = batchMapper.selectById(id);
-            Integer scope = com.cloudflow.common.core.context.UserContext.getDsType();
-            if (batch != null && scope != null && scope != 0 && !Objects.equals(batch.getCreateBy(), userName())) throw new HrBusinessException("FORBIDDEN", "无权查看该批次");
-        }
-        for (HrPayrollBatchEmployee employee : employees) support.assertEmployeeScope(employee.getEmployeeId());
+    private BatchAccess loadAccess(Long id) {
+        HrPayrollBatch batch = id == null ? null : batchMapper.selectById(id);
+        if (batch == null || flag(batch.getDeleted()) || !Objects.equals(batch.getTenantId(), tenantId())) throw new HrBusinessException("BATCH_NOT_FOUND", "薪资批次不存在");
+        List<HrPayrollBatchEmployee> members = employees(id);
+        Set<Long> allowed = support.accessibleEmployeeIds(members.stream().map(HrPayrollBatchEmployee::getEmployeeId).toList());
+        if (!inScope(batch, members, allowed)) throw new HrBusinessException("FORBIDDEN", "无权查看该批次");
+        return new BatchAccess(batch, members);
     }
+
+    private boolean inScope(HrPayrollBatch batch, List<HrPayrollBatchEmployee> members, Set<Long> allowedEmployees) {
+        if (members.isEmpty()) {
+            Integer scope = com.cloudflow.common.core.context.UserContext.getDsType();
+            return scope == null || scope == 0 || Objects.equals(batch.getCreateBy(), userName());
+        }
+        return members.stream().allMatch(member -> allowedEmployees.contains(member.getEmployeeId()));
+    }
+
+    private record BatchAccess(HrPayrollBatch batch, List<HrPayrollBatchEmployee> employees) { }
     private List<HrPayrollBatchEmployee> employees(Long id) { return employeeMapper.selectList(new LambdaQueryWrapper<HrPayrollBatchEmployee>().eq(HrPayrollBatchEmployee::getTenantId, tenantId()).eq(HrPayrollBatchEmployee::getBatchId, id).orderByAsc(HrPayrollBatchEmployee::getEmployeeId)); }
     private List<HrSalarySlip> slips(Long id) { return slipMapper.selectList(new LambdaQueryWrapper<HrSalarySlip>().eq(HrSalarySlip::getTenantId, tenantId()).eq(HrSalarySlip::getBatchId, id).eq(HrSalarySlip::getDeleted, 0)); }
     private void requireState(HrPayrollBatch batch, String... allowed) { if (!List.of(allowed).contains(batch.getStatus())) throw new HrBusinessException("INVALID_PAYROLL_STATE", "当前批次状态不允许此操作：" + batch.getStatus()); }
@@ -335,9 +351,10 @@ public class HrPayrollBatchService {
     private <T> T withBatch(Long id, Function<HrPayrollBatch, T> action) {
         HrPayrollBatch initial = get(id);
         return support.locked("payroll-period:" + initial.getPayrollPeriodId(), () -> support.locked("payroll-batch:" + id, () -> {
-            HrPayrollBatch latest = get(id);
+            BatchAccess access = loadAccess(id);
+            HrPayrollBatch latest = access.batch();
             configuration.assertOpen(configuration.period(latest.getPayrollPeriodId()));
-            return advancePayroll.withEmployeeLocks(employees(id).stream().map(HrPayrollBatchEmployee::getEmployeeId).toList(), () -> action.apply(latest));
+            return advancePayroll.withEmployeeLocks(access.employees().stream().map(HrPayrollBatchEmployee::getEmployeeId).toList(), () -> action.apply(latest));
         }));
     }
 

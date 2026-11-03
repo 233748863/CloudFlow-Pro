@@ -17,6 +17,8 @@ public class HrMallOrderItemPayload {
     private Long tenantId;
     private Long orderId;
     private Long itemId;
+    private String itemNo;
+    private String coverImage;
     private String itemName;
     private Integer pointPrice;
     private Integer quantity;

@@ -31,15 +31,13 @@
           AND settlement.relieving_date &gt;= employee.hire_date
           AND (settlement.status IN ('CONFIRMED', 'PAID', 'CLOSED') OR settlement.approval_status = 'SUBMITTED')
     </select>
-    <select id="departmentLeaders" resultType="long" flushCache="true" useCache="false">
-        SELECT user_row.user_id FROM sys_dept department
-        JOIN sys_user user_row ON user_row.tenant_id = department.tenant_id
-          AND (CAST(user_row.user_id AS CHAR) = TRIM(department.leader)
-            OR user_row.user_name = TRIM(department.leader) OR user_row.nick_name = TRIM(department.leader))
+    <select id="departmentLeadership" resultType="com.cloudflow.hr.mapper.HrAdvanceApplicationMapper$DepartmentLeadership" flushCache="true" useCache="false">
+        SELECT department.parent_id, CASE WHEN department.status = '0' THEN user_row.user_id END AS leader_user_id
+        FROM sys_dept department
+        LEFT JOIN sys_user user_row ON user_row.tenant_id = department.tenant_id
+          AND user_row.user_id = department.leader_user_id AND user_row.deleted = 0 AND user_row.status = '0'
         WHERE department.tenant_id = #{tenantId} AND department.dept_id = #{departmentId}
-          AND department.deleted = 0 AND department.status = '0' AND department.leader IS NOT NULL
-          AND TRIM(department.leader) != '' AND user_row.deleted = 0 AND user_row.status = '0'
-        ORDER BY user_row.user_id
+          AND department.deleted = 0
     </select>
     <select id="occupiedAmount" resultType="java.math.BigDecimal" flushCache="true" useCache="false">
         SELECT COALESCE(SUM(CASE WHEN paid_time IS NOT NULL THEN outstanding_amount

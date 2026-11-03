@@ -29,11 +29,13 @@ public class HrMallOrderPayload {
     private String receiverAddress;
 
     private String expressNo;
+    private String expressCompany;
     private String status;
     private String processInstanceId;
     private LocalDateTime shippedAt;
     private LocalDateTime completedAt;
     private String remark;
+    private String cancelReason;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private String createBy;

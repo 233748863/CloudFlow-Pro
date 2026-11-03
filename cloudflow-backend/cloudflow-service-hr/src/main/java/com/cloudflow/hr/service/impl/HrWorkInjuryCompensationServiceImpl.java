@@ -4,13 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.web.MapConverters;
-import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryCompensationDTO;
 import com.cloudflow.hr.domain.entity.HrWorkInjuryCompensation;
 import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryCompensationVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrWorkInjuryCompensationMapper;
-import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
+import com.cloudflow.hr.service.HrWorkInjuryAccess;
+import com.cloudflow.hr.service.HrRuleSupport;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.hr.service.IHrWorkInjuryCompensationService;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -31,19 +31,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class HrWorkInjuryCompensationServiceImpl implements IHrWorkInjuryCompensationService {
 
-    private static final long DEFAULT_TENANT_ID = 100000L;
-
     private final HrWorkInjuryCompensationMapper compensationMapper;
-    private final HrWorkInjuryMapper injuryMapper;
+    private final HrWorkInjuryAccess injuryAccess;
     private final HrTypedCrudService crudService;
     private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createCompensation(Long injuryId, HrWorkInjuryCompensationDTO dto) {
-        if (injuryMapper.selectById(injuryId) == null) {
-            throw new HrBusinessException("WORK_INJURY_NOT_FOUND", "工伤记录不存在：" + injuryId);
-        }
+        injuryAccess.require(injuryId);
         HrWorkInjuryCompensation compensation = objectMapper.convertValue(dto, HrWorkInjuryCompensation.class);
         compensation.setInjuryId(injuryId);
         compensation.setTenantId(currentTenantId());
@@ -61,12 +57,14 @@ public class HrWorkInjuryCompensationServiceImpl implements IHrWorkInjuryCompens
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "更新工伤赔偿", diff = true, highRisk = true)
     public void updateCompensation(Long compensationId, HrWorkInjuryCompensationDTO dto) {
+        requireRecord(compensationId);
         crudService.updateProperties(HrWorkInjuryCompensation.class, compensationId,
                 MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
     public List<HrWorkInjuryCompensationVO> listByInjury(Long injuryId) {
+        injuryAccess.require(injuryId);
         QueryWrapper<HrWorkInjuryCompensation> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("injury_id", injuryId).eq("deleted", 0)
                 .orderByDesc("create_time");
@@ -89,6 +87,7 @@ public class HrWorkInjuryCompensationServiceImpl implements IHrWorkInjuryCompens
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void markPaid(Long compensationId) {
+        requireRecord(compensationId);
         UpdateWrapper<HrWorkInjuryCompensation> uw = new UpdateWrapper<>();
         uw.eq("id", compensationId).eq("tenant_id", currentTenantId())
                 .set("payment_status", "PAID")
@@ -108,13 +107,16 @@ public class HrWorkInjuryCompensationServiceImpl implements IHrWorkInjuryCompens
         return "****" + value.substring(value.length() - 4);
     }
 
+    private HrWorkInjuryCompensation requireRecord(Long id) {
+        HrWorkInjuryCompensation record = compensationMapper.selectOne(new QueryWrapper<HrWorkInjuryCompensation>()
+                .eq("id", id).eq("tenant_id", currentTenantId()).eq("deleted", 0));
+        if (record == null) throw new HrBusinessException("WORK_INJURY_RECORD_NOT_FOUND", "工伤子记录不存在");
+        injuryAccess.require(record.getInjuryId());
+        return record;
+    }
+
     private long currentTenantId() {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null) {
-            return tenantId;
-        }
-        tenantId = UserContext.getTenantId();
-        return tenantId == null ? DEFAULT_TENANT_ID : tenantId;
+        return HrRuleSupport.tenantId();
     }
 
     private String currentUserName() {

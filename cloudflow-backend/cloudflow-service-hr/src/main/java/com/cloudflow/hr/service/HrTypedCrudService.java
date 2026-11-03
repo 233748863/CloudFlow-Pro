@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.metadata.TableInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.audit.support.AuditSnapshotContext;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.encrypt.annotation.EncryptField;
 import com.cloudflow.common.message.security.MessagePayloadCodec;
@@ -17,6 +18,7 @@ import com.cloudflow.common.holiday.api.HolidayCalendarService;
 import com.cloudflow.common.sensitive.utils.SensitiveUtils;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.dto.HrAuditSnapshot;
+import com.cloudflow.hr.domain.dto.HrEmployeeCompPayload;
 import com.cloudflow.hr.domain.entity.HrCompGrade;
 import com.cloudflow.hr.domain.entity.HrCandidate;
 import com.cloudflow.hr.domain.entity.HrEmployee;
@@ -34,6 +36,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.util.ClassUtils;
 
 import java.beans.Introspector;
 import java.lang.reflect.Field;
@@ -46,10 +49,29 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @Service
 @RequiredArgsConstructor
 public class HrTypedCrudService {
+
+    private static final ConcurrentMap<Class<?>, Map<String, String>> PROPERTY_COLUMNS = new ConcurrentHashMap<>();
+    private static final ClassValue<Map<String, Field>> ENTITY_FIELDS = new ClassValue<>() {
+        @Override
+        protected Map<String, Field> computeValue(Class<?> type) {
+            Map<String, Field> fields = new LinkedHashMap<>();
+            for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
+                for (Field field : current.getDeclaredFields()) {
+                    if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                        field.setAccessible(true);
+                        fields.putIfAbsent(field.getName(), field);
+                    }
+                }
+            }
+            return Map.copyOf(fields);
+        }
+    };
 
     private static final long DEFAULT_TENANT_ID = 100000L;
     /** 兜底默认值：HR 模块查询单页最大条数（实际值从 sys.hr.maxPageSize 读取） */
@@ -157,9 +179,26 @@ public class HrTypedCrudService {
         return maskRow(toResponseMap(entity), isPrivilegedUser());
     }
 
-    @Audit(name = "HR记录创建",
-            oldVal = "@hrTypedCrudService.emptySnapshot(#entityClass)",
-            newVal = "@hrTypedCrudService.payloadSnapshot(#entityClass, #payload)")
+    public <T> Map<Long, Map<String, Object>> getMany(Class<T> entityClass, Collection<Long> identifiers) {
+        List<Long> ids = identifiers.stream().filter(Objects::nonNull).distinct().toList();
+        Map<Long, Map<String, Object>> result = new LinkedHashMap<>();
+        TableInfo tableInfo = tableInfo(entityClass);
+        BaseMapper<T> mapper = mapper(entityClass);
+        boolean privileged = isPrivilegedUser();
+        for (int offset = 0; offset < ids.size(); offset += 500) {
+            QueryWrapper<T> query = new QueryWrapper<>();
+            query.in(tableInfo.getKeyColumn(), ids.subList(offset, Math.min(offset + 500, ids.size())));
+            appendDeletedFilter(query, tableInfo);
+            appendDataScope(query, tableInfo);
+            for (T entity : mapper.selectList(query)) {
+                Long id = ((Number) getProperty(entity, tableInfo.getKeyProperty())).longValue();
+                result.put(id, maskRow(toResponseMap(entity), privileged));
+            }
+        }
+        return result;
+    }
+
+    @Audit(name = "HR记录创建", providedSnapshots = true)
     @Transactional(rollbackFor = Exception.class)
     public <T> Long create(Class<T> entityClass, Object payload) {
         assertHWrite(entityClass, null, payload);
@@ -167,11 +206,11 @@ public class HrTypedCrudService {
         TableInfo tableInfo = tableInfo(entityClass);
         assertWriteAllowed(tableInfo.getTableName());
         T entity = objectMapper.convertValue(MessagePayloadCodec.internalTree(payload, objectMapper), entityClass);
-        applyCompGradeAutoFill(entity, tableInfo);
+        applyCompGradeAutoFill(entity);
         applyCreateDefaults(entity, tableInfo);
         verifyRecruitmentWrite(entity, null, null);
         if (entity instanceof HrCandidate candidate) {
-            recruitmentIdentities.prepareCandidate(candidate, null);
+            recruitmentIdentities.prepareCandidate(candidate);
             referralProgress.verifyCandidateWrite(candidate, null);
         }
         mapper.insert(entity);
@@ -183,25 +222,19 @@ public class HrTypedCrudService {
         return createdId;
     }
 
-    @Audit(name = "HR记录更新",
-            oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
-            newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    @Audit(name = "HR记录更新", providedSnapshots = true)
     @Transactional(rollbackFor = Exception.class)
     public <T> void update(Class<T> entityClass, Long id, Object payload) {
         updateInternal(entityClass, id, payload, "UPDATE");
     }
 
-    @Audit(name = "HR记录更新",
-            oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
-            newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    @Audit(name = "HR记录更新", providedSnapshots = true)
     @Transactional(rollbackFor = Exception.class)
     public <T> void updateProperties(Class<T> entityClass, Long id, Map<String, Object> payload) {
         updateInternal(entityClass, id, payload, "UPDATE");
     }
 
-    @Audit(name = "HR工作流回调状态变更",
-            oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
-            newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    @Audit(name = "HR工作流回调状态变更", providedSnapshots = true)
     @Transactional(rollbackFor = Exception.class)
     public <T> boolean updatePropertiesIfWorkflowInstanceMatches(Class<T> entityClass,
                                                                  Long id,
@@ -211,9 +244,7 @@ public class HrTypedCrudService {
         return updateInternal(entityClass, id, payload, "UPDATE", workflowInstanceId, instanceProperties);
     }
 
-    @Audit(name = "HR工作流回调状态变更",
-            oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
-            newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    @Audit(name = "HR工作流回调状态变更", providedSnapshots = true)
     @Transactional(rollbackFor = Exception.class)
     public <T> boolean updatePropertiesIfWorkflowInstanceMatchesAndCurrentStatusIn(
             Class<T> entityClass,
@@ -227,9 +258,7 @@ public class HrTypedCrudService {
                 statusProperty, allowedCurrentStatuses, instanceProperties);
     }
 
-    @Audit(name = "HR记录删除",
-            oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
-            newVal = "@hrTypedCrudService.emptySnapshot(#entityClass)",
+    @Audit(name = "HR记录删除", providedSnapshots = true,
             highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public <T> void delete(Class<T> entityClass, Long id) {
@@ -272,9 +301,7 @@ public class HrTypedCrudService {
         invalidateCalendarAssignments(entityClass);
     }
 
-    @Audit(name = "HR记录状态变更",
-            oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
-            newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    @Audit(name = "HR记录状态变更", providedSnapshots = true)
     @Transactional(rollbackFor = Exception.class)
     public <T> void changeStatus(Class<T> entityClass, Long id, String action) {
         updateInternal(entityClass, id, Map.of("status", statusFromAction(action)), "STATUS");
@@ -284,18 +311,6 @@ public class HrTypedCrudService {
         if (List.of("hr_employee", "hr_shift", "hr_schedule_assignment").contains(tableInfo(entityClass).getTableName())) {
             applicationContext.getBean(HolidayCalendarService.class).invalidateAssignments();
         }
-    }
-
-    public <T> HrAuditSnapshot snapshot(Class<T> entityClass, Long id) {
-        return new HrAuditSnapshot(tableInfo(entityClass).getTableName(), id, getAuditRow(entityClass, id));
-    }
-
-    public <T> HrAuditSnapshot payloadSnapshot(Class<T> entityClass, Object payload) {
-        return new HrAuditSnapshot(tableInfo(entityClass).getTableName(), null, hAuditValues(tableInfo(entityClass).getTableName(), toMap(payload)));
-    }
-
-    public <T> HrAuditSnapshot emptySnapshot(Class<T> entityClass) {
-        return new HrAuditSnapshot(tableInfo(entityClass).getTableName(), null, Map.of());
     }
 
     public String statusFromAction(String action) {
@@ -378,7 +393,7 @@ public class HrTypedCrudService {
         verifyRecruitmentWrite(entity, before, workflowInstanceId);
         if (entity instanceof HrCandidate candidate) {
             referralProgress.verifyCandidateWrite(candidate, previousCandidate);
-            recruitmentIdentities.prepareCandidate(candidate, previousCandidate);
+            recruitmentIdentities.prepareCandidate(candidate);
             recruitmentIdentities.occupyCandidateHistory(candidate, previousCandidate);
             if (candidate.getPhone() == null) nullColumns.add("phone");
             if (candidate.getEmail() == null) nullColumns.add("email");
@@ -584,6 +599,10 @@ public class HrTypedCrudService {
 
     private <T> void appendDataScope(QueryWrapper<T> wrapper, TableInfo tableInfo) {
         appraisalGuard.legacyRead(wrapper, tableInfo.getTableName());
+        if ("hr_work_injury".equals(tableInfo.getTableName())) {
+            applicationContext.getBean(HrWorkInjuryAccess.class).restrict(wrapper);
+            return;
+        }
         if ("hr_employee".equals(tableInfo.getTableName())) {
             employeeReadScope().restrict(wrapper);
             return;
@@ -642,6 +661,10 @@ public class HrTypedCrudService {
     }
 
     private <T> void appendOrder(QueryWrapper<T> wrapper, TableInfo tableInfo) {
+        if ("hr_mall_item".equals(tableInfo.getTableName())) {
+            wrapper.orderByAsc("sort_order").orderByDesc(tableInfo.getKeyColumn());
+            return;
+        }
         if (hasProperty(tableInfo, "updateTime")) {
             wrapper.orderByDesc(columnOf(tableInfo, "updateTime"));
             if (tableInfo.getKeyColumn() != null) {
@@ -663,79 +686,28 @@ public class HrTypedCrudService {
      * 按 hr_employee.position_id -> hr_position.level_id -> hr_comp_grade 套用默认区间(mid_salary).
      * HR 仍可手动覆盖, 不强制锁死.
      */
-    private <T> void applyCompGradeAutoFill(T entity, TableInfo tableInfo) {
-        if (!"hr_employee_comp".equals(tableInfo.getTableName())) {
-            return;
-        }
-        Long employeeId = (Long) readProperty(entity, "employeeId");
-        if (employeeId == null) {
+    private <T> void applyCompGradeAutoFill(T entity) {
+        if (!(entity instanceof HrEmployeeCompPayload compensation)
+                || compensation.getEmployeeId() == null
+                || compensation.getGradeId() != null && compensation.getTotalSalaryText() != null) {
             return;
         }
         Long tenantId = currentTenantId();
-        try {
-            HrEmployee employee = employeeMapper.selectOne(
-                    new LambdaQueryWrapper<HrEmployee>()
-                            .eq(HrEmployee::getId, employeeId)
-                            .eq(HrEmployee::getTenantId, tenantId)
-                            .eq(HrEmployee::getDeleted, 0));
-            if (employee == null || employee.getPositionId() == null) {
-                return;
-            }
-            HrPosition position = positionMapper.selectOne(
-                    new LambdaQueryWrapper<HrPosition>()
-                            .eq(HrPosition::getId, employee.getPositionId())
-                            .eq(HrPosition::getTenantId, tenantId));
-            if (position == null || position.getLevelId() == null) {
-                return;
-            }
-            List<HrCompGrade> grades = compGradeMapper.selectPage(new Page<>(1, 1, false),
-                    new LambdaQueryWrapper<HrCompGrade>()
-                            .eq(HrCompGrade::getLevelId, position.getLevelId())
-                            .eq(HrCompGrade::getTenantId, tenantId)
-                            .eq(HrCompGrade::getStatus, 1)
-                            .orderByAsc(HrCompGrade::getId)).getRecords();
-            if (grades.isEmpty()) {
-                return;
-            }
-            HrCompGrade grade = grades.get(0);
-            if (readProperty(entity, "gradeId") == null) {
-                writeProperty(entity, "gradeId", grade.getId());
-            }
-            if (readProperty(entity, "totalSalaryText") == null) {
-                String midSalaryText = grade.getMidSalaryText();
-                if (midSalaryText != null) {
-                    writeProperty(entity, "totalSalaryText", midSalaryText);
-                }
-            }
-        } catch (Exception ex) {
-            // 套改失败不阻断主流程, HR 仍可手动填写
-        }
-    }
-
-    private Object readProperty(Object entity, String propertyName) {
-        try {
-            Field field = findField(entity.getClass(), propertyName);
-            if (field == null) {
-                return null;
-            }
-            field.setAccessible(true);
-            return field.get(entity);
-        } catch (IllegalAccessException ex) {
-            return null;
-        }
-    }
-
-    private void writeProperty(Object entity, String propertyName, Object value) {
-        try {
-            Field field = findField(entity.getClass(), propertyName);
-            if (field == null) {
-                return;
-            }
-            field.setAccessible(true);
-            field.set(entity, value);
-        } catch (IllegalAccessException ex) {
-            // ignore
-        }
+        HrEmployee employee = employeeMapper.selectOne(new LambdaQueryWrapper<HrEmployee>()
+                .eq(HrEmployee::getId, compensation.getEmployeeId())
+                .eq(HrEmployee::getTenantId, tenantId).eq(HrEmployee::getDeleted, 0));
+        if (employee == null || employee.getPositionId() == null) return;
+        HrPosition position = positionMapper.selectOne(new LambdaQueryWrapper<HrPosition>()
+                .eq(HrPosition::getId, employee.getPositionId()).eq(HrPosition::getTenantId, tenantId));
+        if (position == null || position.getLevelId() == null) return;
+        List<HrCompGrade> grades = compGradeMapper.selectPage(new Page<>(1, 1, false),
+                new LambdaQueryWrapper<HrCompGrade>()
+                        .eq(HrCompGrade::getLevelId, position.getLevelId()).eq(HrCompGrade::getTenantId, tenantId)
+                        .eq(HrCompGrade::getStatus, 1).orderByAsc(HrCompGrade::getId)).getRecords();
+        if (grades.isEmpty()) return;
+        HrCompGrade grade = grades.get(0);
+        if (compensation.getGradeId() == null) compensation.setGradeId(grade.getId());
+        if (compensation.getTotalSalaryText() == null) compensation.setTotalSalaryText(grade.getMidSalaryText());
     }
 
     private <T> void applyCreateDefaults(T entity, TableInfo tableInfo) {
@@ -759,8 +731,7 @@ public class HrTypedCrudService {
                                   TableInfo tableInfo,
                                   Set<String> nullColumns) {
         T patch = objectMapper.convertValue(payloadMap, entityClass);
-        Map<String, Object> normalized = new LinkedHashMap<>(payloadMap);
-        for (Map.Entry<String, Object> entry : normalized.entrySet()) {
+        for (Map.Entry<String, Object> entry : payloadMap.entrySet()) {
             String property = normalizeProperty(tableInfo, entry.getKey());
             if (property == null || AUTO_PROPERTIES.contains(property)) {
                 continue;
@@ -788,14 +759,16 @@ public class HrTypedCrudService {
     }
 
     private Map<String, String> propertyToColumnMap(TableInfo tableInfo) {
-        Map<String, String> mapping = new LinkedHashMap<>();
-        if (tableInfo.getKeyProperty() != null && tableInfo.getKeyColumn() != null) {
-            mapping.put(tableInfo.getKeyProperty(), tableInfo.getKeyColumn());
-        }
-        for (TableFieldInfo fieldInfo : tableInfo.getFieldList()) {
-            mapping.put(fieldInfo.getProperty(), fieldInfo.getColumn());
-        }
-        return mapping;
+        return PROPERTY_COLUMNS.computeIfAbsent(tableInfo.getEntityType(), entityType -> {
+            Map<String, String> mapping = new LinkedHashMap<>();
+            if (tableInfo.getKeyProperty() != null && tableInfo.getKeyColumn() != null) {
+                mapping.put(tableInfo.getKeyProperty(), tableInfo.getKeyColumn());
+            }
+            for (TableFieldInfo fieldInfo : tableInfo.getFieldList()) {
+                mapping.put(fieldInfo.getProperty(), fieldInfo.getColumn());
+            }
+            return Map.copyOf(mapping);
+        });
     }
 
     private boolean hasProperty(TableInfo tableInfo, String property) {
@@ -892,6 +865,17 @@ public class HrTypedCrudService {
                                String operationType,
                                Map<String, Object> before,
                                Map<String, Object> after) {
+        Map<String, Object> safeBefore = maskRow(hAuditValues(tableName, before), false);
+        Map<String, Object> safeAfter = new LinkedHashMap<>(maskRow(hAuditValues(tableName, after), false));
+        List<String> hiddenChanges = new ArrayList<>();
+        for (String field : safeAfter.keySet()) {
+            if (!Objects.equals(before.get(field), after.get(field)) && Objects.equals(safeBefore.get(field), safeAfter.get(field))) {
+                hiddenChanges.add(field);
+            }
+        }
+        if (!hiddenChanges.isEmpty()) safeAfter.put("changedSensitiveFields", List.copyOf(hiddenChanges));
+        AuditSnapshotContext.record(new HrAuditSnapshot(tableName, businessId, safeBefore),
+                new HrAuditSnapshot(tableName, businessId, safeAfter));
         try {
             auditLogMapper.insertLog(
                     currentTenantId(),
@@ -900,8 +884,8 @@ public class HrTypedCrudService {
                     operationType,
                     UserContext.getUserId(),
                     currentUserName(),
-                    writeJsonSafely(hAuditValues(tableName, before)),
-                    writeJsonSafely(hAuditValues(tableName, after))
+                    writeJsonSafely(safeBefore),
+                    writeJsonSafely(safeAfter)
             );
         } catch (Exception ignored) {
         }
@@ -980,10 +964,9 @@ public class HrTypedCrudService {
             return null;
         }
         try {
-            field.setAccessible(true);
             return field.get(target);
         } catch (IllegalAccessException e) {
-            return null;
+            throw new IllegalStateException("无法读取实体字段：" + property, e);
         }
     }
 
@@ -994,39 +977,21 @@ public class HrTypedCrudService {
     }
 
     private void setProperty(Object target, String property, Object value) {
-        if (target == null || !StringUtils.hasText(property)) {
-            return;
-        }
+        if (target == null || !StringUtils.hasText(property)) return;
         Field field = findField(target.getClass(), property);
-        if (field == null) {
-            return;
-        }
+        if (field == null) return;
+        Class<?> fieldType = ClassUtils.resolvePrimitiveIfNecessary(field.getType());
+        Object typedValue = value == null || fieldType.isInstance(value)
+                ? value : objectMapper.convertValue(value, field.getType());
         try {
-            field.setAccessible(true);
-            field.set(target, objectMapper.convertValue(value, field.getType()));
-        } catch (IllegalArgumentException ignored) {
-            try {
-                field.set(target, value);
-            } catch (IllegalAccessException ignoredAgain) {
-            }
-        } catch (IllegalAccessException ignored) {
+            field.set(target, typedValue);
+        } catch (IllegalAccessException failure) {
+            throw new IllegalStateException("无法写入实体字段：" + property, failure);
         }
     }
 
     private Field findField(Class<?> type, String name) {
-        Class<?> current = type;
-        while (current != null && current != Object.class) {
-            for (Field field : current.getDeclaredFields()) {
-                if (field.getName().equals(name) && field.getAnnotation(EncryptField.class) != null) {
-                    return field;
-                }
-                if (field.getName().equals(name)) {
-                    return field;
-                }
-            }
-            current = current.getSuperclass();
-        }
-        return null;
+        return ENTITY_FIELDS.get(type).get(name);
     }
 
     private String toCamel(String value) {

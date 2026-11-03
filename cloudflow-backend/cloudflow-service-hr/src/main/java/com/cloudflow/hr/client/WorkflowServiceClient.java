@@ -1,6 +1,7 @@
 package com.cloudflow.hr.client;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.client.dto.WorkflowInvalidateRequest;
 import com.cloudflow.hr.client.dto.WorkflowStartRequest;
@@ -69,7 +70,7 @@ public interface WorkflowServiceClient {
         request.setStartUserName(null);
         request.setVariables(variables);
 
-        R<Map<String, String>> response = startProcessInternal(request);
+        R<ProcessStartResult> response = startProcessInternal(request);
         if (response == null) {
             return R.fail("Workflow 服务无响应");
         }
@@ -77,19 +78,18 @@ public interface WorkflowServiceClient {
             return R.fail(response.getMsg());
         }
 
-        Map<String, String> data = response.getData();
-        String instanceId = data != null ? data.get("instanceId") : null;
-        if (instanceId == null || instanceId.isBlank()) {
+        ProcessStartResult data = response.getData();
+        if (data == null) {
             return R.fail("Workflow 服务未返回流程实例ID");
         }
-        return R.ok(instanceId);
+        return R.ok(data.requireInstanceId());
     }
 
     /**
      * workflow 原生启动接口
      */
     @PostMapping("/inner/workflow/process/start")
-    R<Map<String, String>> startProcessInternal(@RequestBody WorkflowStartRequest request);
+    R<ProcessStartResult> startProcessInternal(@RequestBody WorkflowStartRequest request);
 
     /**
      * 查询流程实例

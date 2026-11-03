@@ -19,6 +19,7 @@ public class HrMallItemVO {
     @Schema(description = "类别") private String category;
     @Schema(description = "积分售价") private Integer pointPrice;
     @Schema(description = "库存") private Integer stock;
+    @Schema(description = "排序号，数值越小越靠前") private Integer sortOrder;
     @Schema(description = "累计销量") private Integer salesCount;
     @Schema(description = "封面图 URL") private String coverImage;
     @Schema(description = "图片集") private List<String> images;

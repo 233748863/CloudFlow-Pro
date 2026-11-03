@@ -18,6 +18,7 @@ public class HrDisputeEvidencePayload {
     private Long disputeId;
     private String evidenceType;
     private Long fileId;
+    private String fileName;
     private Long uploadedBy;
     private LocalDateTime uploadedAt;
     private String remark;

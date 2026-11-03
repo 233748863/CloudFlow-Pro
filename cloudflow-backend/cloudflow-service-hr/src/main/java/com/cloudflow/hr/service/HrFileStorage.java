@@ -100,7 +100,7 @@ public class HrFileStorage {
      */
     public byte[] load(Long fileId) {
         Map<String, Object> metadata = fileStorageMapper.selectFileMetadata(fileId, currentTenantId());
-        if (metadata != null && java.util.Set.of("HR_GRIEVANCE", "HR_GRIEVANCE_EVIDENCE", "HR_LEAVE_PROOF", "HR_TAX_PROOF", "HR_ADVANCE_PROOF", "HR_REFERRAL_RESUME", "HR_EXIT_INTERVIEW", "HR_TRAINING_AGREEMENT", "HR_SEVERANCE_POLICY", "HR_SETTLEMENT_PROOF", "HR_ATTENDANCE_PHOTO")
+        if (metadata != null && java.util.Set.of("HR_GRIEVANCE", "HR_GRIEVANCE_EVIDENCE", "HR_DISPUTE_EVIDENCE", "HR_LEAVE_PROOF", "HR_TAX_PROOF", "HR_ADVANCE_PROOF", "HR_REFERRAL_RESUME", "HR_EXIT_INTERVIEW", "HR_TRAINING_AGREEMENT", "HR_SEVERANCE_POLICY", "HR_SETTLEMENT_PROOF", "HR_ATTENDANCE_PHOTO")
                 .contains(String.valueOf(metadata.get("fileType")))) {
             throw new HrBusinessException("FILE_ACCESS_DENIED", "私密附件须从对应业务入口读取");
         }

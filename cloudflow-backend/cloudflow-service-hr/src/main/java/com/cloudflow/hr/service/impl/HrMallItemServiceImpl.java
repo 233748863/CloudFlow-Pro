@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.web.MapConverters;
-import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.dto.benefit.HrMallItemDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrMallItemQueryDTO;
 import com.cloudflow.hr.domain.entity.HrMallItem;
@@ -13,6 +12,7 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrMallItemMapper;
 import com.cloudflow.hr.service.IHrMallItemService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.hr.service.HrRuleSupport;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.lock.DistributedLock;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,8 +29,6 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class HrMallItemServiceImpl implements IHrMallItemService {
-
-    private static final long DEFAULT_TENANT_ID = 100000L;
 
     private final HrMallItemMapper itemMapper;
     private final HrTypedCrudService crudService;
@@ -134,12 +132,7 @@ public class HrMallItemServiceImpl implements IHrMallItemService {
     }
 
     private long currentTenantId() {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null) {
-            return tenantId;
-        }
-        tenantId = UserContext.getTenantId();
-        return tenantId == null ? DEFAULT_TENANT_ID : tenantId;
+        return HrRuleSupport.tenantId();
     }
 
     private String currentUserName() {

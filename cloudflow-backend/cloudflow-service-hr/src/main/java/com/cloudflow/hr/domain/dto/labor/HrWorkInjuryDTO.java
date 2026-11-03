@@ -24,6 +24,9 @@ public class HrWorkInjuryDTO {
     @NotNull(message = "员工 ID 不能为空")
     private Long employeeId;
 
+    @Schema(description = "事发部门 ID")
+    private Long deptId;
+
     @Schema(description = "发生时间")
     @NotNull(message = "发生时间不能为空")
     private LocalDateTime occurredAt;
@@ -33,7 +36,7 @@ public class HrWorkInjuryDTO {
     private String location;
 
     @Schema(description = "事件经过")
-    @Size(max = 2048)
+    @Size(max = 2000)
     private String eventDescription;
 
     @Schema(description = "受伤部位")
@@ -44,11 +47,4 @@ public class HrWorkInjuryDTO {
     @Size(max = 16)
     private String injuryLevel;
 
-    @Schema(description = "状态：REPORTED/INVESTIGATING/DETERMINING/DETERMINED/COMPENSATING/REHABILITATING/CLOSED/REJECTED；不传默认 REPORTED")
-    @Size(max = 32)
-    private String status;
-
-    @Schema(description = "备注")
-    @Size(max = 512)
-    private String remark;
 }

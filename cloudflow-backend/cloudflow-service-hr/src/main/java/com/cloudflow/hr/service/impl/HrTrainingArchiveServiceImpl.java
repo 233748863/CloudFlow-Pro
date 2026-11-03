@@ -45,8 +45,7 @@ import java.util.stream.Collectors;
 /**
  * HR-P0-1 培训档案物理化实现。
  *
- * <p>读路径: 先查 hr_training_archive 物理表; 未命中则回退到旧实时聚合(buildArchiveRealtime),
- * 命中后异步触发 rebuildOne 把结果落表给下次读使用。
+ * <p>详情读路径使用单次实时聚合，明细与总计来自同一批数据。
  *
  * <p>写路径: 报名 / 证书状态变更点调用 incrementOnXxxChange — @Async 全量重算单员工 + upsert。
  *
@@ -78,27 +77,9 @@ public class HrTrainingArchiveServiceImpl implements IHrTrainingArchiveService {
     }
 
     private Map<String, Object> buildArchive(Long employeeId) {
-        // 读路径优先查物理表的总计字段供前端首屏快显, 详情列表仍按需聚合(明细字段未持久化)
+        // 此接口返回实时明细，总计必须与同一次聚合的明细一致。
         Map<String, Object> result = buildArchiveRealtime(employeeId);
-        if (employeeId != null) {
-            HrTrainingArchive cached = findArchive(employeeId);
-            if (cached != null) {
-                result.put("totalCreditHours", cached.getTotalHours());
-                result.put("completedCount", cached.getCompletionCount());
-                result.put("ongoingCount", cached.getOngoingCount());
-                result.put("certificateCount", cached.getCertCount());
-                result.put("lastTrainingDate", cached.getLastTrainingDate());
-                result.put("yearHours", parseYearHours(cached.getYearHours()));
-                result.put("refreshedAt", cached.getRefreshedAt());
-            } else {
-                // 物理表未命中: 异步触发一次重算, 下次读即可走缓存
-                try {
-                    rebuildOne(employeeId);
-                } catch (Exception e) {
-                    log.warn("hr_training_archive 首次落表失败, employeeId={}", employeeId, e);
-                }
-            }
-        }
+        result.put("refreshedAt", LocalDateTime.now());
         return result;
     }
 
@@ -382,19 +363,6 @@ public class HrTrainingArchiveServiceImpl implements IHrTrainingArchiveService {
         } catch (Exception ex) {
             log.warn("yearHours 序列化失败", ex);
             return null;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> parseYearHours(String json) {
-        if (json == null || json.isBlank()) {
-            return Collections.emptyMap();
-        }
-        try {
-            return JSON.readValue(json, Map.class);
-        } catch (Exception e) {
-            log.warn("yearHours 反序列化失败: {}", json, e);
-            return Collections.emptyMap();
         }
     }
 

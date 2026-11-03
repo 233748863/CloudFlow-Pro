@@ -40,9 +40,12 @@ public class DeptTreeVO implements Serializable {
     private Integer orderNum;
     
     /**
-     * 负责人
+     * 负责人用户编号
      */
-    private String leader;
+    private Long leaderUserId;
+
+    /** 负责人显示名称 */
+    private String leaderName;
     
     /**
      * 部门状态（0正常 1停用）

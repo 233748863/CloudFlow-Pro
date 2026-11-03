@@ -19,6 +19,7 @@ public class HrWorkInjuryPayload {
     private Long tenantId;
     private String injuryNo;
     private Long employeeId;
+    private Long deptId;
     private LocalDateTime occurredAt;
     private String location;
     private String eventDescription;
@@ -28,8 +29,8 @@ public class HrWorkInjuryPayload {
     private String processInstanceId;
     private LocalDateTime determinedAt;
     private Integer determinedGrade;
-    @TableField("close_reason")
-    private String remark;
+    private LocalDateTime closedAt;
+    private String closeReason;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private String createBy;

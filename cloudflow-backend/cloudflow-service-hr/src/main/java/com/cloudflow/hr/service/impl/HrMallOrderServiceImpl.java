@@ -11,7 +11,6 @@ import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.redis.config.RuntimeSysConfigService;
 import com.cloudflow.common.redis.config.SysConfigKeys;
-import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrMallOrderPlaceDTO;
@@ -32,6 +31,7 @@ import com.cloudflow.hr.service.IHrMallItemService;
 import com.cloudflow.hr.service.IHrMallOrderService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.hr.service.IHrPointAccountService;
+import com.cloudflow.hr.service.HrRuleSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,8 +49,6 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class HrMallOrderServiceImpl implements IHrMallOrderService {
-
-    private static final long DEFAULT_TENANT_ID = 100000L;
 
     private final HrMallOrderMapper orderMapper;
     private final HrMallOrderItemMapper orderItemMapper;
@@ -107,6 +105,8 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
         oi.setTenantId(currentTenantId());
         oi.setOrderId(order.getId());
         oi.setItemId(item.getId());
+        oi.setItemNo(item.getItemNo());
+        oi.setCoverImage(item.getCoverImage());
         oi.setItemName(item.getItemName());
         oi.setPointPrice(item.getPointPrice());
         oi.setQuantity(quantity);
@@ -162,13 +162,13 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
 
     @Override
     public HrMallOrderVO get(Long orderId) {
-        HrMallOrder order = orderMapper.selectById(orderId);
-        if (order == null) {
+        Map<String, Object> order = crudService.get(HrMallOrder.class, orderId);
+        if (order.isEmpty()) {
             throw new HrBusinessException("MALL_ORDER_NOT_FOUND", "订单不存在：" + orderId);
         }
         HrMallOrderVO vo = objectMapper.convertValue(order, HrMallOrderVO.class);
         QueryWrapper<HrMallOrderItem> qw = new QueryWrapper<>();
-        qw.eq("order_id", orderId).eq("deleted", 0);
+        qw.eq("order_id", orderId).eq("tenant_id", currentTenantId()).eq("deleted", 0);
         List<HrMallOrderItem> items = orderItemMapper.selectList(qw);
         List<HrMallOrderItemVO> itemVOs = new ArrayList<>(items == null ? 0 : items.size());
         if (items != null) {
@@ -182,7 +182,11 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void ship(Long orderId, String expressNo) {
+    public void ship(Long orderId, String expressCompany, String expressNo) {
+        if (!StringUtils.hasText(expressCompany) || expressCompany.length() > 80
+                || !StringUtils.hasText(expressNo) || expressNo.length() > 120) {
+            throw new HrBusinessException("INVALID_DELIVERY", "请填写快递公司（最多80字）和物流单号（最多120字）");
+        }
         HrMallOrder order = orderMapper.selectById(orderId);
         if (order == null) {
             throw new HrBusinessException("MALL_ORDER_NOT_FOUND", "订单不存在：" + orderId);
@@ -192,24 +196,30 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
                     "订单状态 " + order.getStatus() + " 不允许发货");
         }
         UpdateWrapper<HrMallOrder> uw = new UpdateWrapper<>();
-        uw.eq("id", orderId).eq("tenant_id", currentTenantId())
+        uw.eq("id", orderId).eq("tenant_id", currentTenantId()).eq("status", "APPROVED")
                 .set("status", "SHIPPED")
-                .set("express_no", expressNo)
+                .set("express_company", expressCompany.trim())
+                .set("express_no", expressNo.trim())
                 .set("shipped_at", LocalDateTime.now())
                 .set("update_time", LocalDateTime.now())
                 .set("update_by", currentUserName());
-        orderMapper.update(null, uw);
+        if (orderMapper.update(null, uw) != 1) {
+            throw new HrBusinessException("MALL_ORDER_STATUS_INVALID", "订单状态已变更，请刷新后重试");
+        }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "取消商城订单", highRisk = true)
     public void cancel(Long orderId, String reason) {
+        if (reason != null && reason.length() > 500) {
+            throw new HrBusinessException("INVALID_CANCEL_REASON", "取消原因最多500字");
+        }
         UpdateWrapper<HrMallOrder> uw = new UpdateWrapper<>();
         uw.eq("id", orderId).eq("tenant_id", currentTenantId())
                 .notIn("status", List.of("SHIPPED", "COMPLETED", "CANCELLED"))
                 .set("status", "CANCELLED")
-                .set("remark", reason)
+                .set("cancel_reason", reason)
                 .set("update_time", LocalDateTime.now())
                 .set("update_by", currentUserName());
         int updated = orderMapper.update(null, uw);
@@ -291,12 +301,7 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
     }
 
     private long currentTenantId() {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null) {
-            return tenantId;
-        }
-        tenantId = UserContext.getTenantId();
-        return tenantId == null ? DEFAULT_TENANT_ID : tenantId;
+        return HrRuleSupport.tenantId();
     }
 
     private String currentUserName() {

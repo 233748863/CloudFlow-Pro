@@ -24,6 +24,7 @@ public class HrMallItemPayload {
     private String category;
     private Integer pointPrice;
     private Integer stock;
+    private Integer sortOrder;
     private Integer salesCount;
     private String coverImage;
 

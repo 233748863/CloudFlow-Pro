@@ -16,8 +16,13 @@ public class HrWorkInjuryListVO {
     private String injuryNo;
     private Long employeeId;
     private String employeeName;
+    private Long deptId;
+    private String deptName;
     private LocalDateTime occurredAt;
     private String injuryLevel;
     private String status;
+    private String location;
+    private Integer determinedGrade;
+    private LocalDateTime closedAt;
     private LocalDateTime createTime;
 }

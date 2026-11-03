@@ -10,6 +10,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * HR-P1-1 简历解析字段。
@@ -31,7 +32,7 @@ public class HrResumeParsedFieldsPayload {
     private String parsedSchool;
 
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private JsonNode parsedSkills;
+    private List<String> parsedSkills;
 
     @TableField(typeHandler = JacksonTypeHandler.class)
     private JsonNode parsedExperiences;

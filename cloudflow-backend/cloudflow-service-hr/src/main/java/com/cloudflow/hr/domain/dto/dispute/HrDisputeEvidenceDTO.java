@@ -1,7 +1,7 @@
 package com.cloudflow.hr.domain.dto.dispute;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -13,12 +13,9 @@ import lombok.Data;
 public class HrDisputeEvidenceDTO {
 
     @Schema(description = "证据类型 CONTRACT/PAYSLIP/CHAT/EMAIL/OTHER")
-    @Size(max = 32)
-    private String evidenceType;
-
-    @Schema(description = "文件 ID")
-    @NotNull(message = "文件 ID 不能为空")
-    private Long fileId;
+    @NotBlank(message = "证据类型不能为空")
+    @Size(max = 30)
+    private String evidenceType = "OTHER";
 
     @Schema(description = "备注")
     @Size(max = 500)

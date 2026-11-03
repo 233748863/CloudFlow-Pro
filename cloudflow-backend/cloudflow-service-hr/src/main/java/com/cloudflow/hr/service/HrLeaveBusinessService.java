@@ -127,10 +127,9 @@ public class HrLeaveBusinessService {
             }
             HrLeaveType leaveType = getLeaveType(payload.getLeaveTypeId());
             HrEmployee employee = getEmployee(payload.getEmployeeId());
-            BigDecimal calculated = calculateAndValidate(employee, leaveType, payload.getStartTime(),
-                    payload.getEndTime(), payload.getReason());
-            Map<Long, BigDecimal> quantities = periodQuantities(employee.getId(), leaveType,
-                    payload.getStartTime(), payload.getEndTime(), calculated);
+            LeaveCalculation calculation = calculateAndValidate(employee, leaveType, payload.getStartTime(), payload.getEndTime());
+            BigDecimal calculated = calculation.total();
+            Map<Long, BigDecimal> quantities = periodQuantities(calculation);
             List<Long> files = payload.getAttachmentFileIds() == null ? List.of()
                     : payload.getAttachmentFileIds().stream().filter(Objects::nonNull).distinct().toList();
             if (files.size() > 10 || !files.isEmpty() && fileStorageMapper.countOwnedLeaveFiles(tenantId(), currentUserName(), files) != files.size()) {
@@ -176,7 +175,7 @@ public class HrLeaveBusinessService {
                                 LocalDateTime endTime) {
         support.assertEmployeeScope(employeeId);
         HrEmployee employee = getEmployee(employeeId);
-        return calculateAndValidate(employee, getLeaveType(leaveTypeId), startTime, endTime, null);
+        return calculateAndValidate(employee, getLeaveType(leaveTypeId), startTime, endTime).total();
     }
 
     public List<Map<String, Object>> attachments(Long requestId) {
@@ -1210,8 +1209,10 @@ public class HrLeaveBusinessService {
         return original;
     }
 
-    private BigDecimal calculateAndValidate(HrEmployee employee, HrLeaveType type, LocalDateTime start,
-                                            LocalDateTime end, String reason) {
+    private record LeaveCalculation(BigDecimal total, Map<LocalDate, BigDecimal> days) { }
+
+    private LeaveCalculation calculateAndValidate(HrEmployee employee, HrLeaveType type, LocalDateTime start,
+                                                   LocalDateTime end) {
         if (start == null || end == null || !end.isAfter(start)) {
             throw new HrBusinessException("INVALID_LEAVE_TIME", "请假开始时间和结束时间无效");
         }
@@ -1223,8 +1224,11 @@ public class HrLeaveBusinessService {
                     "员工尚未达到该假期的可用入职时长");
         }
         BigDecimal result = BigDecimal.ZERO;
+        Map<LocalDate, BigDecimal> days = new LinkedHashMap<>();
         for (LocalDate date = start.toLocalDate().minusDays(1); date.atStartOfDay().isBefore(end); date = date.plusDays(1)) {
-            result = result.add(singleDayQuantity(employee.getId(), type, date, start, end));
+            BigDecimal quantity = singleDayQuantity(employee.getId(), type, date, start, end);
+            days.put(date, quantity);
+            result = result.add(quantity);
         }
         result = round(result, type.getRoundingMode());
         if (result.signum() <= 0) throw new HrBusinessException("INVALID_LEAVE_DURATION", "请假时长必须大于零");
@@ -1232,7 +1236,7 @@ public class HrLeaveBusinessService {
             checkRule("hr.leave.continuous.limit", true, employee.getId(), type.getMaxContinuousDays(), result,
                     "超过单次连续请假上限");
         }
-        return result;
+        return new LeaveCalculation(result, days);
     }
 
     private BigDecimal singleDayQuantity(Long employeeId, HrLeaveType type, LocalDate date,
@@ -1240,12 +1244,11 @@ public class HrLeaveBusinessService {
         return dayCalculator.quantity(employeeId, type, date, start, end);
     }
 
-    private Map<Long, BigDecimal> periodQuantities(Long employeeId, HrLeaveType type, LocalDateTime start,
-                                                  LocalDateTime end, BigDecimal total) {
+    private Map<Long, BigDecimal> periodQuantities(LeaveCalculation calculation) {
+        BigDecimal total = calculation.total();
         Map<Long, BigDecimal> result = new LinkedHashMap<>();
-        for (LocalDate date = start.toLocalDate().minusDays(1); date.atStartOfDay().isBefore(end); date = date.plusDays(1)) {
-            BigDecimal quantity = singleDayQuantity(employeeId, type, date, start, end);
-            if (quantity.signum() > 0) result.merge(findPeriod(date).getPeriodId(), quantity, BigDecimal::add);
+        for (Map.Entry<LocalDate, BigDecimal> day : calculation.days().entrySet()) {
+            if (day.getValue().signum() > 0) result.merge(findPeriod(day.getKey()).getPeriodId(), day.getValue(), BigDecimal::add);
         }
         BigDecimal assigned = BigDecimal.ZERO;
         BigDecimal cumulative = BigDecimal.ZERO;

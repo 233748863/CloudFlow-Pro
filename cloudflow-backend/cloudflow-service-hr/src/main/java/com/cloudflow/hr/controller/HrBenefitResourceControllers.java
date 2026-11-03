@@ -241,8 +241,8 @@ class HrMallOrderController {
     @SysLog("订单发货")
     @PostMapping("/{id}/ship")
     @SaCheckPermission("hr:benefit:order:ship")
-    public R<Void> ship(@PathVariable Long id, @RequestParam String expressNo) {
-        hrMallOrderService.ship(id, expressNo);
+    public R<Void> ship(@PathVariable Long id, @RequestParam String expressCompany, @RequestParam String expressNo) {
+        hrMallOrderService.ship(id, expressCompany, expressNo);
         return R.ok();
     }
 

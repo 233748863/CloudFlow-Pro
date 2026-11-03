@@ -13,7 +13,6 @@ import com.cloudflow.common.redis.config.RuntimeSysConfigService;
 import com.cloudflow.hr.domain.dto.HrGrievanceAction;
 import com.cloudflow.hr.domain.dto.HrGrievanceQuery;
 import com.cloudflow.hr.domain.dto.HrGrievanceRequest;
-import com.cloudflow.hr.domain.dto.dispute.HrDisputeEvidenceDTO;
 import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeDTO;
 import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrGrievance;
@@ -59,6 +58,7 @@ public class HrGrievanceService {
     private final RuntimeSysConfigService config;
     private final IHrLaborDisputeService disputes;
     private final ObjectMapper objectMapper;
+    private final HrDisputeEvidenceService evidenceService;
 
     public Long submit(HrGrievanceRequest request) {
         HrEmployee employee = support.employee(essSupport.currentEmployeeId());
@@ -225,6 +225,10 @@ public class HrGrievanceService {
     }
 
     public String authorizeDownload(Long grievanceId, Long fileId, boolean mine) {
+        return authorizedFileMetadata(grievanceId, fileId, mine).get("fileType").toString();
+    }
+
+    private Map<String, Object> authorizedFileMetadata(Long grievanceId, Long fileId, boolean mine) {
         HrGrievance grievance = access.require(grievanceId, mine);
         Set<Long> allowed = new LinkedHashSet<>(attachmentIds(grievance.getAttachmentUrl()));
         records(grievanceId, mine).forEach(record -> allowed.addAll(attachmentIds(record.getAttachmentUrl())));
@@ -233,7 +237,7 @@ public class HrGrievanceService {
         if (metadata == null || !Set.of("HR_GRIEVANCE", "HR_GRIEVANCE_EVIDENCE").contains(String.valueOf(metadata.get("fileType")))) {
             throw new HrBusinessException("FORBIDDEN", "申诉附件不存在或用途不匹配");
         }
-        return metadata.get("fileType").toString();
+        return metadata;
     }
 
     public String authorizeDisputeDownload(Long disputeId, Long fileId) {
@@ -321,11 +325,8 @@ public class HrGrievanceService {
             throw new HrBusinessException("GRIEVANCE_EXPORT_FAILED", "申诉材料归档失败", exception);
         }
         for (Long fileId : files) {
-            HrDisputeEvidenceDTO evidence = new HrDisputeEvidenceDTO();
-            evidence.setEvidenceType("OTHER");
-            evidence.setFileId(fileId);
-            evidence.setRemark("申诉材料，沿用来源申诉访问限制");
-            disputes.attachEvidence(disputeId, evidence);
+            Map<String, Object> metadata = authorizedFileMetadata(grievance.getGrievanceId(), fileId, false);
+            evidenceService.attachAuthorizedSource(disputeId, fileId, metadata.get("fileName").toString());
         }
         return disputeId;
     }

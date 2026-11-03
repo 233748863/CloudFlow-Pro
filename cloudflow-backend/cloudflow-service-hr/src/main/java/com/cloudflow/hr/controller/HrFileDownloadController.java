@@ -14,6 +14,7 @@ import com.cloudflow.hr.service.HrAttendancePhotoService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrFileStorage;
 import com.cloudflow.hr.service.HrGrievanceService;
+import com.cloudflow.hr.service.HrDisputeEvidenceService;
 import com.cloudflow.hr.service.HrLeaveBusinessService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.hr.service.HrAdvanceService;
@@ -52,6 +53,7 @@ public class HrFileDownloadController {
     private final HrReferralService referrals;
     private final HrDocumentDownloadService documents;
     private final IHrCertificateService certificates;
+    private final HrDisputeEvidenceService evidence;
 
     @PostMapping("/authorize")
     @Inner(allowedServices = "cloudflow-auth")
@@ -75,6 +77,7 @@ public class HrFileDownloadController {
             case "HR_GRIEVANCE_MINE" -> grievances.download(request.businessId(), request.fileId(), true);
             case "HR_GRIEVANCE_MANAGE" -> grievances.download(request.businessId(), request.fileId(), false);
             case "HR_GRIEVANCE_DISPUTE" -> grievances.downloadDisputeFile(request.businessId(), request.fileId());
+            case "HR_DISPUTE_EVIDENCE" -> evidence.download(request.businessId(), request.fileId());
             case "HR_LEAVE_PROOF_MINE", "HR_LEAVE_PROOF_MANAGE" -> leaves.downloadAttachment(request.businessId(), request.fileId());
             case "HR_ADVANCE_PROOF" -> advances.downloadProof(request.businessId(), request.fileId());
             case "HR_SETTLEMENT_PROOF" -> settlements.downloadProof(request.businessId(), request.fileId());
@@ -113,6 +116,10 @@ public class HrFileDownloadController {
             case "HR_GRIEVANCE_DISPUTE" -> {
                 StpUtil.checkPermission("hr:dispute:list");
                 purpose = grievances.authorizeDisputeDownload(request.businessId(), request.fileId());
+            }
+            case "HR_DISPUTE_EVIDENCE" -> {
+                StpUtil.checkPermission("hr:dispute:list");
+                purpose = evidence.authorizeDownload(request.businessId(), request.fileId());
             }
             case "HR_LEAVE_PROOF_MINE", "HR_LEAVE_PROOF_MANAGE" -> {
                 boolean mine = "HR_LEAVE_PROOF_MINE".equals(request.bizType());

@@ -111,11 +111,6 @@ public final class HrSettlementCalculation {
     }
 
     public static Result severance(Policy policy, LocalDate joinDate, LocalDate relievingDate,
-                                   List<SalarySample> samples) {
-        return severance(policy, joinDate, relievingDate, samples, legacySelection(policy, samples, relievingDate));
-    }
-
-    public static Result severance(Policy policy, LocalDate joinDate, LocalDate relievingDate,
                                    List<SalarySample> samples, SamplingSelection selection) {
         activePolicy(policy, relievingDate);
         Fraction actualYears = serviceYears(joinDate, relievingDate);
@@ -139,11 +134,6 @@ public final class HrSettlementCalculation {
         return new Result(actualYears.numerator().toString(), actualYears.denominator().toString(), displayYears,
                 months.decimal(12, RoundingMode.HALF_UP), average.decimal(12, RoundingMode.HALF_UP),
                 capped.decimal(12, RoundingMode.HALF_UP), amount(capped.multiply(months), policy.amountRounding()));
-    }
-
-    public static BigDecimal leaveCash(Policy policy, LocalDate relievingDate, List<SalarySample> samples,
-                                       String unit, BigDecimal quantity) {
-        return leaveCash(policy, relievingDate, samples, legacySelection(policy, samples, relievingDate), unit, quantity);
     }
 
     public static BigDecimal leaveCash(Policy policy, LocalDate relievingDate, List<SalarySample> samples,
@@ -236,16 +226,6 @@ public final class HrSettlementCalculation {
         Fraction average = total.divide(Fraction.of(selection.averagingMonths()));
         require(average.compareTo(Fraction.of(MAX_AMOUNT)) <= 0, "平均工资超出结算金额容量");
         return average;
-    }
-
-    /** Compatibility for the original standalone checks; settlement callers must supply a reviewed selection. */
-    private static SamplingSelection legacySelection(Policy policy, List<SalarySample> samples, LocalDate relievingDate) {
-        activePolicy(policy, relievingDate);
-        require(samples != null && samples.size() == policy.averagingMonths() && samples.stream().allMatch(sample -> sample != null && sample.month() != null), "已核定工资取样月数不足或多余");
-        Set<YearMonth> months = new HashSet<>(samples.stream().map(SalarySample::month).toList());
-        YearMonth latest = months.stream().max(Comparator.naturalOrder()).orElseThrow();
-        for (int offset = 0; offset < policy.averagingMonths(); offset++) require(months.contains(latest.minusMonths(offset)), "工资取样月份不连续");
-        return new SamplingSelection(samples.stream().map(SalarySample::month).toList(), BigDecimal.valueOf(policy.averagingMonths()), "固定政策月数计算兼容入口");
     }
 
     private static Fraction serviceYears(LocalDate joinDate, LocalDate relievingDate) {

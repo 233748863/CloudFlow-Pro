@@ -40,11 +40,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 import static com.cloudflow.hr.service.HrHException.conflict;
 import static com.cloudflow.hr.service.HrHException.forbidden;
@@ -321,12 +324,12 @@ public class HrSkillService {
         access.validate(query);
         if (query.getEmployeeId() != null) access.scope(query.getEmployeeId());
         Page<HrEmployee> page = skills.employees(page(query), tenantId(), query, employeeScope(false), today());
-        return result(page, page.getRecords().stream().map(employee -> employeeGap(employee, true)).toList());
+        return result(page, employeeGaps(page.getRecords(), true));
     }
 
     public HrSkillViews.EmployeeGap recommendations() {
         access.permission("hr:skill:own");
-        return employeeGap(access.mine(), access.permitted("hr:training:enroll:add"));
+        return employeeGaps(List.of(access.mine()), access.permitted("hr:training:enroll:add")).get(0);
     }
 
     private Long applySource(String evidenceType, Long businessId, Evidence evidence) {
@@ -502,24 +505,111 @@ public class HrSkillService {
         return HrSkillRules.effectiveLevel(assessment, today(), valid);
     }
 
-    private HrSkillViews.EmployeeGap employeeGap(HrEmployee employee, boolean recommend) {
-        HrPosition position = employee.getPositionId() == null ? null : positions.selectById(employee.getPositionId());
-        if (position == null || !Objects.equals(position.getTenantId(), tenantId())) {
-            return new HrSkillViews.EmployeeGap(employee.getId(), employee.getName(), null, null, List.of());
+    private List<HrSkillViews.EmployeeGap> employeeGaps(List<HrEmployee> employees, boolean recommend) {
+        if (employees.isEmpty()) return List.of();
+        List<Long> employeeIds = employees.stream().map(HrEmployee::getId).toList();
+        List<Long> positionIds = employees.stream().map(HrEmployee::getPositionId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, HrPosition> positionRows = positionIds.isEmpty() ? Map.of() : indexed(positions.selectList(
+                new LambdaQueryWrapper<HrPosition>().eq(HrPosition::getTenantId, tenantId()).in(HrPosition::getId, positionIds)), HrPosition::getId);
+        List<HrPositionSkill> required = positionRows.isEmpty() ? List.of() : requirements.selectList(
+                new LambdaQueryWrapper<HrPositionSkill>().eq(HrPositionSkill::getTenantId, tenantId())
+                        .in(HrPositionSkill::getPositionId, positionRows.keySet())
+                        .orderByDesc(HrPositionSkill::getMandatoryFlag).orderByAsc(HrPositionSkill::getSkillId));
+        Map<Long, List<HrPositionSkill>> requiredByPosition = new LinkedHashMap<>();
+        for (HrPositionSkill requirement : required) requiredByPosition.computeIfAbsent(requirement.getPositionId(), key -> new ArrayList<>()).add(requirement);
+        List<Long> skillIds = required.stream().map(HrPositionSkill::getSkillId).distinct().toList();
+        Map<Long, HrSkill> definitions = skillIds.isEmpty() ? Map.of() : indexed(skills.selectList(
+                new LambdaQueryWrapper<HrSkill>().eq(HrSkill::getTenantId, tenantId()).eq(HrSkill::getDeleted, 0)
+                        .in(HrSkill::getSkillId, skillIds)), HrSkill::getSkillId);
+        List<HrEmployeeSkill> currentRows = skillIds.isEmpty() ? List.of() : assessments.selectList(
+                new LambdaQueryWrapper<HrEmployeeSkill>().eq(HrEmployeeSkill::getTenantId, tenantId())
+                        .in(HrEmployeeSkill::getEmployeeId, employeeIds).in(HrEmployeeSkill::getSkillId, skillIds)
+                        .eq(HrEmployeeSkill::getCurrentFlag, 1));
+        Map<EmployeeSkill, Integer> levels = effectiveLevels(currentRows);
+        List<HrSkillMapper.RecommendationTarget> targets = new ArrayList<>();
+        for (HrEmployee employee : employees) {
+            for (HrPositionSkill requirement : requiredByPosition.getOrDefault(employee.getPositionId(), List.of())) {
+                HrSkill definition = definitions.get(requirement.getSkillId());
+                if (definition == null) throw new HrHException("SKILL_NOT_FOUND", "技能不存在", 404);
+                int level = levels.getOrDefault(new EmployeeSkill(employee.getId(), requirement.getSkillId()), 0);
+                if (recommend && HrSkillRules.gap(requirement.getRequiredLevel(), level) > 0 && "ACTIVE".equals(definition.getStatus())) {
+                    targets.add(new HrSkillMapper.RecommendationTarget(employee.getId(), requirement.getSkillId(), requirement.getRequiredLevel()));
+                }
+            }
         }
-        List<HrSkillViews.Gap> gaps = new ArrayList<>();
-        for (HrPositionSkill requirement : positionRequirements(position.getId())) {
-            HrSkill definition = skill(requirement.getSkillId(), false);
-            int level = effective(current(employee.getId(), requirement.getSkillId()));
-            int gap = HrSkillRules.gap(requirement.getRequiredLevel(), level);
-            List<HrSkillViews.Recommendation> recommendations = recommend && gap > 0 && "ACTIVE".equals(definition.getStatus())
-                    ? skills.recommendations(tenantId(), employee.getId(), requirement.getSkillId(), requirement.getRequiredLevel(), HrHSupport.now())
-                    : List.of();
-            gaps.add(new HrSkillViews.Gap(requirement.getSkillId(), definition.getSkillName(), requirement.getRequiredLevel(),
-                    level, gap, Integer.valueOf(1).equals(requirement.getMandatoryFlag()), requirement.getWeight().toPlainString(), recommendations));
+        Map<EmployeeSkill, List<HrSkillViews.Recommendation>> suggestions = new LinkedHashMap<>();
+        java.time.LocalDateTime now = HrHSupport.now();
+        for (int offset = 0; offset < targets.size(); offset += 500) {
+            for (HrSkillMapper.RecommendationMatch match : skills.recommendations(tenantId(),
+                    targets.subList(offset, Math.min(offset + 500, targets.size())), now)) {
+                suggestions.computeIfAbsent(new EmployeeSkill(match.employeeId(), match.skillId()), key -> new ArrayList<>())
+                        .add(new HrSkillViews.Recommendation(match.courseId(), match.courseName(), match.targetLevel(), match.sessionId(), match.sessionNo()));
+            }
         }
-        return new HrSkillViews.EmployeeGap(employee.getId(), employee.getName(), position.getId(), position.getPositionName(), gaps);
+        List<HrSkillViews.EmployeeGap> result = new ArrayList<>();
+        for (HrEmployee employee : employees) {
+            HrPosition position = employee.getPositionId() == null ? null : positionRows.get(employee.getPositionId());
+            List<HrSkillViews.Gap> gaps = new ArrayList<>();
+            for (HrPositionSkill requirement : requiredByPosition.getOrDefault(employee.getPositionId(), List.of())) {
+                EmployeeSkill key = new EmployeeSkill(employee.getId(), requirement.getSkillId());
+                int level = levels.getOrDefault(key, 0);
+                gaps.add(new HrSkillViews.Gap(requirement.getSkillId(), definitions.get(requirement.getSkillId()).getSkillName(),
+                        requirement.getRequiredLevel(), level, HrSkillRules.gap(requirement.getRequiredLevel(), level),
+                        Integer.valueOf(1).equals(requirement.getMandatoryFlag()), requirement.getWeight().toPlainString(),
+                        suggestions.getOrDefault(key, List.of())));
+            }
+            result.add(new HrSkillViews.EmployeeGap(employee.getId(), employee.getName(),
+                    position == null ? null : position.getId(), position == null ? null : position.getPositionName(), gaps));
+        }
+        return result;
     }
+
+    private Map<EmployeeSkill, Integer> effectiveLevels(List<HrEmployeeSkill> rows) {
+        Map<String, Set<Long>> evidenceIds = new LinkedHashMap<>();
+        Map<Long, Long> sourceIds = new LinkedHashMap<>();
+        for (HrEmployeeSkill row : rows) {
+            if (!HrSkillRules.AUTOMATIC_EVIDENCE.contains(row.getEvidenceType())) continue;
+            try {
+                Long sourceId = Long.valueOf(row.getEvidenceBizId());
+                sourceIds.put(row.getEmployeeSkillId(), sourceId);
+                evidenceIds.computeIfAbsent(row.getEvidenceType(), key -> new LinkedHashSet<>()).add(sourceId);
+            } catch (NumberFormatException malformed) {
+                // 无有效来源编号的自动证据不提供等级。
+            }
+        }
+        Set<Long> trainingIds = evidenceIds.getOrDefault("TRAINING", Set.of());
+        Map<Long, HrTrainingEnrollment> training = trainingIds.isEmpty() ? Map.of() : indexed(enrollments.selectList(
+                new LambdaQueryWrapper<HrTrainingEnrollment>().eq(HrTrainingEnrollment::getTenantId, tenantId())
+                        .in(HrTrainingEnrollment::getId, trainingIds)), HrTrainingEnrollment::getId);
+        Set<Long> examIds = evidenceIds.getOrDefault("EXAM", Set.of());
+        Map<Long, HrExamAttempt> exams = examIds.isEmpty() ? Map.of() : indexed(attempts.selectList(
+                new LambdaQueryWrapper<HrExamAttempt>().eq(HrExamAttempt::getTenantId, tenantId()).in(HrExamAttempt::getId, examIds)), HrExamAttempt::getId);
+        Set<Long> certificateIds = evidenceIds.getOrDefault("CERTIFICATE", Set.of());
+        Map<Long, HrTrainingCertificate> certificateRows = certificateIds.isEmpty() ? Map.of() : indexed(certificates.selectList(
+                new LambdaQueryWrapper<HrTrainingCertificate>().eq(HrTrainingCertificate::getTenantId, tenantId())
+                        .in(HrTrainingCertificate::getId, certificateIds)), HrTrainingCertificate::getId);
+        Map<EmployeeSkill, Integer> levels = new LinkedHashMap<>();
+        LocalDate date = today();
+        for (HrEmployeeSkill row : rows) {
+            Long sourceId = sourceIds.get(row.getEmployeeSkillId());
+            boolean valid = !HrSkillRules.AUTOMATIC_EVIDENCE.contains(row.getEvidenceType()) || sourceId != null && switch (row.getEvidenceType()) {
+                case "TRAINING" -> validEnrollment(training.get(sourceId), row.getEmployeeId());
+                case "EXAM" -> validAttempt(exams.get(sourceId), row.getEmployeeId());
+                case "CERTIFICATE" -> validCertificate(certificateRows.get(sourceId), row.getEmployeeId());
+                default -> true;
+            };
+            levels.put(new EmployeeSkill(row.getEmployeeId(), row.getSkillId()), HrSkillRules.effectiveLevel(row, date, valid));
+        }
+        return levels;
+    }
+
+    private static <T> Map<Long, T> indexed(Collection<T> rows, Function<T, Long> identifier) {
+        Map<Long, T> result = new LinkedHashMap<>();
+        for (T row : rows) result.put(identifier.apply(row), row);
+        return result;
+    }
+
+    private record EmployeeSkill(Long employeeId, Long skillId) { }
 
     private HrSkillViews.Assessment assessmentView(HrEmployeeSkill assessment) {
         HrEmployee employee = access.employee(assessment.getEmployeeId());

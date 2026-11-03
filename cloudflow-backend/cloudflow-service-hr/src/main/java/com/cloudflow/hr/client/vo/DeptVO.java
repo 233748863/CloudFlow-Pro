@@ -50,9 +50,12 @@ public class DeptVO implements Serializable {
     private Integer orderNum;
     
     /**
-     * 负责人
+     * 负责人用户编号
      */
-    private String leader;
+    private Long leaderUserId;
+
+    /** 负责人显示名称 */
+    private String leaderName;
     
     /**
      * 联系电话

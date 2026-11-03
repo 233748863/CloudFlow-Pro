@@ -3,12 +3,12 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.web.MapConverters;
-import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryTreatmentDTO;
 import com.cloudflow.hr.domain.entity.HrWorkInjuryTreatment;
 import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryTreatmentVO;
 import com.cloudflow.hr.exception.HrBusinessException;
-import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
+import com.cloudflow.hr.service.HrWorkInjuryAccess;
+import com.cloudflow.hr.service.HrRuleSupport;
 import com.cloudflow.hr.mapper.HrWorkInjuryTreatmentMapper;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.hr.service.IHrWorkInjuryTreatmentService;
@@ -28,19 +28,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class HrWorkInjuryTreatmentServiceImpl implements IHrWorkInjuryTreatmentService {
 
-    private static final long DEFAULT_TENANT_ID = 100000L;
-
     private final HrWorkInjuryTreatmentMapper treatmentMapper;
-    private final HrWorkInjuryMapper injuryMapper;
+    private final HrWorkInjuryAccess injuryAccess;
     private final HrTypedCrudService crudService;
     private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createTreatment(Long injuryId, HrWorkInjuryTreatmentDTO dto) {
-        if (injuryMapper.selectById(injuryId) == null) {
-            throw new HrBusinessException("WORK_INJURY_NOT_FOUND", "工伤记录不存在：" + injuryId);
-        }
+        injuryAccess.require(injuryId);
         HrWorkInjuryTreatment treatment = objectMapper.convertValue(dto, HrWorkInjuryTreatment.class);
         treatment.setInjuryId(injuryId);
         treatment.setTenantId(currentTenantId());
@@ -55,12 +51,14 @@ public class HrWorkInjuryTreatmentServiceImpl implements IHrWorkInjuryTreatmentS
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "更新工伤治疗")
     public void updateTreatment(Long treatmentId, HrWorkInjuryTreatmentDTO dto) {
+        requireRecord(treatmentId);
         crudService.updateProperties(HrWorkInjuryTreatment.class, treatmentId,
                 MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
     public List<HrWorkInjuryTreatmentVO> listByInjury(Long injuryId) {
+        injuryAccess.require(injuryId);
         QueryWrapper<HrWorkInjuryTreatment> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("injury_id", injuryId).eq("deleted", 0)
                 .orderByDesc("create_time");
@@ -71,13 +69,16 @@ public class HrWorkInjuryTreatmentServiceImpl implements IHrWorkInjuryTreatmentS
         return MapConverters.toVOList(rows, HrWorkInjuryTreatmentVO.class, objectMapper);
     }
 
+    private HrWorkInjuryTreatment requireRecord(Long id) {
+        HrWorkInjuryTreatment record = treatmentMapper.selectOne(new QueryWrapper<HrWorkInjuryTreatment>()
+                .eq("id", id).eq("tenant_id", currentTenantId()).eq("deleted", 0));
+        if (record == null) throw new HrBusinessException("WORK_INJURY_RECORD_NOT_FOUND", "工伤子记录不存在");
+        injuryAccess.require(record.getInjuryId());
+        return record;
+    }
+
     private long currentTenantId() {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null) {
-            return tenantId;
-        }
-        tenantId = UserContext.getTenantId();
-        return tenantId == null ? DEFAULT_TENANT_ID : tenantId;
+        return HrRuleSupport.tenantId();
     }
 
     private String currentUserName() {

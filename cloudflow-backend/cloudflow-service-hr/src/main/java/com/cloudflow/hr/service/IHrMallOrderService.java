@@ -15,7 +15,7 @@ public interface IHrMallOrderService {
 
     HrMallOrderVO get(Long orderId);
 
-    void ship(Long orderId, String expressNo);
+    void ship(Long orderId, String expressCompany, String expressNo);
 
     void cancel(Long orderId, String reason);
 

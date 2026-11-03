@@ -186,13 +186,10 @@ public class HrPayrollCalculationService {
             if (employee.getHireDate() != null && employee.getHireDate().isAfter(period.getEndDate())) throw new HrBusinessException("EMPLOYEE_NOT_STARTED", "员工尚未入职");
             baseCompensation(compensation(employeeId, period.getEndDate()), period);
             taxSlab(employeeId, period.getEndDate());
-            for (HrPayrollCorrection correction : correctionMapper.selectList(new LambdaQueryWrapper<HrPayrollCorrection>()
-                    .eq(HrPayrollCorrection::getTenantId, tenantId()).eq(HrPayrollCorrection::getStatus, "PENDING").eq(HrPayrollCorrection::getDeleted, 0))) {
-                HrSalarySlip pending = correction.getCorrectionSlipId() == null ? null : slipMapper.selectById(correction.getCorrectionSlipId());
-                if (pending != null && Objects.equals(pending.getEmployeeId(), employeeId)
-                        && YearMonth.parse(pending.getPeriodMonth()).getYear() == period.getEndDate().getYear()) {
-                    throw new HrBusinessException("PAYROLL_CORRECTION_PENDING", "该员工有待审批工资补正，请先完成审批");
-                }
+            YearMonth firstMonth = YearMonth.of(period.getEndDate().getYear(), 1);
+            if (correctionMapper.hasPendingForEmployeeYear(tenantId(), employeeId,
+                    firstMonth.toString(), firstMonth.plusYears(1).toString())) {
+                throw new HrBusinessException("PAYROLL_CORRECTION_PENDING", "该员工有待审批工资补正，请先完成审批");
             }
             if (requestMapper.selectCount(new LambdaQueryWrapper<HrTimeRequest>().eq(HrTimeRequest::getTenantId, tenantId())
                     .eq(HrTimeRequest::getEmployeeId, employeeId).eq(HrTimeRequest::getDeleted, 0).eq(HrTimeRequest::getRequestType, "LEAVE")

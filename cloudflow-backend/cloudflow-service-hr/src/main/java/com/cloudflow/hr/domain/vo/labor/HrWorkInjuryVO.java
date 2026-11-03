@@ -18,6 +18,8 @@ public class HrWorkInjuryVO {
     private String injuryNo;
     private Long employeeId;
     private String employeeName;
+    private Long deptId;
+    private String deptName;
     private LocalDateTime occurredAt;
     private String location;
     private String eventDescription;
@@ -27,7 +29,8 @@ public class HrWorkInjuryVO {
     private String processInstanceId;
     private LocalDateTime determinedAt;
     private Integer determinedGrade;
-    private String remark;
+    private LocalDateTime closedAt;
+    private String closeReason;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

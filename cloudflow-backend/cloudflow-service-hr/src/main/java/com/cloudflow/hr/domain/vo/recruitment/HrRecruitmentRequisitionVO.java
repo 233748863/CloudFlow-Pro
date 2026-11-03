@@ -17,7 +17,6 @@ public class HrRecruitmentRequisitionVO {
     @Schema(description = "需求 ID") private Long id;
     @Schema(description = "需求编号") private String requisitionNo;
     @Schema(description = "需求标题") private String title;
-    @Schema(description = "兼容前端招聘需求编号") private String requestNo;
     @Schema(description = "部门 ID") private Long deptId;
     @Schema(description = "部门名称") private String deptName;
     @Schema(description = "岗位 ID") private Long positionId;
@@ -29,10 +28,8 @@ public class HrRecruitmentRequisitionVO {
     @Schema(description = "薪资下限（按 hr:comp:view 权限脱敏）") private Object salaryMin;
     @Schema(description = "薪资上限（按 hr:comp:view 权限脱敏）") private Object salaryMax;
     @Schema(description = "预计到岗日期") private LocalDate expectedArrivalDate;
-    @Schema(description = "兼容前端预计到岗日期") private LocalDate expectedDate;
     @Schema(description = "招聘原因") private String reason;
     @Schema(description = "岗位要求") private String requirements;
-    @Schema(description = "兼容前端岗位要求") private String jobRequirements;
     @Schema(description = "状态") private String status;
     @Schema(description = "状态描述") private String statusDesc;
     @Schema(description = "审批流程实例 ID") private String processInstanceId;

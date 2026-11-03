@@ -16,6 +16,7 @@ public class HrDisputeEvidenceVO {
     @Schema(description = "争议 ID") private Long disputeId;
     @Schema(description = "证据类型") private String evidenceType;
     @Schema(description = "附件文件 ID") private Long fileId;
+    @Schema(description = "提交证据时的文件名") private String fileName;
     @Schema(description = "上传人 ID") private Long uploadedBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") private LocalDateTime uploadedAt;
     @Schema(description = "备注") private String remark;

@@ -35,6 +35,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -166,7 +167,7 @@ public class HrEmployeeOnboardingService {
         dto.setTenantId(currentTenantId());
         dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
                 SysConfigKeys.HR_ONBOARDING_PROCESS_KEY, DEFAULT_PROCESS_KEY));
-        dto.setBusinessType("ONBOARDING");
+        dto.setBusinessType("HR_LIFECYCLE");
         dto.setBusinessId(applicationId);
         dto.setBusinessNo(application.getApplicationNo());
         dto.setProcessTitle("员工入职审批-" + employee.getName());
@@ -244,7 +245,7 @@ public class HrEmployeeOnboardingService {
     private void validateWorkflowRequest(ProcessStartDTO request) {
         Long tenantId = TenantContext.getTenantId() != null ? TenantContext.getTenantId() : UserContext.getTenantId();
         if (request == null || request.getBusinessId() == null || request.getStartUserId() == null
-                || !"ONBOARDING".equals(request.getBusinessType())
+                || !"HR_LIFECYCLE".equals(request.getBusinessType())
                 || !StringUtils.hasText(request.getBusinessNo())
                 || !StringUtils.hasText(request.getProcessDefinitionKey())
                 || tenantId == null || !tenantId.equals(request.getTenantId())
@@ -290,12 +291,15 @@ public class HrEmployeeOnboardingService {
                         .eq("type", "ONBOARDING")
                         .in("status", ACTIVE_APPLICATION_STATUSES)
                         .eq("deleted", 0));
-        for (HrLifecycleApplication application : applications) {
-            if (currentApplicationId != null && currentApplicationId.equals(application.getId())) {
-                continue;
-            }
-            HrLifecycleDetail detail = findOnboardingDetail(application.getId());
-            if (detail == null || detail.getDetailJson() == null) {
+        List<Long> applicationIds = applications.stream().map(HrLifecycleApplication::getId)
+                .filter(id -> !Objects.equals(currentApplicationId, id)).toList();
+        if (applicationIds.isEmpty()) return;
+        List<HrLifecycleDetail> details = lifecycleDetailMapper.selectList(new QueryWrapper<HrLifecycleDetail>()
+                .eq("tenant_id", tenantId).in("application_id", applicationIds)
+                .eq("detail_type", "ONBOARDING").orderByAsc("id"));
+        Set<Long> checkedApplications = new HashSet<>();
+        for (HrLifecycleDetail detail : details) {
+            if (!checkedApplications.add(detail.getApplicationId()) || detail.getDetailJson() == null) {
                 continue;
             }
             String pendingEmployeeNo = detail.getDetailJson().path("employeeNo").asText("").trim();

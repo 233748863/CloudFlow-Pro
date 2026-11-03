@@ -9,7 +9,6 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.redis.config.RuntimeSysConfigService;
 import com.cloudflow.common.redis.config.SysConfigKeys;
-import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryDTO;
@@ -20,9 +19,12 @@ import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryListVO;
 import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
+import com.cloudflow.hr.mapper.HrLookupMapper;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.hr.service.HrHSupport;
 import com.cloudflow.hr.service.HrEssSupport;
+import com.cloudflow.hr.service.HrRuleSupport;
+import com.cloudflow.hr.service.HrWorkInjuryAccess;
 import com.cloudflow.hr.service.IHrWorkInjuryService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,13 +37,15 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
-
-    private static final long DEFAULT_TENANT_ID = 100000L;
 
     private final HrWorkInjuryMapper injuryMapper;
     private final HrTypedCrudService crudService;
@@ -51,18 +55,20 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
     private final RuntimeSysConfigService runtimeSysConfigService;
     private final HrHSupport hrSupport;
     private final HrEssSupport essSupport;
+    private final HrWorkInjuryAccess injuryAccess;
+    private final HrRuleSupport ruleSupport;
+    private final HrLookupMapper lookups;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createInjury(HrWorkInjuryDTO dto) {
+        validateIncident(dto);
         HrWorkInjury injury = objectMapper.convertValue(dto, HrWorkInjury.class);
         injury.setTenantId(currentTenantId());
         if (!StringUtils.hasText(injury.getInjuryNo())) {
             injury.setInjuryNo("WI-" + System.currentTimeMillis());
         }
-        if (!StringUtils.hasText(injury.getStatus())) {
-            injury.setStatus("REPORTED");
-        }
+        injury.setStatus("REPORTED");
         injury.setDeleted(0);
         injury.setCreateBy(currentUserName());
         injury.setUpdateBy(currentUserName());
@@ -74,6 +80,11 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "更新工伤")
     public void updateInjury(Long injuryId, HrWorkInjuryDTO dto) {
+        HrWorkInjury injury = injuryAccess.requireForUpdate(injuryId);
+        if (!List.of("REPORTED", "INVESTIGATING").contains(injury.getStatus())) {
+            throw new HrBusinessException("WORK_INJURY_STATUS_INVALID", "仅待认定的工伤记录可修改");
+        }
+        validateIncident(dto);
         crudService.updateProperties(HrWorkInjury.class, injuryId,
                 MapConverters.toMap(dto, objectMapper));
     }
@@ -82,7 +93,7 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
     public PageResult<HrWorkInjuryListVO> page(HrWorkInjuryQueryDTO query) {
         Map<String, Object> raw = crudService.page(HrWorkInjury.class,
                 MapConverters.toServiceQuery(query, objectMapper));
-        return MapConverters.toPageResult(raw, HrWorkInjuryListVO.class, objectMapper);
+        return withDepartmentNames(MapConverters.toPageResult(raw, HrWorkInjuryListVO.class, objectMapper));
     }
 
     @Override
@@ -90,7 +101,7 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
         Map<String, Object> q = new LinkedHashMap<>(MapConverters.toServiceQuery(query, objectMapper));
         q.put("employeeId", essSupport.currentEmployeeId());
         Map<String, Object> raw = crudService.page(HrWorkInjury.class, q);
-        return MapConverters.toPageResult(raw, HrWorkInjuryListVO.class, objectMapper);
+        return withDepartmentNames(MapConverters.toPageResult(raw, HrWorkInjuryListVO.class, objectMapper));
     }
 
     @Override
@@ -99,25 +110,27 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
         if (row.isEmpty()) {
             return null;
         }
-        return objectMapper.convertValue(row, HrWorkInjuryVO.class);
+        HrWorkInjuryVO result = objectMapper.convertValue(row, HrWorkInjuryVO.class);
+        if (result.getDeptId() != null) result.setDeptName(lookups.findDeptName(currentTenantId(), result.getDeptId()));
+        return result;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String submitDetermination(Long injuryId) {
-        HrWorkInjury injury = injuryMapper.selectById(injuryId);
-        if (injury == null) {
-            throw new HrBusinessException("WORK_INJURY_NOT_FOUND", "工伤记录不存在：" + injuryId);
-        }
+        HrWorkInjury injury = injuryAccess.requireForUpdate(injuryId);
         if (!"REPORTED".equals(injury.getStatus()) && !"INVESTIGATING".equals(injury.getStatus())) {
             throw new HrBusinessException("WORK_INJURY_STATUS_INVALID",
                     "状态 " + injury.getStatus() + " 不允许发起认定");
         }
         UpdateWrapper<HrWorkInjury> uw = new UpdateWrapper<>();
-        uw.eq("id", injuryId).eq("tenant_id", currentTenantId())
+        uw.eq("id", injuryId).eq("tenant_id", currentTenantId()).eq("status", injury.getStatus())
                 .set("status", "DETERMINING")
+                .setSql("version = version + 1")
                 .set("update_time", LocalDateTime.now());
-        injuryMapper.update(null, uw);
+        if (injuryMapper.update(null, uw) != 1) {
+            throw new HrBusinessException("WORK_INJURY_STATUS_INVALID", "工伤状态已变更，请刷新后重试");
+        }
         HrWorkInjurySubmittedEvent event = new HrWorkInjurySubmittedEvent();
         event.setInjuryId(injuryId);
         event.setInjuryNo(injury.getInjuryNo());
@@ -173,26 +186,45 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void close(Long injuryId, String reason) {
-        HrWorkInjury injury = injuryMapper.selectById(injuryId);
-        if (injury == null) {
-            throw new HrBusinessException("WORK_INJURY_NOT_FOUND", "工伤记录不存在：" + injuryId);
+        injuryAccess.requireForUpdate(injuryId);
+        if (reason != null && reason.length() > 500) {
+            throw new HrBusinessException("INVALID_CLOSE_REASON", "结案原因最多500字");
         }
+        LocalDateTime closedAt = LocalDateTime.now();
         UpdateWrapper<HrWorkInjury> uw = new UpdateWrapper<>();
-        uw.eq("id", injuryId).eq("tenant_id", currentTenantId())
+        uw.eq("id", injuryId).eq("tenant_id", currentTenantId()).ne("status", "CLOSED")
                 .set("status", "CLOSED")
                 .set("close_reason", reason)
-                .set("update_time", LocalDateTime.now())
+                .set("closed_at", closedAt)
+                .setSql("version = version + 1")
+                .set("update_time", closedAt)
                 .set("update_by", currentUserName());
         injuryMapper.update(null, uw);
     }
 
     private long currentTenantId() {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null) {
-            return tenantId;
+        return HrRuleSupport.tenantId();
+    }
+
+    private void validateIncident(HrWorkInjuryDTO dto) {
+        ruleSupport.assertEmployeeScope(dto.getEmployeeId());
+        if (dto.getDeptId() != null && !lookups.activeDepartmentExists(currentTenantId(), dto.getDeptId())) {
+            throw new HrBusinessException("INVALID_DEPARTMENT", "事发部门不存在或已停用");
         }
-        tenantId = UserContext.getTenantId();
-        return tenantId == null ? DEFAULT_TENANT_ID : tenantId;
+    }
+
+    private PageResult<HrWorkInjuryListVO> withDepartmentNames(PageResult<HrWorkInjuryListVO> page) {
+        List<Long> departmentIds = page.getRows().stream().map(HrWorkInjuryListVO::getDeptId)
+                .filter(Objects::nonNull).distinct().toList();
+        if (!departmentIds.isEmpty()) {
+            Map<Long, HrLookupMapper.NamedReference> departments = lookups.findDeptNames(currentTenantId(), departmentIds)
+                    .stream().collect(Collectors.toMap(HrLookupMapper.NamedReference::id, Function.identity()));
+            for (HrWorkInjuryListVO row : page.getRows()) {
+                HrLookupMapper.NamedReference department = departments.get(row.getDeptId());
+                if (department != null) row.setDeptName(department.name());
+            }
+        }
+        return page;
     }
 
     private String currentUserName() {

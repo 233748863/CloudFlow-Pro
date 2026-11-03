@@ -59,27 +59,37 @@
     </if>
     ORDER BY employee.id
   </select>
-  <select id="recommendations" resultType="com.cloudflow.hr.domain.vo.skill.HrSkillViews$Recommendation">
-    SELECT course.id AS courseId, course.course_name AS courseName, course.target_level AS targetLevel,
-      session.id AS sessionId, session.session_no AS sessionNo
-    FROM hr_training_course course
-    JOIN hr_training_session session ON session.tenant_id = course.tenant_id AND session.course_id = course.id
-    WHERE course.tenant_id = #{tenantId} AND course.deleted = 0 AND course.status = 'PUBLISHED'
-      AND course.skill_id = #{skillId} AND course.target_level &gt;= #{requiredLevel}
-      AND session.deleted = 0 AND session.status IN ('PLANNED','REGISTERING','ONGOING')
-      AND session.end_time &gt;= #{now} AND session.capacity &gt; session.enrolled_count
-      AND NOT EXISTS (SELECT 1 FROM hr_training_enrollment enrollment
-        WHERE enrollment.tenant_id = course.tenant_id AND enrollment.session_id = session.id
-          AND enrollment.employee_id = #{employeeId} AND enrollment.deleted = 0)
-      AND EXISTS (SELECT 1 FROM hr_employee employee
-        JOIN sys_user account ON account.tenant_id = employee.tenant_id AND account.user_id = employee.user_id AND account.status = '0' AND account.deleted = 0
-        JOIN sys_user_role user_role ON user_role.tenant_id = account.tenant_id AND user_role.user_id = account.user_id
-        JOIN sys_role role ON role.tenant_id = user_role.tenant_id AND role.role_id = user_role.role_id AND role.status = '0' AND role.deleted = 0
-        JOIN sys_role_menu role_menu ON role_menu.tenant_id = role.tenant_id AND role_menu.role_id = role.role_id
-        JOIN sys_menu menu ON menu.menu_id = role_menu.menu_id AND menu.status = '0'
-        WHERE employee.tenant_id = course.tenant_id AND employee.id = #{employeeId} AND employee.deleted = 0
-          AND menu.perms = 'hr:training:enroll:add')
-    ORDER BY course.target_level, course.id, session.start_time, session.id
-    LIMIT 100
+  <select id="recommendations" resultType="com.cloudflow.hr.mapper.HrSkillMapper$RecommendationMatch">
+    SELECT employee_id AS employeeId, skill_id AS skillId, course_id AS courseId, course_name AS courseName,
+      target_level AS targetLevel, session_id AS sessionId, session_no AS sessionNo
+    FROM (
+      SELECT target.employee_id, target.skill_id, course.id AS course_id, course.course_name, course.target_level,
+        session.id AS session_id, session.session_no,
+        ROW_NUMBER() OVER (PARTITION BY target.employee_id, target.skill_id
+          ORDER BY course.target_level, course.id, session.start_time, session.id) AS recommendation_rank
+      FROM (
+        <foreach collection="targets" item="target" separator=" UNION ALL ">
+          SELECT #{target.employeeId} AS employee_id, #{target.skillId} AS skill_id, #{target.requiredLevel} AS required_level
+        </foreach>
+      ) target
+      JOIN hr_training_course course ON course.tenant_id = #{tenantId} AND course.skill_id = target.skill_id
+        AND course.target_level &gt;= target.required_level AND course.deleted = 0 AND course.status = 'PUBLISHED'
+      JOIN hr_training_session session ON session.tenant_id = course.tenant_id AND session.course_id = course.id
+      WHERE session.deleted = 0 AND session.status IN ('PLANNED','REGISTERING','ONGOING')
+        AND session.end_time &gt;= #{now} AND session.capacity &gt; session.enrolled_count
+        AND NOT EXISTS (SELECT 1 FROM hr_training_enrollment enrollment
+          WHERE enrollment.tenant_id = course.tenant_id AND enrollment.session_id = session.id
+            AND enrollment.employee_id = target.employee_id AND enrollment.deleted = 0)
+        AND EXISTS (SELECT 1 FROM hr_employee employee
+          JOIN sys_user account ON account.tenant_id = employee.tenant_id AND account.user_id = employee.user_id AND account.status = '0' AND account.deleted = 0
+          JOIN sys_user_role user_role ON user_role.tenant_id = account.tenant_id AND user_role.user_id = account.user_id
+          JOIN sys_role role ON role.tenant_id = user_role.tenant_id AND role.role_id = user_role.role_id AND role.status = '0' AND role.deleted = 0
+          JOIN sys_role_menu role_menu ON role_menu.tenant_id = role.tenant_id AND role_menu.role_id = role.role_id
+          JOIN sys_menu menu ON menu.menu_id = role_menu.menu_id AND menu.status = '0'
+          WHERE employee.tenant_id = course.tenant_id AND employee.id = target.employee_id AND employee.deleted = 0
+            AND menu.perms = 'hr:training:enroll:add')
+    ) ranked
+    WHERE recommendation_rank &lt;= 100
+    ORDER BY employee_id, skill_id, recommendation_rank
   </select>
 </mapper>

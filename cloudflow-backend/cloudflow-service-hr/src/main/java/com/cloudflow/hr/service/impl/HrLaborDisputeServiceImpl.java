@@ -13,7 +13,6 @@ import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
-import com.cloudflow.hr.domain.dto.dispute.HrDisputeEvidenceDTO;
 import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeDTO;
 import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeQueryDTO;
 import com.cloudflow.hr.domain.entity.HrDisputeEvidence;
@@ -155,31 +154,10 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long attachEvidence(Long disputeId, HrDisputeEvidenceDTO dto) {
-        grievanceAccess.assertDisputeAccess(disputeId);
-        if (disputeMapper.selectById(disputeId) == null) {
-            throw new HrBusinessException("LABOR_DISPUTE_NOT_FOUND", "争议不存在：" + disputeId);
-        }
-        HrDisputeEvidence evidence = objectMapper.convertValue(dto, HrDisputeEvidence.class);
-        evidence.setDisputeId(disputeId);
-        evidence.setTenantId(currentTenantId());
-        if (evidence.getUploadedAt() == null) {
-            evidence.setUploadedAt(LocalDateTime.now());
-        }
-        if (evidence.getUploadedBy() == null) {
-            evidence.setUploadedBy(UserContext.getUserId());
-        }
-        evidence.setDeleted(0);
-        evidence.setCreateBy(currentUserName());
-        evidence.setUpdateBy(currentUserName());
-        evidenceMapper.insert(evidence);
-        return evidence.getId();
-    }
-
-    @Override
     public PageResult<HrDisputeEvidenceVO> listEvidence(Long disputeId) {
-        grievanceAccess.assertDisputeAccess(disputeId);
+        if (crudService.get(HrLaborDispute.class, disputeId).isEmpty()) {
+            throw new HrBusinessException("FORBIDDEN", "争议不存在或无权访问");
+        }
         QueryWrapper<HrDisputeEvidence> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("dispute_id", disputeId).eq("deleted", 0)
                 .orderByDesc("create_time");

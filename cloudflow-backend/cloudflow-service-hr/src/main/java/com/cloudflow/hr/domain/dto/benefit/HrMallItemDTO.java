@@ -38,6 +38,11 @@ public class HrMallItemDTO {
     @Min(value = 0, message = "库存不能为负")
     private Integer stock;
 
+    @Schema(description = "排序号，数值越小越靠前")
+    @NotNull(message = "排序号不能为空")
+    @Min(value = 0, message = "排序号不能为负")
+    private Integer sortOrder = 0;
+
     @Schema(description = "封面图")
     @Size(max = 512)
     private String coverImage;

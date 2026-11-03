@@ -15,6 +15,8 @@ public class HrMallOrderItemVO {
     @Schema(description = "明细 ID") private Long id;
     @Schema(description = "订单 ID") private Long orderId;
     @Schema(description = "商品 ID") private Long itemId;
+    @Schema(description = "下单时商品编号") private String itemNo;
+    @Schema(description = "下单时商品封面") private String coverImage;
     @Schema(description = "商品名称") private String itemName;
     @Schema(description = "积分售价") private Integer pointPrice;
     @Schema(description = "数量") private Integer quantity;

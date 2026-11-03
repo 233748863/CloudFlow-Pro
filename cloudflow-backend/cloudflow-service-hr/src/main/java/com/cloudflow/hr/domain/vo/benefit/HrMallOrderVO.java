@@ -21,11 +21,13 @@ public class HrMallOrderVO {
     @Schema(description = "收货人电话（掩码由权限决定）") private Object receiverPhone;
     @Schema(description = "收货地址（掩码由权限决定）") private Object receiverAddress;
     @Schema(description = "快递单号") private String expressNo;
+    @Schema(description = "快递公司") private String expressCompany;
     @Schema(description = "状态") private String status;
     @Schema(description = "审批流程实例 ID") private String processInstanceId;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") private LocalDateTime shippedAt;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") private LocalDateTime completedAt;
     @Schema(description = "备注") private String remark;
+    @Schema(description = "取消原因") private String cancelReason;
     @Schema(description = "订单明细（仅详情返回）") private List<HrMallOrderItemVO> items;
     @Schema(description = "创建人") private String createBy;
     @Schema(description = "更新人") private String updateBy;

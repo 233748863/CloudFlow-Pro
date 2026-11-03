@@ -18,6 +18,7 @@ import com.cloudflow.hr.service.IHrDisputeArbitrationService;
 import com.cloudflow.hr.service.IHrDisputeMediationService;
 import com.cloudflow.hr.service.IHrLaborDisputeService;
 import com.cloudflow.hr.service.HrGrievanceService;
+import com.cloudflow.hr.service.HrDisputeEvidenceService;
 import com.cloudflow.hr.domain.dto.HrGrievanceAction;
 import com.cloudflow.hr.domain.dto.HrGrievanceQuery;
 import com.cloudflow.hr.domain.dto.HrGrievanceRequest;
@@ -53,6 +54,7 @@ class HrLaborDisputeController {
 
     private final IHrLaborDisputeService hrLaborDisputeService;
     private final HrGrievanceService grievanceService;
+    private final HrDisputeEvidenceService evidenceService;
 
     @GetMapping("/{id}/grievance-files/{fileId}")
     @SaCheckPermission("hr:dispute:list")
@@ -112,10 +114,17 @@ class HrLaborDisputeController {
     }
 
     @SysLog("上传争议证据")
-    @PostMapping("/{id}/evidence")
+    @PostMapping(value = "/{id}/evidence", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @SaCheckPermission("hr:dispute:evidence:upload")
-    public R<Long> uploadEvidence(@PathVariable Long id, @Validated @RequestBody HrDisputeEvidenceDTO dto) {
-        return R.ok(hrLaborDisputeService.attachEvidence(id, dto));
+    public R<Long> uploadEvidence(@PathVariable Long id, @RequestParam MultipartFile file,
+                                  @Validated @ModelAttribute HrDisputeEvidenceDTO dto) {
+        return R.ok(evidenceService.upload(id, file, dto));
+    }
+
+    @GetMapping("/{id}/evidence-files/{fileId}")
+    @SaCheckPermission("hr:dispute:list")
+    public ResponseEntity<byte[]> downloadEvidence(@PathVariable Long id, @PathVariable Long fileId) {
+        return evidenceService.download(id, fileId);
     }
 }
 

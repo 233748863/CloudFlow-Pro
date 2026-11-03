@@ -7,6 +7,8 @@ import com.cloudflow.hr.mapper.HrHMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -27,12 +29,8 @@ public class HrAdvanceApprovalSupport {
 
     public Map<String, Object> snapshot(HrEmployee employee) {
         Long applicant = access.linkedUser(employee);
-        List<Long> leaders = applications.departmentLeaders(tenantId(), employee.getDeptId());
-        List<Long> qualified = lookups.permissionUsers(tenantId(), "workflow:task:complete", employee.getDeptId());
-        if (leaders.size() != 1 || applicant.equals(leaders.get(0)) || !qualified.contains(leaders.get(0))) {
-            throw conflict("ADVANCE_LEADER_MISSING", "员工部门须设置唯一且可办理审批的独立负责人");
-        }
-        Long leader = leaders.get(0);
+        Set<Long> qualified = Set.copyOf(lookups.permissionUsers(tenantId(), "workflow:task:complete", employee.getDeptId()));
+        Long leader = requireDepartmentLeader(employee.getDeptId(), applicant, qualified);
         List<String> finance = lookups.roleUsers(tenantId(), "finance").stream().filter(qualified::contains)
                 .filter(userId -> !applicant.equals(userId) && !leader.equals(userId)).map(String::valueOf).toList();
         if (finance.isEmpty()) throw conflict("ADVANCE_FINANCE_MISSING", "缺少排除申请人和部门负责人后的有效财务复核人");
@@ -47,6 +45,19 @@ public class HrAdvanceApprovalSupport {
         result.put("processKey", processKey); result.put("definitionId", definition.get("definitionId"));
         result.put("definitionVersion", definition.get("version")); result.put("modelDigest", access.digest(model));
         return result;
+    }
+
+    Long requireDepartmentLeader(Long departmentId, Long applicant, Set<Long> qualified) {
+        Set<Long> visited = new HashSet<>();
+        while (departmentId != null && departmentId > 0) {
+            if (!visited.add(departmentId)) throw conflict("DEPARTMENT_CYCLE", "部门层级存在循环，无法确定借款审批负责人");
+            HrAdvanceApplicationMapper.DepartmentLeadership department = applications.departmentLeadership(tenantId(), departmentId);
+            if (department == null) break;
+            Long leader = department.leaderUserId();
+            if (leader != null && !Objects.equals(applicant, leader) && qualified.contains(leader)) return leader;
+            departmentId = department.parentId();
+        }
+        throw conflict("ADVANCE_LEADER_MISSING", "当前及上级部门均无可办理审批的独立负责人");
     }
 
     public void verifyCurrent(HrEmployee employee, ObjectNode snapshot) {

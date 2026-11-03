@@ -3,13 +3,13 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.web.MapConverters;
-import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryInvestigationDTO;
 import com.cloudflow.hr.domain.entity.HrWorkInjuryInvestigation;
 import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryInvestigationVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrWorkInjuryInvestigationMapper;
-import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
+import com.cloudflow.hr.service.HrWorkInjuryAccess;
+import com.cloudflow.hr.service.HrRuleSupport;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.hr.service.IHrWorkInjuryInvestigationService;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -28,19 +28,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class HrWorkInjuryInvestigationServiceImpl implements IHrWorkInjuryInvestigationService {
 
-    private static final long DEFAULT_TENANT_ID = 100000L;
-
     private final HrWorkInjuryInvestigationMapper investigationMapper;
-    private final HrWorkInjuryMapper injuryMapper;
+    private final HrWorkInjuryAccess injuryAccess;
     private final HrTypedCrudService crudService;
     private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createInvestigation(Long injuryId, HrWorkInjuryInvestigationDTO dto) {
-        if (injuryMapper.selectById(injuryId) == null) {
-            throw new HrBusinessException("WORK_INJURY_NOT_FOUND", "工伤记录不存在：" + injuryId);
-        }
+        injuryAccess.require(injuryId);
         HrWorkInjuryInvestigation investigation = objectMapper.convertValue(dto, HrWorkInjuryInvestigation.class);
         investigation.setInjuryId(injuryId);
         investigation.setTenantId(currentTenantId());
@@ -55,12 +51,14 @@ public class HrWorkInjuryInvestigationServiceImpl implements IHrWorkInjuryInvest
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "更新工伤调查")
     public void updateInvestigation(Long investigationId, HrWorkInjuryInvestigationDTO dto) {
+        requireRecord(investigationId);
         crudService.updateProperties(HrWorkInjuryInvestigation.class, investigationId,
                 MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
     public List<HrWorkInjuryInvestigationVO> listByInjury(Long injuryId) {
+        injuryAccess.require(injuryId);
         QueryWrapper<HrWorkInjuryInvestigation> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("injury_id", injuryId).eq("deleted", 0)
                 .orderByDesc("create_time");
@@ -71,13 +69,16 @@ public class HrWorkInjuryInvestigationServiceImpl implements IHrWorkInjuryInvest
         return MapConverters.toVOList(rows, HrWorkInjuryInvestigationVO.class, objectMapper);
     }
 
+    private HrWorkInjuryInvestigation requireRecord(Long id) {
+        HrWorkInjuryInvestigation record = investigationMapper.selectOne(new QueryWrapper<HrWorkInjuryInvestigation>()
+                .eq("id", id).eq("tenant_id", currentTenantId()).eq("deleted", 0));
+        if (record == null) throw new HrBusinessException("WORK_INJURY_RECORD_NOT_FOUND", "工伤子记录不存在");
+        injuryAccess.require(record.getInjuryId());
+        return record;
+    }
+
     private long currentTenantId() {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null) {
-            return tenantId;
-        }
-        tenantId = UserContext.getTenantId();
-        return tenantId == null ? DEFAULT_TENANT_ID : tenantId;
+        return HrRuleSupport.tenantId();
     }
 
     private String currentUserName() {

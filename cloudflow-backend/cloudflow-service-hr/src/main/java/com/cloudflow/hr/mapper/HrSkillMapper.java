@@ -29,9 +29,12 @@ public interface HrSkillMapper extends BaseMapper<HrSkill> {
     Page<HrEmployee> employees(Page<HrEmployee> page, @Param("tenantId") Long tenantId,
             @Param("query") HrSkillRequests.Query query, @Param("scope") EmployeeScope scope,
             @Param("today") LocalDate today);
-    List<HrSkillViews.Recommendation> recommendations(@Param("tenantId") Long tenantId,
-            @Param("employeeId") Long employeeId, @Param("skillId") Long skillId,
-            @Param("requiredLevel") int requiredLevel, @Param("now") LocalDateTime now);
+    List<RecommendationMatch> recommendations(@Param("tenantId") Long tenantId,
+            @Param("targets") List<RecommendationTarget> targets, @Param("now") LocalDateTime now);
+
+    record RecommendationTarget(Long employeeId, Long skillId, int requiredLevel) { }
+    record RecommendationMatch(Long employeeId, Long skillId, Long courseId, String courseName,
+                               Integer targetLevel, Long sessionId, String sessionNo) { }
 
     record EmployeeScope(int type, Long userId, Long deptId, List<Long> deptIds) { }
 }

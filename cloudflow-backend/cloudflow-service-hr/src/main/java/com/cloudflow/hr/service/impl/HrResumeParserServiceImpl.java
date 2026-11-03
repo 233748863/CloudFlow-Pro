@@ -88,7 +88,7 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
         String education = pickEducation(text);
         String school = firstGroup(SCHOOL_PATTERN, text);
         String name = inferName(text);
-        ArrayNode skills = extractSkills(text);
+        List<String> skills = extractSkills(text);
         ArrayNode experiences = extractExperiences(text);
 
         int hits = 0;
@@ -228,8 +228,12 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
         row.setParsedEmail(HrRecruitmentContacts.email(payload.getParsedEmail()));
         row.setParsedEducation(payload.getParsedEducation());
         row.setParsedSchool(payload.getParsedSchool());
-        row.setParsedSkills(payload.getParsedSkills());
-        row.setParsedExperiences(payload.getParsedExperiences());
+        List<String> skills = payload.getParsedSkills() == null ? List.of() : payload.getParsedSkills();
+        if (skills.stream().anyMatch(skill -> !StringUtils.hasText(skill))) {
+            throw new IllegalArgumentException("技能名称不能为空");
+        }
+        row.setParsedSkills(skills.stream().map(String::trim).distinct().toList());
+        if (payload.getParsedExperiences() != null) row.setParsedExperiences(payload.getParsedExperiences());
         row.setUpdateBy(defaultOperator());
         saveParsedContacts(row);
     }
@@ -293,10 +297,9 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
         return null;
     }
 
-    private ArrayNode extractSkills(String text) {
-        ArrayNode arr = objectMapper.createArrayNode();
+    private List<String> extractSkills(String text) {
         if (!StringUtils.hasText(text)) {
-            return arr;
+            return List.of();
         }
         String upper = text.toUpperCase(Locale.ROOT);
         Set<String> hits = new LinkedHashSet<>();
@@ -305,8 +308,7 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
                 hits.add(skill);
             }
         }
-        hits.forEach(arr::add);
-        return arr;
+        return List.copyOf(hits);
     }
 
     private ArrayNode extractExperiences(String text) {

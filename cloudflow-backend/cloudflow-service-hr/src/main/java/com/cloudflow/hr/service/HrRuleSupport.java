@@ -25,6 +25,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -129,15 +132,33 @@ public class HrRuleSupport {
         if (employee == null || !Objects.equals(tenantId(), employee.getTenantId()) || flag(employee.getDeleted())) {
             throw new HrBusinessException("EMPLOYEE_NOT_FOUND", "员工不存在");
         }
+        if (!canAccessEmployee(employee)) throw new HrBusinessException("FORBIDDEN", "无权访问该员工的数据");
+    }
+
+    public Set<Long> accessibleEmployeeIds(Collection<Long> employeeIds) {
+        List<Long> ids = employeeIds.stream().filter(Objects::nonNull).distinct().toList();
+        Set<Long> allowed = new LinkedHashSet<>();
+        for (int offset = 0; offset < ids.size(); offset += 500) {
+            List<HrEmployee> employees = employeeMapper.selectList(new LambdaQueryWrapper<HrEmployee>()
+                    .select(HrEmployee::getId, HrEmployee::getTenantId, HrEmployee::getDeleted, HrEmployee::getDeptId, HrEmployee::getUserId)
+                    .eq(HrEmployee::getTenantId, tenantId()).eq(HrEmployee::getDeleted, 0)
+                    .in(HrEmployee::getId, ids.subList(offset, Math.min(offset + 500, ids.size()))));
+            for (HrEmployee employee : employees) {
+                if (canAccessEmployee(employee)) allowed.add(employee.getId());
+            }
+        }
+        return allowed;
+    }
+
+    private boolean canAccessEmployee(HrEmployee employee) {
         Integer scope = UserContext.getDsType();
-        if (UserContext.getUserId() == null || scope == null || scope == 0) return;
-        boolean allowed = switch (scope) {
+        if (UserContext.getUserId() == null || scope == null || scope == 0) return true;
+        return switch (scope) {
             case 1, 2 -> UserContext.getDsDeptIds().contains(employee.getDeptId());
             case 3 -> Objects.equals(UserContext.getDeptId(), employee.getDeptId());
             case 4 -> Objects.equals(UserContext.getUserId(), employee.getUserId());
             default -> false;
         };
-        if (!allowed) throw new HrBusinessException("FORBIDDEN", "无权访问该员工的数据");
     }
 
     public List<HrEmployee> employees(List<Long> employeeIds, List<Long> deptIds) {

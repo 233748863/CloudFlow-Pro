@@ -42,13 +42,9 @@ public class HrRecruitmentIdentityService {
         throw forbidden();
     }
 
-    public void prepareCandidate(HrCandidate candidate, HrCandidate previous) {
+    public void prepareCandidate(HrCandidate candidate) {
         if (!Objects.equals(candidate.getTenantId(), tenantId())) throw forbidden();
-        String phone = candidate.getPhone();
-        try { candidate.setPhone(HrRecruitmentContacts.phone(phone)); }
-        catch (IllegalArgumentException failure) {
-            if (previous == null || !Objects.equals(phone, previous.getPhone())) throw failure;
-        }
+        candidate.setPhone(HrRecruitmentContacts.phone(candidate.getPhone()));
         candidate.setEmail(HrRecruitmentContacts.email(candidate.getEmail()));
     }
 
@@ -65,10 +61,7 @@ public class HrRecruitmentIdentityService {
 
     private HrRecruitmentContacts.Contacts candidateContacts(HrCandidate candidate) {
         if (candidate == null || candidate.getId() == null || !Objects.equals(candidate.getTenantId(), tenantId())) throw forbidden();
-        String phone;
-        try { phone = HrRecruitmentContacts.phone(candidate.getPhone()); }
-        catch (IllegalArgumentException legacyWithoutCountry) { phone = null; }
-        return HrRecruitmentContacts.normalize(tenantId(), phone, candidate.getEmail(), false);
+        return HrRecruitmentContacts.normalize(tenantId(), candidate.getPhone(), candidate.getEmail(), false);
     }
 
     public boolean occupyReferral(HrRecruitmentContacts.Contacts contacts, Long referralId) {
