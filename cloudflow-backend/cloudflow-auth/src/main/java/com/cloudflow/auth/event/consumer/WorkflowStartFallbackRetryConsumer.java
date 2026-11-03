@@ -4,6 +4,7 @@ import com.cloudflow.auth.service.remote.InternalWorkflowStartDTO;
 import com.cloudflow.auth.service.remote.RemoteWorkflowService;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.workflow.WorkflowFallbackRetryContext;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Component
@@ -39,11 +41,13 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
         }
         InternalWorkflowStartDTO request = objectMapper.convertValue(payload.get("request"), InternalWorkflowStartDTO.class);
         validateTenant(envelope, payload, request.getTenantId());
-        final R<?>[] result = new R<?>[1];
-        WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcessInternal(request));
-        if (result[0] == null || !result[0].isSuccess()) {
-            throw new IllegalStateException("workflow fallback retry failed: " + (result[0] == null ? "null" : result[0].getMsg()));
+        AtomicReference<R<ProcessStartResult>> result = new AtomicReference<>();
+        WorkflowFallbackRetryContext.runRetrying(() -> result.set(remoteWorkflowService.startProcessInternal(request)));
+        R<ProcessStartResult> response = result.get();
+        if (response == null || !response.isSuccess() || response.getData() == null) {
+            throw new IllegalStateException("workflow fallback retry failed: " + (response == null ? "null" : response.getMsg()));
         }
+        response.getData().requireInstanceId();
         log.info("workflow fallback retry success, module={}, eventId={}", SOURCE_MODULE, envelope.getEventId());
     }
 

@@ -25,7 +25,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * 网关认证过滤器
@@ -83,16 +82,21 @@ public class AuthFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange);
         }
 
-        return Mono.fromCallable(() -> Optional.ofNullable(tokenService.verifyToken(rawToken)))
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(loginUser -> loginUser
-                        .map(user -> authenticated(exchange, chain, rawToken, user))
-                        .orElseGet(() -> unauthorized(exchange)));
+        // Token校验及Cookie续期配置均使用同步Redis，在同一可阻塞工作线程完成。
+        return Mono.defer(() -> authenticate(exchange, chain, rawToken))
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Mono<Void> authenticate(ServerWebExchange exchange, GatewayFilterChain chain, String rawToken) {
+        Map<String, Object> loginUser = tokenService.verifyToken(rawToken);
+        if (loginUser == null) {
+            return unauthorized(exchange);
+        }
+        return authenticated(exchange, chain, rawToken, loginUser);
     }
 
     private Mono<Void> authenticated(ServerWebExchange exchange, GatewayFilterChain chain,
                                      String rawToken, Map<String, Object> loginUser) {
-        ServerHttpRequest request = exchange.getRequest();
         if (hasAuthCookie(exchange)) {
             refreshAuthCookies(exchange, rawToken);
         }
@@ -108,7 +112,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
                     if (!Boolean.TRUE.equals(ok)) {
                         return tenantDisabled(exchange);
                     }
-                    ServerHttpRequest mutableReq = request.mutate()
+                    ServerHttpRequest mutableReq = exchange.getRequest().mutate()
                             .headers(headers -> {
                                 headers.set("Authorization", "Bearer " + rawToken);
                                 headers.remove("X-Auth-Token");

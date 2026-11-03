@@ -11,6 +11,7 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.data.redis.connection.ReactiveSubscription;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.ReactiveRedisMessageListenerContainer;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,6 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <ul>
  *   <li>启动期从 Redis Hash {@code cloudflow:ratelimit:rules:active} 加载全量 ACTIVE 规则。</li>
  *   <li>订阅 Redis pubsub 通道 {@code cloudflow:ratelimit:rules}，收到 RELOAD 后即时刷新本地缓存。</li>
- *   <li>每个请求按 {@code priority} 升序匹配规则；命中后用 INCR + EXPIRE 做时间窗口计数。</li>
+ *   <li>每个请求按 {@code priority} 升序匹配规则；命中后以 Redis Lua 原子完成计数与到期设置。</li>
  *   <li>超额行为：REJECT 直接 429；LOG 仅记日志放行；QUEUE 当前按 LOG 处理（后续可扩展为延迟放行）。</li>
  * </ul>
  *
@@ -54,6 +54,10 @@ public class DynamicRateLimitFilter implements GlobalFilter, Ordered {
     public static final String RELOAD_MESSAGE = "RELOAD";
 
     private static final String COUNTER_KEY_PREFIX = "ratelimit:";
+    private static final DefaultRedisScript<Long> COUNT_WINDOW = new DefaultRedisScript<>(
+            "local count = redis.call('INCR', KEYS[1]); "
+                    + "if redis.call('TTL', KEYS[1]) < 0 then redis.call('EXPIRE', KEYS[1], ARGV[1]); end; "
+                    + "return count;", Long.class);
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
     private final AtomicReference<List<SysApiRatelimitRuleSnapshot>> activeRulesRef = new AtomicReference<>(List.of());
@@ -133,26 +137,17 @@ public class DynamicRateLimitFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        return reactiveStringRedisTemplate.opsForValue().increment(counterKey)
-                .flatMap(count -> {
-                    Mono<Boolean> ensureTtl = reactiveStringRedisTemplate.getExpire(counterKey)
-                            .flatMap(ttl -> ttl.isNegative() || ttl.isZero()
-                                    ? reactiveStringRedisTemplate.expire(counterKey, Duration.ofSeconds(windowSeconds))
-                                    : Mono.just(true))
-                            .switchIfEmpty(reactiveStringRedisTemplate.expire(
-                                    counterKey, Duration.ofSeconds(windowSeconds)))
-                            .onErrorReturn(true);
-                    return ensureTtl.then(Mono.just(count == null ? 0L : count));
+        return reactiveStringRedisTemplate.execute(COUNT_WINDOW, List.of(counterKey), List.of(String.valueOf(windowSeconds)))
+                .single()
+                .onErrorResume(err -> {
+                    log.warn("API 限流计数异常 rule={} key={} err={}", hit.getRuleCode(), counterKey, err.getMessage());
+                    return Mono.just(0L);
                 })
                 .flatMap(count -> {
                     if (count <= burst) {
                         return chain.filter(exchange);
                     }
                     return onExceeded(exchange, chain, hit, count);
-                })
-                .onErrorResume(err -> {
-                    log.warn("API 限流计数异常 rule={} key={} err={}", hit.getRuleCode(), counterKey, err.getMessage());
-                    return chain.filter(exchange);
                 });
     }
 

@@ -3,6 +3,7 @@ package com.cloudflow.common.audit.aop;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.audit.handle.ICompareHandle;
 import com.cloudflow.common.audit.support.SpelParser;
+import com.cloudflow.common.audit.support.AuditSnapshotContext;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -26,9 +27,23 @@ public class AuditAspect {
 
     @Around("@annotation(audit)")
     public Object auditLog(ProceedingJoinPoint joinPoint, Audit audit) throws Throwable {
+        if (audit.providedSnapshots()) {
+            try (AuditSnapshotContext.Scope scope = AuditSnapshotContext.open()) {
+                Object result = joinPoint.proceed();
+                compareHandle.compare(null, joinPoint, audit);
+                return result;
+            }
+        }
         // 方法执行前：通过 SPEL 获取旧值
-        Object oldVal = SpelParser.parser(joinPoint,
-                StringUtils.hasText(audit.oldVal()) ? audit.oldVal() : audit.spel());
+        Object oldVal;
+        try {
+            oldVal = SpelParser.parser(joinPoint,
+                    StringUtils.hasText(audit.oldVal()) ? audit.oldVal() : audit.spel());
+        } catch (RuntimeException snapshotFailure) {
+            Object result = joinPoint.proceed();
+            compareHandle.comparisonFailed(joinPoint, audit, snapshotFailure);
+            return result;
+        }
 
         // 执行目标方法
         Object result = joinPoint.proceed();

@@ -54,7 +54,7 @@ public class ImBindingIdentity {
                 || credentials.password().length() > 256
                 || credentials.totpCode() != null && !credentials.totpCode().matches("[0-9]{6}")) throw ImFailure.bindingVerification();
         boolean matched;
-        try { matched = passwords.matchesPassword(credentials.password(), before.password()).matched(); }
+        try { matched = passwords.matchesPassword(credentials.password(), before.password()); }
         catch (IllegalArgumentException failure) { matched = false; }
         if (!matched) throw rejected(before);
         if (before.totpRequired() && !totp.verifyLoginCode(before.actor().userId(), before.actor().tenantId(), credentials.totpCode())) {

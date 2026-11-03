@@ -12,6 +12,7 @@ import com.cloudflow.auth.mapper.report.SysReportChartMapper;
 import com.cloudflow.auth.mapper.report.SysReportDashboardItemMapper;
 import com.cloudflow.auth.mapper.report.SysReportDashboardMapper;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.audit.support.AuditSnapshotContext;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.exception.ServiceException;
@@ -53,7 +54,7 @@ public class ReportDefinitionService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "保存本人报表图表", spel = "#input", diff = true)
+    @Audit(name = "保存本人报表图表", providedSnapshots = true, diff = true)
     public Long saveChart(ReportDefinitionInput.Chart input) {
         context("system:report:chart:save");
         if (input == null) throw ReportValidation.invalid("图表配置不能为空");
@@ -68,17 +69,19 @@ public class ReportDefinitionService {
             record.setTenantId(tenant()); record.setOwnerId(user()); record.setOwnerDeptId(department());
             record.setShareScope("PRIVATE"); record.setDeleted(0); record.setVersion(0);
         } else { owned(record == null ? null : record.getOwnerId()); requireVersion(record.getVersion(), input.version()); }
+        ChartAudit before = creating ? null : chartAudit(record);
         record.setChartName(ReportDefinitionRules.name(input.name(), 100)); record.setChartType(input.type()); record.setDatasetId(dataset.getDatasetId());
         record.setDimensions(json(query.dimensions())); record.setMeasures(json(query.measures()));
         record.setFilters(json(new SavedFilters(input.query().filters(), input.query().startDate(), input.query().endDate())));
         record.setSortConfig(json(query.sorts())); record.setLimitRows(query.limitRows()); record.setStyleConfig(json(style)); record.setUpdateBy(actor());
         if (creating) { record.setCreateBy(actor()); charts.insert(record); }
-        else changed(charts.writeDefinition(record, input.version()));
+        else { changed(charts.writeDefinition(record, input.version())); record.setVersion(input.version() + 1); }
+        AuditSnapshotContext.record(before, chartAudit(record));
         return record.getChartId();
     }
 
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "删除本人报表图表", highRisk = true, spel = "#id")
+    @Audit(name = "删除本人报表图表", highRisk = true, providedSnapshots = true)
     public void removeChart(String id, Integer version) {
         context("system:report:chart:remove");
         Long chartId = ReportDefinitionRules.id(id);
@@ -86,6 +89,7 @@ public class ReportDefinitionService {
         owned(record == null ? null : record.getOwnerId()); requireVersion(record.getVersion(), version);
         if (charts.referenceCount(tenant(), chartId) > 0) throw new ServiceException("图表仍被仪表盘引用，请先移除引用；也可撤回共享", 409);
         changed(charts.removeDefinition(tenant(), chartId, user(), version, actor()));
+        AuditSnapshotContext.record(chartAudit(record), null);
     }
 
     public PageResult<ReportDefinitionView.Dashboard> dashboardList(int pageNum, int pageSize) {
@@ -102,7 +106,7 @@ public class ReportDefinitionService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "保存本人报表仪表盘", spel = "#input", diff = true)
+    @Audit(name = "保存本人报表仪表盘", providedSnapshots = true, diff = true)
     public Long saveDashboard(ReportDefinitionInput.Dashboard input) {
         context("system:report:dashboard:save");
         if (input == null) throw ReportValidation.invalid("仪表盘配置不能为空");
@@ -121,32 +125,40 @@ public class ReportDefinitionService {
             record.setTenantId(tenant()); record.setOwnerId(user()); record.setOwnerDeptId(department());
             record.setShareScope("PRIVATE"); record.setDeleted(0); record.setVersion(0); record.setCreateBy(actor());
         } else { owned(record == null ? null : record.getOwnerId()); requireVersion(record.getVersion(), input.version()); }
+        DashboardAudit before = creating ? null : dashboardAudit(record,
+                items.forDashboard(tenant(), record.getDashboardId()).stream().map(this::layoutAudit).toList());
         record.setDashboardName(ReportDefinitionRules.name(input.name(), 100)); record.setRemark(input.remark()); record.setUpdateBy(actor());
         if (creating) dashboards.insert(record);
-        else changed(dashboards.writeDefinition(record, input.version()));
+        else { changed(dashboards.writeDefinition(record, input.version())); record.setVersion(input.version() + 1); }
         items.clearLayout(tenant(), record.getDashboardId());
+        List<LayoutAudit> savedLayout = new ArrayList<>();
         for (ReportDefinitionInput.Item item : layout) {
             SysReportDashboardItem row = new SysReportDashboardItem();
             row.setTenantId(tenant()); row.setDashboardId(record.getDashboardId()); row.setChartId(ReportDefinitionRules.id(item.chartId()));
             row.setGridX(item.gridX()); row.setGridY(item.gridY()); row.setGridW(item.gridW()); row.setGridH(item.gridH());
             row.setCreateBy(actor()); row.setUpdateBy(actor()); items.insert(row);
+            savedLayout.add(layoutAudit(row));
         }
+        AuditSnapshotContext.record(before, dashboardAudit(record, List.copyOf(savedLayout)));
         return record.getDashboardId();
     }
 
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "删除本人报表仪表盘", highRisk = true, spel = "#id")
+    @Audit(name = "删除本人报表仪表盘", highRisk = true, providedSnapshots = true)
     public void removeDashboard(String id, Integer version) {
         context("system:report:dashboard:remove");
         Long dashboardId = ReportDefinitionRules.id(id);
         SysReportDashboard record = dashboards.lockById(tenant(), dashboardId);
         owned(record == null ? null : record.getOwnerId()); requireVersion(record.getVersion(), version);
+        DashboardAudit before = dashboardAudit(record,
+                items.forDashboard(tenant(), dashboardId).stream().map(this::layoutAudit).toList());
         changed(dashboards.removeDefinition(tenant(), dashboardId, user(), version, actor()));
         items.clearLayout(tenant(), dashboardId);
+        AuditSnapshotContext.record(before, null);
     }
 
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "调整本人报表定义共享范围", highRisk = true, spel = "#input", diff = true)
+    @Audit(name = "调整本人报表定义共享范围", highRisk = true, providedSnapshots = true, diff = true)
     public void share(ReportDefinitionInput.Share input) {
         context("system:report:share");
         if (input == null || input.kind() == null || input.scope() == null
@@ -159,12 +171,39 @@ public class ReportDefinitionService {
             SysReportChart record = charts.lockById(tenant(), id);
             owned(record == null ? null : record.getOwnerId()); requireVersion(record.getVersion(), version);
             changed(charts.writeSharing(tenant(), id, user(), input.scope(), version, actor()));
+            AuditSnapshotContext.record(new SharingAudit("CHART", id, record.getShareScope(), version),
+                    new SharingAudit("CHART", id, input.scope(), version + 1));
         } else {
             SysReportDashboard record = dashboards.lockById(tenant(), id);
             owned(record == null ? null : record.getOwnerId()); requireVersion(record.getVersion(), version);
             changed(dashboards.writeSharing(tenant(), id, user(), input.scope(), version, actor()));
+            AuditSnapshotContext.record(new SharingAudit("DASHBOARD", id, record.getShareScope(), version),
+                    new SharingAudit("DASHBOARD", id, input.scope(), version + 1));
         }
     }
+
+    private ChartAudit chartAudit(SysReportChart record) {
+        if (record == null) return null;
+        return new ChartAudit(record.getChartId(), record.getDatasetId(), record.getChartName(), record.getChartType(),
+                record.getDimensions(), record.getMeasures(), record.getFilters(), record.getSortConfig(),
+                record.getLimitRows(), record.getStyleConfig(), record.getShareScope(), record.getVersion());
+    }
+
+    private DashboardAudit dashboardAudit(SysReportDashboard record, List<LayoutAudit> layout) {
+        return new DashboardAudit(record.getDashboardId(), record.getDashboardName(), record.getRemark(),
+                record.getShareScope(), record.getVersion(), layout);
+    }
+
+    private LayoutAudit layoutAudit(SysReportDashboardItem item) {
+        return new LayoutAudit(item.getChartId(), item.getGridX(), item.getGridY(), item.getGridW(), item.getGridH());
+    }
+
+    private record ChartAudit(Long chartId, Long datasetId, String name, String type, String dimensions,
+            String measures, String filters, String sorts, Integer limitRows, String style, String shareScope, Integer version) { }
+    private record DashboardAudit(Long dashboardId, String name, String remark, String shareScope,
+            Integer version, List<LayoutAudit> layout) { }
+    private record LayoutAudit(Long chartId, Integer x, Integer y, Integer w, Integer h) { }
+    private record SharingAudit(String kind, Long id, String scope, int version) { }
 
     private SysReportChart visibleChart(Long id) {
         SysReportChart record = charts.visibleById(tenant(), id, user(), UserContext.getDeptId());

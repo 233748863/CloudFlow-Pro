@@ -58,13 +58,14 @@ public class OutboxScheduler {
     }
 
     private void publishToStream(OutboxEvent event) {
-        Map<String, Object> content = new HashMap<>();
-        content.put("eventId", extractEventId(event));
+        Map<String, String> content = new HashMap<>();
+        content.put("eventId", event.getEventId());
         content.put("eventType", event.getEventType());
         content.put("payload", event.getPayloadJson());
-        content.put("tenantId", event.getTenantId());
+        content.put("tenantId", event.getTenantId().toString());
 
-        String msgId = redisStreamUtil.publishGlobal(properties.getStreamKey(), content);
+        String msgId = redisStreamUtil.publishGlobalText(properties.getStreamKey(), content);
+        if (msgId == null || msgId.isBlank()) throw new IllegalStateException("业务事件运输未确认");
         if (properties.getStreamMaxLen() > 0) {
             redisStreamUtil.trimGlobal(properties.getStreamKey(), properties.getStreamMaxLen(), true);
         }
@@ -98,15 +99,6 @@ public class OutboxScheduler {
         // 指数退避：base * 2^retryCount，max 1h
         long delaySeconds = Math.min(properties.getRetryBaseSeconds() * (1L << retryCount), 3600);
         return LocalDateTime.now().plusSeconds(delaySeconds);
-    }
-
-    private String extractEventId(OutboxEvent event) {
-        try {
-            Map<?, ?> map = objectMapper.readValue(event.getPayloadJson(), Map.class);
-            return (String) map.get("eventId");
-        } catch (Exception e) {
-            return "unknown";
-        }
     }
 
     private com.cloudflow.common.event.core.BusinessEventEnvelope readEnvelope(OutboxEvent event) {

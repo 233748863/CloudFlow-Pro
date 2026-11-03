@@ -119,11 +119,8 @@ public class MessageDispatchService {
         if (envelope == null || !StringUtils.hasText(envelope.getPayload())) {
             throw new ServiceException("消息事件负载不能为空");
         }
-        if (!StringUtils.hasText(envelope.getEventId())) envelope.setEventId(UUID.randomUUID().toString());
-        if (envelope.getTenantId() == null) {
-            Long tenantId = com.cloudflow.common.core.context.UserContext.getTenantId();
-            if (tenantId == null) tenantId = com.cloudflow.common.tenant.TenantContext.getTenantId();
-            envelope.setTenantId(tenantId == null ? 100000L : tenantId);
+        if (!StringUtils.hasText(envelope.getEventId()) || envelope.getTenantId() == null || envelope.getTenantId() <= 0) {
+            throw new ServiceException("消息事件必须具有稳定事件编号和明确租户", 400);
         }
         MessageSendRequest request = MessagePayloadCodec.decode(envelope, objectMapper, secretCipher);
         if (request == null) throw new ServiceException("消息请求不能为空");
@@ -375,41 +372,62 @@ public class MessageDispatchService {
     private List<MessageReceiver> expandReceivers(List<MessageReceiver> source, Long tenantId) {
         Map<String, MessageReceiver> result = new LinkedHashMap<>();
         int expandLimit = Math.max(1, receiverExpandLimit);
+        Set<Long> roleIds = new java.util.LinkedHashSet<>();
+        Set<Long> departmentRoots = new java.util.LinkedHashSet<>();
+        for (MessageReceiver receiver : source) {
+            if (receiver == null || receiver.getReceiverId() == null) continue;
+            if ("ROLE".equalsIgnoreCase(receiver.getReceiverType())) roleIds.add(receiver.getReceiverId());
+            if ("DEPT".equalsIgnoreCase(receiver.getReceiverType())) departmentRoots.add(receiver.getReceiverId());
+        }
+        Map<Long, Set<Long>> roleMembers = new LinkedHashMap<>();
+        if (!roleIds.isEmpty()) {
+            for (SysUserRole binding : userRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
+                    .in(SysUserRole::getRoleId, roleIds).eq(SysUserRole::getTenantId, tenantId))) {
+                if (binding.getUserId() != null) roleMembers.computeIfAbsent(binding.getRoleId(), ignored -> new java.util.LinkedHashSet<>())
+                        .add(binding.getUserId());
+            }
+        }
+        Map<Long, List<Long>> departmentChildren = new LinkedHashMap<>();
+        Set<Long> validDepartments = new java.util.HashSet<>();
+        if (!departmentRoots.isEmpty()) {
+            for (SysDept department : deptMapper.selectList(new LambdaQueryWrapper<SysDept>()
+                    .eq(SysDept::getTenantId, tenantId).eq(SysDept::getStatus, "0").eq(SysDept::getDeleted, 0))) {
+                validDepartments.add(department.getDeptId());
+                departmentChildren.computeIfAbsent(department.getParentId(), ignored -> new ArrayList<>()).add(department.getDeptId());
+            }
+        }
+        Map<Long, Set<Long>> departmentScopes = new LinkedHashMap<>();
+        Set<Long> allDepartmentIds = new java.util.LinkedHashSet<>();
+        for (Long root : departmentRoots) {
+            Set<Long> scope = expandDepartmentIds(root, validDepartments, departmentChildren);
+            departmentScopes.put(root, scope);
+            allDepartmentIds.addAll(scope);
+        }
+        Set<Long> allUserIds = new java.util.LinkedHashSet<>();
+        roleMembers.values().forEach(allUserIds::addAll);
+        List<SysUser> users = allUserIds.isEmpty() && allDepartmentIds.isEmpty() ? List.of()
+                : userMapper.selectList(new LambdaQueryWrapper<SysUser>()
+                        .eq(SysUser::getTenantId, tenantId).eq(SysUser::getStatus, "0").eq(SysUser::getDeleted, 0)
+                        .and(scope -> {
+                            if (!allUserIds.isEmpty()) scope.in(SysUser::getUserId, allUserIds);
+                            if (!allUserIds.isEmpty() && !allDepartmentIds.isEmpty()) scope.or();
+                            if (!allDepartmentIds.isEmpty()) scope.in(SysUser::getDeptId, allDepartmentIds);
+                        }));
         for (MessageReceiver receiver : source) {
             if (receiver == null) continue;
             String type = receiver.getReceiverType() == null ? "USER" : receiver.getReceiverType().toUpperCase(Locale.ROOT);
-            if ("USER".equals(type)) {
-                if (receiver.getReceiverId() == null) continue;
+            if ("USER".equals(type) && receiver.getReceiverId() != null) {
                 putReceiver(result, receiver, expandLimit, receiver);
-            } else if ("ROLE".equals(type) && receiver.getReceiverId() != null) {
-                List<SysUserRole> links = userRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
-                        .eq(SysUserRole::getRoleId, receiver.getReceiverId())
-                        .eq(SysUserRole::getTenantId, tenantId));
-                Set<Long> userIds = links.stream().map(SysUserRole::getUserId)
-                        .filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
-                List<SysUser> users = userIds.isEmpty() ? List.of() : userMapper.selectList(new LambdaQueryWrapper<SysUser>()
-                        .in(SysUser::getUserId, userIds)
-                        .eq(SysUser::getTenantId, tenantId)
-                        .eq(SysUser::getStatus, "0")
-                        .eq(SysUser::getDeleted, 0));
+            } else if (("ROLE".equals(type) || "DEPT".equals(type)) && receiver.getReceiverId() != null) {
+                Set<Long> ids = "ROLE".equals(type) ? roleMembers.getOrDefault(receiver.getReceiverId(), Set.of())
+                        : departmentScopes.getOrDefault(receiver.getReceiverId(), Set.of());
                 for (SysUser user : users) {
-                    putReceiver(result, MessageReceiver.builder().receiverType("USER").receiverId(user.getUserId())
-                            .receiverName(user.getNickName()).build(), expandLimit, receiver);
+                    if (ids.contains("ROLE".equals(type) ? user.getUserId() : user.getDeptId())) {
+                        putReceiver(result, MessageReceiver.builder().receiverType("USER").receiverId(user.getUserId())
+                                .receiverName(user.getNickName()).build(), expandLimit, receiver);
+                    }
                 }
-            } else if ("DEPT".equals(type) && receiver.getReceiverId() != null) {
-                Set<Long> deptIds = expandDepartmentIds(receiver.getReceiverId(), tenantId);
-                if (deptIds.isEmpty()) continue;
-                List<SysUser> users = userMapper.selectList(new LambdaQueryWrapper<SysUser>()
-                        .in(SysUser::getDeptId, deptIds)
-                        .eq(SysUser::getTenantId, tenantId)
-                        .eq(SysUser::getStatus, "0")
-                        .eq(SysUser::getDeleted, 0));
-                for (SysUser user : users) {
-                    putReceiver(result, MessageReceiver.builder().receiverType("USER").receiverId(user.getUserId())
-                            .receiverName(user.getNickName()).build(), expandLimit, receiver);
-                }
-            } else if (("PHONE".equals(type) || "EMAIL".equals(type))
-                    && StringUtils.hasText(receiver.getReceiverAddress())) {
+            } else if (("PHONE".equals(type) || "EMAIL".equals(type)) && StringUtils.hasText(receiver.getReceiverAddress())) {
                 putReceiver(result, receiver, expandLimit, receiver);
             }
         }
@@ -426,26 +444,15 @@ public class MessageDispatchService {
     }
 
     /** 返回指定部门及其全部后代部门，避免 DEPT 接收方漏发子部门员工。 */
-    private Set<Long> expandDepartmentIds(Long rootDeptId, Long tenantId) {
-        List<SysDept> departments = deptMapper.selectList(new LambdaQueryWrapper<SysDept>()
-                .eq(SysDept::getTenantId, tenantId)
-                .eq(SysDept::getStatus, "0")
-                .eq(SysDept::getDeleted, 0));
+    private Set<Long> expandDepartmentIds(Long rootDeptId, Set<Long> validDepartments, Map<Long, List<Long>> children) {
         Set<Long> result = new java.util.LinkedHashSet<>();
-        if (departments.stream().noneMatch(dept -> Objects.equals(dept.getDeptId(), rootDeptId))) {
-            return result;
+        if (!validDepartments.contains(rootDeptId)) return result;
+        java.util.ArrayDeque<Long> pending = new java.util.ArrayDeque<>();
+        pending.add(rootDeptId);
+        while (!pending.isEmpty()) {
+            Long departmentId = pending.removeFirst();
+            if (result.add(departmentId)) pending.addAll(children.getOrDefault(departmentId, List.of()));
         }
-        result.add(rootDeptId);
-        boolean changed;
-        do {
-            changed = false;
-            for (SysDept dept : departments) {
-                if (dept.getDeptId() != null && dept.getParentId() != null
-                        && result.contains(dept.getParentId()) && result.add(dept.getDeptId())) {
-                    changed = true;
-                }
-            }
-        } while (changed);
         return result;
     }
 

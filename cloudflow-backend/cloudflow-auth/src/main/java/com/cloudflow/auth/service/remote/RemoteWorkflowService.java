@@ -1,6 +1,7 @@
 package com.cloudflow.auth.service.remote;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,5 +14,5 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface RemoteWorkflowService {
 
     @PostMapping("/inner/workflow/process/start")
-    R<?> startProcessInternal(@RequestBody InternalWorkflowStartDTO req);
+    R<ProcessStartResult> startProcessInternal(@RequestBody InternalWorkflowStartDTO req);
 }

@@ -5,8 +5,6 @@ import com.cloudflow.common.audit.domain.SysAuditLogEntity;
 import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
 import com.cloudflow.common.audit.support.AuditBizModuleResolver;
 import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.tenant.TenantConfigProperties;
-import cn.hutool.extra.spring.SpringUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
@@ -14,27 +12,18 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.javers.core.Changes;
 import org.javers.core.diff.Change;
+import org.javers.core.diff.changetype.PropertyChange;
 import org.javers.core.diff.changetype.ValueChange;
 import org.springframework.scheduling.annotation.Async;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
-/**
- * 默认审计日志处理器
- * <p>
- * 将 Javers 变更列表转换为审计日志实体，通过本地 Mapper 异步入库。
- * 替代 poco 原版中通过 Feign 远程调用 UPMS 服务的方式。
- * </p>
- *
- * @author CloudFlow
- */
+/** 将一次业务变更的字段与脱敏快照写入本租户审计记录。 */
 @Slf4j
 @RequiredArgsConstructor
 public class DefaultAuditLogHandle implements IAuditLogHandle {
-
     private final SysAuditLogMapper auditLogMapper;
     private final ObjectMapper objectMapper;
     private final AuditBizModuleResolver auditBizModuleResolver;
@@ -44,101 +33,114 @@ public class DefaultAuditLogHandle implements IAuditLogHandle {
         handle(audit, changes, null, null, null);
     }
 
-    /**
-     * M0-5 扩展：支持 diff=true 时记录完整 JSON。
-     * @param oldVal 旧值对象（diff=true 时需要）
-     * @param newVal 新值对象（diff=true 时需要）
-     */
     public void handle(Audit audit, Changes changes, Object oldVal, Object newVal) {
         handle(audit, changes, oldVal, newVal, null);
     }
 
     @Override
     public void handle(Audit audit, Changes changes, Object oldVal, Object newVal, Class<?> sourceClass) {
-        // 无变更则跳过
-        if (changes.isEmpty()) {
-            return;
-        }
-
-        // 获取当前操作人
-        String username = UserContext.getUserName();
-        if (username == null) {
-            log.debug("审计日志跳过：无法获取当前操作用户");
-            return;
-        }
-
-        // 获取租户ID，降级使用 TenantConfigProperties 中的默认值
-        Long tenantId = UserContext.getTenantId();
-        if (tenantId == null) {
+        if (changes.isEmpty()) return;
+        Identity identity = identity(audit);
+        if (identity == null) return;
+        boolean needsJson = audit.diff() || changes.stream().anyMatch(change -> !(change instanceof ValueChange));
+        JsonNode beforeNode = null;
+        JsonNode afterNode = null;
+        String beforeJson = null;
+        String afterJson = null;
+        String diffJson = null;
+        if (needsJson) {
             try {
-                TenantConfigProperties tenantConfig = SpringUtil.getBean(TenantConfigProperties.class);
-                tenantId = tenantConfig.getDefaultTenantId();
-            } catch (Exception e) {
-                tenantId = 100000L;
-            }
-        }
-
-        String bizModule = auditBizModuleResolver.resolve(sourceClass);
-
-        // 将每个字段变更转换为审计日志记录
-        List<SysAuditLogEntity> auditLogList = new ArrayList<>();
-        for (Change change : changes) {
-            if (!(change instanceof ValueChange valueChange)) {
-                continue;
-            }
-
-            SysAuditLogEntity auditLog = new SysAuditLogEntity();
-            auditLog.setBizModule(bizModule);
-            auditLog.setAuditName(audit.name());
-            auditLog.setAuditField(valueChange.getPropertyName());
-
-            if (Objects.nonNull(valueChange.getLeft())) {
-                auditLog.setBeforeVal(valueChange.getLeft().toString());
-            }
-            if (Objects.nonNull(valueChange.getRight())) {
-                auditLog.setAfterVal(valueChange.getRight().toString());
-            }
-
-            auditLog.setCreateBy(username);
-            auditLog.setCreateTime(LocalDateTime.now());
-            auditLog.setTenantId(tenantId);
-            auditLog.setHighRisk(audit.highRisk() ? 1 : 0);
-            auditLog.setRiskLevel(audit.highRisk() ? "HIGH" : "NORMAL");
-
-            // M0-5: diff=true 时记录完整 JSON
-            if (audit.diff() && oldVal != null && newVal != null) {
-                try {
-                    String beforeJson = objectMapper.writeValueAsString(oldVal);
-                    String afterJson = objectMapper.writeValueAsString(newVal);
-                    JsonNode beforeNode = objectMapper.readTree(beforeJson);
-                    JsonNode afterNode = objectMapper.readTree(afterJson);
-                    JsonNode diffNode = JsonDiff.asJson(beforeNode, afterNode);
-                    auditLog.setBeforeJson(beforeJson);
-                    auditLog.setAfterJson(afterJson);
-                    auditLog.setDiffJson(diffNode.toString());
-                } catch (Exception e) {
-                    log.warn("审计 JSON diff 失败: {}", e.getMessage());
+                beforeNode = objectMapper.valueToTree(oldVal);
+                afterNode = objectMapper.valueToTree(newVal);
+                if (audit.diff()) {
+                    beforeJson = beforeNode.toString();
+                    afterJson = afterNode.toString();
+                    diffJson = JsonDiff.asJson(beforeNode, afterNode).toString();
                 }
+            } catch (RuntimeException failure) {
+                comparisonFailed(audit, sourceClass, failure);
+                return;
             }
-
-            auditLogList.add(auditLog);
         }
-
-        if (!auditLogList.isEmpty()) {
-            // 异步保存
-            asyncSave(auditLogList);
+        List<SysAuditLogEntity> entries = new ArrayList<>();
+        for (Change change : changes) {
+            if (!(change instanceof PropertyChange<?> property)) continue;
+            SysAuditLogEntity entry = entry(audit, sourceClass, identity);
+            entry.setAuditField(property.getPropertyName());
+            if (change instanceof ValueChange value) {
+                entry.setBeforeVal(value.getLeft() == null ? null : value.getLeft().toString());
+                entry.setAfterVal(value.getRight() == null ? null : value.getRight().toString());
+            } else {
+                entry.setBeforeVal(propertyJson(beforeNode, property.getPropertyName()));
+                entry.setAfterVal(propertyJson(afterNode, property.getPropertyName()));
+            }
+            entry.setBeforeJson(beforeJson);
+            entry.setAfterJson(afterJson);
+            entry.setDiffJson(diffJson);
+            entries.add(entry);
         }
+        if (entries.isEmpty()) {
+            SysAuditLogEntity entry = entry(audit, sourceClass, identity);
+            entry.setAuditField(oldVal == null ? "CREATED" : newVal == null ? "DELETED" : "STRUCTURE_CHANGED");
+            entry.setBeforeVal(beforeNode == null || beforeNode.isNull() ? null : beforeNode.toString());
+            entry.setAfterVal(afterNode == null || afterNode.isNull() ? null : afterNode.toString());
+            entry.setBeforeJson(beforeJson);
+            entry.setAfterJson(afterJson);
+            entry.setDiffJson(diffJson);
+            entries.add(entry);
+        }
+        asyncSave(entries);
     }
+
+    @Override
+    public void comparisonFailed(Audit audit, Class<?> sourceClass, RuntimeException failure) {
+        log.error("审计快照比较失败: audit={}, failureType={}", audit.name(), failure.getClass().getName());
+        Identity identity = identity(audit);
+        if (identity == null) return;
+        SysAuditLogEntity entry = entry(audit, sourceClass, identity);
+        entry.setAuditField("COMPARISON_FAILED");
+        entry.setAfterVal(failure.getClass().getName());
+        asyncSave(List.of(entry));
+    }
+
+    private String propertyJson(JsonNode node, String property) {
+        if (node == null || node.isNull()) return null;
+        JsonNode value = node.get(property);
+        return value == null ? node.toString() : value.toString();
+    }
+
+    private Identity identity(Audit audit) {
+        Long tenantId = UserContext.getTenantId();
+        String username = UserContext.getUserName();
+        if (tenantId == null || tenantId <= 0 || username == null || username.isBlank()) {
+            log.error("审计缺少明确归属，记录未保存: audit={}, tenantId={}, hasOperator={}",
+                    audit.name(), tenantId, username != null && !username.isBlank());
+            return null;
+        }
+        return new Identity(tenantId, username, LocalDateTime.now());
+    }
+
+    private SysAuditLogEntity entry(Audit audit, Class<?> sourceClass, Identity identity) {
+        SysAuditLogEntity entry = new SysAuditLogEntity();
+        entry.setTenantId(identity.tenantId());
+        entry.setCreateBy(identity.username());
+        entry.setCreateTime(identity.time());
+        entry.setBizModule(auditBizModuleResolver.resolve(sourceClass));
+        entry.setAuditName(audit.name());
+        entry.setHighRisk(audit.highRisk() ? 1 : 0);
+        entry.setRiskLevel(audit.highRisk() ? "HIGH" : "NORMAL");
+        return entry;
+    }
+
+    private record Identity(Long tenantId, String username, LocalDateTime time) { }
 
     @Async
     @Override
-    public void asyncSave(List<SysAuditLogEntity> auditLogList) {
+    public void asyncSave(List<SysAuditLogEntity> entries) {
         try {
-            for (SysAuditLogEntity auditLog : auditLogList) {
-                auditLogMapper.insert(auditLog);
-            }
-        } catch (Exception e) {
-            log.error("审计日志入库失败: {}", e.getMessage(), e);
+            for (SysAuditLogEntity entry : entries) auditLogMapper.insert(entry);
+        } catch (RuntimeException failure) {
+            log.error("审计日志入库失败: count={}, failureType={}", entries.size(), failure.getClass().getName(), failure);
         }
     }
 }

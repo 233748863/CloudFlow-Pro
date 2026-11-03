@@ -4,6 +4,8 @@ import com.cloudflow.auth.domain.SysTenant;
 import com.cloudflow.auth.domain.SysTenantPackage;
 import com.cloudflow.auth.mapper.TenantPackageMapper;
 import com.cloudflow.auth.platform.PlatformAccessService;
+import com.cloudflow.auth.service.report.ReportDatasetRegistration;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.auth.platform.PlatformAccessService.Operator;
 import com.cloudflow.auth.tenantpackage.TenantPackageRules.Adjustments;
 import com.cloudflow.auth.tenantpackage.TenantPackageRules.Effective;
@@ -26,6 +28,7 @@ public class TenantAssignmentService {
     private final TenantPackageStore store;
     private final TenantPackageCodec codec;
     private final SysAuditLogMapper audits;
+    private final ReportDatasetRegistration reportDatasets;
 
     @HighRiskAction
     @Audit(name = "新增租户并分配套餐", highRisk = true)
@@ -45,6 +48,7 @@ public class TenantAssignmentService {
                 tenant.setUpdateTime(tenant.getCreateTime());
                 requireWrite(mapper.insertTenant(tenant));
                 SysTenant saved = mapper.tenant(tenant.getTenantId());
+                TenantBroker.runAs(saved.getTenantId(), reportDatasets::registerTenant);
                 audit(operator, "CREATED", null, saved);
                 return saved;
             });

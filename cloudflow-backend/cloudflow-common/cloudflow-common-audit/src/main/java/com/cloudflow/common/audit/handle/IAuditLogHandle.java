@@ -29,6 +29,8 @@ public interface IAuditLogHandle {
         handle(audit, changes);
     }
 
+    default void comparisonFailed(Audit audit, Class<?> sourceClass, RuntimeException failure) { }
+
     /**
      * 异步批量保存审计日志
      *

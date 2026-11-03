@@ -1,7 +1,6 @@
 package com.cloudflow.auth.service;
 
 import com.cloudflow.auth.domain.SysUser;
-import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.message.api.MessageReceiver;
 import com.cloudflow.common.message.api.MessageSendRequest;
 import com.cloudflow.common.message.api.MessageSender;
@@ -30,8 +29,7 @@ public class SecurityChangeNoticeService {
     private final MessageSender messageSender;
 
     /** 关闭双因素认证：账号防护等级下降，必须通知本人 */
-    @Audit(name = "发送双因素认证关闭提醒", highRisk = true)
-    public void notifyTotpDisabled(SysUser user) {
+    public void sendTotpDeactivationNotice(SysUser user) {
         dispatch(
                 user,
                 "双因素认证已关闭",

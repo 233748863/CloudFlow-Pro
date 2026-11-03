@@ -8,11 +8,11 @@ import com.cloudflow.common.message.channel.ChannelTestResult;
 import com.cloudflow.common.message.channel.MessageChannelSender;
 import com.cloudflow.common.message.constant.MessageChannelType;
 import com.cloudflow.common.message.push.MessagePushGateway;
+import com.cloudflow.common.core.event.SystemNoticeCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.time.LocalDateTime;
 
 /**
  * 站内渠道实现：记录由消息消费服务统一写入，本类负责实时推送。
@@ -38,27 +38,16 @@ public class InternalChannelSender implements MessageChannelSender {
         if (receiver == null || receiver.getReceiverId() == null) {
             return ChannelSendResult.failed("站内消息缺少接收人");
         }
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("recordId", context.getRecordId());
-        data.put("noticeId", context.getRecordId());
-        data.put("tenantId", context.getTenantId());
-        data.put("title", context.getTitle());
-        data.put("content", context.getContent());
-        data.put("noticeTitle", context.getTitle());
-        data.put("noticeContent", context.getContent());
-        data.put("messageCategory", context.getMessageCategory());
-        data.put("noticeType", context.getMessageCategory());
+        SystemNoticeCreatedEvent event = notice(context.getRecordId(), context.getTenantId(), receiver.getReceiverId(),
+                context.getTitle(), context.getContent(), context.getMessageCategory());
         if (context.getParams() != null) {
-            data.put("senderId", context.getParams().get("senderId"));
-            data.put("senderName", context.getParams().get("senderName"));
+            Object senderId = context.getParams().get("senderId");
+            Object senderName = context.getParams().get("senderName");
+            event.setSenderId(senderId == null ? null : Long.valueOf(senderId.toString()));
+            event.setSenderName(senderName == null ? null : senderName.toString());
         }
-        data.put("linkUrl", context.getLinkUrl());
-        data.put("receiverId", receiver.getReceiverId());
-        Map<String, Object> message = new LinkedHashMap<>();
-        // 兼容现有 workflow WebSocket 客户端的 NOTICE 事件格式。
-        message.put("type", "NOTICE");
-        message.put("data", data);
-        pushGateway.push(receiver.getReceiverId(), message);
+        event.setLinkUrl(context.getLinkUrl());
+        pushGateway.push(event);
         return ChannelSendResult.success();
     }
 
@@ -69,21 +58,25 @@ public class InternalChannelSender implements MessageChannelSender {
         }
         try {
             Long userId = Long.valueOf(context.getTarget().trim());
-            Map<String, Object> data = new LinkedHashMap<>();
-            data.put("recordId", 0L);
-            data.put("title", "消息渠道测试");
-            data.put("noticeTitle", "消息渠道测试");
-            data.put("content", context.getContent() == null ? "站内消息渠道可用" : context.getContent());
-            data.put("noticeContent", data.get("content"));
-            data.put("messageCategory", "SYSTEM");
-            data.put("noticeType", "SYSTEM");
-            Map<String, Object> message = new LinkedHashMap<>();
-            message.put("type", "NOTICE");
-            message.put("data", data);
-            pushGateway.push(userId, message);
+            pushGateway.push(notice(0L, context.getTenantId(), userId, "消息渠道测试",
+                    context.getContent() == null ? "站内消息渠道可用" : context.getContent(), "SYSTEM"));
             return ChannelTestResult.builder().success(true).message("测试消息已发送").build();
         } catch (NumberFormatException e) {
             return ChannelTestResult.builder().success(false).message("测试接收用户ID格式不正确").build();
         }
+    }
+
+    private SystemNoticeCreatedEvent notice(Long recordId, Long tenantId, Long recipientId,
+            String title, String content, String type) {
+        SystemNoticeCreatedEvent event = new SystemNoticeCreatedEvent();
+        event.setNoticeId(recordId);
+        event.setTenantId(tenantId);
+        event.setRecipientId(recipientId);
+        event.setTitle(title == null || title.isBlank() ? "新消息" : title);
+        event.setContent(content == null ? "" : content);
+        event.setType(type);
+        event.setStatus("SUCCESS");
+        event.setCreateTime(LocalDateTime.now());
+        return event;
     }
 }

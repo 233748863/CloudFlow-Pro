@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -36,6 +38,7 @@ public class SysDeptAdminService {
             throw new ServiceException("缺少租户上下文，不能新增部门", ErrorCodeConstants.BAD_REQUEST);
         }
         dept.setTenantId(tenantId);
+        validateLeader(dept.getLeaderUserId(), tenantId);
         dept.setDeleted(0);
         dept.setVersion(0);
         if (dept.getHolidayCalendarId() != null) {
@@ -52,6 +55,7 @@ public class SysDeptAdminService {
     public boolean updateDept(SysDept dept) {
         SysDept current = requireDept(dept.getDeptId());
         dept.setTenantId(current.getTenantId());
+        if (dept.isLeaderUserIdSpecified()) validateLeader(dept.getLeaderUserId(), current.getTenantId());
         if (dept.getVersion() == null) {
             dept.setVersion(current.getVersion());
         }
@@ -62,6 +66,7 @@ public class SysDeptAdminService {
         LambdaUpdateWrapper<SysDept> changes = new LambdaUpdateWrapper<SysDept>()
                 .eq(SysDept::getDeptId, current.getDeptId())
                 .eq(SysDept::getTenantId, current.getTenantId())
+                .set(dept.isLeaderUserIdSpecified() && dept.getLeaderUserId() == null, SysDept::getLeaderUserId, null)
                 .set(dept.isHolidayCalendarIdSpecified() && dept.getHolidayCalendarId() == null,
                         SysDept::getHolidayCalendarId, null);
         if (sysDeptMapper.update(dept, changes) != 1) {
@@ -94,19 +99,13 @@ public class SysDeptAdminService {
             return 0;
         }
 
-        List<Long> userIds = users.stream()
-                .map(SysUser::getUserId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
         for (SysUser user : users) {
             SysUser update = new SysUser();
             update.setUserId(user.getUserId());
             update.setDeptId(targetDeptId);
             sysUserMapper.updateById(update);
         }
-        userIds.forEach(userDataScopeService::refresh);
-        userDataScopeService.refreshByDeptId(sourceDeptId);
-        userDataScopeService.refreshByDeptId(targetDeptId);
+        userDataScopeService.refreshByDeptIds(List.of(sourceDeptId, targetDeptId));
         return users.size();
     }
 
@@ -149,5 +148,25 @@ public class SysDeptAdminService {
             throw new ServiceException("部门不存在: " + deptId, ErrorCodeConstants.BAD_REQUEST);
         }
         return dept;
+    }
+
+    public void enrichLeaders(List<SysDept> departments) {
+        Set<Long> userIds = departments.stream().map(SysDept::getLeaderUserId).filter(Objects::nonNull).collect(Collectors.toSet());
+        if (userIds.isEmpty()) return;
+        Map<Long, SysUser> users = sysUserMapper.selectBatchIds(userIds).stream()
+                .collect(Collectors.toMap(SysUser::getUserId, user -> user));
+        for (SysDept dept : departments) {
+            SysUser user = users.get(dept.getLeaderUserId());
+            if (user != null && Objects.equals(user.getTenantId(), dept.getTenantId())) dept.setLeaderName(user.getNickName());
+        }
+    }
+
+    private void validateLeader(Long userId, Long tenantId) {
+        if (userId == null) return;
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null || !Objects.equals(user.getTenantId(), tenantId)
+                || !"0".equals(user.getStatus()) || !Integer.valueOf(0).equals(user.getDeleted())) {
+            throw new ServiceException("请选择本租户的有效部门负责人", ErrorCodeConstants.BAD_REQUEST);
+        }
     }
 }

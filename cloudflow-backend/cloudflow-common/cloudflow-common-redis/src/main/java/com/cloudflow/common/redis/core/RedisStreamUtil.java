@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -17,6 +18,9 @@ public class RedisStreamUtil {
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     private String getTenantKey(String key) {
         Long tenantId = RuntimeContextBridge.getTenantId();
@@ -71,6 +75,12 @@ public class RedisStreamUtil {
      */
     public String publishGlobal(String key, Map<String, Object> content) {
         return publishInternal(getGlobalKey(key), content);
+    }
+
+    /** 已编码的业务事件使用纯文本运输，避免 Redis 再次 JSON 编码。 */
+    public String publishGlobalText(String key, Map<String, String> content) {
+        RecordId recordId = stringRedisTemplate.opsForStream().add(MapRecord.create(key, content));
+        return recordId == null ? null : recordId.getValue();
     }
 
     private String publishInternal(String streamKey, Map<String, Object> content) {

@@ -24,7 +24,13 @@ public class SysDept {
     private String ancestors;
     private String deptName;
     private Integer orderNum;
-    private String leader;
+    private Long leaderUserId;
+    @TableField(exist = false)
+    private String leaderName;
+    @JsonIgnore
+    @TableField(exist = false)
+    @Setter(AccessLevel.NONE)
+    private boolean leaderUserIdSpecified;
     private String phone;
     private String email;
     /** 节假日日历归属，空值时回退租户默认日历。 */
@@ -48,5 +54,11 @@ public class SysDept {
     public void setHolidayCalendarId(Long holidayCalendarId) {
         this.holidayCalendarId = holidayCalendarId;
         this.holidayCalendarIdSpecified = true;
+    }
+
+    @JsonSetter("leaderUserId")
+    public void setLeaderUserId(Long leaderUserId) {
+        this.leaderUserId = leaderUserId;
+        this.leaderUserIdSpecified = true;
     }
 }

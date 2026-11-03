@@ -3,6 +3,7 @@ package com.cloudflow.auth.message;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.auth.domain.SysMessageChannel;
+import com.cloudflow.auth.domain.MessageAttemptCounts;
 import com.cloudflow.auth.domain.SysMessageDelivery;
 import com.cloudflow.auth.domain.SysMessageRecord;
 import com.cloudflow.auth.domain.SysMessageSubscribe;
@@ -282,6 +283,9 @@ public class MessageDeliveryService {
                 || !List.of("SENDING", "UNKNOWN").contains(delivery.getStatus())) return;
         MessageDeliveryPayload payload = decode(delivery);
         if (payload.attempts().isEmpty() || delivery.getAttemptCount() <= 0) throw new IllegalStateException("投递准备记录缺失");
+        if (deliveries.deleteAttempt(tenantId, deliveryId, delivery.getAttemptCount()) != 1) {
+            throw new IllegalStateException("发送尝试占额记录缺失");
+        }
         List<MessageDeliveryPayload.Attempt> attempts = payload.attempts().subList(0, payload.attempts().size() - 1);
         delivery.setPayloadEncrypted(encode(new MessageDeliveryPayload(payload.tenantId(), payload.eventId(), payload.sourceModule(),
                 payload.request(), payload.context(), payload.inputHash(), payload.templateId(), payload.templateVersion(), attempts)));
@@ -381,6 +385,9 @@ public class MessageDeliveryService {
         delivery.setAttemptCount(delivery.getAttemptCount() + 1);
         delivery.setNextAttemptTime(null);
         delivery.setLastErrorCode(null);
+        if (deliveries.insertAttempt(tenantId, deliveryId, delivery.getAttemptCount(), channel.getChannelId(), now) != 1) {
+            throw new IllegalStateException("发送尝试占额记录保存失败");
+        }
         write(delivery);
         records.update(null, new LambdaUpdateWrapper<SysMessageRecord>().eq(SysMessageRecord::getTenantId, tenantId)
                 .eq(SysMessageRecord::getRecordId, delivery.getRecordId()).set(SysMessageRecord::getSendTime, now));
@@ -449,17 +456,9 @@ public class MessageDeliveryService {
         if (channel.getRateLimitMinute() == null && channel.getDailyLimit() == null) return null;
         LocalDateTime day = now.toLocalDate().atStartOfDay();
         LocalDateTime minute = now.truncatedTo(ChronoUnit.MINUTES);
-        long minuteAttempts = 0;
-        long dayAttempts = 0;
-        for (SysMessageDelivery candidate : deliveries.recentAttempts(tenantId, day)) {
-            for (MessageDeliveryPayload.Attempt attempt : decode(candidate).attempts()) {
-                if (!Objects.equals(attempt.channelId(), channel.getChannelId())) continue;
-                if (!attempt.startedAt().isBefore(day)) dayAttempts++;
-                if (!attempt.startedAt().isBefore(minute)) minuteAttempts++;
-            }
-        }
-        if (channel.getDailyLimit() != null && dayAttempts >= channel.getDailyLimit()) return day.plusDays(1);
-        if (channel.getRateLimitMinute() != null && minuteAttempts >= channel.getRateLimitMinute()) return minute.plusMinutes(1);
+        MessageAttemptCounts counts = deliveries.attemptCounts(tenantId, channel.getChannelId(), day, minute);
+        if (channel.getDailyLimit() != null && counts.getDayCount() >= channel.getDailyLimit()) return day.plusDays(1);
+        if (channel.getRateLimitMinute() != null && counts.getMinuteCount() >= channel.getRateLimitMinute()) return minute.plusMinutes(1);
         return null;
     }
 

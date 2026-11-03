@@ -2,7 +2,6 @@ package com.cloudflow.common.audit.handle;
 
 import com.cloudflow.common.audit.annotation.Audit;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.javers.core.Changes;
 
 /**
  * 对象差异比较处理器接口
@@ -21,7 +20,9 @@ public interface ICompareHandle {
      * @param oldVal    方法执行前的旧值
      * @param joinPoint 切入点（用于获取新值）
      * @param audit     审计注解信息
-     * @return 变更列表
      */
-    Changes compare(Object oldVal, ProceedingJoinPoint joinPoint, Audit audit);
+    void compare(Object oldVal, ProceedingJoinPoint joinPoint, Audit audit);
+
+    /** 无法读取或比较快照时记录失败，不能将其当作新增或无变更。 */
+    void comparisonFailed(ProceedingJoinPoint joinPoint, Audit audit, RuntimeException failure);
 }

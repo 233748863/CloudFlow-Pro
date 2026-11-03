@@ -174,10 +174,13 @@ public class JobPlatformService {
                 .eq(query != null && StringUtils.hasText(query.getStatus()), SysJob::getStatus, query == null ? null : query.getStatus())
                 .eq(query != null && StringUtils.hasText(query.getTriggerType()), SysJob::getTriggerType, query == null ? null : query.getTriggerType())
                 .orderByDesc(SysJob::getJobId);
-        List<SysJobVO> rows = jobMapper.selectList(wrapper).stream().map(job -> {
+        int requestedPage = Math.max(1, pageNum);
+        int requestedSize = Math.max(1, Math.min(200, pageSize));
+        Page<SysJob> page = jobMapper.selectPage(new Page<>(requestedPage, requestedSize), wrapper);
+        List<SysJobVO> rows = page.getRecords().stream().map(job -> {
             SysJobVO vo = new SysJobVO(); BeanUtils.copyProperties(job, vo); return vo;
         }).toList();
-        return page(rows, pageNum, pageSize);
+        return new PageResult<>(rows, page.getTotal(), page.getCurrent(), page.getSize());
     }
 
     public SysJobVO get(Long jobId) {
@@ -1282,5 +1285,4 @@ public class JobPlatformService {
         String canonical = canonicalServiceName(serviceName);
         return canonical != null && Set.of("auth", "workflow", "oa", "crm", "hr").contains(canonical);
     }
-    private <T> PageResult<T> page(List<T> rows, int pageNum, int pageSize) { int p=Math.max(1,pageNum),s=Math.max(1,Math.min(200,pageSize)),from=Math.min((p-1)*s,rows.size()),to=Math.min(from+s,rows.size()); return new PageResult<>(rows.subList(from,to),rows.size(),p,s); }
 }

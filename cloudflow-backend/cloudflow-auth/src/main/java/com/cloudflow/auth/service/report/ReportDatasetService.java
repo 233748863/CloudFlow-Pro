@@ -12,10 +12,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,11 +27,14 @@ public class ReportDatasetService {
 
     public List<ReportDefinitionView.Dataset> list() {
         ReportAccess.requireContext();
-        ensureRegistered();
+        Map<String, SysReportDataset> registered = new LinkedHashMap<>();
+        for (SysReportDataset record : mapper.registered(UserContext.getTenantId())) {
+            registered.put(record.getDatasetCode(), record);
+        }
         List<ReportDefinitionView.Dataset> visible = new ArrayList<>();
         for (ReportDataset definition : ReportRegistry.datasets()) {
             if (!ReportAccess.allowed(definition)) continue;
-            SysReportDataset record = mapper.byCode(UserContext.getTenantId(), definition.code());
+            SysReportDataset record = registered.get(definition.code());
             validateRegistration(record, definition);
             String availability = availability(record, definition);
             visible.add(new ReportDefinitionView.Dataset(record.getDatasetId(), definition, availability,
@@ -43,7 +46,6 @@ public class ReportDatasetService {
     public SysReportDataset require(String code) {
         ReportDataset definition = ReportRegistry.require(code);
         ReportAccess.requireDataset(definition);
-        ensureRegistered();
         SysReportDataset record = mapper.byCode(UserContext.getTenantId(), code);
         validateRegistration(record, definition);
         if (!"AVAILABLE".equals(availability(record, definition))) throw new ServiceException("报表数据集已停用或业务口径尚未确认", 503);
@@ -76,28 +78,6 @@ public class ReportDatasetService {
             } catch (JsonProcessingException | IllegalArgumentException exception) { valid = false; }
         }
         if (!valid) throw new ServiceException("报表注册元数据与服务器定义不一致，已拒绝执行", 409);
-    }
-
-    private void ensureRegistered() {
-        List<SysReportDataset> existing = mapper.registered(UserContext.getTenantId());
-        Set<String> codes = new HashSet<>();
-        for (SysReportDataset record : existing) codes.add(record.getDatasetCode());
-        for (ReportDataset definition : ReportRegistry.datasets()) {
-            if (codes.contains(definition.code())) continue;
-            SysReportDataset record = new SysReportDataset();
-            record.setTenantId(UserContext.getTenantId());
-            record.setDatasetCode(definition.code());
-            record.setDatasetName(definition.name());
-            record.setModule(definition.module());
-            record.setMapperMethod(definition.mapperMethod());
-            record.setPermissionCode(definition.permission());
-            record.setRemark(definition.description());
-            try {
-                record.setFieldMeta(objectMapper.writeValueAsString(definition));
-                record.setDefaultFilters(objectMapper.writeValueAsString(defaults(definition)));
-            } catch (JsonProcessingException exception) { throw new ServiceException("报表注册定义无法保存", 500); }
-            mapper.registerMissing(record);
-        }
     }
 
     private JsonNode defaults(ReportDataset definition) {

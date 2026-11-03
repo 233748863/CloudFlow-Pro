@@ -31,12 +31,20 @@
             OR (status IN ('CLAIMED', 'SENDING') AND claim_until &lt;= #{now})
         ) ORDER BY delivery_id LIMIT #{limit}
     </select>
-    <select id="recentAttempts" resultType="com.cloudflow.auth.domain.SysMessageDelivery">
-        SELECT delivery.* FROM sys_message_delivery delivery
-        JOIN sys_message_record record ON record.tenant_id = delivery.tenant_id AND record.record_id = delivery.record_id
-        WHERE delivery.tenant_id = #{tenantId}
-          AND record.send_time &gt;= #{cutoff} AND delivery.attempt_count &gt; 0
+    <select id="attemptCounts" resultType="com.cloudflow.auth.domain.MessageAttemptCounts">
+        SELECT COUNT(*) AS day_count,
+               COUNT(CASE WHEN started_at &gt;= #{minute} THEN 1 END) AS minute_count
+        FROM sys_message_delivery_attempt
+        WHERE tenant_id = #{tenantId} AND channel_id = #{channelId} AND started_at &gt;= #{day}
     </select>
+    <insert id="insertAttempt">
+        INSERT INTO sys_message_delivery_attempt (tenant_id, delivery_id, attempt_no, channel_id, started_at)
+        VALUES (#{tenantId}, #{deliveryId}, #{attemptNo}, #{channelId}, #{startedAt})
+    </insert>
+    <delete id="deleteAttempt">
+        DELETE FROM sys_message_delivery_attempt
+        WHERE tenant_id = #{tenantId} AND delivery_id = #{deliveryId} AND attempt_no = #{attemptNo}
+    </delete>
     <update id="writeState">
         UPDATE sys_message_delivery SET status = #{delivery.status}, claim_owner = #{delivery.claimOwner},
             claim_until = #{delivery.claimUntil}, send_started_time = #{delivery.sendStartedTime},

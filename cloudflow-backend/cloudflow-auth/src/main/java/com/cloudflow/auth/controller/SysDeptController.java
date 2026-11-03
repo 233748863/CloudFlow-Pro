@@ -7,16 +7,15 @@ import com.cloudflow.auth.domain.dto.DeptMigrateRequest;
 import com.cloudflow.auth.mapper.SysDeptMapper;
 import com.cloudflow.auth.service.SysDeptAdminService;
 import com.cloudflow.auth.service.UserDataScopeService;
+import com.cloudflow.auth.util.DeptTreeBuilder;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/system/dept")
@@ -39,65 +38,8 @@ public class SysDeptController {
     public R<List<SysDept>> getDeptTree() {
         List<SysDept> depts = sysDeptMapper.selectList(new LambdaQueryWrapper<SysDept>()
                 .orderByAsc(SysDept::getOrderNum));
-        return R.ok(buildDeptTree(depts));
-    }
-
-    /**
-     * 构建部门树
-     */
-    private List<SysDept> buildDeptTree(List<SysDept> depts) {
-        List<SysDept> returnList = new ArrayList<>();
-        List<Long> tempList = new ArrayList<>();
-        for (SysDept dept : depts) {
-            tempList.add(dept.getDeptId());
-        }
-        for (SysDept dept : depts) {
-            // 如果是顶级节点, 遍历该父节点的所有子节点
-            if (!tempList.contains(dept.getParentId())) {
-                recursionFn(depts, dept);
-                returnList.add(dept);
-            }
-        }
-        if (returnList.isEmpty()) {
-            returnList = depts;
-        }
-        return returnList;
-    }
-
-    /**
-     * 递归列表
-     */
-    private void recursionFn(List<SysDept> list, SysDept t) {
-        // 得到子节点列表
-        List<SysDept> childList = getChildList(list, t);
-        t.setChildren(childList);
-        for (SysDept tChild : childList) {
-            if (hasChild(list, tChild)) {
-                recursionFn(list, tChild);
-            }
-        }
-    }
-
-    /**
-     * 得到子节点列表
-     */
-    private List<SysDept> getChildList(List<SysDept> list, SysDept t) {
-        List<SysDept> tlist = new ArrayList<>();
-        Iterator<SysDept> it = list.iterator();
-        while (it.hasNext()) {
-            SysDept n = it.next();
-            if (n.getParentId() != null && n.getParentId().longValue() == t.getDeptId().longValue()) {
-                tlist.add(n);
-            }
-        }
-        return tlist;
-    }
-
-    /**
-     * 判断是否有子节点
-     */
-    private boolean hasChild(List<SysDept> list, SysDept t) {
-        return getChildList(list, t).size() > 0;
+        sysDeptAdminService.enrichLeaders(depts);
+        return R.ok(DeptTreeBuilder.build(depts));
     }
 
     /**
@@ -106,7 +48,9 @@ public class SysDeptController {
     @GetMapping("/{deptId}")
     @SaCheckPermission("system:dept:query")
     public R<SysDept> getById(@PathVariable Long deptId) {
-        return R.ok(sysDeptMapper.selectById(deptId));
+        SysDept dept = sysDeptMapper.selectById(deptId);
+        if (dept != null) sysDeptAdminService.enrichLeaders(List.of(dept));
+        return R.ok(dept);
     }
 
     /**
@@ -145,6 +89,7 @@ public class SysDeptController {
     @SysLog("修改部门")
     @SaCheckPermission("system:dept:edit")
     public R<Boolean> edit(@RequestBody SysDept dept) {
+        SysDept before = sysDeptMapper.selectById(dept.getDeptId());
         // 更新ancestors
         if (dept.getParentId() != null && dept.getParentId() > 0) {
             SysDept parent = sysDeptMapper.selectById(dept.getParentId());
@@ -156,10 +101,8 @@ public class SysDeptController {
         }
         boolean success = sysDeptAdminService.updateDept(dept);
         if (success) {
-            userDataScopeService.refreshByDeptId(dept.getDeptId());
-            if (dept.getParentId() != null) {
-                userDataScopeService.refreshByDeptId(dept.getParentId());
-            }
+            userDataScopeService.refreshByDeptIds(Arrays.asList(dept.getDeptId(), dept.getParentId(),
+                    before == null ? null : before.getParentId()));
         }
         return R.ok(success);
     }

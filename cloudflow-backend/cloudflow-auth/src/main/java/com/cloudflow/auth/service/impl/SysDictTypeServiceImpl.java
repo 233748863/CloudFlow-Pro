@@ -23,6 +23,7 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.audit.annotation.HighRiskAction;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.domain.ProcessStartResult;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.core.utils.SecurityUtils;
@@ -436,11 +437,11 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         dto.setVariables(variables);
 
         try {
-            R<?> result = remoteWorkflowService.startProcessInternal(dto);
+            R<ProcessStartResult> result = remoteWorkflowService.startProcessInternal(dto);
             if (result != null && result.isSuccess() && result.getData() != null) {
                 SysDictChangeApproval update = new SysDictChangeApproval();
                 update.setApprovalId(approval.getApprovalId());
-                update.setInstanceId(extractInstanceId(result.getData()));
+                update.setInstanceId(result.getData().requireInstanceId());
                 update.setStatus("IN_PROGRESS");
                 update.setUpdateBy(approval.getApplicantName());
                 update.setUpdateTime(LocalDateTime.now());
@@ -1025,17 +1026,6 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     private String nextDictApprovalNo() {
         return "DCA" + DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now());
-    }
-
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map<?, ?> dataMap) {
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId == null ? null : String.valueOf(instanceId);
-        }
-        return data == null ? null : String.valueOf(data);
     }
 
     private String normalizeRiskLevelValue(String riskLevel) {

@@ -11,6 +11,8 @@ import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.service.ForcePasswordChangeService;
 import com.cloudflow.auth.service.ISysPostService;
 import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.auth.service.SysDeptAdminService;
+import com.cloudflow.auth.util.DeptTreeBuilder;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.security.annotation.Inner;
 import com.cloudflow.common.tenant.TenantBroker;
@@ -27,10 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Auth 对外提供的内部远程调用接口。
@@ -50,6 +49,7 @@ public class RemoteAuthController {
     private final ISysPostService sysPostService;
     private final ISysUserService sysUserService;
     private final ForcePasswordChangeService forcePasswordChangeService;
+    private final SysDeptAdminService sysDeptAdminService;
 
     /**
      * 网关侧轻量级租户状态查询。
@@ -84,13 +84,18 @@ public class RemoteAuthController {
     public R<List<SysDept>> getDeptTree(@RequestParam(value = "tenantId", required = false) Long tenantId) {
         List<SysDept> depts = sysDeptMapper.selectList(new LambdaQueryWrapper<SysDept>()
                 .orderByAsc(SysDept::getOrderNum));
-        return R.ok(buildDeptTree(depts));
+        sysDeptAdminService.enrichLeaders(depts);
+        return R.ok(DeptTreeBuilder.build(depts));
     }
 
     @Inner(allowedServices = {HR_CALLERS})
     @GetMapping("/dept/{deptId}")
     public R<SysDept> getDeptById(@PathVariable Long deptId) {
-        return R.ok(sysDeptMapper.selectById(deptId));
+        SysDept dept = sysDeptMapper.selectById(deptId);
+        if (dept != null) {
+            sysDeptAdminService.enrichLeaders(List.of(dept));
+        }
+        return R.ok(dept);
     }
 
     @Inner(allowedServices = {HR_CALLERS})
@@ -108,7 +113,7 @@ public class RemoteAuthController {
         if (!StringUtils.hasText(dept.getStatus())) {
             dept.setStatus("0");
         }
-        sysDeptMapper.insert(dept);
+        sysDeptAdminService.addDept(dept);
         return R.ok(dept.getDeptId());
     }
 
@@ -225,44 +230,4 @@ public class RemoteAuthController {
         return R.ok();
     }
 
-    private List<SysDept> buildDeptTree(List<SysDept> depts) {
-        List<SysDept> rootList = new ArrayList<>();
-        List<Long> deptIds = new ArrayList<>();
-        for (SysDept dept : depts) {
-            deptIds.add(dept.getDeptId());
-        }
-        for (SysDept dept : depts) {
-            if (!deptIds.contains(dept.getParentId())) {
-                recursionFn(depts, dept);
-                rootList.add(dept);
-            }
-        }
-        return rootList.isEmpty() ? depts : rootList;
-    }
-
-    private void recursionFn(List<SysDept> list, SysDept current) {
-        List<SysDept> children = getChildList(list, current);
-        current.setChildren(children);
-        for (SysDept child : children) {
-            if (hasChild(list, child)) {
-                recursionFn(list, child);
-            }
-        }
-    }
-
-    private List<SysDept> getChildList(List<SysDept> list, SysDept current) {
-        List<SysDept> children = new ArrayList<>();
-        Iterator<SysDept> iterator = list.iterator();
-        while (iterator.hasNext()) {
-            SysDept item = iterator.next();
-            if (item.getParentId() != null && item.getParentId().longValue() == current.getDeptId().longValue()) {
-                children.add(item);
-            }
-        }
-        return children;
-    }
-
-    private boolean hasChild(List<SysDept> list, SysDept current) {
-        return !getChildList(list, current).isEmpty();
-    }
 }

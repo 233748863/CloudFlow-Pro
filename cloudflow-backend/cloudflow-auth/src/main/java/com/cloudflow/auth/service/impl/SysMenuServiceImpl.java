@@ -20,7 +20,9 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -169,37 +171,20 @@ public class SysMenuServiceImpl implements ISysMenuService {
     // ==================== 树构建工具方法 ====================
 
     public List<SysMenu> getChildPerms(List<SysMenu> list, int parentId) {
-        List<SysMenu> returnList = new ArrayList<>();
-        for (SysMenu t : list) {
-            if (t.getParentId() == parentId) {
-                recursionFn(list, t);
-                returnList.add(t);
-            }
+        Map<Long, List<SysMenu>> children = new HashMap<>();
+        for (SysMenu menu : list) {
+            children.computeIfAbsent(menu.getParentId(), ignored -> new ArrayList<>()).add(menu);
         }
-        return returnList;
+        List<SysMenu> roots = children.getOrDefault((long) parentId, List.of());
+        Set<Long> visited = new HashSet<>();
+        for (SysMenu root : roots) attachChildren(root, children, visited);
+        return roots;
     }
 
-    private void recursionFn(List<SysMenu> list, SysMenu t) {
-        List<SysMenu> childList = getChildList(list, t);
-        t.setChildren(childList);
-        for (SysMenu tChild : childList) {
-            if (hasChild(list, tChild)) {
-                recursionFn(list, tChild);
-            }
-        }
-    }
-
-    private List<SysMenu> getChildList(List<SysMenu> list, SysMenu t) {
-        List<SysMenu> tlist = new ArrayList<>();
-        for (SysMenu n : list) {
-            if (n.getParentId().longValue() == t.getMenuId().longValue()) {
-                tlist.add(n);
-            }
-        }
-        return tlist;
-    }
-
-    private boolean hasChild(List<SysMenu> list, SysMenu t) {
-        return !getChildList(list, t).isEmpty();
+    private void attachChildren(SysMenu menu, Map<Long, List<SysMenu>> children, Set<Long> visited) {
+        if (!visited.add(menu.getMenuId())) throw new IllegalStateException("菜单关系存在循环或重复编号");
+        List<SysMenu> nested = children.getOrDefault(menu.getMenuId(), List.of());
+        menu.setChildren(nested);
+        for (SysMenu child : nested) attachChildren(child, children, visited);
     }
 }

@@ -29,7 +29,7 @@ public class MessageAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(com.cloudflow.common.message.push.MessagePushGateway.class)
     public com.cloudflow.common.message.push.MessagePushGateway noOpMessagePushGateway() {
-        return (userId, message) -> { };
+        return event -> { };
     }
 
     @Bean
@@ -72,7 +72,7 @@ public class MessageAutoConfiguration {
             MessageSendRequest payload = request.toBuilder().receivers(validReceivers).build();
             Long tenantId = UserContext.getTenantId();
             if (tenantId == null) tenantId = TenantContext.getTenantId();
-            if (tenantId == null) tenantId = 100000L;
+            if (tenantId == null || tenantId <= 0) throw new IllegalArgumentException("消息发送必须指定有效租户上下文");
             BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
                     .eventId(UUID.randomUUID().toString())
                     .eventType(MessageEventType.SEND)

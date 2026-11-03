@@ -225,8 +225,7 @@ public class AuthController {
             return R.fail("用户名或密码错误");
         }
 
-        PasswordService.PasswordMatchResult passwordMatchResult = passwordService.matchesPassword(form.getPassword(), user.getPassword());
-        if (!passwordMatchResult.matched()) {
+        if (!passwordService.matchesPassword(form.getPassword(), user.getPassword())) {
             loginLockService.recordFailure(username, user.getTenantId());
             loginLogService.recordLoginFailure(
                 username,
@@ -247,13 +246,6 @@ public class AuthController {
                 System.currentTimeMillis() - startAt
             );
             return R.fail("账号已被限制登录,请联系管理员");
-        }
-
-        if (passwordMatchResult.legacyPlaintextMatch()) {
-            SysUser passwordUpgrade = new SysUser();
-            passwordUpgrade.setUserId(user.getUserId());
-            passwordUpgrade.setPassword(passwordService.encodePassword(form.getPassword()));
-            sysUserMapper.updateById(passwordUpgrade);
         }
 
         if (totpService.isEnabled(user.getUserId(), user.getTenantId())) {
@@ -498,7 +490,7 @@ public class AuthController {
 
         SysUser existing = requireExistingUser(userId);
 
-        if (!passwordService.matchesPassword(oldPassword, existing.getPassword()).matched()) {
+        if (!passwordService.matchesPassword(oldPassword, existing.getPassword())) {
             throw new ServiceException("当前密码错误", ErrorCodeConstants.BAD_REQUEST);
         }
         passwordPolicyService.validateOrThrow(newPassword, existing);
@@ -622,7 +614,7 @@ public class AuthController {
 
     private void verifyCurrentPassword(SysUser user, String password) {
         if (!StringUtils.hasText(password)
-                || !passwordService.matchesPassword(password, user.getPassword()).matched()) {
+                || !passwordService.matchesPassword(password, user.getPassword())) {
             throw new ServiceException("当前密码错误", ErrorCodeConstants.BAD_REQUEST);
         }
     }

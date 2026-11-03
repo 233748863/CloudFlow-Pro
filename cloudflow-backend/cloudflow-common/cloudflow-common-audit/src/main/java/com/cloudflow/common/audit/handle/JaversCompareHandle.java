@@ -2,8 +2,10 @@ package com.cloudflow.common.audit.handle;
 
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.audit.support.DataAuditor;
+import com.cloudflow.common.audit.support.AuditSnapshotContext;
 import com.cloudflow.common.audit.support.SpelParser;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.javers.core.Changes;
 import org.springframework.aop.support.AopUtils;
@@ -21,25 +23,40 @@ import java.util.Optional;
  * @author CloudFlow
  */
 @RequiredArgsConstructor
+@Slf4j
 public class JaversCompareHandle implements ICompareHandle {
 
     private final Optional<IAuditLogHandle> auditLogHandleOptional;
 
     @Override
-    public Changes compare(Object oldVal, ProceedingJoinPoint joinPoint, Audit audit) {
-        // 通过 SPEL 获取方法执行后的新值
-        Object newVal = SpelParser.parser(joinPoint,
-                StringUtils.hasText(audit.newVal()) ? audit.newVal() : audit.spel());
+    public void compare(Object oldVal, ProceedingJoinPoint joinPoint, Audit audit) {
+        Class<?> sourceClass = joinPoint.getTarget() == null ? null : AopUtils.getTargetClass(joinPoint.getTarget());
+        try {
+            Object before = oldVal;
+            Object after;
+            if (audit.providedSnapshots()) {
+                AuditSnapshotContext.Snapshots snapshots = AuditSnapshotContext.current();
+                if (snapshots == null) return;
+                before = snapshots.before();
+                after = snapshots.after();
+            } else {
+                after = SpelParser.parser(joinPoint,
+                        StringUtils.hasText(audit.newVal()) ? audit.newVal() : audit.spel());
+            }
+            Changes changes = DataAuditor.compare(before, after);
+            if (auditLogHandleOptional.isPresent()) {
+                auditLogHandleOptional.get().handle(audit, changes, before, after, sourceClass);
+            }
+        } catch (RuntimeException failure) {
+            comparisonFailed(joinPoint, audit, failure);
+        }
+    }
 
-        // 使用 Javers 比较新旧值差异
-        Changes changes = DataAuditor.compare(oldVal, newVal);
-
-        // 如果存在审计日志处理器，则交给它处理（M0-5：传递 oldVal/newVal 用于 diff=true）
-        auditLogHandleOptional.ifPresent(handle -> {
-            Class<?> sourceClass = joinPoint.getTarget() == null ? null : AopUtils.getTargetClass(joinPoint.getTarget());
-            handle.handle(audit, changes, oldVal, newVal, sourceClass);
-        });
-
-        return changes;
+    @Override
+    public void comparisonFailed(ProceedingJoinPoint joinPoint, Audit audit, RuntimeException failure) {
+        Class<?> sourceClass = joinPoint.getTarget() == null ? null : AopUtils.getTargetClass(joinPoint.getTarget());
+        log.error("审计比较失败: audit={}, source={}, failureType={}", audit.name(),
+                sourceClass == null ? null : sourceClass.getName(), failure.getClass().getName());
+        auditLogHandleOptional.ifPresent(handle -> handle.comparisonFailed(audit, sourceClass, failure));
     }
 }

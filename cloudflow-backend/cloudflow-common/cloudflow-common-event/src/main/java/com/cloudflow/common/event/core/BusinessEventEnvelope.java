@@ -44,7 +44,7 @@ public class BusinessEventEnvelope implements Serializable {
     private String payloadDigest;
 
     /** 事件发生时间（业务时间，非 outbox 写入时间） */
-    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS")
     private LocalDateTime occurredAt;
 
     /** 租户 ID（多租户场景，订阅方需显式 TenantBroker.runAs） */

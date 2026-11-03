@@ -65,6 +65,9 @@ public @interface Audit {
      */
     String newVal() default "";
 
+    /** 业务已读取脱敏前后快照时直接提供，不再执行 SpEL 查询。 */
+    boolean providedSnapshots() default false;
+
     /**
      * 是否记录完整 JSON diff（M0-5：before_json / after_json / diff_json）
      * <p>默认 false，仅记录字段级差异（beforeVal / afterVal）</p>

@@ -19,7 +19,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -113,19 +117,52 @@ public class UserDataScopeService {
     }
 
     public void refreshByDeptId(Long deptId) {
-        if (deptId == null) {
-            return;
+        if (deptId != null) refreshByDeptIds(List.of(deptId));
+    }
+
+    public void refreshByDeptIds(Collection<Long> roots) {
+        Set<Long> rootIds = roots.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (rootIds.isEmpty()) return;
+        List<SysDept> departments = sysDeptMapper.selectList(null);
+        Map<Long, List<Long>> descendants = new HashMap<>();
+        Set<Long> affected = new HashSet<>();
+        for (Long rootId : rootIds) {
+            List<Long> ids = collectDeptAndDescendants(rootId, departments);
+            descendants.put(rootId, ids);
+            affected.addAll(ids);
         }
-        Set<Long> deptIds = collectDeptAndDescendants(deptId).stream().collect(Collectors.toSet());
-        if (deptIds.isEmpty()) {
-            return;
+        List<SysUser> users = sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>().in(SysUser::getDeptId, affected));
+        if (users.isEmpty()) return;
+        List<SysUserRole> bindings = sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
+                .in(SysUserRole::getUserId, users.stream().map(SysUser::getUserId).toList()));
+        Set<Long> roleIds = bindings.stream().map(SysUserRole::getRoleId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, SysRole> roles = roleIds.isEmpty() ? Map.of() : sysRoleMapper.selectBatchIds(roleIds).stream()
+                .collect(Collectors.toMap(SysRole::getRoleId, role -> role));
+        Map<Long, List<SysRole>> rolesByUser = new HashMap<>();
+        for (SysUserRole binding : bindings) {
+            SysRole role = roles.get(binding.getRoleId());
+            if (role != null) rolesByUser.computeIfAbsent(binding.getUserId(), ignored -> new ArrayList<>()).add(role);
         }
-        sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>()
-                        .in(SysUser::getDeptId, deptIds))
-                .stream()
-                .map(SysUser::getUserId)
-                .filter(Objects::nonNull)
-                .forEach(this::refresh);
+        for (SysUser user : users) {
+            List<SysRole> userRoles = rolesByUser.getOrDefault(user.getUserId(), List.of());
+            UserDataScopeSnapshot snapshot = new UserDataScopeSnapshot();
+            snapshot.setUserId(user.getUserId());
+            snapshot.setTenantId(user.getTenantId());
+            snapshot.setUserVersion(user.getVersion());
+            snapshot.setRefreshedAt(LocalDateTime.now());
+            snapshot.setDsType(4);
+            snapshot.setDsDeptIds(List.of());
+            try {
+                Integer type = userRoles.stream().map(SysRole::getDsType).filter(Objects::nonNull).min(Integer::compareTo).orElse(4);
+                snapshot.setDsType(type);
+                snapshot.setDsDeptIds(type == 2 && user.getDeptId() != null
+                        ? descendants.computeIfAbsent(user.getDeptId(), id -> collectDeptAndDescendants(id, departments))
+                        : resolveDeptIds(type, userRoles, user.getDeptId()));
+            } catch (Exception failure) {
+                log.warn("计算用户数据权限失败, userId={}", user.getUserId(), failure);
+            }
+            userDataScopeStore.save(snapshot);
+        }
     }
 
     private List<Long> resolveDeptIds(Integer dsType, List<SysRole> roles, Long deptId) {
@@ -156,12 +193,15 @@ public class UserDataScopeService {
     }
 
     private List<Long> collectDeptAndDescendants(Long deptId) {
+        return collectDeptAndDescendants(deptId, deptId == null ? List.of() : sysDeptMapper.selectList(null));
+    }
+
+    private List<Long> collectDeptAndDescendants(Long deptId, List<SysDept> allDepts) {
         if (deptId == null) {
             return Collections.emptyList();
         }
         List<Long> deptIds = new ArrayList<>();
         deptIds.add(deptId);
-        List<SysDept> allDepts = sysDeptMapper.selectList(null);
         if (allDepts == null || allDepts.isEmpty()) {
             return deptIds;
         }

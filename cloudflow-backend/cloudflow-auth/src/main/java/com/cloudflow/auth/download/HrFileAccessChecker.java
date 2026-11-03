@@ -52,28 +52,16 @@ public class HrFileAccessChecker implements FileAccessChecker {
         if (file == null || !Objects.equals(UserContext.getTenantId(), file.getTenantId())
                 || !Integer.valueOf(0).equals(file.getDeleted()) || file.getPortalOwnerId() != null
                 || !"LOCAL".equals(file.getStorageType()) || !purpose(request.bizType()).contains(file.getFileType())
-                || !privateOrLegacyCertificate(request.bizType(), file)) throw FilePreviewReferences.denied();
+                || !"PRIVATE".equals(file.getAccessType())
+                || file.getUrl() != null && !file.getUrl().isBlank()) throw FilePreviewReferences.denied();
         try {
             return new FilePreviewResolver.Resolved(file, binding, FilePreviewContent.digest(
                     json.writeValueAsString(file) + "\n" + json.writeValueAsString(binding)));
         } catch (JsonProcessingException failure) { throw unavailable(); }
     }
 
-    private static boolean privateOrLegacyCertificate(String type, SysFile file) {
-        if ("PRIVATE".equals(file.getAccessType())) return file.getUrl() == null || file.getUrl().isBlank()
-                || legacyCertificate(type, file);
-        return "PUBLIC".equals(file.getAccessType()) && legacyCertificate(type, file);
-    }
-
-    // 历史 HR PDF 仍需先通过上游业务绑定核验；旧地址仅识别来源，绝不返回给客户端。
-    private static boolean legacyCertificate(String type, SysFile file) {
-        return Set.of("HR_EMPLOYEE_CERTIFICATE", "HR_TRAINING_CERTIFICATE").contains(type)
-                && "application/pdf".equals(file.getFileType()) && "hr-pdf".equals(file.getRemark())
-                && file.getConfigId() == null && file.getUrl() != null
-                && file.getUrl().matches("/hr/ess/files/[0-9]{4}/(0[1-9]|1[0-2])/[a-f0-9]{32}\\.pdf");
-    }
-
     private static Set<String> purpose(String type) {
+        if ("HR_DISPUTE_EVIDENCE".equals(type)) return Set.of("HR_DISPUTE_EVIDENCE", "HR_GRIEVANCE", "HR_GRIEVANCE_EVIDENCE");
         if (type.startsWith("HR_GRIEVANCE_")) return Set.of("HR_GRIEVANCE", "HR_GRIEVANCE_EVIDENCE");
         if (type.startsWith("HR_REFERRAL_RESUME_")) return Set.of("HR_REFERRAL_RESUME");
         if (type.startsWith("HR_TAX_PROOF_")) return Set.of("HR_TAX_PROOF");
