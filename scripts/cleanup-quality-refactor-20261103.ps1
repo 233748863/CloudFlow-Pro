@@ -20,7 +20,11 @@ $Names = @(
     'quality-platform-seed-20261103',
     'quality-refactor-20261103',
     'quality-crm-renewal-20261103',
-    'native-update-20261103-180000'
+    'quality-oa-final-20261103',
+    'native-update-20261103-180000',
+    'resume-hr-task.md',
+    'release-smoke-task.md',
+    'platform-followup-task.md'
 )
 $Targets = @($Names | ForEach-Object { Join-Path $WorkspaceRoot ".cloudflow-runtime\$_" })
 $Targets += Join-Path $WorkspaceRoot 'cloudflow-frontend\dist'
@@ -39,12 +43,12 @@ foreach ($Candidate in ($Targets | Select-Object -Unique)) {
     if (-not $Absolute.StartsWith($WorkspaceRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw "目录越界：$Absolute" }
     if (-not (Test-Path -LiteralPath $Absolute)) { continue }
     $Item = Get-Item -LiteralPath $Absolute -Force
-    $Ancestor = $Item
+    $Ancestor = if ($Item.PSIsContainer) { $Item } else { $Item.Directory }
     while ($null -ne $Ancestor) {
         if (($Ancestor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "目录链接拒绝：$($Ancestor.FullName)" }
         $Ancestor = $Ancestor.Parent
     }
-    $Entries = @(Get-ChildItem -LiteralPath $Absolute -Force -Recurse)
+    $Entries = if ($Item.PSIsContainer) { @(Get-ChildItem -LiteralPath $Absolute -Force -Recurse) } else { @($Item) }
     if (@($Entries | Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 }).Count) { throw "目录内包含链接：$Absolute" }
     $Relative = $Absolute.Substring($WorkspaceRoot.Length + 1).Replace('\', '/')
     if (@($Tracked | Where-Object { $_ -eq $Relative -or $_.StartsWith($Relative + '/') }).Count) { throw "包含受版本控制文件：$Absolute" }
