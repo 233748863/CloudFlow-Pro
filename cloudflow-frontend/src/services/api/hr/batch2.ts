@@ -15,9 +15,9 @@ export interface HrResumeParsedRecord {
   parsedEmail?: string;
   parsedEducation?: string;
   parsedWorkExperience?: string;
-  parsedSkills?: string;
+  parsedSkills?: string[];
   rawText?: string;
-  status: ResumeParsedStatus;
+  reviewStatus: ResumeParsedStatus;
   confidence?: number;
   reviewerId?: number;
   reviewerName?: string;
@@ -33,7 +33,7 @@ export interface HrResumeParsedFieldsPayload {
   parsedEmail?: string;
   parsedEducation?: string;
   parsedWorkExperience?: string;
-  parsedSkills?: string;
+  parsedSkills?: string[];
 }
 
 export const hrResumeApi = {

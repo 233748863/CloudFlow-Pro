@@ -31,5 +31,12 @@ export const closeDispute = (id: number, reason?: string) =>
 export const listEvidence = (id: number) =>
   request.get<HrPagedResult<HrDisputeEvidence>>(`/hr/labor/disputes/${id}/evidence`);
 
-export const uploadEvidence = (id: number, data: HrDisputeEvidencePayload) =>
-  request.post<number>(`/hr/labor/disputes/${id}/evidence`, data);
+export const uploadEvidence = (id: number, file: File, data: HrDisputeEvidencePayload) => {
+  const body = new FormData();
+  body.append('file', file);
+  body.append('evidenceType', data.evidenceType ?? 'OTHER');
+  if (data.remark) body.append('remark', data.remark);
+  return request.post<number>(`/hr/labor/disputes/${id}/evidence`, body, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};

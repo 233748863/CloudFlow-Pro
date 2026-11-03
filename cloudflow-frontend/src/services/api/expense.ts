@@ -8,6 +8,7 @@ export interface ExpenseItem {
   expenseType: string;
   amount: number;
   expenseDate: string;
+  city?: string;
   description?: string;
   receiptUrl?: string;
   vehicleExpenseId?: number;
@@ -146,7 +147,7 @@ export const expenseClaimApi = {
   getInfo: (id: number) => request.get(`/oa/expense/claim/${id}`) as Promise<ExpenseClaim>,
 
   // 新增报销申请
-  add: (data: ExpenseClaim) => request.post('/oa/expense/claim', data),
+  add: (data: ExpenseClaim) => request.post('/oa/expense/claim', data) as Promise<number>,
 
   // 修改报销申请
   edit: (data: ExpenseClaim) => request.put('/oa/expense/claim', data),

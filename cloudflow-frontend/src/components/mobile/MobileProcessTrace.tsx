@@ -6,7 +6,7 @@ import { TaskSemanticBadge, TaskSemanticIcon, getTaskSemantic } from '../workflo
 import { TimerFinishAction } from '../workflow/TimerFinishAction';
 import { GatewayRoundProgress } from '../workflow/GatewayRoundProgress';
 import type { WorkflowGatewayRound } from '@/types/workflow';
-import { normalizeWorkflowTrace, getWorkflowActionLabel, type WorkflowTraceNode } from '@/utils/workflowTrace';
+import { formatWorkflowDuration, normalizeWorkflowTrace, getWorkflowActionLabel, type WorkflowTraceNode } from '@/utils/workflowTrace';
 
 interface MobileProcessTraceProps {
   instanceId: string;
@@ -164,6 +164,11 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
                     {node.time && (
                       <p className="mt-1 text-xs text-cf-faint">
                         {new Date(node.time).toLocaleString('zh-CN')}
+                      </p>
+                    )}
+                    {node.lastUrgeTime != null && node.urgeElapsedSeconds != null && (
+                      <p className="mt-1 text-xs text-cf-faint" title={`最后催办：${node.lastUrgeTime}`}>
+                        最后催办后 {formatWorkflowDuration(node.urgeElapsedSeconds)} 完成
                       </p>
                     )}
                     {node.type === 'ACTIVE' && node.nodeType === 'TIMER' && (

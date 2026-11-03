@@ -11,7 +11,8 @@ export interface SysDept {
   parentId?: number;
   deptName: string;
   orderNum?: number;
-  leader?: string;
+  leaderUserId?: number | null;
+  leaderName?: string;
   phone?: string;
   email?: string;
   status?: string;

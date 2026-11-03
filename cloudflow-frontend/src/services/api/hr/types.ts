@@ -199,7 +199,6 @@ export interface HrOvertimeApplicationVO extends HrRecord {
 
 export interface RecruitmentRequest extends HrRecord {
   id: number;
-  requestNo?: string;
   requisitionNo?: string;
   title?: string;
   deptId?: number;
@@ -209,9 +208,7 @@ export interface RecruitmentRequest extends HrRecord {
   headcount?: number;
   status?: string;
   statusDesc?: string;
-  expectedDate?: string;
   expectedArrivalDate?: string;
-  jobRequirements?: string;
   requirements?: string;
   createTime?: string;
   updateTime?: string;
@@ -230,7 +227,6 @@ export interface Candidate extends HrRecord {
   phone?: string;
   email?: string;
   resumeAttachmentUrls?: string[] | string;
-  requestId?: number;
   requisitionId?: number;
   deptId?: number;
   deptName?: string;
@@ -250,7 +246,6 @@ export interface CandidatePayload extends HrRecord {
   name: string;
   phone?: string;
   email?: string;
-  requestId?: number;
   requisitionId?: number;
   source?: string;
   channelId?: number;
@@ -295,9 +290,7 @@ export interface Offer extends HrRecord {
   salary?: number;
   status?: string;
   expectedArrivalDate?: string;
-  expectedDate?: string;
   expireDate?: string;
-  expiryDate?: string;
   statusDesc?: string;
 }
 
@@ -306,9 +299,7 @@ export interface OfferPayload extends HrRecord {
   positionId?: number;
   salary?: number;
   expectedArrivalDate?: string;
-  expectedDate?: string;
   expireDate?: string;
-  expiryDate?: string;
   offerContent?: string;
 }
 
@@ -1319,6 +1310,7 @@ export interface HrMallItem extends HrRecord {
   category?: string;
   pointPrice: number;
   stock: number;
+  sortOrder: number;
   salesCount?: number;
   coverImage?: string;
   images?: string[];
@@ -1333,6 +1325,8 @@ export interface HrMallOrderItem extends HrRecord {
   id?: number;
   orderId?: number;
   itemId: number;
+  itemNo?: string;
+  coverImage?: string;
   itemName?: string;
   pointPrice?: number;
   quantity: number;
@@ -1348,10 +1342,12 @@ export interface HrMallOrder extends HrRecord {
   receiverPhone?: string;
   receiverAddress?: string;
   expressNo?: string;
+  expressCompany?: string;
   status: 'PENDING' | 'APPROVING' | 'APPROVED' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED' | string;
   processInstanceId?: string;
   shippedAt?: string;
   completedAt?: string;
+  cancelReason?: string;
   remark?: string;
   items?: HrMallOrderItem[];
 }
@@ -1376,6 +1372,8 @@ export interface HrWorkInjury extends HrRecord {
   id: number;
   injuryNo: string;
   employeeId: number;
+  deptId?: number | null;
+  deptName?: string;
   occurredAt?: string;
   location?: string;
   eventDescription?: string;
@@ -1385,10 +1383,11 @@ export interface HrWorkInjury extends HrRecord {
   processInstanceId?: string;
   determinedAt?: string;
   determinedGrade?: number;
-  remark?: string;
+  closedAt?: string;
+  closeReason?: string;
 }
 
-export type HrWorkInjuryPayload = Omit<HrWorkInjury, 'id'> & { id?: number };
+export type HrWorkInjuryPayload = Pick<HrWorkInjury, 'employeeId' | 'deptId' | 'occurredAt' | 'location' | 'eventDescription' | 'injuryPart' | 'injuryLevel'> & { injuryNo?: string };
 
 export interface HrWorkInjuryInvestigation extends HrRecord {
   id: number;
@@ -1498,9 +1497,10 @@ export interface HrDisputeEvidence extends HrRecord {
   disputeId: number;
   evidenceType?: 'CONTRACT' | 'PAYSLIP' | 'MEDICAL' | 'WITNESS' | 'OTHER' | string;
   fileId?: number;
+  fileName: string;
   uploadedBy?: number;
   uploadedAt?: string;
   remark?: string;
 }
 
-export type HrDisputeEvidencePayload = Omit<HrDisputeEvidence, 'id'> & { id?: number };
+export type HrDisputeEvidencePayload = Pick<HrDisputeEvidence, 'evidenceType' | 'remark'>;

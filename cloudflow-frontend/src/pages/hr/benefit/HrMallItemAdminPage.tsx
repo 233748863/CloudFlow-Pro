@@ -39,6 +39,7 @@ const emptyForm: Partial<HrMallItemPayload> = {
   category: '',
   pointPrice: 0,
   stock: 0,
+  sortOrder: 0,
   status: 'OFF_SHELF',
   approvalThreshold: 0,
   coverImage: '',
@@ -94,6 +95,7 @@ export const HrMallItemAdminPage: React.FC = () => {
       category: row.category ?? '',
       pointPrice: row.pointPrice,
       stock: row.stock,
+      sortOrder: row.sortOrder,
       status: row.status,
       approvalThreshold: row.approvalThreshold,
       coverImage: row.coverImage ?? '',
@@ -238,6 +240,7 @@ export const HrMallItemAdminPage: React.FC = () => {
             <th>分类</th>
             <th>积分价</th>
             <th>库存</th>
+            <th>排序号</th>
             <th>销量</th>
             <th>审批阈值</th>
             <th>状态</th>
@@ -247,13 +250,13 @@ export const HrMallItemAdminPage: React.FC = () => {
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={9} className="py-10 text-center text-sm text-cf-faint">
+              <td colSpan={10} className="py-10 text-center text-sm text-cf-faint">
                 <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
               </td>
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={9} className="py-10 text-center text-sm text-cf-faint">暂无商品</td>
+              <td colSpan={10} className="py-10 text-center text-sm text-cf-faint">暂无商品</td>
             </tr>
           ) : (
             rows.map((row) => (
@@ -263,6 +266,7 @@ export const HrMallItemAdminPage: React.FC = () => {
                 <td className="text-xs">{row.category ?? '-'}</td>
                 <td className="text-sm">{row.pointPrice}</td>
                 <td className="text-sm">{row.stock}</td>
+                <td className="text-sm">{row.sortOrder}</td>
                 <td className="text-sm">{row.salesCount ?? 0}</td>
                 <td className="text-sm">{row.approvalThreshold ?? 0}</td>
                 <td className="text-sm"><DictLabel dictType="hr_mall_item_status" value={row.status} fallback="-" /></td>
@@ -347,6 +351,10 @@ export const HrMallItemAdminPage: React.FC = () => {
               <Label>审批阈值(超过自动转工作流)</Label>
               <Input type="number" value={form.approvalThreshold ?? 0} onChange={(e) => setForm({ ...form, approvalThreshold: Number(e.target.value) })} />
             </div>
+            <div className="admin-dialog-field">
+              <Label htmlFor="mall-sort-order">排序号（数值越小越靠前）</Label>
+              <Input id="mall-sort-order" type="number" min={0} step={1} value={form.sortOrder ?? 0} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} />
+            </div>
           </div>
           <div className="admin-dialog-field">
             <Label>封面图 URL</Label>
@@ -376,6 +384,7 @@ export const HrMallItemAdminPage: React.FC = () => {
               { label: '分类', value: detailItem.category },
               { label: '积分价格', value: String(detailItem.pointPrice) },
               { label: '库存', value: String(detailItem.stock) },
+              { label: '排序号', value: String(detailItem.sortOrder) },
               { label: '销量', value: String(detailItem.salesCount ?? 0) },
               { label: '审批阈值', value: detailItem.approvalThreshold === undefined ? '' : String(detailItem.approvalThreshold) },
               { label: '状态', value: <DictLabel dictType="hr_mall_item_status" value={detailItem.status} fallback="-" /> },

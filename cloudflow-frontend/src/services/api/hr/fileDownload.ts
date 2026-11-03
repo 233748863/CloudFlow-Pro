@@ -6,6 +6,7 @@ export function hrFileDownloadContext(path: string): FileDownloadRequest | undef
     [/^\/ess\/grievances\/([1-9][0-9]*)\/files\/([1-9][0-9]*)$/, 'HR_GRIEVANCE_MINE'],
     [/^\/grievances\/([1-9][0-9]*)\/files\/([1-9][0-9]*)$/, 'HR_GRIEVANCE_MANAGE'],
     [/^\/labor\/disputes\/([1-9][0-9]*)\/grievance-files\/([1-9][0-9]*)$/, 'HR_GRIEVANCE_DISPUTE'],
+    [/^\/labor\/disputes\/([1-9][0-9]*)\/evidence-files\/([1-9][0-9]*)$/, 'HR_DISPUTE_EVIDENCE'],
     [/^\/ess\/leave\/([1-9][0-9]*)\/files\/([1-9][0-9]*)$/, 'HR_LEAVE_PROOF_MINE'],
     [/^\/attendance\/time-requests\/([1-9][0-9]*)\/files\/([1-9][0-9]*)$/, 'HR_LEAVE_PROOF_MANAGE'],
   ];

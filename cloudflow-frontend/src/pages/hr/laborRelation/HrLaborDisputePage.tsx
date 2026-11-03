@@ -66,9 +66,10 @@ export const HrLaborDisputePage: React.FC = () => {
   const [detail, setDetail] = useState<HrLaborDispute | null>(null);
   const [evidence, setEvidence] = useState<HrDisputeEvidence[]>([]);
   const [evidenceOpen, setEvidenceOpen] = useState<HrLaborDispute | null>(null);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [evidenceForm, setEvidenceForm] = useState<Partial<HrDisputeEvidencePayload>>({
     evidenceType: 'CONTRACT',
-    fileId: undefined,
     remark: '',
   });
   const [closeTarget, setCloseTarget] = useState<HrLaborDispute | null>(null);
@@ -165,14 +166,20 @@ export const HrLaborDisputePage: React.FC = () => {
 
   const handleUploadEvidence = async () => {
     if (!evidenceOpen) return;
-    if (!evidenceForm.fileId) { toast.error('请填写附件 ID'); return; }
+    if (!evidenceFile) { toast.error('请选择证据文件'); return; }
+    if (evidenceFile.size > 10 * 1024 * 1024) { toast.error('证据文件不能超过10 MB'); return; }
+    setUploadingEvidence(true);
     try {
-      await uploadEvidence(evidenceOpen.id, { ...evidenceForm, disputeId: evidenceOpen.id } as HrDisputeEvidencePayload);
+      await uploadEvidence(evidenceOpen.id, evidenceFile, evidenceForm);
       toast.success('已上传证据');
       setEvidenceOpen(null);
-      setEvidenceForm({ evidenceType: 'CONTRACT', fileId: undefined, remark: '' });
+      setEvidenceFile(null);
+      setEvidenceForm({ evidenceType: 'CONTRACT', remark: '' });
+      if (detail?.id === evidenceOpen.id) void openDetail(detail);
     } catch (error) {
       toast.error(getErrorMessage(error, '上传失败'));
+    } finally {
+      setUploadingEvidence(false);
     }
   };
 
@@ -269,7 +276,7 @@ export const HrLaborDisputePage: React.FC = () => {
                       <button type="button" data-tooltip="发起处理" aria-label="发起处理" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
                     ) : null}
                     {canRegister && <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>}
-                    {canUploadEvidence && <button type="button" data-tooltip="上传证据" aria-label="上传证据" onClick={() => setEvidenceOpen(row)}><FileUp size={15} /></button>}
+                    {canUploadEvidence && <button type="button" data-tooltip="上传证据" aria-label="上传证据" onClick={() => { setEvidenceOpen(row); setEvidenceFile(null); setEvidenceForm({ evidenceType: 'CONTRACT', remark: '' }); }}><FileUp size={15} /></button>}
                     {canClose && !hasWorkflowStatus(row.status, 'CLOSED') ? (
                       <button type="button" className="danger" data-tooltip="关闭" aria-label="关闭" onClick={() => { setCloseTarget(row); setCloseReason(''); }}><XCircle size={15} /></button>
                     ) : null}
@@ -381,7 +388,7 @@ export const HrLaborDisputePage: React.FC = () => {
                   <thead>
                     <tr>
                       <th>类型</th>
-                      <th>附件 ID</th>
+                      <th>证据文件</th>
                       <th>上传时间</th>
                       <th>备注</th>
                     </tr>
@@ -393,9 +400,9 @@ export const HrLaborDisputePage: React.FC = () => {
                       evidence.map((ev) => (
                         <tr key={ev.id}>
                           <td><DictLabel dictType="hr_evidence_type" value={ev.evidenceType} fallback="-" /></td>
-                          <td className="text-xs">{ev.fileId && ev.remark === '申诉材料，沿用来源申诉访问限制' ? <Button size="sm" variant="outline" onClick={() => {
-                            if (detail) void ruleDownload(`/labor/disputes/${detail.id}/grievance-files/${ev.fileId}`, `申诉材料-${ev.fileId}`).catch(error => toast.error(getErrorMessage(error, '无权下载该材料')));
-                          }}>下载申诉材料</Button> : ev.fileId ?? '-'}</td>
+                          <td className="text-xs">{ev.fileId ? <Button size="sm" variant="outline" onClick={() => {
+                            void ruleDownload(`/labor/disputes/${detail.id}/evidence-files/${ev.fileId}`, ev.fileName).catch(error => toast.error(getErrorMessage(error, '无权下载该材料')));
+                          }}>{ev.fileName}</Button> : ev.fileName}</td>
                           <td>{formatDateTimeValue(ev.uploadedAt)}</td>
                           <td className="max-w-[16rem] truncate text-xs">{ev.remark ?? '-'}</td>
                         </tr>
@@ -413,12 +420,12 @@ export const HrLaborDisputePage: React.FC = () => {
         <BaseDialog
           open={Boolean(evidenceOpen)}
           title={`上传证据 · ${evidenceOpen.disputeNo}`}
-          onClose={() => setEvidenceOpen(null)}
+          onClose={() => { if (!uploadingEvidence) setEvidenceOpen(null); }}
           bodyClassName="admin-dialog-stack"
           footer={
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEvidenceOpen(null)}>取消</Button>
-              <Button onClick={() => void handleUploadEvidence()}>上传</Button>
+              <Button variant="outline" disabled={uploadingEvidence} onClick={() => setEvidenceOpen(null)}>取消</Button>
+              <Button disabled={uploadingEvidence} onClick={() => void handleUploadEvidence()}>{uploadingEvidence ? '上传中…' : '上传'}</Button>
             </div>
           }
         >
@@ -433,12 +440,12 @@ export const HrLaborDisputePage: React.FC = () => {
               </Select>
             </div>
             <div className="admin-dialog-field">
-              <Label>附件 ID(cloudflow_common_file)</Label>
-              <Input type="number" value={String(evidenceForm.fileId ?? '')} onChange={(e) => setEvidenceForm({ ...evidenceForm, fileId: e.target.value ? Number(e.target.value) : undefined })} />
+              <Label htmlFor="dispute-evidence-file">证据文件（最多10 MB）</Label>
+              <Input id="dispute-evidence-file" type="file" disabled={uploadingEvidence} onChange={(e) => setEvidenceFile(e.target.files?.[0] ?? null)} />
             </div>
             <div className="admin-dialog-field">
               <Label>备注</Label>
-              <Textarea rows={2} value={evidenceForm.remark ?? ''} onChange={(e) => setEvidenceForm({ ...evidenceForm, remark: e.target.value })} />
+              <Textarea rows={2} maxLength={500} value={evidenceForm.remark ?? ''} onChange={(e) => setEvidenceForm({ ...evidenceForm, remark: e.target.value })} />
             </div>
           </>
         </BaseDialog>

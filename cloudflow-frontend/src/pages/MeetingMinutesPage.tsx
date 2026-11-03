@@ -257,7 +257,7 @@ const MeetingMinutesPage: React.FC = () => {
           const occurred = ['IN_PROGRESS', 'COMPLETED'].includes(event.status) || event.status === 'CANCELLED' && ['APPROVED', 'NOT_REQUIRED'].includes(event.approvalStatus);
           if (!occurred || event.recurrenceRole === 'SERIES') throw new Error('纪要只能关联已经开始的实际会议');
           if (current) {
-            setFormData({ ...emptyForm(), meetingId: Number(event.eventId), scheduleEventId: Number(event.eventId), meetingTitle: event.title,
+            setFormData({ ...emptyForm(), scheduleEventId: Number(event.eventId), meetingTitle: event.title,
               meetingTime: event.startTime, roomId: event.roomId == null ? '' : String(event.roomId), organizerId: Number(event.creatorId),
               organizerName: linked.invitations.find((invitation) => String(invitation.userId) === String(event.creatorId))?.userName || '' });
             setDecisions([]); setFormOpen(true);

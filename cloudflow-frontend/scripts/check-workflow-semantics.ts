@@ -9,7 +9,7 @@ import { TaskSemanticBadge, WORKFLOW_TASK_SEMANTICS, getTaskSemantic } from '../
 import { validateWorkflowSemantics } from '../src/components/workflow-builder/validateWorkflowSemantics';
 import { getWorkflowUpstreamNodes, prepareWorkflowModelForSave } from '../src/utils/workflowGraph';
 import { allowsNodeOperation, allowsRejection, canHandleWorkflowTask, canWithdrawWorkflowApproval, getTaskAgentMode, isTaskInCurrentTodo } from '../src/utils/workflowPermissions';
-import { getWorkflowActionLabel, getWorkflowActionState, getWorkflowOperatorLabel, normalizeWorkflowTrace } from '../src/utils/workflowTrace';
+import { formatWorkflowDuration, getWorkflowActionLabel, getWorkflowActionState, getWorkflowOperatorLabel, normalizeWorkflowTrace } from '../src/utils/workflowTrace';
 import { mapBackendTaskToFrontend } from '../src/utils/mappers';
 import { GatewayRoundProgress } from '../src/components/workflow/GatewayRoundProgress';
 import type { WorkflowGatewayRound } from '../src/types/workflow';
@@ -149,6 +149,15 @@ check('weight rejection stays a rejected vote', () => assert.equal(trace.find((n
 check('delegate return is not a rejection', () => assert.equal(getWorkflowActionState('DELEGATE_RETURN'), 'finished'));
 check('mobile timer action retains node kind', () => assert.equal(trace.find((node) => node.nodeKey === 'timer')?.nodeType, 'TIMER'));
 check('mobile active task retains semantic type', () => assert.equal(trace.find((node) => node.nodeKey === 'weight')?.taskType, 'WEIGHT_SIGN'));
+check('completion trace retains the last reminder time and a zero-second completion', () => {
+  const nodes = normalizeWorkflowTrace({ historyDetails: [{ historyId: 'reminded', taskId: 'task', nodeKey: 'review', nodeName: '审批',
+    operatorId: '1', operatorName: '审批人', action: 'APPROVE', createTime: '2026-11-03T09:00:00',
+    lastUrgeTime: '2026-11-03T09:00:00', urgeElapsedSeconds: 0 }] });
+  assert.equal(nodes[0].lastUrgeTime, '2026-11-03T09:00:00');
+  assert.equal(formatWorkflowDuration(nodes[0].urgeElapsedSeconds!), '0秒');
+  assert.ok(trace.every((node) => node.urgeElapsedSeconds == null));
+});
+check('reminder elapsed time stays readable across days and seconds', () => assert.equal(formatWorkflowDuration(90061), '1天 1小时 1分 1秒'));
 check('vote action has a separate readable label', () => assert.equal(getWorkflowActionLabel('COUNTERSIGN_REJECT'), '投票反对'));
 check('process status count', () => assert.equal(Object.keys(PROCESS_STATUSES).length, 14));
 check('timer cannot resume paused or failed instance directly', () => assert.ok(!isProcessActive('PAUSED') && !isProcessActive('FAILED')));

@@ -15,6 +15,8 @@ export interface WorkflowTraceNode {
   onBehalfOfUserName?: string;
   comment?: string;
   time?: string;
+  lastUrgeTime?: string;
+  urgeElapsedSeconds?: number;
 }
 
 const actionLabels: Record<string, string> = {
@@ -29,6 +31,13 @@ const actionLabels: Record<string, string> = {
 
 export const getWorkflowActionLabel = (action?: string): string =>
   actionLabels[action ?? ''] ?? action ?? '';
+
+export const formatWorkflowDuration = (seconds: number): string => [
+  { value: Math.floor(seconds / 86400), unit: '天' },
+  { value: Math.floor(seconds % 86400 / 3600), unit: '小时' },
+  { value: Math.floor(seconds % 3600 / 60), unit: '分' },
+  { value: seconds % 60, unit: '秒' },
+].filter(({ value }) => value > 0).map(({ value, unit }) => `${value}${unit}`).join(' ') || '0秒';
 
 export const getWorkflowOperatorLabel = (detail: { operatorName?: string; onBehalfOfUserId?: string | number; onBehalfOfUserName?: string }): string => {
   const operator = detail.operatorName || '系统';
@@ -63,6 +72,8 @@ export const normalizeWorkflowTrace = (trace: Partial<ProcessTrace>): WorkflowTr
     onBehalfOfUserName: item.onBehalfOfUserName,
     comment: item.comment,
     time: item.completeTime || item.createTime,
+    lastUrgeTime: item.lastUrgeTime,
+    urgeElapsedSeconds: item.urgeElapsedSeconds,
   }));
   const activeNodes: WorkflowTraceNode[] = (trace.activeDetails ?? []).map((item, index) => ({
     id: String(item.taskId || item.nodeKey || `active_${index}`),

@@ -18,9 +18,9 @@ export const getMallOrder = (id: number) =>
 export const placeMallOrder = (data: HrMallOrderPayload) =>
   request.post<number>('/hr/benefit/mall/orders', data);
 
-export const shipOrder = (id: number, expressNo: string) =>
+export const shipOrder = (id: number, expressCompany: string, expressNo: string) =>
   request.post<void>(`/hr/benefit/mall/orders/${id}/ship`, null, {
-    params: { expressNo },
+    params: { expressCompany, expressNo },
   });
 
 export const cancelOrder = (id: number, reason?: string) =>

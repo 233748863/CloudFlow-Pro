@@ -441,7 +441,7 @@ export class WorkflowDraftSession {
       }
       const result = await this.options.api.start(this.pendingSubmission, this.abort.signal);
       if (!this.current()) return null;
-      if (!result || typeof result.instanceId !== 'string' || typeof result.processInstanceId !== 'string' || typeof result.processNo !== 'string') {
+      if (!result || typeof result.instanceId !== 'string' || !result.instanceId || typeof result.processNo !== 'string' || !result.processNo) {
         throw new WorkflowDraftError('INVALID_RESPONSE', true);
       }
       this.cancelAutoSave();

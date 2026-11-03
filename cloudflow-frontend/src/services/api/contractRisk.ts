@@ -73,6 +73,7 @@ export interface OaContract {
 }
 
 export interface OaContractTemplate {
+  usageCount?: number;
   id?: number;
   tenantId?: number;
   templateCode?: string;

@@ -513,7 +513,7 @@ export const VersionRollbackManagement: React.FC = () => {
 
                 <div className="text-sm text-cf-muted">
                   <div>{record.rollbackTime}</div>
-                  <div className="mt-1">操作人 · {record.rollbackBy}</div>
+                  <div className="mt-1">操作人 · {record.rollbackByName}</div>
                 </div>
 
                 <div className="text-sm text-cf-muted">{record.rollbackReason}</div>

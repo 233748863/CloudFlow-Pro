@@ -1,4 +1,5 @@
 import type { FormDefinition } from '@/types';
+import type { ProcessStartResult } from '@/types/workflow';
 import type { FieldPermission, StartAssigneeNode } from '@/types/workflowSemantic';
 import { getFormFieldErrors } from '@/utils/formFieldErrors';
 
@@ -89,11 +90,7 @@ export interface DraftStartRequest {
   expectedVersion: number;
 }
 
-export interface DraftStartResult {
-  instanceId: string;
-  processInstanceId: string;
-  processNo: string;
-}
+export type DraftStartResult = ProcessStartResult;
 
 export const DRAFT_ERROR_MESSAGES: Record<string, string> = {
   DRAFT_NOT_FOUND: '草稿不存在或已不可访问，当前填写内容仍保留。',

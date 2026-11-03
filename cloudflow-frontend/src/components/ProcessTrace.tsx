@@ -16,7 +16,7 @@ import { TimerFinishAction } from './workflow/TimerFinishAction';
 import { GatewayRoundProgress } from './workflow/GatewayRoundProgress';
 import type { WorkflowGatewayRound } from '@/types/workflow';
 import { getWorkflowGatewayBranches, getWorkflowGatewayJoinKey, isWorkflowGatewayRouter, isWorkflowGatewaySplit, workflowEdgeIsDefault } from '@/utils/workflowGateway';
-import { getWorkflowActionLabel, getWorkflowActionState, getWorkflowOperatorLabel } from '@/utils/workflowTrace';
+import { formatWorkflowDuration, getWorkflowActionLabel, getWorkflowActionState, getWorkflowOperatorLabel } from '@/utils/workflowTrace';
 
 interface ProcessTraceProps {
   instanceId: string;
@@ -35,6 +35,8 @@ interface HistoryDetail {
   createTime?: string;
   completeTime?: string;
   duration?: string;
+  lastUrgeTime?: string;
+  urgeElapsedSeconds?: number;
   adminOverride?: boolean;
   originalAssigneeId?: string | number;
   originalAssigneeName?: string;
@@ -509,6 +511,12 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                       <div className="flex items-center gap-2">
                         <Clock size={11} className="text-cyan-500" />
                         <span className="text-cf-faint">耗时 {item.duration}</span>
+                      </div>
+                    )}
+                    {item.lastUrgeTime != null && item.urgeElapsedSeconds != null && (
+                      <div className="flex items-center gap-2" title={`最后催办：${item.lastUrgeTime}`}>
+                        <BellRing size={11} className="text-cyan-500" />
+                        <span className="text-cf-faint">最后催办后 {formatWorkflowDuration(item.urgeElapsedSeconds)} 完成</span>
                       </div>
                     )}
                   </div>

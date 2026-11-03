@@ -82,7 +82,7 @@ function fixture() {
   const calls = { saves: [] as DraftSaveRequest[], starts: [] as DraftStartRequest[], removes: [] as Array<{ draftId: string; version: number }>, lookups: 0, contexts: 0, changed: 0, submitted: 0 };
   let stored: DraftDetailVO | null = null;
   let consumedId: string | null = null;
-  const result = { instanceId: 'instance-test', processInstanceId: 'engine-test', processNo: 'PROCESS-TEST' };
+  const result = { instanceId: 'instance-test', processNo: 'PROCESS-TEST' };
   const api: WorkflowDraftApi = {
     context: async () => { calls.contexts += 1; return structuredClone(context); },
     byDefinition: async () => { calls.lookups += 1; return stored ? summary(stored) : null; },
@@ -346,8 +346,10 @@ function rendererHarness() {
   };
   const react = {
     createElement,
+    memo: (component: unknown) => component,
     forwardRef: (render: (...args: any[]) => unknown) => render,
     useMemo: (factory: () => unknown) => factory(),
+    useCallback: (callback: unknown) => callback,
     useEffect: () => undefined,
     useId: () => 'test-control',
     useRef: (initial: unknown) => { const slot = cursor++; if (!Object.hasOwn(slots, slot)) slots[slot] = { current: initial }; return slots[slot]; },
@@ -587,7 +589,7 @@ function editorHarness() {
   const render = () => { cursor = 0; return module.WorkflowDraftEditor(props); };
   const confirmation = (tree: unknown) => elements(tree).find((element) => element.type === 'ConfirmDialog' && element.props.title === '确认离开申请')!;
   const navigation = { currentLocation: { pathname: '/workplace', search: '' }, nextLocation: { pathname: '/workflow/drafts', search: '' } };
-  return { render, confirmation, calls, draft, blocker, blocks: () => shouldBlock(navigation), switchIdentity: () => { identity = 'another:user'; }, finishSubmission: () => submitted({ instanceId: 'instance-test', processInstanceId: 'engine-test', processNo: 'PROCESS-TEST' }) };
+  return { render, confirmation, calls, draft, blocker, blocks: () => shouldBlock(navigation), switchIdentity: () => { identity = 'another:user'; }, finishSubmission: () => submitted({ instanceId: 'instance-test', processNo: 'PROCESS-TEST' }) };
 }
 
 await check('unsaved close prompts without silently discarding or saving in the background', () => {

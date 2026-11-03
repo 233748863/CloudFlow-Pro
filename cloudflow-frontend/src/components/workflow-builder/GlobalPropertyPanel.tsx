@@ -141,7 +141,7 @@ export const GlobalPropertyPanel = ({
                 value={formData.startPermissionType || "ALL"}
                 onValueChange={(v) => {
                   handleChange("startPermissionType", v);
-                  if (v === "ALL") handleChange("startPermissionValue", "");
+                  handleChange("startPermissionValue", v === "ALL" ? "" : "[]");
                 }}
               >
                 <SelectTrigger>
@@ -164,6 +164,8 @@ export const GlobalPropertyPanel = ({
                 value={formData.startPermissionValue || ""}
                 onChange={(val) => handleChange("startPermissionValue", val)}
                 multiple={true}
+                roleValueField="roleId"
+                valueFormat="json"
               />
             )}
           </div>

@@ -1,5 +1,5 @@
 import request from "../request";
-import type { PageResult, ProcessInstance, ProcessTrace, StartProcessRequest } from "@/types/workflow";
+import type { PageResult, ProcessInstance, ProcessStartResult, ProcessTrace, StartProcessRequest } from "@/types/workflow";
 import { logApiCall } from "./internals";
 import { getWorkflowBusinessEntry } from "./businessEntry";
 import type { InstanceIdRequest, InvalidateProcessRequest, TerminateProcessRequest } from "./types";
@@ -9,7 +9,7 @@ import type { InstanceIdRequest, InvalidateProcessRequest, TerminateProcessReque
  */
 export async function startProcess(
   data: StartProcessRequest,
-): Promise<ProcessInstance> {
+): Promise<ProcessStartResult> {
   const businessEntry = getWorkflowBusinessEntry(data.processDefKey);
   if (businessEntry) throw new Error(`请前往“${businessEntry.label}”办理此申请`);
   const variables: Record<string, unknown> = { ...(data.variables || {}) };
@@ -25,7 +25,7 @@ export async function startProcess(
     nodeAssignees: data.nodeAssignees,
   };
   logApiCall("POST", "/workflow/wf/start", { processDefKey: data.processDefKey });
-  return request.post("/workflow/wf/start", payload);
+  return request.post<ProcessStartResult>("/workflow/wf/start", payload);
 }
 
 /**

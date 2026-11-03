@@ -6,6 +6,7 @@ import {
   Button,
   ConfirmDialog,
   DatePicker,
+  DeptSelector,
   EmployeeSelector,
   Input,
   Label,
@@ -41,12 +42,12 @@ const statusOptions = [...statusFlow, 'REJECTED'];
 
 const emptyForm: Partial<HrWorkInjuryPayload> = {
   employeeId: undefined,
+  deptId: null,
   occurredAt: '',
   location: '',
   eventDescription: '',
   injuryPart: '',
   injuryLevel: 'MINOR',
-  status: 'REPORTED',
 };
 
 export const HrWorkInjuryPage: React.FC = () => {
@@ -86,23 +87,28 @@ export const HrWorkInjuryPage: React.FC = () => {
     setOpen(true);
   };
 
-  const openEdit = (row: HrWorkInjury) => {
-    setEditing(row);
-    setForm({
-      employeeId: row.employeeId,
-      occurredAt: toLocalDatetimeString(row.occurredAt),
-      location: row.location,
-      eventDescription: row.eventDescription,
-      injuryPart: row.injuryPart,
-      injuryLevel: row.injuryLevel,
-      status: row.status,
-    });
-    setOpen(true);
+  const openEdit = async (row: HrWorkInjury) => {
+    try {
+      const full = await getInjury(row.id);
+      setEditing(full);
+      setForm({
+        employeeId: full.employeeId,
+        deptId: full.deptId ?? null,
+        occurredAt: toLocalDatetimeString(full.occurredAt),
+        location: full.location,
+        eventDescription: full.eventDescription,
+        injuryPart: full.injuryPart,
+        injuryLevel: full.injuryLevel,
+      });
+      setOpen(true);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '加载工伤详情失败'));
+    }
   };
 
   const handleSave = async () => {
     if (!form.employeeId) {
-      toast.error('请填写员工 ID');
+      toast.error('请选择员工');
       return;
     }
     try {
@@ -211,6 +217,7 @@ export const HrWorkInjuryPage: React.FC = () => {
           <tr>
             <th>编号</th>
             <th>员工 ID</th>
+            <th>事发部门</th>
             <th>发生时间</th>
             <th>地点</th>
             <th>等级</th>
@@ -221,9 +228,9 @@ export const HrWorkInjuryPage: React.FC = () => {
         </thead>
         <tbody>
           {loading ? (
-            <tr><td colSpan={8} className="admin-settings-empty">加载中...</td></tr>
+            <tr><td colSpan={9} className="admin-settings-empty">加载中...</td></tr>
           ) : rows.length === 0 ? (
-            <tr><td colSpan={8} className="admin-settings-empty">暂无记录</td></tr>
+            <tr><td colSpan={9} className="admin-settings-empty">暂无记录</td></tr>
           ) : (
             rows.map((row) => (
               <tr key={row.id}>
@@ -233,6 +240,7 @@ export const HrWorkInjuryPage: React.FC = () => {
                   </button>
                 </td>
                 <td>{row.employeeId}</td>
+                <td>{row.deptName ?? '-'}</td>
                 <td>{formatDateTimeValue(row.occurredAt)}</td>
                 <td className="sm:max-w-[10rem] sm:truncate">{row.location ?? '-'}</td>
                 <td><DictLabel dictType="hr_work_injury_level" value={row.injuryLevel} fallback="-" /></td>
@@ -248,7 +256,7 @@ export const HrWorkInjuryPage: React.FC = () => {
                   <div className="admin-users-row-actions">
                     <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
                     {hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') ? (
-                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void openEdit(row)}><Pencil size={15} /></button>
                     ) : null}
                     {hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') ? (
                       <button type="button" data-tooltip="发起认定" aria-label="发起认定" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
@@ -287,6 +295,10 @@ export const HrWorkInjuryPage: React.FC = () => {
             <div className="admin-dialog-field">
               <Label>员工</Label>
               <EmployeeSelector single value={form.employeeId ?? null} onChange={(id) => setForm({ ...form, employeeId: id ?? 0 })} placeholder="选择员工" />
+            </div>
+            <div className="admin-dialog-field">
+              <Label>事发部门</Label>
+              <DeptSelector single allowClear value={form.deptId} onChange={(deptId) => setForm({ ...form, deptId })} placeholder="选择事发时所属部门" />
             </div>
             <div className="admin-dialog-field">
               <Label>发生时间</Label>
@@ -328,7 +340,7 @@ export const HrWorkInjuryPage: React.FC = () => {
       >
         <div>
           <Label>关闭理由(可选)</Label>
-          <Textarea rows={3} value={closeReason} onChange={(e) => setCloseReason(e.target.value)} placeholder="填写关闭理由" />
+          <Textarea rows={3} maxLength={500} value={closeReason} onChange={(e) => setCloseReason(e.target.value)} placeholder="填写关闭理由" />
         </div>
       </ConfirmDialog>
 
@@ -349,12 +361,15 @@ export const HrWorkInjuryPage: React.FC = () => {
             )}
             <div className="grid grid-cols-2 gap-3">
               <div className="admin-dialog-field"><span className="text-cf-subtle">员工 ID:</span> {detail.employeeId}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">事发部门:</span> {detail.deptName ?? '-'}</div>
               <div className="admin-dialog-field"><span className="text-cf-subtle">发生时间:</span> {formatDateTimeValue(detail.occurredAt)}</div>
               <div className="admin-dialog-field"><span className="text-cf-subtle">地点:</span> {detail.location ?? '-'}</div>
               <div className="admin-dialog-field"><span className="text-cf-subtle">部位:</span> {detail.injuryPart ?? '-'}</div>
               <div className="admin-dialog-field"><span className="text-cf-subtle">等级:</span> <DictLabel dictType="hr_work_injury_level" value={detail.injuryLevel} fallback="-" /></div>
               <div className="admin-dialog-field"><span className="text-cf-subtle">伤残等级:</span> {detail.determinedGrade ? `${detail.determinedGrade} 级` : '-'}</div>
               <div className="admin-dialog-field"><span className="text-cf-subtle">认定时间:</span> {formatDateTimeValue(detail.determinedAt)}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">结案时间:</span> {formatDateTimeValue(detail.closedAt)}</div>
+              <div className="admin-dialog-field col-span-2"><span className="text-cf-subtle">结案原因:</span> {detail.closeReason ?? '-'}</div>
               <div className="admin-dialog-field"><span className="text-cf-subtle">工作流:</span> {detail.processInstanceId ?? '-'}</div>
             </div>
             {detail.eventDescription && (

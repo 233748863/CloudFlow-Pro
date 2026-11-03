@@ -34,6 +34,7 @@ import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { useAuth } from '@/context/AuthContext';
 import { getAllHolidayCalendars, type HolidayCalendar } from '@/services/api/holiday';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { UserSelector } from '@/components/common/UserSelector';
 
 // ============================================================
 // 类型定义
@@ -44,7 +45,8 @@ interface DeptItem {
   parentId: number;
   deptName: string;
   orderNum: number;
-  leader: string;
+  leaderUserId: number | null;
+  leaderName?: string;
   phone: string;
   email: string;
   status: string;
@@ -74,7 +76,7 @@ interface DeptFormState {
   parentId: number;
   deptName: string;
   orderNum: number;
-  leader: string;
+  leaderUserId: number | null;
   phone: string;
   email: string;
   status: string;
@@ -109,7 +111,7 @@ const createDeptForm = (defaultParentId = 0): DeptFormState => ({
   parentId: defaultParentId,
   deptName: '',
   orderNum: 0,
-  leader: '',
+  leaderUserId: null,
   phone: '',
   email: '',
   status: '0',
@@ -166,7 +168,7 @@ const collectDeptMatches = (
 ): DeptMatch[] => {
   depts.forEach((dept) => {
     const name = dept.deptName || '';
-    const leader = dept.leader || '';
+    const leader = dept.leaderName || '';
     if (name.toLowerCase().includes(keyword) || leader.toLowerCase().includes(keyword)) {
       out.push({ dept, path: trail });
     }
@@ -221,7 +223,7 @@ const filterDeptTree = (depts: DeptItem[], keyword: string): DeptItem[] => {
       const matchesSelf =
         dept.deptName.toLowerCase().includes(normalized) ||
         String(dept.deptId).includes(normalized) ||
-        String(dept.leader || '').toLowerCase().includes(normalized);
+        String(dept.leaderName || '').toLowerCase().includes(normalized);
 
       if (!matchesSelf && children.length === 0) {
         return [];
@@ -354,7 +356,7 @@ const DepartmentPickerList: React.FC<{
 
       return (
         dept.deptName.toLowerCase().includes(normalized) ||
-        String(dept.leader || '').toLowerCase().includes(normalized)
+        String(dept.leaderName || '').toLowerCase().includes(normalized)
       );
     });
   }, [deptTree, keyword]);
@@ -623,7 +625,7 @@ const DeptFormDialog: React.FC<{
         parentId: editing.parentId ?? 0,
         deptName: editing.deptName,
         orderNum: editing.orderNum ?? 0,
-        leader: editing.leader || '',
+        leaderUserId: editing.leaderUserId ?? null,
         phone: editing.phone || '',
         email: editing.email || '',
         status: editing.status || '0',
@@ -667,7 +669,6 @@ const DeptFormDialog: React.FC<{
               onSubmit({
                 ...form,
                 deptName: form.deptName.trim(),
-                leader: form.leader.trim(),
                 phone: form.phone.trim(),
                 email: form.email.trim(),
               });
@@ -781,10 +782,13 @@ const DeptFormDialog: React.FC<{
         </div>
         <div>
           <label className={fieldLabelClassName}>负责人</label>
-          <Input
-            value={form.leader}
-            onChange={(event) => setForm((prev) => ({ ...prev, leader: event.target.value }))}
-            placeholder="负责人"
+          <UserSelector
+            single
+            value={form.leaderUserId == null ? null : String(form.leaderUserId)}
+            onChange={(id) => setForm((prev) => ({ ...prev, leaderUserId: id == null ? null : Number(id) }))}
+            placeholder="选择负责人"
+            allowClear
+            disabled={saving}
           />
         </div>
         <div>
@@ -951,7 +955,7 @@ const ChangeDeptDialog: React.FC<{
                 {targetDept?.deptName || '未选择'}
               </div>
               <div className="mt-1 text-xs text-cf-subtle">
-                {targetDept?.leader ? `负责人 ${targetDept.leader}` : '从部门列表选择目标部门'}
+                {targetDept?.leaderName ? `负责人 ${targetDept.leaderName}` : '从部门列表选择目标部门'}
               </div>
             </div>
           </div>
@@ -1042,7 +1046,7 @@ const MigrateDeptDialog: React.FC<{
                 {targetDept?.deptName || '未选择'}
               </div>
               <div className="mt-1 text-xs text-cf-subtle">
-                {targetDept?.leader ? `负责人 ${targetDept.leader}` : '从部门列表选择目标部门'}
+                {targetDept?.leaderName ? `负责人 ${targetDept.leaderName}` : '从部门列表选择目标部门'}
               </div>
             </div>
           </div>
@@ -1469,7 +1473,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                   </span>
                 </div>
                 <div className="mt-1 text-xs text-cf-subtle font-medium">
-                  包含 {countDeptChildren(selectedDept)} 个子部门 · 负责人: <span className="font-semibold text-cf-body">{selectedDept.leader || '未指定'}</span> {selectedDept.phone ? `· 电话: ${selectedDept.phone}` : ''}
+                  包含 {countDeptChildren(selectedDept)} 个子部门 · 负责人: <span className="font-semibold text-cf-body">{selectedDept.leaderName || '未指定'}</span> {selectedDept.phone ? `· 电话: ${selectedDept.phone}` : ''}
                 </div>
               </div>
             ) : (

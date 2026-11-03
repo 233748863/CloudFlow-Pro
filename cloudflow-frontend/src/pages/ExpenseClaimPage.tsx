@@ -71,6 +71,7 @@ const createDefaultItem = (): ExpenseFormItem => ({
   expenseType: 'TRANSPORT',
   amount: 0,
   expenseDate: '',
+  city: '',
   description: '',
   receiptUrl: '',
 });
@@ -856,6 +857,17 @@ export const ExpenseClaimPage: React.FC = () => {
                     </div>
 
                     <div className="admin-dialog-field">
+                      <Label className="text-xs font-medium text-cf-subtle">发生城市</Label>
+                      <Input
+                        className={expenseItemControlClass}
+                        value={item.city || ''}
+                        onChange={(event) => updateItem(index, 'city', event.target.value)}
+                        maxLength={60}
+                        placeholder="如杭州市，提交前必填"
+                      />
+                    </div>
+
+                    <div className="admin-dialog-field">
                       <Label className="text-xs font-medium text-cf-subtle">费用说明</Label>
                       <Input
                         className={expenseItemControlClass}
@@ -963,6 +975,7 @@ export const ExpenseClaimPage: React.FC = () => {
                         <th>费用类型</th>
                         <th>金额</th>
                         <th>费用日期</th>
+                        <th>发生城市</th>
                         <th>说明</th>
                         <th>凭证</th>
                       </tr>
@@ -975,6 +988,7 @@ export const ExpenseClaimPage: React.FC = () => {
                           </td>
                           <td>{formatAmount(item.amount)}</td>
                           <td>{renderDetailValue(item.expenseDate)}</td>
+                          <td>{renderDetailValue(item.city)}</td>
                           <td>{renderDetailValue(item.description)}</td>
                           <td>
                             <AttachmentLinks value={item.receiptUrl} compact emptyText="-" previewContext={{ bizType: 'OA_EXPENSE', bizId: String(detailClaim.id), childId: item.id }} />

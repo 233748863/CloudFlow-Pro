@@ -80,6 +80,7 @@ export interface RollbackHistory {
   rollbackStatus: 'SUCCESS' | 'FAILED' | 'PARTIAL';
   errorMessage?: string;
   rollbackBy: number;
+  rollbackByName: string;
   rollbackTime: string;
 }
 

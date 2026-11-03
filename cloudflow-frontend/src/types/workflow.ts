@@ -92,6 +92,8 @@ export interface ProcessTraceHistoryDetail {
   taskType?: WorkflowTaskType;
   nodeType?: string;
   completeTime?: string;
+  lastUrgeTime?: string;
+  urgeElapsedSeconds?: number;
   historyId: string;
   taskId: string;
   nodeKey: string;
@@ -252,6 +254,11 @@ export interface FormDefinitionListItem {
 /**
  * 启动流程请求
  */
+export interface ProcessStartResult {
+  instanceId: string;
+  processNo: string;
+}
+
 export interface StartProcessRequest {
   processDefKey: string;
   businessKey?: string;

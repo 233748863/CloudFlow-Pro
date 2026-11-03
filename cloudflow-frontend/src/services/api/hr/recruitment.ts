@@ -14,21 +14,8 @@ import type {
   RecruitmentRequestPayload,
 } from './types';
 
-const normalizeRecruitmentRequest = (item: RecruitmentRequest): RecruitmentRequest => ({
-  ...item,
-  requestNo: item.requestNo || item.requisitionNo,
-  requisitionNo: item.requisitionNo || item.requestNo,
-  expectedDate: item.expectedDate || item.expectedArrivalDate,
-  expectedArrivalDate: item.expectedArrivalDate || item.expectedDate,
-  jobRequirements: item.jobRequirements || item.requirements,
-  requirements: item.requirements || item.jobRequirements,
-  statusDesc: item.statusDesc,
-});
-
 const normalizeCandidate = (item: Candidate): Candidate => ({
   ...item,
-  requestId: item.requestId || item.requisitionId,
-  requisitionId: item.requisitionId || item.requestId,
   resumeAttachmentUrls: normalizeAttachmentUrls(item.resumeAttachmentUrls),
   statusDesc: item.statusDesc,
   sourceDesc: item.sourceDesc,
@@ -44,27 +31,14 @@ const normalizeInterview = (item: Interview): Interview => ({
   statusName: item.statusName || item.statusDesc,
 });
 
-const normalizeOffer = (item: Offer): Offer => ({
-  ...item,
-  expectedDate: item.expectedDate || item.expectedArrivalDate,
-  expectedArrivalDate: item.expectedArrivalDate || item.expectedDate,
-  expiryDate: item.expiryDate || item.expireDate,
-  expireDate: item.expireDate || item.expiryDate,
-  statusDesc: item.statusDesc,
-});
-
 const toRecruitmentPayload = (data: RecruitmentRequestPayload) => ({
   ...data,
-  requisitionNo: data.requisitionNo || data.requestNo || `HRRQ${Date.now()}`,
-  expectedArrivalDate: data.expectedArrivalDate || data.expectedDate,
-  requirements: data.requirements || data.jobRequirements,
+  requisitionNo: data.requisitionNo || `HRRQ${Date.now()}`,
   title: data.title || '招聘需求',
 });
 
 const toCandidatePayload = (data: CandidatePayload) => ({
   ...data,
-  requisitionId: data.requisitionId || data.requestId,
-  requestId: undefined,
   candidateNo: data.candidateNo || `HRC${Date.now()}`,
   resumeAttachmentUrls: normalizeJsonArray(
     normalizeStringArray(data.resumeAttachmentUrls).map((item) => getAttachmentRawValue(item)),
@@ -74,13 +48,11 @@ const toCandidatePayload = (data: CandidatePayload) => ({
 const toOfferPayload = (data: OfferPayload) => ({
   ...data,
   offerNo: data.offerNo || `HROF${Date.now()}`,
-  expectedArrivalDate: data.expectedArrivalDate || data.expectedDate,
-  expireDate: data.expireDate || data.expiryDate,
 });
 
 export const listRecruitmentRequests = async (params?: HrRecord) => {
   const page = await request.get<HrPagedResult<RecruitmentRequest>>('/hr/recruitment/requisitions', { params });
-  const rows = withList(page).map(normalizeRecruitmentRequest);
+  const rows = withList(page);
   return { ...page, records: rows, rows } as HrPagedResult<RecruitmentRequest>;
 };
 export const createRecruitmentRequest = (data: RecruitmentRequestPayload) =>
@@ -107,7 +79,7 @@ export const scheduleInterview = (data: InterviewSchedulePayload) =>
   request.post<number>('/hr/recruitment/interviews', data);
 
 export const listOffers = async (params?: HrRecord) =>
-  (await request.get<Offer[]>('/hr/recruitment/offers', { params })).map(normalizeOffer);
+  request.get<Offer[]>('/hr/recruitment/offers', { params });
 export const getOffer = async (id: number) => (await listOffers()).find((item) => item.id === id) as Offer;
 export const createOffer = (data: OfferPayload) =>
   request.post<number>('/hr/recruitment/offers', toOfferPayload(data));

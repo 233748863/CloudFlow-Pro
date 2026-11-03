@@ -17,6 +17,7 @@ interface ApproverValueSelectorProps {
   onLabelChange?: (label: string) => void;
   multiple?: boolean;
   roleValueField?: "roleKey" | "roleId";
+  valueFormat?: "csv" | "json";
 }
 
 // 角色/用户/部门选择器子组件 - 支持多选
@@ -27,6 +28,7 @@ export const ApproverValueSelector = ({
   onLabelChange,
   multiple = false,
   roleValueField = "roleKey",
+  valueFormat = "csv",
 }: ApproverValueSelectorProps) => {
   const [roles, setRoles] = useState<any[]>(
     () => readApproverCache("ROLE") || [],
@@ -97,12 +99,10 @@ export const ApproverValueSelector = ({
   }, [type]);
 
   // 当前已选值数组
-  const selectedValues = value
-    ? value
-        .split(",")
-        .map((v) => v.trim())
-        .filter(Boolean)
-    : [];
+  const selectedValues: string[] = !value ? [] : valueFormat === "json"
+    ? JSON.parse(value) as string[]
+    : value.split(",").map((item) => item.trim()).filter(Boolean);
+  const serializeSelection = (values: string[]) => valueFormat === "json" ? JSON.stringify(values) : values.join(",");
 
   // 当前类型对应的候选项 (memo 化避免每次 render 重新映射)
   const items: CandidateChipItem[] = useMemo(() => {
@@ -145,12 +145,12 @@ export const ApproverValueSelector = ({
       const newValues = selectedValues.includes(val)
         ? selectedValues.filter((v) => v !== val)
         : [...selectedValues, val];
-      onChange(newValues.join(","));
+      onChange(serializeSelection(newValues));
       onLabelChange?.(getDisplayLabel(newValues));
     } else {
-      const newVal = val === value ? "" : val;
-      onChange(newVal);
-      onLabelChange?.(newVal ? getDisplayLabel([newVal]) : "");
+      const newValues = selectedValues.includes(val) ? [] : [val];
+      onChange(serializeSelection(newValues));
+      onLabelChange?.(getDisplayLabel(newValues));
     }
   };
 

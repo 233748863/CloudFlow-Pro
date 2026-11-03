@@ -677,7 +677,7 @@ export const ContractPage: React.FC = () => {
                     .filter((t) => !form.contractType || !t.category || t.category === form.contractType)
                     .map((t) => (
                       <SelectItem key={t.id} value={String(t.id)}>
-                        {t.templateName}（{t.templateCode || '-'}）
+                        {t.templateName}（{t.templateCode || '-'}，已用于 {t.usageCount ?? 0} 份合同）
                       </SelectItem>
                     ))}
                 </SelectContent>

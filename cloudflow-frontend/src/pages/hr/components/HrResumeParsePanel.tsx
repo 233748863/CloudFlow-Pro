@@ -36,7 +36,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<HrResumeParsedFieldsPayload>({});
+  const [editForm, setEditForm] = useState<Omit<HrResumeParsedFieldsPayload, 'parsedSkills'> & { parsedSkills?: string }>({});
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [detailRecord, setDetailRecord] = useState<HrResumeParsedRecord | null>(null);
@@ -95,7 +95,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
       parsedEmail: record.parsedEmail || '',
       parsedEducation: record.parsedEducation || '',
       parsedWorkExperience: record.parsedWorkExperience || '',
-      parsedSkills: record.parsedSkills || '',
+      parsedSkills: record.parsedSkills?.join('\n') || '',
     });
   };
 
@@ -107,7 +107,10 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
   const saveEdit = async (id: number) => {
     setSubmitting(true);
     try {
-      await hrResumeApi.updateParsed(id, editForm);
+      await hrResumeApi.updateParsed(id, {
+        ...editForm,
+        parsedSkills: (editForm.parsedSkills || '').split('\n').map(skill => skill.trim()).filter(Boolean),
+      });
       toast.success('已保存');
       setEditingId(null);
       setEditForm({});
@@ -202,7 +205,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
                       <>
                         <tr key={record.id}>
                           <td>
-                            <DictBadge dictType="hr_resume_parse_status" value={String(record.status || 'PENDING')} />
+                            <DictBadge dictType="hr_resume_parse_status" value={record.reviewStatus} />
                             {record.createTime ? <div className="mt-1 text-xs text-cf-subtle">{record.createTime}</div> : null}
                           </td>
                           <td>
@@ -212,7 +215,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
                           </td>
                           <td className="max-w-[240px]">
                             <div className="text-sm text-cf-body">{record.parsedEducation || '-'}</div>
-                            <div className="line-clamp-2 whitespace-pre-wrap text-xs text-cf-subtle">{record.parsedSkills || '-'}</div>
+                            <div className="line-clamp-2 whitespace-pre-wrap text-xs text-cf-subtle">{record.parsedSkills?.join('\n') || '-'}</div>
                           </td>
                           <td className="max-w-[320px]">
                             <div className="line-clamp-3 whitespace-pre-wrap text-xs text-cf-muted">
@@ -231,7 +234,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
                                 <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRecord(record)}>
                                   <Eye size={15} />
                                 </button>
-                                {record.status === 'PENDING' ? (
+                                {record.reviewStatus === 'PENDING' ? (
                                   <>
                                     <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => startEdit(record)} disabled={submitting}>
                                       <Edit size={15} />
@@ -352,7 +355,7 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
         heading={detailRecord?.parsedName || candidateName}
         subheading={detailRecord?.createTime ? `解析于 ${detailRecord.createTime}` : undefined}
         headingAside={detailRecord ? (
-          <DictBadge dictType="hr_resume_parse_status" value={String(detailRecord.status || 'PENDING')} />
+          <DictBadge dictType="hr_resume_parse_status" value={detailRecord.reviewStatus} />
         ) : undefined}
         sections={detailRecord ? [
           {
@@ -363,8 +366,8 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
               { label: '邮箱', value: detailRecord.parsedEmail },
               { label: '学历', value: detailRecord.parsedEducation },
               { label: '置信度', value: formatConfidence(detailRecord.confidence) },
-              { label: '状态', value: <DictBadge dictType="hr_resume_parse_status" value={String(detailRecord.status || 'PENDING')} /> },
-              { label: '技能', value: <span className="whitespace-pre-wrap">{detailRecord.parsedSkills}</span>, wide: true },
+              { label: '状态', value: <DictBadge dictType="hr_resume_parse_status" value={detailRecord.reviewStatus} /> },
+              { label: '技能', value: <span className="whitespace-pre-wrap">{detailRecord.parsedSkills?.join('\n')}</span>, wide: true },
               { label: '工作经历', value: <span className="whitespace-pre-wrap">{detailRecord.parsedWorkExperience}</span>, wide: true },
             ],
           },

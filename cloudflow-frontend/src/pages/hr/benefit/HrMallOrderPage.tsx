@@ -39,6 +39,7 @@ export const HrMallOrderPage: React.FC = () => {
   const [detail, setDetail] = useState<HrMallOrder | null>(null);
   const [shipOpen, setShipOpen] = useState<HrMallOrder | null>(null);
   const [expressNo, setExpressNo] = useState('');
+  const [expressCompany, setExpressCompany] = useState('');
   const [cancelTarget, setCancelTarget] = useState<HrMallOrder | null>(null);
   const [cancelReason, setCancelReason] = useState('不需要了');
 
@@ -76,15 +77,16 @@ export const HrMallOrderPage: React.FC = () => {
 
   const handleShip = async () => {
     if (!shipOpen) return;
-    if (!expressNo.trim()) {
-      toast.error('请填写物流单号');
+    if (!expressCompany.trim() || !expressNo.trim()) {
+      toast.error('请填写快递公司和物流单号');
       return;
     }
     try {
-      await shipOrder(shipOpen.id, expressNo.trim());
+      await shipOrder(shipOpen.id, expressCompany.trim(), expressNo.trim());
       toast.success('已发货');
       setShipOpen(null);
       setExpressNo('');
+      setExpressCompany('');
       void load();
     } catch (error) {
       toast.error(getErrorMessage(error, '发货失败'));
@@ -242,7 +244,7 @@ export const HrMallOrderPage: React.FC = () => {
                 <td className="text-sm">{Number(row.totalPoints ?? 0).toLocaleString()}</td>
                 <td className="text-sm"><DictLabel dictType="hr_mall_order_status" value={row.status} fallback="-" /></td>
                 <td className="text-xs">{row.receiverName ?? '-'}</td>
-                <td className="font-mono text-xs">{row.expressNo ?? '-'}</td>
+                <td className="text-xs"><div>{row.expressCompany}</div><span className="font-mono">{row.expressNo ?? '-'}</span></td>
                 <td className="text-xs">{formatDateTimeValue(row.createTime)}</td>
                 <td>
                   <div className="admin-users-row-actions">
@@ -309,9 +311,11 @@ export const HrMallOrderPage: React.FC = () => {
               <div className="col-span-2"><span className="text-cf-subtle">收货地址:</span> {detail.receiverAddress ?? '-'}</div>
               <div><span className="text-cf-subtle">下单时间:</span> {formatDateTimeValue(detail.createTime)}</div>
               <div><span className="text-cf-subtle">物流单号:</span> {detail.expressNo ?? '-'}</div>
+              <div><span className="text-cf-subtle">快递公司:</span> {detail.expressCompany ?? '-'}</div>
               <div><span className="text-cf-subtle">发货时间:</span> {formatDateTimeValue(detail.shippedAt)}</div>
               <div><span className="text-cf-subtle">完成时间:</span> {formatDateTimeValue(detail.completedAt)}</div>
               {detail.remark && <div className="col-span-2"><span className="text-cf-subtle">备注:</span> {detail.remark}</div>}
+              {detail.cancelReason && <div className="col-span-2"><span className="text-cf-subtle">取消原因:</span> {detail.cancelReason}</div>}
             </div>
             <div>
               <div className="mb-2 font-semibold">商品明细</div>
@@ -328,10 +332,13 @@ export const HrMallOrderPage: React.FC = () => {
                   <tbody>
                     {(detail.items ?? []).map((it, idx) => (
                       <tr key={String(it.id ?? idx)}>
-                        <td className="text-sm">{it.itemName}</td>
+                        <td className="text-sm"><div className="flex items-center gap-2">
+                          {it.coverImage && <img src={it.coverImage} alt={it.itemName ?? ''} className="h-10 w-10 rounded object-cover" />}
+                          <div><div>{it.itemName}</div><div className="font-mono text-xs text-cf-subtle">{it.itemNo}</div></div>
+                        </div></td>
                         <td className="text-sm">{it.pointPrice}</td>
                         <td className="text-sm">{it.quantity}</td>
-                        <td className="text-sm">{it.subtotal ?? (Number(it.pointPrice ?? 0) * Number(it.quantity ?? 0))}</td>
+                        <td className="text-sm">{it.subtotal}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -346,18 +353,22 @@ export const HrMallOrderPage: React.FC = () => {
         <BaseDialog
           open={Boolean(shipOpen)}
           title={`录入物流 · ${shipOpen.orderNo}`}
-          onClose={() => { setShipOpen(null); setExpressNo(''); }}
+          onClose={() => { setShipOpen(null); setExpressNo(''); setExpressCompany(''); }}
           bodyClassName="admin-dialog-stack"
           footer={
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => { setShipOpen(null); setExpressNo(''); }}>取消</Button>
+              <Button variant="outline" onClick={() => { setShipOpen(null); setExpressNo(''); setExpressCompany(''); }}>取消</Button>
               <Button onClick={() => void handleShip()}>确认发货</Button>
             </div>
           }
         >
           <div className="admin-dialog-field">
+            <Label htmlFor="mall-express-company">快递公司</Label>
+            <Input id="mall-express-company" value={expressCompany} maxLength={80} onChange={(e) => setExpressCompany(e.target.value)} placeholder="填写快递公司" />
+          </div>
+          <div className="admin-dialog-field">
             <Label>物流单号</Label>
-            <Input value={expressNo} onChange={(e) => setExpressNo(e.target.value)} placeholder="例如 SF1234567890" />
+            <Input value={expressNo} maxLength={120} onChange={(e) => setExpressNo(e.target.value)} placeholder="例如 SF1234567890" />
           </div>
           <div className="text-xs text-cf-subtle">
             收件人:{shipOpen.receiverName ?? '-'} {shipOpen.receiverPhone ?? ''}<br />
@@ -381,7 +392,7 @@ export const HrMallOrderPage: React.FC = () => {
         <div className="admin-dialog-field">
           <div className="text-xs text-cf-subtle">取消后积分与库存将自动退回。</div>
           <Label>取消理由</Label>
-          <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="请输入取消理由" />
+          <Input value={cancelReason} maxLength={500} onChange={(e) => setCancelReason(e.target.value)} placeholder="请输入取消理由" />
         </div>
       </BaseDialog>
     </>

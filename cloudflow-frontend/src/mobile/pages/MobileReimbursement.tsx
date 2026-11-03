@@ -4,20 +4,23 @@ import { ChevronLeft, DollarSign, FileText, Upload, Loader2, X } from 'lucide-re
 import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { expenseClaimApi } from '@/services/api/expense';
+import { expenseClaimApi, type ExpenseClaim } from '@/services/api/expense';
 import { DatePicker } from '@/components/common';
+import { useDict } from '@/hooks/useDict';
 
-type ExpenseType = 'travel' | 'meal' | 'accommodation' | 'transportation' | 'office' | 'other';
+type ExpenseType = string;
 
 interface ExpenseItem {
   id: string;
   type: ExpenseType;
   amount: number;
   date: string;
+  city: string;
   description: string;
 }
 
 interface ReimbursementForm {
+  category: string;
   items: ExpenseItem[];
   totalAmount: number;
   bankAccount: string;
@@ -25,20 +28,15 @@ interface ReimbursementForm {
   attachments: File[];
 }
 
-const expenseTypes: { value: ExpenseType; label: string; color: string }[] = [
-  { value: 'travel', label: '差旅费', color: 'bg-[#effbfe] text-[#0d95b5]' },
-  { value: 'meal', label: '餐饮费', color: 'bg-[#effbfe] text-[#0d95b5]' },
-  { value: 'accommodation', label: '住宿费', color: 'bg-[#effbfe] text-[#0d95b5]' },
-  { value: 'transportation', label: '交通费', color: 'bg-[#effbfe] text-[#0d95b5]' },
-  { value: 'office', label: '办公费', color: 'bg-[#effbfe] text-[#0d95b5]' },
-  { value: 'other', label: '其他', color: 'bg-cf-surface-3 text-cf-muted' },
-];
-
 export const MobileReimbursement: React.FC = () => {
   const navigate = useNavigate();
+  const itemTypes = useDict('oa_expense_item_type');
+  const categories = useDict('oa_expense_category');
+  const expenseTypes = itemTypes.getOptions().map(option => ({ ...option, color: 'bg-[#effbfe] text-[#0d95b5]' }));
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<ReimbursementForm>({
+    category: 'TRAVEL',
     items: [],
     totalAmount: 0,
     bankAccount: '',
@@ -46,10 +44,11 @@ export const MobileReimbursement: React.FC = () => {
     attachments: [],
   });
   const [currentItem, setCurrentItem] = useState<Partial<ExpenseItem>>({
-    type: 'travel',
+    type: 'TRANSPORT',
     amount: 0,
     date: format(new Date(), 'yyyy-MM-dd'),
     description: '',
+    city: '',
   });
 
   useKeyboardAwareScroll();
@@ -64,6 +63,10 @@ export const MobileReimbursement: React.FC = () => {
       toast.error('请输入有效的金额');
       return;
     }
+    if (!currentItem.city?.trim()) {
+      toast.error('请输入费用发生城市');
+      return;
+    }
     if (!currentItem.description?.trim()) {
       toast.error('请输入费用说明');
       return;
@@ -75,6 +78,7 @@ export const MobileReimbursement: React.FC = () => {
       amount: currentItem.amount,
       date: currentItem.date || format(new Date(), 'yyyy-MM-dd'),
       description: currentItem.description,
+      city: currentItem.city.trim(),
     };
 
     const newItems = [...form.items, newItem];
@@ -88,10 +92,11 @@ export const MobileReimbursement: React.FC = () => {
 
     // 重置当前项
     setCurrentItem({
-      type: 'travel',
+      type: 'TRANSPORT',
       amount: 0,
       date: format(new Date(), 'yyyy-MM-dd'),
       description: '',
+    city: '',
     });
 
     toast.success('费用项已添加');
@@ -151,25 +156,24 @@ export const MobileReimbursement: React.FC = () => {
     setSubmitting(true);
     try {
       // 构建报销申请数据，调用真实API
-      const claimData = {
-        category: form.items[0]?.type || 'other',
+      const claimData: ExpenseClaim = {
+        category: form.category,
         totalAmount: form.totalAmount,
         description: form.remarks || form.items.map(i => i.description).join('；'),
         items: form.items.map(item => ({
           expenseType: item.type,
           amount: item.amount,
           expenseDate: item.date,
+          city: item.city,
           description: item.description,
         })),
       };
       // 1. 先创建报销单（草稿）
-      const createRes = await expenseClaimApi.add(claimData as any);
+      const claimId = await expenseClaimApi.add(claimData);
 
       // 2. 提交审批（启动工作流）
-      const claimId = createRes?.id;
-      if (claimId) {
-        await expenseClaimApi.submit(claimId);
-      }
+      if (!claimId) throw new Error('创建报销单未返回编号');
+      await expenseClaimApi.submit(claimId);
 
       toast.success('报销申请已提交，等待审批');
       navigate('/');
@@ -225,6 +229,13 @@ export const MobileReimbursement: React.FC = () => {
       {/* Step 1: 添加费用项 */}
       {step === 1 && (
         <div className="p-4 space-y-4">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 border border-slate-100">
+            <label className="block text-sm font-medium text-cf-body mb-2" htmlFor="claim-category">报销类别</label>
+            <select id="claim-category" value={form.category} onChange={event => setForm({ ...form, category: event.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+              {categories.getOptions().map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </div>
           {/* 费用类型 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <label className="block text-sm font-medium text-cf-body mb-3">费用类型</label>
@@ -276,6 +287,12 @@ export const MobileReimbursement: React.FC = () => {
             </div>
           </div>
 
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 border border-slate-100">
+            <label className="block text-sm font-medium text-cf-body mb-2" htmlFor="expense-city">发生城市</label>
+            <input id="expense-city" value={currentItem.city || ''} maxLength={60}
+              onChange={event => setCurrentItem({ ...currentItem, city: event.target.value })}
+              placeholder="如杭州市" className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
           {/* 费用说明 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <label className="block text-sm font-medium text-cf-body mb-2">
@@ -323,7 +340,7 @@ export const MobileReimbursement: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-xs text-cf-muted">{item.description}</p>
-                      <p className="text-xs text-cf-faint mt-1">{item.date}</p>
+                      <p className="text-xs text-cf-faint mt-1">{item.date} · {item.city}</p>
                     </div>
                     <button
                       onClick={() => handleRemoveItem(item.id)}
@@ -403,6 +420,7 @@ export const MobileReimbursement: React.FC = () => {
                         {getTypeLabel(item.type)}
                       </span>
                       <p className="text-xs text-cf-muted mt-1">{item.description}</p>
+                      <p className="text-xs text-cf-faint">{item.date} · {item.city}</p>
                     </div>
                     <span className="text-sm font-semibold text-cf-title">
                       ¥{item.amount.toFixed(2)}

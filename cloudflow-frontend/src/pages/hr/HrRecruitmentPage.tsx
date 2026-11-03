@@ -123,14 +123,14 @@ const requestFormDefault: RecruitmentRequestPayload = {
   deptId: 103,
   positionId: 0,
   headcount: 1,
-  jobRequirements: '',
+  requirements: '',
   salaryMin: 15000,
   salaryMax: 25000,
-  expectedDate: '',
+  expectedArrivalDate: '',
 };
 
 const candidateFormDefault: CandidatePayload = {
-  requestId: 0,
+  requisitionId: 0,
   name: '',
   gender: 'MALE',
   phone: '',
@@ -320,7 +320,7 @@ export const HrRecruitmentPage: React.FC = () => {
   const filteredRequests = useMemo(
     () =>
       requests.filter((item) =>
-        [item.requestNo, item.positionName, item.deptName, item.jobRequirements]
+        [item.requisitionNo, item.positionName, item.deptName, item.requirements]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(keyword.toLowerCase())),
       ),
@@ -361,7 +361,7 @@ export const HrRecruitmentPage: React.FC = () => {
     () =>
       candidates.filter(
         (item) =>
-          interviewableRequestIds.has(item.requestId)
+          interviewableRequestIds.has(item.requisitionId)
           && ['NEW', 'SCREENING', 'INTERVIEW'].includes(item.status),
       ),
     [candidates, interviewableRequestIds],
@@ -393,18 +393,18 @@ export const HrRecruitmentPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (recruitingRequests.length && !candidateForm.requestId) {
-      setCandidateForm((prev) => ({ ...prev, requestId: recruitingRequests[0].id }));
+    if (recruitingRequests.length && !candidateForm.requisitionId) {
+      setCandidateForm((prev) => ({ ...prev, requisitionId: recruitingRequests[0].id }));
       return;
     }
 
     if (
-      candidateForm.requestId
-      && !recruitingRequests.some((item) => item.id === candidateForm.requestId)
+      candidateForm.requisitionId
+      && !recruitingRequests.some((item) => item.id === candidateForm.requisitionId)
     ) {
-      setCandidateForm((prev) => ({ ...prev, requestId: recruitingRequests[0]?.id || 0 }));
+      setCandidateForm((prev) => ({ ...prev, requisitionId: recruitingRequests[0]?.id || 0 }));
     }
-  }, [candidateForm.requestId, recruitingRequests]);
+  }, [candidateForm.requisitionId, recruitingRequests]);
 
   useEffect(() => {
     if (interviewableCandidates.length && !interviewForm.candidateId) {
@@ -581,11 +581,7 @@ export const HrRecruitmentPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      await createOffer({
-        ...offerForm,
-        expectedDate: offerForm.expectedArrivalDate,
-        expiryDate: offerForm.expireDate,
-      });
+      await createOffer(offerForm);
       toast.success('Offer已创建');
       closeOfferDialog();
       await loadData();
@@ -784,7 +780,7 @@ export const HrRecruitmentPage: React.FC = () => {
                     ) : (
                       filteredRequests.map((item) => (
                         <tr key={item.id}>
-                          <td><strong>{item.requestNo}</strong></td>
+                          <td><strong>{item.requisitionNo}</strong></td>
                           <td>{item.deptName || '-'}</td>
                           <td>{item.positionName || '-'}</td>
                           <td>{item.headcount}</td>
@@ -1026,7 +1022,7 @@ export const HrRecruitmentPage: React.FC = () => {
                             <td>{item.candidateName || optionOrIdLabel('候选人', candidateSelectOptions, item.candidateId)}</td>
                             <td>{item.positionName || optionOrIdLabel('职位', positionSelectOptions, item.positionId)}</td>
                             <td>{formatMoneyValue(item.salary)}</td>
-                            <td>{formatDateValue(item.expectedArrivalDate || item.expectedDate)}</td>
+                            <td>{formatDateValue(item.expectedArrivalDate)}</td>
                             <td>
                               <DictBadge dictType="hr_offer_status" value={String(item.status ?? '')} />
                             </td>
@@ -1128,9 +1124,9 @@ export const HrRecruitmentPage: React.FC = () => {
                 <Label className="text-sm font-semibold text-cf-body">期望到岗日期</Label>
                 <DatePicker
                   type="date"
-                  value={requestForm.expectedDate || ''}
+                  value={requestForm.expectedArrivalDate || ''}
                   onChange={(event) =>
-                    setRequestForm((prev) => ({ ...prev, expectedDate: event.target.value }))
+                    setRequestForm((prev) => ({ ...prev, expectedArrivalDate: event.target.value }))
                   }
                   className="h-11"
                 />
@@ -1167,9 +1163,9 @@ export const HrRecruitmentPage: React.FC = () => {
                 <Label className="text-sm font-semibold text-cf-body">任职要求</Label>
                 <Textarea
                   rows={4}
-                  value={requestForm.jobRequirements || ''}
+                  value={requestForm.requirements || ''}
                   onChange={(event) =>
-                    setRequestForm((prev) => ({ ...prev, jobRequirements: event.target.value }))
+                    setRequestForm((prev) => ({ ...prev, requirements: event.target.value }))
                   }
                 />
               </div>
@@ -1189,7 +1185,7 @@ export const HrRecruitmentPage: React.FC = () => {
               取消
             </Button>
             <Button
-              disabled={submitting || !recruitingRequests.length || !candidateForm.requestId}
+              disabled={submitting || !recruitingRequests.length || !candidateForm.requisitionId}
               onClick={() => void handleCreateCandidate()}
             >
               {submitting ? '录入中...' : '录入候选人'}
@@ -1207,9 +1203,9 @@ export const HrRecruitmentPage: React.FC = () => {
               <div className="admin-dialog-field xl:col-span-3">
                 <Label className="text-sm font-semibold text-cf-body">关联招聘需求</Label>
                 <Select
-                  value={candidateForm.requestId ? String(candidateForm.requestId) : undefined}
+                  value={candidateForm.requisitionId ? String(candidateForm.requisitionId) : undefined}
                   onValueChange={(value) =>
-                    setCandidateForm((prev) => ({ ...prev, requestId: Number(value) }))
+                    setCandidateForm((prev) => ({ ...prev, requisitionId: Number(value) }))
                   }
                 >
                   <SelectTrigger className="h-11">
@@ -1218,7 +1214,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   <SelectContent>
                     {recruitingRequests.map((item) => (
                       <SelectItem key={item.id} value={String(item.id)}>
-                        {item.requestNo} / {item.positionName || item.positionId}
+                        {item.requisitionNo} / {item.positionName || item.positionId}
                       </SelectItem>
                     ))}
                   </SelectContent>

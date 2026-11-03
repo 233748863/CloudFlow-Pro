@@ -18,7 +18,6 @@ export interface OaMeetingMinutes {
   id?: number;
   version?: number;
   tenantId?: number;
-  meetingId?: number;
   meetingTitle: string;
   meetingTime?: string;
   roomId?: string;
@@ -41,7 +40,6 @@ export interface OaMeetingAttendance {
   id?: number;
   tenantId?: number;
   minutesId?: number;
-  meetingId?: number;
   scheduleEventId?: number;
   acceptanceStatus?: 'NONE' | 'ACCEPTED' | 'DECLINED' | 'TENTATIVE';
   invitationVersion?: number;
@@ -58,7 +56,7 @@ export const meetingMinutesApi = {
     pageSize?: number;
     keyword?: string;
     status?: string;
-    meetingId?: number;
+    scheduleEventId?: number;
   }) => request.get('/oa/meeting/minutes/page', { params }) as Promise<PageResult<OaMeetingMinutes>>,
   detail: (id: number) =>
     request.get(`/oa/meeting/minutes/${id}`) as Promise<OaMeetingMinutes>,
