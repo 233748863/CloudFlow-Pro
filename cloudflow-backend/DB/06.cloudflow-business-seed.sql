@@ -403,10 +403,12 @@ DELETE FROM cloud_flow_db.wf_transaction_message
 WHERE message_id LIKE 'demo_msg_%'
    OR message_id LIKE 'seed_msg_%';
 
-DELETE FROM cloud_flow_db.wf_urge_effect
-WHERE task_id LIKE 'demo_task_%'
-   OR task_id LIKE 'hotdemo_task_%'
-   OR task_id LIKE 'seed_task_%';
+DELETE effect FROM cloud_flow_db.wf_urge_effect effect
+JOIN cloud_flow_db.wf_task_urge urge ON urge.id=effect.urge_id AND urge.tenant_id=effect.tenant_id
+WHERE urge.task_id LIKE 'demo_task_%'
+   OR urge.task_id LIKE 'hotdemo_task_%'
+   OR urge.task_id LIKE 'seed_task_%';
+
 
 DELETE FROM cloud_flow_db.wf_hot_update_record
 WHERE executed_by = 'seed.hotupdate';
@@ -633,40 +635,60 @@ INSERT IGNORE INTO cloud_flow_db.sys_tenant (tenant_id, tenant_code, tenant_name
 VALUES (100000, 'xinyuan', '默认租户', '0', 100, 10240, 0, '0', DATE_ADD(NOW(), INTERVAL 1 YEAR), NOW());
 
 -- 2. 初始化部门数据
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(100,  100000, 0,   '0',          'CloudFlow 科技',   0, 'admin', '15888888888', 'admin@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(100, 100000, 0, '0', 'CloudFlow 科技', 0, 1, '15888888888', 'admin@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
 
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(101,  100000, 100, '0,100',      '研发部',           1, 'zhang_san', '15888888888', 'zhang_san@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(101, 100000, 100, '0,100', '研发部', 1, 2, '15888888888', 'zhang_san@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
 
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(102,  100000, 100, '0,100',      '财务部',           2, 'li_si',     '15888888888', 'li_si@cloudflow.com',     '0', '0', 'admin', NOW(), '', null);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(102, 100000, 100, '0,100', '财务部', 2, 3, '15888888888', 'li_si@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
 
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(103,  100000, 100, '0,100',      '人力资源部',       3, 'wang_wu',   '15888888888', 'wang_wu@cloudflow.com',   '0', '0', 'admin', NOW(), '', null);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(103, 100000, 100, '0,100', '人力资源部', 3, 4, '15888888888', 'wang_wu@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
 
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(104,  100000, 100, '0,100',      '法务部',           4, 'liu_fa',    '15888888888', 'liu_fa@cloudflow.com',    '0', '0', 'admin', NOW(), '', null);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(104, 100000, 100, '0,100', '法务部', 4, 6, '15888888888', 'liu_fa@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
 
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(105,  100000, 100, '0,100',      'IT部',             5, 'chen_it',   '15888888888', 'chen_it@cloudflow.com',   '0', '0', 'admin', NOW(), '', null);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(105, 100000, 100, '0,100', 'IT部', 5, 7, '15888888888', 'chen_it@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
 
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(106,  100000, 101, '0,100,101',  '前端组',           1, 'qian_duan', '15888888888', 'qian_duan@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(106, 100000, 101, '0,100,101', '前端组', 1, NULL, '15888888888', 'qian_duan@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
 
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(107,  100000, 101, '0,100,101',  '后端组',           2, 'hou_duan',  '15888888888', 'hou_duan@cloudflow.com',  '0', '0', 'admin', NOW(), '', null);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(107, 100000, 101, '0,100,101', '后端组', 2, NULL, '15888888888', 'hou_duan@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
 
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(108,  100000, 102, '0,100,102',  '会计组',           1, 'kuai_ji',   '15888888888', 'kuai_ji@cloudflow.com',   '0', '0', 'admin', NOW(), '', null);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(108, 100000, 102, '0,100,102', '会计组', 1, NULL, '15888888888', 'kuai_ji@cloudflow.com', '0', '0', 'admin', NOW(), '', null);
 
 -- 3. 初始化角色数据（包含数据权限配置）
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(1, 100000, 'ADMIN',   'admin',    1, '1', 0, NULL, '0', '0', 'admin', NOW(), '', null, '系统管理员，拥有最高权限');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(1, 100000, 'ADMIN', 'admin', 1, 0, NULL, '0', '0', 'admin', NOW(), '', null, '系统管理员，拥有最高权限');
 
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(2, 100000, 'MANAGER', 'manager',  2, '3', 2, NULL, '0', '0', 'admin', NOW(), '', null, '部门经理，负责业务审批');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(2, 100000, 'MANAGER', 'manager', 2, 2, NULL, '0', '0', 'admin', NOW(), '', null, '部门经理，负责业务审批');
 
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(3, 100000, 'FINANCE', 'finance',  3, '3', 3, NULL, '0', '0', 'admin', NOW(), '', null, '财务专员，负责资金相关审批');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(3, 100000, 'FINANCE', 'finance', 3, 3, NULL, '0', '0', 'admin', NOW(), '', null, '财务专员，负责资金相关审批');
 
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(4, 100000, 'HR',      'hr',       4, '3', 2, NULL, '0', '0', 'admin', NOW(), '', null, '人事专员，负责人员相关审批');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(4, 100000, 'HR', 'hr', 4, 2, NULL, '0', '0', 'admin', NOW(), '', null, '人事专员，负责人员相关审批');
 
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(5, 100000, 'EMPLOYEE','employee', 5, '2', 4, NULL, '0', '0', 'admin', NOW(), '', null, '普通员工，仅能发起申请');
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(6, 100000, 'LEGAL',   'legal',    6, '3', 4, NULL, '0', '0', 'admin', NOW(), '', null, '法务角色，负责合同与合规相关审批');
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(7, 100000, 'OA_CLERK','oa_clerk', 7, '3', 4, NULL, '0', '0', 'admin', NOW(), '', null, 'OA专员，负责公告、用印、证照与知识库运营');
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(8, 100000, 'SALES_MANAGER', 'sales_manager', 8, '3', 2, NULL, '0', '0', 'admin', NOW(), '', null, '销售经理，负责部门客户经营与审批发起');
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(9, 100000, 'SALES_REP', 'sales_rep', 9, '3', 4, NULL, '0', '0', 'admin', NOW(), '', null, '销售代表，负责本人客户、线索、商机与报价推进');
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(10, 100000, 'CRM_OPS', 'crm_ops', 10, '3', 4, NULL, '0', '0', 'admin', NOW(), '', null, 'CRM运营，负责产品、价目表、分配规则与通知配置');
-INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(11, 100000, 'CUSTOMER_SUCCESS', 'customer_success', 11, '3', 4, NULL, '0', '0', 'admin', NOW(), '', null, '客户成功，负责续约、回款跟进与服务工单协调');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(5, 100000, 'EMPLOYEE', 'employee', 5, 4, NULL, '0', '0', 'admin', NOW(), '', null, '普通员工，仅能发起申请');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(6, 100000, 'LEGAL', 'legal', 6, 4, NULL, '0', '0', 'admin', NOW(), '', null, '法务角色，负责合同与合规相关审批');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(7, 100000, 'OA_CLERK', 'oa_clerk', 7, 4, NULL, '0', '0', 'admin', NOW(), '', null, 'OA专员，负责公告、用印、证照与知识库运营');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(8, 100000, 'SALES_MANAGER', 'sales_manager', 8, 2, NULL, '0', '0', 'admin', NOW(), '', null, '销售经理，负责部门客户经营与审批发起');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(9, 100000, 'SALES_REP', 'sales_rep', 9, 4, NULL, '0', '0', 'admin', NOW(), '', null, '销售代表，负责本人客户、线索、商机与报价推进');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(10, 100000, 'CRM_OPS', 'crm_ops', 10, 4, NULL, '0', '0', 'admin', NOW(), '', null, 'CRM运营，负责产品、价目表、分配规则与通知配置');
+INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES
+(11, 100000, 'CUSTOMER_SUCCESS', 'customer_success', 11, 4, NULL, '0', '0', 'admin', NOW(), '', null, '客户成功，负责续约、回款跟进与服务工单协调');
 
 INSERT IGNORE INTO cloud_flow_db.sys_role_mutex (id, tenant_id, role_id_1, role_id_2, create_by, create_time)
 VALUES (1, 100000, 1, 5, 'admin', NOW());
@@ -4308,11 +4330,10 @@ VALUES
 -- 一-C. 硬编码收口新增字典（档位映射,sys_dict_type + sys_dict_data）
 -- =========================================================
 
-INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
-('CRM应收逾期档位',     'crm_receivable_overdue_tier', '应收账款逾期分档；dict_value=本档天数上限(含)，按升序匹配；末档建议设为 99999=不限'),
-('CRM合同到期档位',     'crm_contract_expire_tier',    '合同距到期日分档；dict_value=本档天数上限(含)，按升序匹配；末档建议设为 99999=不限'),
-('HR月度个人所得税',    'hr_personal_income_tax',      '月度个税档位；dict_value=本档应税所得上限，list_class=税率(0~1)，css_class=速算扣除数；末档 dict_value>=99999999 视为不封顶'),
-('工作流效能改进档位',  'workflow_efficiency_tier',    '工作流效能改进档位；dict_value=本档百分比下限，按降序匹配（与上述档位语义相反）；最低档可设为 0');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_type (dict_name, dict_type, remark) VALUES
+('CRM应收逾期档位', 'crm_receivable_overdue_tier', '应收账款逾期分档；dict_value=本档天数上限(含)，按升序匹配；末档建议设为 99999=不限'),
+('CRM合同到期档位', 'crm_contract_expire_tier', '合同距到期日分档；dict_value=本档天数上限(含)，按升序匹配；末档建议设为 99999=不限'),
+('HR月度个人所得税', 'hr_personal_income_tax', '月度个税档位；dict_value=本档应税所得上限，list_class=税率(0~1)，css_class=速算扣除数；末档 dict_value>=99999999 视为不封顶');
 
 -- CRM 应收逾期 dict_label=展示文案 dict_value=本档天数上限(99999=不限)
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
@@ -4339,11 +4360,8 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (7, '80000元以上',        '99999999', 'hr_personal_income_tax', '0.45', '15160');
 
 -- 工作流效能改进 dict_value=本档改进百分比下限
-INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
-(1, '显著改善', '50', 'workflow_efficiency_tier', 'success'),
-(2, '明显改善', '30', 'workflow_efficiency_tier', 'warning'),
-(3, '轻微改善', '10', 'workflow_efficiency_tier', 'info'),
-(4, '无明显变化', '0', 'workflow_efficiency_tier', 'default');
+-- 已移除无实际评分用途的催办效果字典。
+
 
 -- =========================================================
 -- 二、工作流与模板种子数据（迁移自 02.cloudflow-workflow.sql）
@@ -8024,9 +8042,12 @@ DELETE FROM cloud_flow_db.wf_node_record WHERE instance_id IN (
   'demo_inst_003','demo_inst_005','demo_inst_011','demo_inst_012'
 );
 
-DELETE FROM cloud_flow_db.wf_urge_effect WHERE task_id IN (
+DELETE effect FROM cloud_flow_db.wf_urge_effect effect
+JOIN cloud_flow_db.wf_task_urge urge ON urge.id=effect.urge_id AND urge.tenant_id=effect.tenant_id
+WHERE urge.task_id IN (
   'demo_task_002','demo_task_004','demo_task_007','demo_task_011','demo_task_014'
 );
+
 
 DELETE FROM cloud_flow_db.wf_process_copy WHERE instance_id IN (
   'demo_inst_003','demo_inst_005','demo_inst_011','demo_inst_012'
@@ -8577,11 +8598,11 @@ INSERT IGNORE INTO cloud_flow_db.outbox_event (
   retry_count, next_retry_at, created_at, published_at, last_error, tenant_id, locked_by, locked_until
 ) VALUES
 (91001, 'BizExpenseClaim', 9001, 'seed_evt_expense_9001', 'ExpenseClaimSubmittedEvent',
- '{"eventId":"seed_evt_expense_9001","aggregateType":"BizExpenseClaim","aggregateId":9001,"eventType":"ExpenseClaimSubmittedEvent","tenantId":100000,"payload":{"claimNo":"BX202603110001","status":"PENDING"}}',
+ JSON_OBJECT('eventId','seed_evt_expense_9001','eventType','ExpenseClaimSubmittedEvent','sourceModule','cloudflow-oa','sourceId',9001,'tenantId',100000,'payload',CAST(JSON_OBJECT('claimNo','BX202603110001','status','PENDING') AS CHAR),'payloadDigest',SHA2(CAST(JSON_OBJECT('claimNo','BX202603110001','status','PENDING') AS CHAR),256),'occurredAt',CONCAT(DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 6 DAY),'%Y-%m-%dT%H:%i:%s'),'.000000000')),
  'PUBLISHED', 0, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), NULL, 100000, NULL, NULL),
 (91002, 'OaAnnouncement', 9601, 'seed_evt_announcement_9601', 'AnnouncementPublishedEvent',
- '{"eventId":"seed_evt_announcement_9601","aggregateType":"OaAnnouncement","aggregateId":9601,"eventType":"AnnouncementPublishedEvent","tenantId":100000,"payload":{"announcementId":9601,"scopeType":"ALL"}}',
- 'PENDING', 1, DATE_ADD(NOW(), INTERVAL 15 MINUTE), DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL, 'Redis publish timeout on stream cloudflow:events', 100000, 'outbox-scheduler-01', DATE_ADD(NOW(), INTERVAL 2 MINUTE));
+ JSON_OBJECT('eventId','seed_evt_announcement_9601','eventType','AnnouncementPublishedEvent','sourceModule','cloudflow-oa','sourceId',9601,'tenantId',100000,'payload',CAST(JSON_OBJECT('announcementId',9601,'scopeType','ALL') AS CHAR),'payloadDigest',SHA2(CAST(JSON_OBJECT('announcementId',9601,'scopeType','ALL') AS CHAR),256),'occurredAt',CONCAT(DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 2 HOUR),'%Y-%m-%dT%H:%i:%s'),'.000000000')),
+ 'DLQ', 1, DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL, '演示已终止的投递失败，不参与自动调度', 100000, NULL, NULL);
 
 -- =========================================================
 -- 三、业务申请表 + 工作流实例联动数据
@@ -8604,15 +8625,13 @@ INSERT IGNORE INTO cloud_flow_db.biz_expense_claim (
  'PAID', 102, '财务部', NULL, NULL, NULL, NULL, 'SUB-OFFICE', '办公费用', 'WRITEOFF_FULL',
  '0', 'wang', DATE_SUB(NOW(), INTERVAL 8 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 3 DAY));
 
-INSERT IGNORE INTO cloud_flow_db.biz_expense_item (
-  id, tenant_id, claim_id, expense_type, amount, expense_date, description, budget_subject_code, budget_subject_name, receipt_url, vehicle_expense_id
-) VALUES
-(90011, 100000, 9001, 'TRANSPORT', 560.00, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '上海虹桥往返杭州东高铁票', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-train.jpg', NULL),
-(90012, 100000, 9001, 'HOTEL', 980.50, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '杭州客户附近酒店住宿一晚', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-hotel.jpg', NULL),
-(90013, 100000, 9001, 'MEAL', 260.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '出差期间餐补', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-meal.jpg', NULL),
-(90014, 100000, 9001, 'TRANSPORT', 880.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '杭州当地网约车与机场巴士', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-taxi.jpg', NULL),
-(90021, 100000, 9002, 'OFFICE', 320.00, DATE_SUB(CURDATE(), INTERVAL 9 DAY), '票据档案盒采购', 'SUB-OFFICE', '办公费用', 'https://demo.cloudflow.local/files/expense/bx9002-box.jpg', NULL),
-(90022, 100000, 9002, 'OFFICE', 540.00, DATE_SUB(CURDATE(), INTERVAL 9 DAY), '打印耗材与财务标签纸', 'SUB-OFFICE', '办公费用', 'https://demo.cloudflow.local/files/expense/bx9002-print.jpg', NULL);
+INSERT IGNORE INTO cloud_flow_db.biz_expense_item (id, tenant_id, claim_id, expense_type, amount, expense_date, description, budget_subject_code, budget_subject_name, receipt_url, vehicle_expense_id, city) VALUES
+(90011, 100000, 9001, 'TRANSPORT', 560.00, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '上海虹桥往返杭州东高铁票', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-train.jpg', NULL, '杭州'),
+(90012, 100000, 9001, 'ACCOMMODATION', 980.50, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '杭州客户附近酒店住宿一晚', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-hotel.jpg', NULL, '杭州'),
+(90013, 100000, 9001, 'MEAL', 260.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '出差期间餐补', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-meal.jpg', NULL, '杭州'),
+(90014, 100000, 9001, 'TRANSPORT', 880.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '杭州当地网约车与机场巴士', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-taxi.jpg', NULL, '杭州'),
+(90021, 100000, 9002, 'OFFICE_SUPPLIES', 320.00, DATE_SUB(CURDATE(), INTERVAL 9 DAY), '票据档案盒采购', 'SUB-OFFICE', '办公费用', 'https://demo.cloudflow.local/files/expense/bx9002-box.jpg', NULL, '上海'),
+(90022, 100000, 9002, 'OFFICE_SUPPLIES', 540.00, DATE_SUB(CURDATE(), INTERVAL 9 DAY), '打印耗材与财务标签纸', 'SUB-OFFICE', '办公费用', 'https://demo.cloudflow.local/files/expense/bx9002-print.jpg', NULL, '上海');
 
 -- -----------------------------
 -- 3.2 付款申请
@@ -8728,8 +8747,10 @@ WHERE instance_id LIKE 'demo_inst_%';
 DELETE FROM cloud_flow_db.wf_transaction_message
 WHERE message_id LIKE 'demo_msg_%';
 
-DELETE FROM cloud_flow_db.wf_urge_effect
-WHERE task_id LIKE 'demo_task_%';
+DELETE effect FROM cloud_flow_db.wf_urge_effect effect
+JOIN cloud_flow_db.wf_task_urge urge ON urge.id=effect.urge_id AND urge.tenant_id=effect.tenant_id
+WHERE urge.task_id LIKE 'demo_task_%';
+
 
 DELETE FROM cloud_flow_db.wf_process_copy
 WHERE instance_id LIKE 'demo_inst_%';
@@ -8950,14 +8971,8 @@ INSERT IGNORE INTO cloud_flow_db.wf_transaction_message (
 ('demo_msg_004', 100000, 'WORKFLOW_NOTIFY', 'demo_inst_011', '出差申请等待部门经理审批。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 11 HOUR), DATE_SUB(NOW(), INTERVAL 11 HOUR), NULL),
 ('demo_msg_005', 100000, 'WORKFLOW_NOTIFY', 'demo_inst_012', '用车申请已提交，等待直属上级审批。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 3 HOUR), DATE_SUB(NOW(), INTERVAL 3 HOUR), NULL);
 
-INSERT IGNORE INTO cloud_flow_db.wf_urge_effect (
-  effect_id, tenant_id, urge_id, task_id, before_duration, after_duration, effectiveness, urge_time, complete_time
-) VALUES
-('demo_effect_002', 100000, 'demo_urge_002', 'demo_task_002', 3300, NULL, NULL, DATE_SUB(NOW(), INTERVAL 55 MINUTE), NULL),
-('demo_effect_004', 100000, 'demo_urge_004', 'demo_task_004', 2100, NULL, NULL, DATE_SUB(NOW(), INTERVAL 35 MINUTE), NULL),
-('demo_effect_007', 100000, 'demo_urge_007', 'demo_task_007', 2400, NULL, NULL, DATE_SUB(NOW(), INTERVAL 40 MINUTE), NULL),
-('demo_effect_011', 100000, 'demo_urge_011', 'demo_task_011', 172800, 86400, 5, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY)),
-('demo_effect_014', 100000, 'demo_urge_014', 'demo_task_014', 7200, 3600, 5, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 6 DAY), INTERVAL 1 HOUR));
+-- 催办完成关联在本文件末尾按实际历史建立。
+
 
 INSERT IGNORE INTO cloud_flow_db.wf_process_copy (
   tenant_id, instance_id, process_def_key, title, node_id, node_name, start_user_id, start_user_name, user_id,
@@ -8984,12 +8999,8 @@ INSERT IGNORE INTO cloud_flow_db.wf_deploy_record (
  '回滚至V2', '回滚原因：条件分支误配置', 0, 3, 'V3条件判断错误', 1, DATE_SUB(NOW(), INTERVAL 15 DAY),
  NULL, NULL, '回滚影响待办2条', DATE_SUB(NOW(), INTERVAL 15 DAY), DATE_SUB(NOW(), INTERVAL 15 DAY));
 
-INSERT IGNORE INTO cloud_flow_db.wf_deploy_rollback_history (
-  id, tenant_id, original_deploy_id, rollback_deploy_id, process_def_id, from_version, to_version, rollback_type,
-  rollback_status, rollback_reason, rollback_by, rollback_by_name, rollback_time, success, error_message
-) VALUES
-(98001, 100000, 98001, 98002, 'wf_reimburse', 3, 2, 'MANUAL', 'SUCCESS',
- '条件分支判断误配，回滚修复', 1, 'Admin', DATE_SUB(NOW(), INTERVAL 15 DAY), 1, NULL);
+INSERT IGNORE INTO cloud_flow_db.wf_deploy_rollback_history (id, tenant_id, original_deploy_id, rollback_deploy_id, process_def_id, from_version, to_version, rollback_type, rollback_status, rollback_reason, rollback_by, rollback_by_name, rollback_time, error_message) VALUES
+(98001, 100000, 98001, 98002, 'wf_reimburse', 3, 2, 'MANUAL', 'SUCCESS', '条件分支判断误配，回滚修复', 1, 'Admin', DATE_SUB(NOW(), INTERVAL 15 DAY), NULL);
 
 INSERT IGNORE INTO cloud_flow_db.wf_deploy_impact (
   id, tenant_id, deploy_id, impact_type, impact_level, impact_count, impact_detail, mitigation_plan, create_time
@@ -9179,14 +9190,16 @@ WHERE task_id IN (
   'seed_task_hr_salary_001'
 );
 
-DELETE FROM cloud_flow_db.wf_urge_effect
-WHERE task_id IN (
+DELETE effect FROM cloud_flow_db.wf_urge_effect effect
+JOIN cloud_flow_db.wf_task_urge urge ON urge.id=effect.urge_id AND urge.tenant_id=effect.tenant_id
+WHERE urge.task_id IN (
   'seed_task_expense_ops_001',
   'seed_task_payment_ops_001',
   'seed_task_hr_leave_001',
   'seed_task_hr_prob_001',
   'seed_task_hr_salary_001'
 );
+
 
 DELETE FROM cloud_flow_db.wf_process_snapshot
 WHERE instance_id IN (
@@ -9443,13 +9456,11 @@ INSERT IGNORE INTO cloud_flow_db.biz_expense_claim (
  '苏州智造上线支持差旅报销，包含往返高铁、住宿、餐补与现场交通。',
  'PENDING', 106, '前端组', '0', 'test_fe', DATE_SUB(NOW(), INTERVAL 30 HOUR), 'test_fe', DATE_SUB(NOW(), INTERVAL 30 HOUR));
 
-INSERT IGNORE INTO cloud_flow_db.biz_expense_item (
-  id, tenant_id, claim_id, expense_type, amount, expense_date, description, receipt_url, vehicle_expense_id
-) VALUES
-(901111, 100000, 9011, 'TRANSPORT', 860.00, DATE_SUB(CURDATE(), INTERVAL 5 DAY), '上海虹桥往返苏州北高铁票', 'https://demo.cloudflow.local/files/expense/bx9011-train.jpg', NULL),
-(901112, 100000, 9011, 'HOTEL', 1880.00, DATE_SUB(CURDATE(), INTERVAL 4 DAY), '客户园区附近酒店两晚住宿', 'https://demo.cloudflow.local/files/expense/bx9011-hotel.jpg', NULL),
-(901113, 100000, 9011, 'MEAL', 620.00, DATE_SUB(CURDATE(), INTERVAL 4 DAY), '上线支持期间加班餐与客户培训简餐', 'https://demo.cloudflow.local/files/expense/bx9011-meal.jpg', NULL),
-(901114, 100000, 9011, 'TRANSPORT', 1500.00, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '苏州站点往返客户园区及临时打车费用', 'https://demo.cloudflow.local/files/expense/bx9011-local.jpg', NULL);
+INSERT IGNORE INTO cloud_flow_db.biz_expense_item (id, tenant_id, claim_id, expense_type, amount, expense_date, description, receipt_url, vehicle_expense_id, city) VALUES
+(901111, 100000, 9011, 'TRANSPORT', 860.00, DATE_SUB(CURDATE(), INTERVAL 5 DAY), '上海虹桥往返苏州北高铁票', 'https://demo.cloudflow.local/files/expense/bx9011-train.jpg', NULL, '苏州'),
+(901112, 100000, 9011, 'ACCOMMODATION', 1880.00, DATE_SUB(CURDATE(), INTERVAL 4 DAY), '客户园区附近酒店两晚住宿', 'https://demo.cloudflow.local/files/expense/bx9011-hotel.jpg', NULL, '苏州'),
+(901113, 100000, 9011, 'MEAL', 620.00, DATE_SUB(CURDATE(), INTERVAL 4 DAY), '上线支持期间加班餐与客户培训简餐', 'https://demo.cloudflow.local/files/expense/bx9011-meal.jpg', NULL, '苏州'),
+(901114, 100000, 9011, 'TRANSPORT', 1500.00, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '苏州站点往返客户园区及临时打车费用', 'https://demo.cloudflow.local/files/expense/bx9011-local.jpg', NULL, '苏州');
 
 INSERT IGNORE INTO cloud_flow_db.biz_payment_request (
   id, tenant_id, instance_id, user_id, user_name, payment_no, payee_name, payee_account, payee_bank, amount,
@@ -9485,8 +9496,10 @@ WHERE instance_id LIKE 'seed_inst_%'
 DELETE FROM cloud_flow_db.wf_transaction_message
 WHERE message_id LIKE 'seed_msg_%';
 
-DELETE FROM cloud_flow_db.wf_urge_effect
-WHERE task_id LIKE 'seed_task_%';
+DELETE effect FROM cloud_flow_db.wf_urge_effect effect
+JOIN cloud_flow_db.wf_task_urge urge ON urge.id=effect.urge_id AND urge.tenant_id=effect.tenant_id
+WHERE urge.task_id LIKE 'seed_task_%';
+
 
 DELETE FROM cloud_flow_db.wf_process_copy
 WHERE instance_id LIKE 'seed_inst_%'
@@ -9745,12 +9758,8 @@ INSERT IGNORE INTO cloud_flow_db.wf_transaction_message (
 
 -- 旧通知日志已统一迁移到 sys_message_record。
 
-INSERT IGNORE INTO cloud_flow_db.wf_urge_effect (
-  effect_id, tenant_id, urge_id, task_id, before_duration, after_duration, effectiveness, urge_time, complete_time
-) VALUES
-('seed_effect_expense_ops_001', 100000, 'seed_urge_expense_ops_001', 'seed_task_expense_ops_001', 7200, NULL, NULL, DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL),
-('seed_effect_payment_ops_001', 100000, 'seed_urge_payment_ops_001', 'seed_task_payment_ops_001', 5400, NULL, NULL, DATE_SUB(NOW(), INTERVAL 90 MINUTE), NULL),
-('seed_effect_hr_prob_001', 100000, 'seed_urge_hr_prob_001', 'seed_task_hr_prob_001', 18000, NULL, NULL, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL);
+-- 催办完成关联在本文件末尾按实际历史建立。
+
 
 INSERT IGNORE INTO cloud_flow_db.wf_process_copy (
   tenant_id, instance_id, process_def_key, title, node_id, node_name, start_user_id, start_user_name, user_id,
@@ -9796,17 +9805,28 @@ VALUES
 -- 六、组织基础数据扩充：部门、岗位、用户、员工
 -- =========================================================
 
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(109, 100000, 100, '0,100',      '产品部',       6, 'sun_pm',      '15888888910', 'sun.pm@cloudflow.com',      '0', '0', 'admin', NOW(), '', NULL);
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(110, 100000, 100, '0,100',      '实施交付部',   7, 'wu_delivery', '15888888911', 'wu.delivery@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(111, 100000, 100, '0,100',      '客户成功部',   8, 'zheng_cs',    '15888888912', 'zheng.cs@cloudflow.com',    '0', '0', 'admin', NOW(), '', NULL);
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(112, 100000, 100, '0,100',      '销售部',       9, 'he_sales',    '15888888913', 'he.sales@cloudflow.com',    '0', '0', 'admin', NOW(), '', NULL);
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(113, 100000, 100, '0,100',      '运维部',      10, 'tang_ops',    '15888888914', 'tang.ops@cloudflow.com',    '0', '0', 'admin', NOW(), '', NULL);
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(114, 100000, 109, '0,100,109',  '产品设计组',   1, 'song_product','15888888915', 'song.product@cloudflow.com','0', '0', 'admin', NOW(), '', NULL);
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(115, 100000, 110, '0,100,110',  '交付一组',     1, 'gao_delivery','15888888916', 'gao.delivery@cloudflow.com','0', '0', 'admin', NOW(), '', NULL);
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(116, 100000, 111, '0,100,111',  '客户成功组',   1, 'xu_cs',       '15888888917', 'xu.cs@cloudflow.com',       '0', '0', 'admin', NOW(), '', NULL);
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(117, 100000, 112, '0,100,112',  '华东销售组',   1, 'peng_sales',  '15888888918', 'peng.sales@cloudflow.com',  '0', '0', 'admin', NOW(), '', NULL);
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(118, 100000, 113, '0,100,113',  '运维保障组',   1, 'xu_ops',      '15888888919', 'xu.ops@cloudflow.com',      '0', '0', 'admin', NOW(), '', NULL);
-INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES(119, 100000, 101, '0,100,101',  '测试组',       3, 'han_qa',      '15888888920', 'han.qa@cloudflow.com',      '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(109, 100000, 100, '0,100', '产品部', 6, 10, '15888888910', 'sun.pm@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(110, 100000, 100, '0,100', '实施交付部', 7, 11, '15888888911', 'wu.delivery@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(111, 100000, 100, '0,100', '客户成功部', 8, 12, '15888888912', 'zheng.cs@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(112, 100000, 100, '0,100', '销售部', 9, 13, '15888888913', 'he.sales@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(113, 100000, 100, '0,100', '运维部', 10, 14, '15888888914', 'tang.ops@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(114, 100000, 109, '0,100,109', '产品设计组', 1, 15, '15888888915', 'song.product@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(115, 100000, 110, '0,100,110', '交付一组', 1, 16, '15888888916', 'gao.delivery@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(116, 100000, 111, '0,100,111', '客户成功组', 1, 17, '15888888917', 'xu.cs@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(117, 100000, 112, '0,100,112', '华东销售组', 1, 18, '15888888918', 'peng.sales@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(118, 100000, 113, '0,100,113', '运维保障组', 1, 19, '15888888919', 'xu.ops@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
+INSERT IGNORE INTO cloud_flow_db.sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader_user_id, phone, email, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(119, 100000, 101, '0,100,101', '测试组', 3, 20, '15888888920', 'han.qa@cloudflow.com', '0', '0', 'admin', NOW(), '', NULL);
 
 INSERT IGNORE INTO cloud_flow_db.sys_user (user_id, tenant_id, dept_id, user_name, nick_name, email, phonenumber, sex, password, status, deleted, pwd_reset_required, login_ip, login_date, create_by, create_time, update_by, update_time, remark, avatar) VALUES(10, 100000, 109, 'sun_pm',      '孙雨澄', 'sun.pm@cloudflow.com',      '15888888910', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '产品部负责人', '');
 INSERT IGNORE INTO cloud_flow_db.sys_user (user_id, tenant_id, dept_id, user_name, nick_name, email, phonenumber, sex, password, status, deleted, pwd_reset_required, login_ip, login_date, create_by, create_time, update_by, update_time, remark, avatar) VALUES(11, 100000, 110, 'wu_delivery', '吴思远', 'wu.delivery@cloudflow.com', '15888888911', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '实施交付部负责人', '');
@@ -10083,12 +10103,10 @@ INSERT IGNORE INTO cloud_flow_db.biz_expense_claim (
  '华东交付培训专项差旅报销，包含高铁、住宿与餐补。',
  'APPROVED', 115, '交付一组', '0', 'gao_delivery', DATE_SUB(NOW(), INTERVAL 14 HOUR), 'gao_delivery', DATE_SUB(NOW(), INTERVAL 10 HOUR));
 
-INSERT IGNORE INTO cloud_flow_db.biz_expense_item (
-  id, tenant_id, claim_id, expense_type, amount, expense_date, description, receipt_url, vehicle_expense_id
-) VALUES
-(901121, 100000, 9012, 'TRANSPORT', 620.00, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '上海虹桥往返苏州高铁票', 'https://demo.cloudflow.local/files/expense/bx9012-train.jpg', NULL),
-(901122, 100000, 9012, 'MEAL', 260.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '客户培训期间工作餐与加班餐', 'https://demo.cloudflow.local/files/expense/bx9012-meal.jpg', NULL),
-(901123, 100000, 9012, 'HOTEL', 800.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '客户园区附近住宿一晚', 'https://demo.cloudflow.local/files/expense/bx9012-hotel.jpg', NULL);
+INSERT IGNORE INTO cloud_flow_db.biz_expense_item (id, tenant_id, claim_id, expense_type, amount, expense_date, description, receipt_url, vehicle_expense_id, city) VALUES
+(901121, 100000, 9012, 'TRANSPORT', 620.00, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '上海虹桥往返苏州高铁票', 'https://demo.cloudflow.local/files/expense/bx9012-train.jpg', NULL, '苏州'),
+(901122, 100000, 9012, 'MEAL', 260.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '客户培训期间工作餐与加班餐', 'https://demo.cloudflow.local/files/expense/bx9012-meal.jpg', NULL, '苏州'),
+(901123, 100000, 9012, 'ACCOMMODATION', 800.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '客户园区附近住宿一晚', 'https://demo.cloudflow.local/files/expense/bx9012-hotel.jpg', NULL, '苏州');
 
 INSERT IGNORE INTO cloud_flow_db.biz_payment_request (
   id, tenant_id, instance_id, user_id, user_name, payment_no, payee_name, payee_account, payee_bank, amount,
@@ -10564,8 +10582,10 @@ INSERT IGNORE INTO cloud_flow_db.crm_assignment_rule (
 DELETE FROM cloud_flow_db.oa_frontend_error_log
 WHERE id IN (99511,99512,99513,99514,99515,99516);
 
-DELETE FROM cloud_flow_db.wf_urge_effect
-WHERE task_id IN ('seed_task_hr_att_001', 'seed_task_hr_leave_001', 'seed_task_hr_salary_001');
+DELETE effect FROM cloud_flow_db.wf_urge_effect effect
+JOIN cloud_flow_db.wf_task_urge urge ON urge.id=effect.urge_id AND urge.tenant_id=effect.tenant_id
+WHERE urge.task_id IN ('seed_task_hr_att_001', 'seed_task_hr_leave_001', 'seed_task_hr_salary_001');
+
 
 INSERT IGNORE INTO cloud_flow_db.sys_log (
   log_id, tenant_id, log_type, title, service_id, remote_addr, user_agent, request_uri, method, params, time, exception, create_by, create_time
@@ -10660,13 +10680,8 @@ INSERT IGNORE INTO cloud_flow_db.oa_frontend_error_log (
  JSON_OBJECT('employeeId',1016,'contractId',108),
  '10.10.3.36', 4, '赵HR', DATE_SUB(NOW(), INTERVAL 50 MINUTE), DATE_SUB(NOW(), INTERVAL 50 MINUTE));
 
-INSERT IGNORE INTO cloud_flow_db.wf_urge_effect (
-  effect_id, tenant_id, urge_id, task_id, before_duration, after_duration, effectiveness, urge_time, complete_time
-) VALUES
-('seed_effect_hr_att_001', 100000, 'seed_urge_hr_att_001', 'seed_task_hr_att_001', 7200, 3600, 5, DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR)),
-('seed_effect_hr_leave_001a', 100000, 'seed_urge_hr_leave_001a', 'seed_task_hr_leave_001', 28800, 14400, 5, DATE_SUB(NOW(), INTERVAL 13 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR)),
-('seed_effect_hr_leave_001b', 100000, 'seed_urge_hr_leave_001b', 'seed_task_hr_leave_001', 7200, 3600, 5, DATE_SUB(NOW(), INTERVAL 10 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR)),
-('seed_effect_hr_salary_001', 100000, 'seed_urge_hr_salary_001', 'seed_task_hr_salary_001', 21600, NULL, NULL, DATE_SUB(NOW(), INTERVAL 6 HOUR), NULL);
+-- 催办完成关联在本文件末尾按实际历史建立。
+
 
 -- =========================================================
 -- 十、组织扩充后的流程治理数据：模板、版本、发布、回滚、影响评估
@@ -10742,12 +10757,8 @@ INSERT IGNORE INTO cloud_flow_db.wf_deploy_record (
  '发布重点客户续约评审模板V1', '统一客户成功、销售、财务和总经理审批节点。', 1, NULL, NULL, NULL, NULL,
  NULL, NULL, '影响续约评审和报价复核通知链路。', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY));
 
-INSERT IGNORE INTO cloud_flow_db.wf_deploy_rollback_history (
-  id, tenant_id, original_deploy_id, rollback_deploy_id, process_def_id, from_version, to_version, rollback_type,
-  rollback_status, rollback_reason, rollback_by, rollback_by_name, rollback_time, success, error_message
-) VALUES
-(98002, 100000, 98004, 98005, 'seed_tpl_delivery_change_001', 2, 3, 'MANUAL', 'SUCCESS',
- '演练大屏时间线字段兼容性不足，导致高风险变更审批阻塞。', 14, '唐志远', DATE_SUB(NOW(), INTERVAL 7 DAY), 1, NULL);
+INSERT IGNORE INTO cloud_flow_db.wf_deploy_rollback_history (id, tenant_id, original_deploy_id, rollback_deploy_id, process_def_id, from_version, to_version, rollback_type, rollback_status, rollback_reason, rollback_by, rollback_by_name, rollback_time, error_message) VALUES
+(98002, 100000, 98004, 98005, 'seed_tpl_delivery_change_001', 2, 3, 'MANUAL', 'SUCCESS', '演练大屏时间线字段兼容性不足，导致高风险变更审批阻塞。', 14, '唐志远', DATE_SUB(NOW(), INTERVAL 7 DAY), NULL);
 
 INSERT IGNORE INTO cloud_flow_db.wf_deploy_impact (
   id, tenant_id, deploy_id, impact_type, impact_level, impact_count, impact_detail, mitigation_plan, create_time
@@ -12377,29 +12388,29 @@ INSERT IGNORE INTO cloud_flow_db.hr_mall_item (id, tenant_id, item_no, item_name
 (22134, 100000, 'M-WEL-005',    '过年慰问礼盒',                  'WELFARE', 1500,  100, 88, '/static/mall/wel005.png',   JSON_ARRAY('/static/mall/wel005-1.png'), '<p>过年慰问礼盒</p>',                         'OFF_SHELF', 5000, 15, 'admin', 'admin', 1),
 (22135, 100000, 'M-WEL-006',    '培训抵扣券 1000 元',            'WELFARE', 3000,  30,  5,  '/static/mall/wel006.png',   JSON_ARRAY('/static/mall/wel006-1.png'), '<p>外训抵扣 1000 元</p>',                     'ON_SHELF',  3000, 16, 'admin', 'admin', 1);
 
-INSERT IGNORE INTO cloud_flow_db.hr_mall_order (id, tenant_id, order_no, employee_id, total_points, item_count, receiver_name, receiver_phone, receiver_address, express_company, express_no, status, process_instance_id, cancel_reason, shipped_at, completed_at, create_by, update_by, version) VALUES
-(22200, 100000, 'MO-2026-05-001', 1001, 300,  1, '管理员',   '13900000001', '上海市浦东新区张江高科技园区',  '顺丰',     'SF1234567890001', 'COMPLETED', NULL,            NULL, '2026-05-01 10:00:00', '2026-05-04 09:00:00', 'admin', 'admin', 3),
-(22201, 100000, 'MO-2026-05-002', 1001, 1500, 1, '管理员',   '13900000001', '上海市浦东新区张江高科技园区',  '顺丰',     'SF1234567890002', 'SHIPPED',   NULL,            NULL, '2026-05-15 10:00:00', NULL,                  'admin', 'admin', 2),
-(22202, 100000, 'MO-2026-05-003', 1002, 200,  1, 'hr 主管',  '13900000002', '上海市徐汇区漕溪路',           '京东',     'JD1234567890001', 'COMPLETED', NULL,            NULL, '2026-04-05 10:00:00', '2026-04-08 09:00:00', 'admin', 'admin', 3),
-(22203, 100000, 'MO-2026-05-004', 1003, 900,  1, '系统张',   '13900000003', '上海市黄浦区南京路',           '中通',     'ZT1234567890001', 'COMPLETED', NULL,            NULL, '2026-03-20 11:00:00', '2026-03-23 14:00:00', 'admin', 'admin', 3),
-(22204, 100000, 'MO-2026-05-005', 1003, 800,  1, '系统张',   '13900000003', '上海市黄浦区南京路',           NULL,       NULL,               'PENDING',   NULL,            NULL, NULL,                  NULL,                  'admin', 'admin', 1),
-(22205, 100000, 'MO-2026-05-006', 1004, 1200, 1, '研发周',   '13900000004', '上海市闵行区莘庄',             '顺丰',     'SF1234567890003', 'COMPLETED', NULL,            NULL, '2026-02-14 09:00:00', '2026-02-17 10:00:00', 'admin', 'admin', 3),
-(22206, 100000, 'MO-2026-05-007', 1005, 900,  1, '运维吴',   '13900000005', '上海市浦东新区世博园区',       '京东',     'JD1234567890002', 'COMPLETED', NULL,            NULL, '2026-04-25 09:00:00', '2026-04-28 14:00:00', 'admin', 'admin', 3),
-(22207, 100000, 'MO-2026-05-008', 1011, 400,  1, '销售员李', '13900020011', '上海市虹口区四川北路',         '顺丰',     'SF1234567890004', 'COMPLETED', NULL,            NULL, '2026-05-08 09:00:00', '2026-05-11 11:00:00', 'admin', 'admin', 3),
-(22208, 100000, 'MO-2026-05-009', 1011, 100,  1, '销售员李', '13900020011', '上海市虹口区四川北路',         NULL,       NULL,               'CANCELLED', NULL,            '用户申请取消', NULL,            NULL,                  'admin', 'admin', 2),
-(22209, 100000, 'MO-2026-05-010', 1012, 400,  1, '员工王',   '13900020012', '上海市浦东新区世纪大道',       '中通',     'ZT1234567890002', 'COMPLETED', NULL,            NULL, '2026-04-15 10:00:00', '2026-04-18 16:00:00', 'admin', 'admin', 3),
-(22210, 100000, 'MO-2026-05-011', 1013, 200,  1, '员工陈',   '13900020013', '上海市长宁区中山公园',         '顺丰',     'SF1234567890005', 'SHIPPED',   NULL,            NULL, '2026-05-19 10:00:00', NULL,                  'admin', 'admin', 2),
-(22211, 100000, 'MO-2026-05-012', 1013, 500,  1, '员工陈',   '13900020013', '上海市长宁区中山公园',         NULL,       NULL,               'APPROVED',  NULL,            NULL, NULL,                  NULL,                  'admin', 'admin', 1),
-(22212, 100000, 'MO-2026-05-013', 1015, 750,  1, '员工赵',   '13900020015', '上海市黄浦区南京西路',         '京东',     'JD1234567890003', 'COMPLETED', NULL,            NULL, '2026-03-10 09:00:00', '2026-03-13 14:00:00', 'admin', 'admin', 3),
-(22213, 100000, 'MO-2026-05-014', 1018, 4500, 1, '架构师高', '13900020018', '上海市浦东新区张江',           '顺丰',     'SF1234567890006', 'COMPLETED', NULL,            NULL, '2026-01-15 09:00:00', '2026-01-18 11:00:00', 'admin', 'admin', 3),
-(22214, 100000, 'MO-2026-05-015', 1018, 8000, 1, '架构师高', '13900020018', '上海市浦东新区张江',           '顺丰',     'SF1234567890007', 'APPROVING', 'WF-MO-2026-001', NULL, NULL,                  NULL,                  'admin', 'admin', 1),
-(22215, 100000, 'MO-2026-05-016', 1019, 900,  1, '研发刘',   '13900020019', '上海市浦东新区世纪公园',       '中通',     'ZT1234567890003', 'COMPLETED', NULL,            NULL, '2026-02-20 09:00:00', '2026-02-23 14:00:00', 'admin', 'admin', 3),
-(22216, 100000, 'MO-2026-05-017', 1020, 500,  1, '运维郑',   '13900020020', '上海市浦东新区陆家嘴',         '顺丰',     'SF1234567890008', 'COMPLETED', NULL,            NULL, '2025-11-15 09:00:00', '2025-11-18 16:00:00', 'admin', 'admin', 3),
-(22217, 100000, 'MO-2026-05-018', 1001, 200,  1, '管理员',   '13900000001', '上海市浦东新区张江高科技园区',  NULL,       NULL,               'PENDING',   NULL,            NULL, NULL,                  NULL,                  'admin', 'admin', 1),
-(22218, 100000, 'MO-2026-05-019', 1003, 800,  1, '系统张',   '13900000003', '上海市黄浦区南京路',           '顺丰',     'SF1234567890009', 'SHIPPED',   NULL,            NULL, '2026-05-21 10:00:00', NULL,                  'admin', 'admin', 2),
-(22219, 100000, 'MO-2026-05-020', 1005, 3500, 1, '运维吴',   '13900000005', '上海市浦东新区世博园区',       NULL,       NULL,               'APPROVING', 'WF-MO-2026-002', NULL, NULL,                  NULL,                  'admin', 'admin', 1),
-(22220, 100000, 'MO-2026-05-021', 1011, 100,  1, '销售员李', '13900020011', '上海市虹口区四川北路',         NULL,       NULL,               'PENDING',   NULL,            NULL, NULL,                  NULL,                  'admin', 'admin', 1),
-(22221, 100000, 'MO-2026-05-022', 1018, 1500, 1, '架构师高', '13900020018', '上海市浦东新区张江',           NULL,       NULL,               'PENDING',   NULL,            NULL, NULL,                  NULL,                  'admin', 'admin', 1);
+INSERT IGNORE INTO cloud_flow_db.hr_mall_order (id, tenant_id, order_no, employee_id, total_points, receiver_name, receiver_phone, receiver_address, express_company, express_no, status, process_instance_id, cancel_reason, shipped_at, completed_at, create_by, update_by, version) VALUES
+(22200, 100000, 'MO-2026-05-001', 1001, 300, '管理员', '13900000001', '上海市浦东新区张江高科技园区', '顺丰', 'SF1234567890001', 'COMPLETED', NULL, NULL, '2026-05-01 10:00:00', '2026-05-04 09:00:00', 'admin', 'admin', 3),
+(22201, 100000, 'MO-2026-05-002', 1001, 1500, '管理员', '13900000001', '上海市浦东新区张江高科技园区', '顺丰', 'SF1234567890002', 'SHIPPED', NULL, NULL, '2026-05-15 10:00:00', NULL, 'admin', 'admin', 2),
+(22202, 100000, 'MO-2026-05-003', 1002, 200, 'hr 主管', '13900000002', '上海市徐汇区漕溪路', '京东', 'JD1234567890001', 'COMPLETED', NULL, NULL, '2026-04-05 10:00:00', '2026-04-08 09:00:00', 'admin', 'admin', 3),
+(22203, 100000, 'MO-2026-05-004', 1003, 900, '系统张', '13900000003', '上海市黄浦区南京路', '中通', 'ZT1234567890001', 'COMPLETED', NULL, NULL, '2026-03-20 11:00:00', '2026-03-23 14:00:00', 'admin', 'admin', 3),
+(22204, 100000, 'MO-2026-05-005', 1003, 800, '系统张', '13900000003', '上海市黄浦区南京路', NULL, NULL, 'PENDING', NULL, NULL, NULL, NULL, 'admin', 'admin', 1),
+(22205, 100000, 'MO-2026-05-006', 1004, 1200, '研发周', '13900000004', '上海市闵行区莘庄', '顺丰', 'SF1234567890003', 'COMPLETED', NULL, NULL, '2026-02-14 09:00:00', '2026-02-17 10:00:00', 'admin', 'admin', 3),
+(22206, 100000, 'MO-2026-05-007', 1005, 900, '运维吴', '13900000005', '上海市浦东新区世博园区', '京东', 'JD1234567890002', 'COMPLETED', NULL, NULL, '2026-04-25 09:00:00', '2026-04-28 14:00:00', 'admin', 'admin', 3),
+(22207, 100000, 'MO-2026-05-008', 1011, 400, '销售员李', '13900020011', '上海市虹口区四川北路', '顺丰', 'SF1234567890004', 'COMPLETED', NULL, NULL, '2026-05-08 09:00:00', '2026-05-11 11:00:00', 'admin', 'admin', 3),
+(22208, 100000, 'MO-2026-05-009', 1011, 100, '销售员李', '13900020011', '上海市虹口区四川北路', NULL, NULL, 'CANCELLED', NULL, '用户申请取消', NULL, NULL, 'admin', 'admin', 2),
+(22209, 100000, 'MO-2026-05-010', 1012, 400, '员工王', '13900020012', '上海市浦东新区世纪大道', '中通', 'ZT1234567890002', 'COMPLETED', NULL, NULL, '2026-04-15 10:00:00', '2026-04-18 16:00:00', 'admin', 'admin', 3),
+(22210, 100000, 'MO-2026-05-011', 1013, 200, '员工陈', '13900020013', '上海市长宁区中山公园', '顺丰', 'SF1234567890005', 'SHIPPED', NULL, NULL, '2026-05-19 10:00:00', NULL, 'admin', 'admin', 2),
+(22211, 100000, 'MO-2026-05-012', 1013, 500, '员工陈', '13900020013', '上海市长宁区中山公园', NULL, NULL, 'APPROVED', NULL, NULL, NULL, NULL, 'admin', 'admin', 1),
+(22212, 100000, 'MO-2026-05-013', 1015, 750, '员工赵', '13900020015', '上海市黄浦区南京西路', '京东', 'JD1234567890003', 'COMPLETED', NULL, NULL, '2026-03-10 09:00:00', '2026-03-13 14:00:00', 'admin', 'admin', 3),
+(22213, 100000, 'MO-2026-05-014', 1018, 4500, '架构师高', '13900020018', '上海市浦东新区张江', '顺丰', 'SF1234567890006', 'COMPLETED', NULL, NULL, '2026-01-15 09:00:00', '2026-01-18 11:00:00', 'admin', 'admin', 3),
+(22214, 100000, 'MO-2026-05-015', 1018, 8000, '架构师高', '13900020018', '上海市浦东新区张江', '顺丰', 'SF1234567890007', 'APPROVING', 'WF-MO-2026-001', NULL, NULL, NULL, 'admin', 'admin', 1),
+(22215, 100000, 'MO-2026-05-016', 1019, 900, '研发刘', '13900020019', '上海市浦东新区世纪公园', '中通', 'ZT1234567890003', 'COMPLETED', NULL, NULL, '2026-02-20 09:00:00', '2026-02-23 14:00:00', 'admin', 'admin', 3),
+(22216, 100000, 'MO-2026-05-017', 1020, 500, '运维郑', '13900020020', '上海市浦东新区陆家嘴', '顺丰', 'SF1234567890008', 'COMPLETED', NULL, NULL, '2025-11-15 09:00:00', '2025-11-18 16:00:00', 'admin', 'admin', 3),
+(22217, 100000, 'MO-2026-05-018', 1001, 200, '管理员', '13900000001', '上海市浦东新区张江高科技园区', NULL, NULL, 'PENDING', NULL, NULL, NULL, NULL, 'admin', 'admin', 1),
+(22218, 100000, 'MO-2026-05-019', 1003, 800, '系统张', '13900000003', '上海市黄浦区南京路', '顺丰', 'SF1234567890009', 'SHIPPED', NULL, NULL, '2026-05-21 10:00:00', NULL, 'admin', 'admin', 2),
+(22219, 100000, 'MO-2026-05-020', 1005, 3500, '运维吴', '13900000005', '上海市浦东新区世博园区', NULL, NULL, 'APPROVING', 'WF-MO-2026-002', NULL, NULL, NULL, 'admin', 'admin', 1),
+(22220, 100000, 'MO-2026-05-021', 1011, 100, '销售员李', '13900020011', '上海市虹口区四川北路', NULL, NULL, 'PENDING', NULL, NULL, NULL, NULL, 'admin', 'admin', 1),
+(22221, 100000, 'MO-2026-05-022', 1018, 1500, '架构师高', '13900020018', '上海市浦东新区张江', NULL, NULL, 'PENDING', NULL, NULL, NULL, NULL, 'admin', 'admin', 1);
 
 INSERT IGNORE INTO cloud_flow_db.hr_mall_order_item (id, tenant_id, order_id, item_id, item_no, item_name, cover_image, point_price, quantity, subtotal, create_by, update_by) VALUES
 (22300, 100000, 22200, 22100, 'M-GIFT-001',   '小米台灯',         '/static/mall/gift001.png',  300,  1, 300,  'admin', 'admin'),
@@ -12516,25 +12527,25 @@ INSERT IGNORE INTO cloud_flow_db.hr_work_injury (id, tenant_id, injury_no, emplo
 (23000, 100000, 'WI-2025-001', 1006, 110, '2025-04-20 14:30:00', '总部 B 座 5 楼楼梯',     '员工下楼过程中踩空摔倒，左手腕扭伤',         '左手腕',     'MODERATE', 'CLOSED',       'WF-WI-2025-001', '2025-05-10 16:00:00', '10', '完成赔付和复工', '2025-08-30 17:00:00', 'admin', 'admin', 5),
 (23001, 100000, 'WI-2026-001', 1015, 113, '2026-04-25 09:15:00', '客户现场 - 上海宝山',     '员工在客户现场被仪器误伤，右脚骨折',         '右脚踝',     'MODERATE', 'INVESTIGATING','WF-WI-2026-001', NULL,                  NULL, NULL,             NULL,                  'admin', 'admin', 2);
 
-INSERT IGNORE INTO cloud_flow_db.hr_work_injury_investigation (id, tenant_id, injury_id, employee_id, investigator_id, investigation_date, scene_photos, witness_statements, conclusion, responsibility_type, create_by, update_by) VALUES
-(23010, 100000, 23000, 1006, 2, '2025-04-22', JSON_ARRAY(8001, 8002), '同事 X 现场目击，确认员工下楼时踩空',                                   '员工本人下楼时未注意脚下，但楼梯有 1 处地砖松动，物业责任 30%', 'WORK_RELATED', 'admin', 'admin'),
-(23011, 100000, 23001, 1015, 2, '2026-04-27', JSON_ARRAY(8003, 8004), '客户现场仪器操作员 Y 现场陈述，承认仪器操作失误',                       '现场仪器操作问题为主因，建议向第三方追偿',                       'THIRD_PARTY',  'admin', 'admin');
+INSERT IGNORE INTO cloud_flow_db.hr_work_injury_investigation (id, tenant_id, injury_id, investigator_id, investigation_date, scene_photos, witness_statements, conclusion, responsibility_type, create_by, update_by) VALUES
+(23010, 100000, 23000, 2, '2025-04-22', JSON_ARRAY(8001, 8002), '同事 X 现场目击，确认员工下楼时踩空', '员工本人下楼时未注意脚下，但楼梯有 1 处地砖松动，物业责任 30%', 'WORK_RELATED', 'admin', 'admin'),
+(23011, 100000, 23001, 2, '2026-04-27', JSON_ARRAY(8003, 8004), '客户现场仪器操作员 Y 现场陈述，承认仪器操作失误', '现场仪器操作问题为主因，建议向第三方追偿', 'THIRD_PARTY', 'admin', 'admin');
 
-INSERT IGNORE INTO cloud_flow_db.hr_work_injury_treatment (id, tenant_id, injury_id, employee_id, hospital_name, admit_date, discharge_date, total_cost, insurance_covered, self_paid, diagnosis, treatment_summary, receipts, create_by, update_by) VALUES
-(23020, 100000, 23000, 1006, '上海市第六人民医院',  '2025-04-20', '2025-04-20', 800.00,   600.00,   200.00,  '左手腕轻度扭伤',    '门诊处理 + 冷敷 + 制动',           JSON_ARRAY(8101),       'admin', 'admin'),
-(23021, 100000, 23000, 1006, '上海市第六人民医院',  '2025-04-27', '2025-04-27', 600.00,   450.00,   150.00,  '左手腕轻度扭伤',    '复诊 + 物理治疗',                  JSON_ARRAY(8102),       'admin', 'admin'),
-(23022, 100000, 23000, 1006, '上海市第六人民医院',  '2025-05-11', '2025-05-25', 12000.00, 9600.00,  2400.00, '左手腕陈旧性扭伤', '住院手术 + 康复',                  JSON_ARRAY(8103,8104),  'admin', 'admin'),
-(23023, 100000, 23001, 1015, '上海市宝山区人民医院','2026-04-25', '2026-04-25', 1500.00,  1200.00,  300.00,  '右脚踝骨折',        '门诊处理 + 影像学检查 + 石膏固定',  JSON_ARRAY(8201),       'admin', 'admin'),
-(23024, 100000, 23001, 1015, '上海市宝山区人民医院','2026-04-26', '2026-05-10', 25000.00, 20000.00, 5000.00, '右脚踝骨折',        '住院手术内固定',                    JSON_ARRAY(8202,8203),  'admin', 'admin'),
-(23025, 100000, 23001, 1015, '上海市宝山区人民医院','2026-05-15', '2026-05-15', 800.00,   640.00,   160.00,  '右脚踝骨折术后', '术后复查',                          JSON_ARRAY(8204),       'admin', 'admin');
+INSERT IGNORE INTO cloud_flow_db.hr_work_injury_treatment (id, tenant_id, injury_id, hospital_name, admit_date, discharge_date, total_cost, insurance_covered, self_paid, diagnosis, treatment_summary, receipts, create_by, update_by) VALUES
+(23020, 100000, 23000, '上海市第六人民医院', '2025-04-20', '2025-04-20', 800.00, 600.00, 200.00, '左手腕轻度扭伤', '门诊处理 + 冷敷 + 制动', JSON_ARRAY(8101), 'admin', 'admin'),
+(23021, 100000, 23000, '上海市第六人民医院', '2025-04-27', '2025-04-27', 600.00, 450.00, 150.00, '左手腕轻度扭伤', '复诊 + 物理治疗', JSON_ARRAY(8102), 'admin', 'admin'),
+(23022, 100000, 23000, '上海市第六人民医院', '2025-05-11', '2025-05-25', 12000.00, 9600.00, 2400.00, '左手腕陈旧性扭伤', '住院手术 + 康复', JSON_ARRAY(8103,8104), 'admin', 'admin'),
+(23023, 100000, 23001, '上海市宝山区人民医院', '2026-04-25', '2026-04-25', 1500.00, 1200.00, 300.00, '右脚踝骨折', '门诊处理 + 影像学检查 + 石膏固定', JSON_ARRAY(8201), 'admin', 'admin'),
+(23024, 100000, 23001, '上海市宝山区人民医院', '2026-04-26', '2026-05-10', 25000.00, 20000.00, 5000.00, '右脚踝骨折', '住院手术内固定', JSON_ARRAY(8202,8203), 'admin', 'admin'),
+(23025, 100000, 23001, '上海市宝山区人民医院', '2026-05-15', '2026-05-15', 800.00, 640.00, 160.00, '右脚踝骨折术后', '术后复查', JSON_ARRAY(8204), 'admin', 'admin');
 
-INSERT IGNORE INTO cloud_flow_db.hr_work_injury_compensation (id, tenant_id, injury_id, employee_id, item_type, amount, payment_status, paid_at, bank_account, remark, create_by, update_by) VALUES
-(23030, 100000, 23000, 1006, 'MEDICAL',              2750.00, 'PAID', '2025-08-25 16:00:00', '6228480000000000006', '医疗自付部分',         'admin', 'admin'),
-(23031, 100000, 23000, 1006, 'DISABILITY_ALLOWANCE', 8000.00, 'PAID', '2025-08-30 16:00:00', '6228480000000000006', '10 级伤残一次性',      'admin', 'admin');
+INSERT IGNORE INTO cloud_flow_db.hr_work_injury_compensation (id, tenant_id, injury_id, item_type, amount, payment_status, paid_at, bank_account, remark, create_by, update_by) VALUES
+(23030, 100000, 23000, 'MEDICAL', 2750.00, 'PAID', '2025-08-25 16:00:00', '6228480000000000006', '医疗自付部分', 'admin', 'admin'),
+(23031, 100000, 23000, 'DISABILITY_ALLOWANCE', 8000.00, 'PAID', '2025-08-30 16:00:00', '6228480000000000006', '10 级伤残一次性', 'admin', 'admin');
 
-INSERT IGNORE INTO cloud_flow_db.hr_work_injury_rehabilitation (id, tenant_id, injury_id, employee_id, return_date, position_adjustment, new_position_id, ability_assessment, follow_up_at, status, create_by, update_by) VALUES
-(23040, 100000, 23000, 1006, '2025-08-15', 'SAME',     NULL, '基本恢复，无明显功能障碍',                       '2025-09-15 14:00:00', 'RETURNED',  'admin', 'admin'),
-(23041, 100000, 23001, 1015, NULL,         'RELIGHTED',NULL, '需 3 个月康复期，建议在家远程办公轻度任务',     NULL,                  'IN_REHAB', 'admin', 'admin');
+INSERT IGNORE INTO cloud_flow_db.hr_work_injury_rehabilitation (id, tenant_id, injury_id, return_date, position_adjustment, new_position_id, ability_assessment, follow_up_at, status, create_by, update_by) VALUES
+(23040, 100000, 23000, '2025-08-15', 'SAME', NULL, '基本恢复，无明显功能障碍', '2025-09-15 14:00:00', 'RETURNED', 'admin', 'admin'),
+(23041, 100000, 23001, NULL, 'RELIGHTED', NULL, '需 3 个月康复期，建议在家远程办公轻度任务', NULL, 'IN_REHAB', 'admin', 'admin');
 
 
 -- =====================================================================
@@ -12553,15 +12564,15 @@ INSERT IGNORE INTO cloud_flow_db.hr_dispute_mediation (id, tenant_id, dispute_id
 INSERT IGNORE INTO cloud_flow_db.hr_dispute_arbitration (id, tenant_id, dispute_id, arbitration_committee, case_no, accepted_at, hearing_dates, award_no, award_result, award_amount, effective_date, award_doc_url, remark, create_by, update_by) VALUES
 (23520, 100000, 23501, '上海市浦东新区劳动人事争议仲裁委员会', '浦劳人仲(2025)第 312 号', '2025-07-01 10:00:00', JSON_ARRAY('2025-08-15 09:30:00', '2025-09-20 09:30:00'), '浦劳人仲裁(2025)第 312 号', 'PARTIAL', 60000.00, '2025-10-20', '/static/dispute/award-2025-312.pdf', '裁决支持经济补偿，不支持赔偿金', 'admin', 'admin');
 
-INSERT IGNORE INTO cloud_flow_db.hr_dispute_evidence (id, tenant_id, dispute_id, evidence_type, file_id, file_name, file_url, uploaded_by, uploaded_at, remark, create_by, update_by) VALUES
-(23530, 100000, 23500, 'CONTRACT', 8501, '马某劳动合同.pdf',          '/static/dispute/ld001-contract.pdf', 1, '2025-03-15 11:00:00', '合同原件电子版',           'admin', 'admin'),
-(23531, 100000, 23500, 'PAYSLIP',  8502, '马某 2024-12 工资条.pdf',   '/static/dispute/ld001-payslip-12.pdf', 1, '2025-03-15 11:05:00', '12 月工资条',               'admin', 'admin'),
-(23532, 100000, 23500, 'PAYSLIP',  8503, '马某 2025-01 工资条.pdf',   '/static/dispute/ld001-payslip-01.pdf', 1, '2025-03-15 11:08:00', '1 月工资条',                'admin', 'admin'),
-(23533, 100000, 23500, 'PAYSLIP',  8504, '马某 2025-02 工资条.pdf',   '/static/dispute/ld001-payslip-02.pdf', 1, '2025-03-15 11:10:00', '2 月工资条',                'admin', 'admin'),
-(23534, 100000, 23501, 'CONTRACT', 8505, '孙某劳动合同.pdf',          '/static/dispute/ld002-contract.pdf',  1, '2025-05-08 12:00:00', '合同原件',                 'admin', 'admin'),
-(23535, 100000, 23501, 'OTHER',    8506, '孙某考勤记录.xlsx',         '/static/dispute/ld002-attendance.xlsx', 1, '2025-05-08 12:05:00', '考勤数据 2025-Q1',          'admin', 'admin'),
-(23536, 100000, 23501, 'OTHER',    8507, '解除通知书.pdf',            '/static/dispute/ld002-termination.pdf', 1, '2025-05-08 12:10:00', '解除通知书',               'admin', 'admin'),
-(23537, 100000, 23501, 'WITNESS',  8508, '孙某直属上级证人陈述.pdf',  '/static/dispute/ld002-witness.pdf',   1, '2025-08-10 14:00:00', '仲裁阶段补充',              'admin', 'admin');
+INSERT IGNORE INTO cloud_flow_db.hr_dispute_evidence (id, tenant_id, dispute_id, evidence_type, file_id, file_name, uploaded_by, uploaded_at, remark, create_by, update_by) VALUES
+(23530, 100000, 23500, 'CONTRACT', 8501, '马某劳动合同.pdf', 1, '2025-03-15 11:00:00', '合同原件电子版', 'admin', 'admin'),
+(23531, 100000, 23500, 'PAYSLIP', 8502, '马某 2024-12 工资条.pdf', 1, '2025-03-15 11:05:00', '12 月工资条', 'admin', 'admin'),
+(23532, 100000, 23500, 'PAYSLIP', 8503, '马某 2025-01 工资条.pdf', 1, '2025-03-15 11:08:00', '1 月工资条', 'admin', 'admin'),
+(23533, 100000, 23500, 'PAYSLIP', 8504, '马某 2025-02 工资条.pdf', 1, '2025-03-15 11:10:00', '2 月工资条', 'admin', 'admin'),
+(23534, 100000, 23501, 'CONTRACT', 8505, '孙某劳动合同.pdf', 1, '2025-05-08 12:00:00', '合同原件', 'admin', 'admin'),
+(23535, 100000, 23501, 'OTHER', 8506, '孙某考勤记录.xlsx', 1, '2025-05-08 12:05:00', '考勤数据 2025-Q1', 'admin', 'admin'),
+(23536, 100000, 23501, 'OTHER', 8507, '解除通知书.pdf', 1, '2025-05-08 12:10:00', '解除通知书', 'admin', 'admin'),
+(23537, 100000, 23501, 'WITNESS', 8508, '孙某直属上级证人陈述.pdf', 1, '2025-08-10 14:00:00', '仲裁阶段补充', 'admin', 'admin');
 
 
 -- =====================================================================
@@ -14240,8 +14251,8 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id,tenant_id,
 ('opportunity_downgrade_review',100000,'商机降级与输单审批','opportunity_downgrade_review',1,'PUBLISHED',1,'{"nodes":[{"id":"start","type":"START","title":"提交申请"},{"id":"manager","type":"APPROVAL","title":"部门负责人审批","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","REJECT"]}},{"id":"end","type":"END","title":"完成"}],"edges":[{"id":"start-manager","source":"start","target":"manager"},{"id":"manager-end","source":"manager","target":"end"}]}','seed',NOW());
 
 INSERT IGNORE INTO cloud_flow_db.wf_process_definition
-(definition_id,tenant_id,process_name,process_key,version,status,is_latest,start_permission_type,start_permission_value,model_json,create_by,create_time) VALUES
-('crm_refund_review',100000,'原收款退款双级审批','crm_refund_review',1,'PUBLISHED',1,'ALL','[]','{"nodes":[{"id":"start","type":"START","title":"财务提交退款"},{"id":"customer_owner","type":"APPROVAL","title":"客户业务负责人审批","approverType":"VARIABLE_USER","approverValue":"customerOwnerApproverIds","allowDelegate":false,"allowAddSign":false,"props":{"buttons":["APPROVE","REJECT"],"allowEdit":false,"allowRollback":false,"allowSelection":false}},{"id":"finance_review","type":"APPROVAL","title":"另一名财务复核","approverType":"VARIABLE_USER","approverValue":"financeReviewerIds","signType":"ANY","allowDelegate":false,"allowAddSign":false,"props":{"buttons":["APPROVE","REJECT"],"allowEdit":false,"allowRollback":false,"allowSelection":false}},{"id":"end","type":"END","title":"退款审批完成"}],"edges":[{"id":"start-owner","source":"start","target":"customer_owner"},{"id":"owner-finance","source":"customer_owner","target":"finance_review"},{"id":"finance-end","source":"finance_review","target":"end"}]}','seed',NOW());
+(definition_id, tenant_id, process_name, process_key, version, status, is_latest, start_permission_type, start_permission_value, model_json, create_by, create_time) VALUES
+('crm_refund_review', 100000, '原收款退款双级审批', 'crm_refund_review', 1, 'PUBLISHED', 1, 'ALL', NULL, '{"nodes":[{"id":"start","type":"START","title":"财务提交退款"},{"id":"customer_owner","type":"APPROVAL","title":"客户业务负责人审批","approverType":"VARIABLE_USER","approverValue":"customerOwnerApproverIds","allowDelegate":false,"allowAddSign":false,"props":{"buttons":["APPROVE","REJECT"],"allowEdit":false,"allowRollback":false,"allowSelection":false}},{"id":"finance_review","type":"APPROVAL","title":"另一名财务复核","approverType":"VARIABLE_USER","approverValue":"financeReviewerIds","signType":"ANY","allowDelegate":false,"allowAddSign":false,"props":{"buttons":["APPROVE","REJECT"],"allowEdit":false,"allowRollback":false,"allowSelection":false}},{"id":"end","type":"END","title":"退款审批完成"}],"edges":[{"id":"start-owner","source":"start","target":"customer_owner"},{"id":"owner-finance","source":"customer_owner","target":"finance_review"},{"id":"finance-end","source":"finance_review","target":"end"}]}', 'seed', NOW());
 
 -- batch-f-operations:start
 INSERT IGNORE INTO cloud_flow_db.sys_menu (
@@ -16251,3 +16262,14 @@ SELECT 100000, '员工内推入职生效扫描', 'HR', 'hr', 'hrReferralEmployme
        'ENABLED', 0, 'IGNORE', 240, 240, 1, 1, 'seed', NOW()
 WHERE NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_job WHERE service_name='hr' AND handler_name='hrReferralEmployment');
 -- h2-referral-employment-job:end
+
+
+-- 催办耗时仅关联已有完成历史及完成前最后催办；未完成任务不造统计。
+INSERT IGNORE INTO cloud_flow_db.wf_urge_effect (history_id, tenant_id, urge_id)
+SELECT history.history_id, history.tenant_id, urge.id
+FROM cloud_flow_db.wf_task_history history
+JOIN cloud_flow_db.wf_task_urge urge ON urge.tenant_id=history.tenant_id AND urge.task_id=history.task_id
+WHERE history.action IN ('APPROVE','REJECT') AND urge.create_time<=history.create_time
+  AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.wf_task_urge later
+    WHERE later.tenant_id=urge.tenant_id AND later.task_id=urge.task_id AND later.create_time<=history.create_time
+      AND (later.create_time>urge.create_time OR (later.create_time=urge.create_time AND later.id>urge.id)));

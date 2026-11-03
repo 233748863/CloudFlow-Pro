@@ -26,7 +26,6 @@ CREATE TABLE wf_process_definition (
   form_id           VARCHAR(64)     DEFAULT NULL COMMENT '表单ID',
   model_json        LONGTEXT COMMENT '流程模型JSON',
   status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态',
-  version_lock      INT             DEFAULT 0 COMMENT '版本锁',
   is_latest         TINYINT(1)      DEFAULT 1 COMMENT '是否最新版本',
   category          VARCHAR(64)     DEFAULT NULL COMMENT '分类',
   tags              VARCHAR(500)    DEFAULT NULL COMMENT '标签',
@@ -246,11 +245,14 @@ CREATE TABLE wf_task_urge (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   task_id           VARCHAR(64)     NOT NULL COMMENT '任务ID',
-  sender_id         BIGINT(20)      NOT NULL COMMENT '发送人ID',
+  sender_id         BIGINT(20)      DEFAULT NULL COMMENT '发送人ID，系统提醒为空',
   recipient_id      BIGINT(20)      NOT NULL COMMENT '接收人ID',
   reason            VARCHAR(200)    DEFAULT NULL COMMENT '原因',
   create_time       DATETIME COMMENT '创建时间',
-  PRIMARY KEY (id)
+  source_key        VARCHAR(160)    DEFAULT NULL COMMENT '系统提醒稳定去重标识，人工催办为空',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_task_urge_source (tenant_id, source_key),
+  KEY idx_task_urge_latest (tenant_id, task_id, create_time, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务催办表';
 
 --
@@ -636,18 +638,11 @@ CREATE TABLE wf_deploy_notification (
 --
 DROP TABLE IF EXISTS wf_urge_effect;
 CREATE TABLE wf_urge_effect (
-  effect_id         VARCHAR(64)     NOT NULL COMMENT '催办效果ID',
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  urge_id           VARCHAR(64)     NOT NULL COMMENT '催办ID',
-  task_id           VARCHAR(64)     NOT NULL COMMENT '任务ID',
-  before_duration   BIGINT          DEFAULT NULL COMMENT '催办前处理时长(秒)',
-  after_duration    BIGINT          DEFAULT NULL COMMENT '催办后处理时长(秒)',
-  effectiveness     INT             DEFAULT NULL COMMENT '催办效果等级(1最低/5最高)',
-  urge_time         DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '催办时间',
-  complete_time     DATETIME        DEFAULT NULL COMMENT '完成时间',
-  PRIMARY KEY (effect_id),
-  KEY idx_urge_id (urge_id),
-  KEY idx_task_id (task_id)
+  history_id        VARCHAR(64)     NOT NULL COMMENT '真实任务完成历史ID',
+  tenant_id         BIGINT          NOT NULL COMMENT '租户ID',
+  urge_id           BIGINT          NOT NULL COMMENT '任务完成前最后一次催办ID',
+  PRIMARY KEY (history_id),
+  KEY idx_urge_effect_tenant_urge (tenant_id, urge_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='催办效果表';
 
 --
@@ -689,7 +684,6 @@ CREATE TABLE wf_deploy_rollback_history (
     rollback_by       BIGINT(20)      NOT NULL COMMENT '回滚人ID',
   rollback_by_name  VARCHAR(100)    DEFAULT NULL COMMENT '回滚人姓名',
   rollback_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '回滚时间',
-  success           TINYINT(1)      DEFAULT 1 COMMENT '是否成功',
   error_message     TEXT            DEFAULT NULL COMMENT '错误信息',
   PRIMARY KEY (id),
   KEY idx_original_deploy (original_deploy_id),

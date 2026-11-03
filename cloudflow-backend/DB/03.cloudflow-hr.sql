@@ -1657,7 +1657,6 @@ CREATE TABLE hr_mall_order (
   order_no VARCHAR(80) NOT NULL COMMENT '订单编号',
   employee_id BIGINT NOT NULL COMMENT '员工ID',
   total_points INT NOT NULL DEFAULT 0 COMMENT '订单总积分',
-  item_count INT NOT NULL DEFAULT 0 COMMENT '订单商品总件数',
   receiver_name VARCHAR(120) DEFAULT NULL COMMENT '收货人姓名',
   receiver_phone VARCHAR(500) DEFAULT NULL COMMENT '加密存储',
   receiver_address VARCHAR(1000) DEFAULT NULL COMMENT '加密存储',
@@ -1737,7 +1736,6 @@ CREATE TABLE hr_work_injury_investigation (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
   injury_id BIGINT NOT NULL COMMENT '关联工伤事件ID',
-  employee_id BIGINT NOT NULL COMMENT '冗余便于数据权限',
   investigator_id BIGINT DEFAULT NULL COMMENT '调查人用户ID',
   investigation_date DATE DEFAULT NULL COMMENT '调查日期',
   scene_photos JSON DEFAULT NULL COMMENT '附件 ID 列表',
@@ -1750,8 +1748,7 @@ CREATE TABLE hr_work_injury_investigation (
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
   PRIMARY KEY (id),
-  KEY idx_hr_work_injury_inv (tenant_id, injury_id, investigation_date),
-  KEY idx_hr_work_injury_inv_emp (tenant_id, employee_id)
+  KEY idx_hr_work_injury_inv (tenant_id, injury_id, investigation_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR 工伤调查记录';
 
 -- ===== 工伤医疗记录 =====
@@ -1759,7 +1756,6 @@ CREATE TABLE hr_work_injury_treatment (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
   injury_id BIGINT NOT NULL COMMENT '关联工伤事件ID',
-  employee_id BIGINT NOT NULL COMMENT '员工ID',
   hospital_name VARCHAR(200) DEFAULT NULL COMMENT '就诊医院',
   admit_date DATE DEFAULT NULL COMMENT '入院日期',
   discharge_date DATE DEFAULT NULL COMMENT '出院日期',
@@ -1775,8 +1771,7 @@ CREATE TABLE hr_work_injury_treatment (
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
   PRIMARY KEY (id),
-  KEY idx_hr_work_injury_treat (tenant_id, injury_id, admit_date),
-  KEY idx_hr_work_injury_treat_emp (tenant_id, employee_id)
+  KEY idx_hr_work_injury_treat (tenant_id, injury_id, admit_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR 工伤医疗记录';
 
 -- ===== 工伤赔偿记录 =====
@@ -1784,7 +1779,6 @@ CREATE TABLE hr_work_injury_compensation (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
   injury_id BIGINT NOT NULL COMMENT '关联工伤事件ID',
-  employee_id BIGINT NOT NULL COMMENT '员工ID',
   item_type VARCHAR(30) NOT NULL COMMENT 'MEDICAL/DISABILITY_ALLOWANCE/LUMP_SUM/FUNERAL/DEPENDENT_SUPPORT',
   amount DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT '赔偿金额',
   payment_status VARCHAR(20) NOT NULL DEFAULT 'PLANNED' COMMENT 'PLANNED/PAID/REJECTED',
@@ -1797,8 +1791,7 @@ CREATE TABLE hr_work_injury_compensation (
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
   PRIMARY KEY (id),
-  KEY idx_hr_work_injury_comp (tenant_id, injury_id, item_type),
-  KEY idx_hr_work_injury_comp_emp (tenant_id, employee_id, payment_status)
+  KEY idx_hr_work_injury_comp (tenant_id, injury_id, item_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR 工伤赔偿记录';
 
 -- ===== 工伤康复记录 =====
@@ -1806,7 +1799,6 @@ CREATE TABLE hr_work_injury_rehabilitation (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
   injury_id BIGINT NOT NULL COMMENT '关联工伤事件ID',
-  employee_id BIGINT NOT NULL COMMENT '员工ID',
   return_date DATE DEFAULT NULL COMMENT '复工日期',
   position_adjustment VARCHAR(20) DEFAULT 'SAME' COMMENT 'SAME/RELIGHTED/CHANGED',
   new_position_id BIGINT DEFAULT NULL COMMENT '调整后职位ID',
@@ -1820,8 +1812,7 @@ CREATE TABLE hr_work_injury_rehabilitation (
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
   version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
-  KEY idx_hr_work_injury_rehab (tenant_id, injury_id, status),
-  KEY idx_hr_work_injury_rehab_emp (tenant_id, employee_id)
+  KEY idx_hr_work_injury_rehab (tenant_id, injury_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR 工伤康复记录';
 
 -- ===== 劳动争议主表 =====
@@ -1905,7 +1896,6 @@ CREATE TABLE hr_dispute_evidence (
   evidence_type VARCHAR(30) NOT NULL DEFAULT 'OTHER' COMMENT 'CONTRACT/PAYSLIP/MEDICAL/WITNESS/OTHER',
   file_id BIGINT DEFAULT NULL COMMENT '附件文件ID',
   file_name VARCHAR(200) DEFAULT NULL COMMENT '附件文件名',
-  file_url VARCHAR(500) DEFAULT NULL COMMENT '附件URL',
   uploaded_by BIGINT DEFAULT NULL COMMENT '上传人用户ID',
   uploaded_at DATETIME DEFAULT NULL COMMENT '上传时间',
   remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
@@ -1954,9 +1944,6 @@ CREATE TABLE hr_perf_evaluator_response (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
   evaluator_id BIGINT NOT NULL COMMENT '关联 hr_perf_evaluator.id',
-  objective_id BIGINT NOT NULL COMMENT '关联绩效目标ID(冗余便于联表)',
-  evaluatee_id BIGINT NOT NULL COMMENT '被评员工ID(冗余便于联表)',
-  evaluator_source VARCHAR(20) NOT NULL COMMENT '评估源(冗余便于聚合)',
   score DECIMAL(8,2) NOT NULL COMMENT '总评分',
   dimension_scores JSON DEFAULT NULL COMMENT '各维度细分打分 [{dimension,score,weight}]',
   comment_text TEXT DEFAULT NULL COMMENT '文字评价',
@@ -1967,8 +1954,7 @@ CREATE TABLE hr_perf_evaluator_response (
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_hr_perf_response_evaluator (tenant_id, evaluator_id),
-  KEY idx_hr_perf_response_obj (tenant_id, objective_id, evaluatee_id)
+  UNIQUE KEY uk_hr_perf_response_evaluator (tenant_id, evaluator_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR绩效360评估打分';
 
 -- =========================================================

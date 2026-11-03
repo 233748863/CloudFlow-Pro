@@ -108,6 +108,7 @@ def overrides(tables, **columns):
 
 overrides("sys_business_rule_version", rule_id="sys_business_rule")
 overrides("sys_message_delivery", record_id="sys_message_record")
+overrides("wf_urge_effect", history_id="wf_task_history")
 overrides("sys_print_record", template_id="sys_print_template")
 overrides("sys_file", config_id="sys_file_config", portal_owner_id="sys_portal_user")
 overrides("sys_data_source_registration", config_id="sys_data_source_config")
@@ -127,7 +128,7 @@ overrides("hr_training_session", plan_id="hr_training_plan")
 overrides("hr_training_certificate", template_id="hr_training_certificate_template")
 overrides("hr_talent_successor", plan_id="hr_talent_succession_plan")
 overrides("hr_perf_evaluator", evaluatee_id="hr_employee", evaluator_id="hr_employee")
-overrides("hr_perf_evaluator_response", evaluatee_id="hr_employee", evaluator_id="hr_perf_evaluator")
+overrides("hr_perf_evaluator_response", evaluator_id="hr_perf_evaluator")
 overrides("hr_performance_interview", evaluatee_id="hr_employee")
 overrides("hr_mall_order_item", order_id="hr_mall_order", item_id="hr_mall_item")
 overrides("hr_tax_slab_detail", slab_id="hr_tax_slab")
@@ -146,7 +147,6 @@ overrides("biz_purchase_receipt", item_id="biz_purchase_item")
 overrides("oa_contract_payment_schedule", milestone_id="oa_contract_milestone")
 overrides("oa_knowledge_read oa_knowledge_doc_version", document_id="oa_knowledge_document")
 overrides("oa_seal_handover_log", application_id="oa_seal_application")
-overrides("oa_meeting_minutes oa_meeting_attendance", meeting_id="oa_schedule_event")
 overrides("oa_meeting_reminder", event_id="oa_schedule_event")
 overrides("crm_sla_priority crm_sla_status_rule", policy_id="crm_sla_policy")
 overrides("crm_target_list_member crm_campaign_target_list", list_id="crm_target_list")
@@ -291,7 +291,10 @@ def relationships(model):
     result, unknown = [], []
     for table, definition in model.items():
         for column, meta in definition["columns"].items():
-            if (len(definition["primary"]) == 1 and column in definition["primary"] and column != "tenant_id") or meta["generated"]:
+            if meta["generated"]:
+                continue
+            if (len(definition["primary"]) == 1 and column in definition["primary"]
+                    and column != "tenant_id" and column not in OVERRIDES.get(table, {})):
                 continue
             if (table, column) in POLYMORPHIC:
                 continue

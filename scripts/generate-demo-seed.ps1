@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$OutputPath = (Join-Path $PSScriptRoot '..\cloudflow-backend\DB\07.cloudflow-demo-seed.sql'),
     [string]$SchemaPath = (Join-Path $PSScriptRoot '..\cloudflow-backend\DB'),
@@ -1231,11 +1231,25 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     # 批次 A 基础设施表包含大量强语义枚举、布尔标志和跨表引用，不能使用
     # 通用“列名猜值”兜底；否则会生成 r.n+1 布尔值、非法状态和孤儿引用。
     switch ($table) {
+        'biz_expense_item' {
+            switch ($name) {
+                'expense_type' { return "ELT(MOD(r.n,6)+1,'TRANSPORT','ACCOMMODATION','MEAL','COMMUNICATION','OFFICE_SUPPLIES','OTHER')" }
+                'city' { return Get-TenantFieldExpression 'City' }
+            }
+        }
+        'wf_process_definition' {
+            switch ($name) {
+                'start_permission_type' { return "'ALL'" }
+                'start_permission_value' { return 'NULL' }
+            }
+        }
         'oa_expense_standard' {
             switch ($name) {
                 'position_level' { return "IF(MOD(r.n,5)=0,NULL,CONCAT('P',1+MOD(r.n,9)))" }
+                'category' { return "ELT(MOD(r.n,6)+1,'TRANSPORT','ACCOMMODATION','MEAL','COMMUNICATION','OFFICE_SUPPLIES','OTHER')" }
                 'city' { return "IF(MOD(r.n,5)=0,NULL,$(Get-TenantFieldExpression 'City'))" }
                 'limit_amount' { return 'CAST(200+MOD(r.n,10)*100 AS DECIMAL(12,2))' }
+                'limit_type' { return "ELT(MOD(FLOOR(r.n/6),4)+1,'PER_ITEM','DAILY','MONTHLY','YEARLY')" }
                 'status' { return "IF(MOD(r.n,10)=9,'INACTIVE','ACTIVE')" }
                 'deleted' { return '0' }
                 'version' { return '0' }
@@ -1271,15 +1285,9 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
                 'version' { return '0' }
             }
         }
-        'wf_urge_effect' {
-            switch ($name) {
-                'urge_id' { return Get-StringIdExpression $table $name }
-                'before_duration' { return '3600*(1+MOD(r.n,12))' }
-                'after_duration' { return '1800*(1+MOD(r.n,12))' }
-                'effectiveness' { return '5' }
-                'urge_time' { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL r.n+1 DAY)' }
-                'complete_time' { return 'DATE_ADD(DATE_SUB(CURRENT_TIMESTAMP, INTERVAL r.n+1 DAY), INTERVAL 1800*(1+MOD(r.n,12)) SECOND)' }
-            }
+        'wf_task_urge' {
+            # 演示记录为人工催办，系统提醒的稳定去重标识由提醒服务创建。
+            if ($name -eq 'source_key') { return 'NULL' }
         }
         'wf_deploy_impact' {
             switch ($name) {
@@ -1533,7 +1541,6 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     # 而 /auth/tenant/options 带 expire_time > NOW() 过滤，
     # 灌数据当天能登录、次日登录页租户下拉全空。
     if ($table -eq 'sys_tenant' -and $name -eq 'expire_time') { return 'DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR)' }
-    if ($table -eq 'sys_role' -and $name -eq 'data_scope') { return "IF(r.n=0,'1','3')" }
     if ($table -eq 'sys_role' -and $name -eq 'ds_type') { return 'IF(r.n=0,0,3)' }
     if ($table -eq 'sys_menu' -and $name -eq 'status') { return "'1'" }
     if ($table -eq 'sys_menu' -and $name -eq 'perms') { return "CONCAT('system:demo-menu:view-',LPAD(r.n+1,3,'0'))" }
@@ -1601,7 +1608,6 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
         $minutesDate = "DATE_ADD(CURDATE(), INTERVAL ($minutesDayOffset) DAY)"
         $minutesStart = "IF($minutesToday,DATE_ADD(CURRENT_TIMESTAMP, INTERVAL (1+MOD($minutesEventRow,4)) HOUR),DATE_ADD($minutesDate, INTERVAL (8+MOD($minutesEventRow,9)) HOUR))"
         switch ($name) {
-            'meeting_id' { return Get-NumericIdExpression $indexes['oa_schedule_event'] 't.n' $minutesEventRow }
             'meeting_time' { return $minutesStart }
             'room_id' { return Get-NumericIdExpression $indexes['oa_meeting_room'] 't.n' $minutesEventRow }
             'location' { return Get-CatalogExpression $roomNames $minutesEventRow }
@@ -1610,7 +1616,7 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
             'schedule_event_id' { return Get-NumericIdExpression $indexes['oa_schedule_event'] 't.n' $minutesEventRow }
             'decisions' {
                 $ownerId = Get-TargetIdExpression 'sys_user' $indexes $definitionMap
-                return "JSON_ARRAY(JSON_OBJECT('title','确认会议行动项与交付节点','ownerId',$ownerId,'ownerName',$(Get-PersonExpression),'dueDate',DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 30 DAY),'%Y-%m-%d'),'status','PENDING'))"
+                return "JSON_ARRAY(JSON_OBJECT('title','确认会议行动项与交付节点','ownerId',$ownerId,'ownerName',$(Get-PersonExpression),'dueDate',DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 30 DAY),'%Y-%m-%d'),'remark','会议行动项','priority','MEDIUM'))"
             }
             'status' { return "IF(MOD(r.n,4)=0,'CONFIRMED','DRAFT')" }
             'confirmed_time' { return "IF(MOD(r.n,4)=0,CURRENT_TIMESTAMP,NULL)" }
@@ -1781,7 +1787,7 @@ function Get-DeletePredicate($definition, [hashtable]$indexes) {
 }
 
 $definitions = @(Read-Schema $SchemaPath)
-if ($definitions.Count -ne 374) { throw "Expected 374 tables including the six approved settlement tables, found $($definitions.Count)." }
+if ($definitions.Count -ne 375) { throw "Expected 375 tables including message delivery attempts, found $($definitions.Count)." }
 $definitionMap = @{}
 $indexes = @{}
 $tableIndex = 1
@@ -1834,6 +1840,8 @@ $serviceGeneratedTables += @('sys_report_dataset','sys_report_chart','sys_report
 $serviceGeneratedTables += @('sys_tenant_package','sys_tenant_package_sync','sys_tenant_package_sync_item')
 $serviceGeneratedTables += @('sys_im_config','sys_im_user_mapping','sys_im_dept_mapping','sys_im_todo_mapping','sys_im_sync_run','sys_im_callback_event')
 $serviceGeneratedTables += @('hr_severance_rule','hr_severance_rule_slab','hr_final_settlement','hr_final_settlement_item','hr_training_recovery','hr_exit_interview')
+# 真实发送尝试和任务完成关系不生成虚构的占额或催办效果。
+$serviceGeneratedTables += @('sys_message_delivery_attempt','wf_urge_effect')
 if ($scopedGeneration -and @($Tables | Where-Object { $_ -in $serviceGeneratedTables }).Count -gt 0) {
     throw 'Application, draft, delivery, tracking, inventory and data source tables require canonical foundations or real service operations.'
 }
@@ -1862,16 +1870,6 @@ try {
     $writer.WriteLine('SET FOREIGN_KEY_CHECKS=0;')
     $writer.WriteLine('SET UNIQUE_CHECKS=1;')
     $writer.WriteLine('USE cloud_flow_db;')
-    if (-not $scopedGeneration -or 'oa_meeting_minutes' -in $Tables) {
-        $writer.WriteLine("SET @cloudflow_schema_sql = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_meeting_minutes' AND column_name='room_id'), 'SELECT 1', 'ALTER TABLE oa_meeting_minutes ADD COLUMN room_id VARCHAR(64) DEFAULT NULL AFTER meeting_time');")
-        $writer.WriteLine('PREPARE cloudflow_schema_stmt FROM @cloudflow_schema_sql;')
-        $writer.WriteLine('EXECUTE cloudflow_schema_stmt;')
-        $writer.WriteLine('DEALLOCATE PREPARE cloudflow_schema_stmt;')
-        $writer.WriteLine("SET @cloudflow_schema_sql = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_meeting_minutes' AND column_name='schedule_event_id'), 'SELECT 1', 'ALTER TABLE oa_meeting_minutes ADD COLUMN schedule_event_id BIGINT(20) DEFAULT NULL AFTER organizer_name');")
-        $writer.WriteLine('PREPARE cloudflow_schema_stmt FROM @cloudflow_schema_sql;')
-        $writer.WriteLine('EXECUTE cloudflow_schema_stmt;')
-        $writer.WriteLine('DEALLOCATE PREPARE cloudflow_schema_stmt;')
-    }
     $writer.WriteLine('DROP TEMPORARY TABLE IF EXISTS demo_seed_tenants;')
     $writer.WriteLine('DROP TEMPORARY TABLE IF EXISTS demo_seed_rows;')
     $writer.WriteLine('CREATE TEMPORARY TABLE demo_seed_tenants (n INT NOT NULL PRIMARY KEY);')

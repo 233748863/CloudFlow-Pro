@@ -8,6 +8,7 @@ This does not run service workflows, performance tests or external integrations.
 import argparse
 import json
 from demo_seed_model import schema, relationships, POLYMORPHIC, TARGET_KEYS, parent_match, reconcile_match
+from demo_seed_completion import DERIVED_ONLY
 from demo_seed_server import connect
 
 
@@ -92,7 +93,8 @@ def audit(db):
             if bad:
                 failures.append(dict(invariant=name, invalid_rows=bad))
     expected = set(schema()) | {"sys_log_archive", "sys_api_error_log_archive"}
-    return dict(tables=len(tables), rows=sum(counts.values()), empty_tables=[t for t,c in counts.items() if not c],
+    return dict(tables=len(tables), rows=sum(counts.values()), empty_tables=[t for t,c in counts.items() if not c and t not in DERIVED_ONLY],
+                intentionally_empty_tables=sorted(t for t,c in counts.items() if not c and t in DERIVED_ONLY),
                 missing_tables=sorted(expected-set(tables)), unexpected_tables=sorted(set(tables)-expected),
                 relationship_checks=checked, failures=failures)
 

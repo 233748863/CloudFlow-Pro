@@ -1,4 +1,4 @@
-﻿-- =========================================================
+-- =========================================================
 -- CloudFlow Pro - OA办公模块数据库脚本
 -- 模块：公告、日程、会议室、任务协作、资产、车辆、访客、值班管理
 -- 版本：v1.0
@@ -1458,7 +1458,7 @@ CREATE TABLE biz_expense_claim (
   category          VARCHAR(20)     NOT NULL COMMENT '报销类别(TRAVEL差旅/OFFICE办公/ENTERTAIN招待/TRANSPORT交通/OTHER其他)',
   total_amount      DECIMAL(10,2)   DEFAULT 0.00 COMMENT '总金额',
   description       VARCHAR(500)    DEFAULT NULL COMMENT '报销说明',
-  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/PAID已打款)',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/CANCELLED已撤回/PAID已打款)',
   dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
   dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
   project_id        BIGINT(20)      DEFAULT NULL COMMENT '关联项目ID',
@@ -1482,6 +1482,7 @@ CREATE TABLE biz_expense_claim (
   PRIMARY KEY (id),
   UNIQUE KEY uk_expense_claim_tenant_no (tenant_id, claim_no),
   KEY idx_claim_user (user_id),
+  KEY idx_claim_usage (tenant_id, user_id, status, deleted, id),
   KEY idx_claim_status (status),
   KEY idx_claim_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='报销申请表';
@@ -1492,9 +1493,10 @@ CREATE TABLE biz_expense_item (
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT 'tenant_id',
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   claim_id          BIGINT(20)      NOT NULL COMMENT '报销申请ID',
-  expense_type      VARCHAR(20)     NOT NULL COMMENT '费用类型(MEAL餐费/HOTEL住宿/TRANSPORT交通/OFFICE办公用品/COMM通讯/OTHER其他)',
+  expense_type      VARCHAR(20)     NOT NULL COMMENT '费用类型(MEAL餐费/ACCOMMODATION住宿/TRANSPORT交通/OFFICE_SUPPLIES办公用品/COMMUNICATION通讯/OTHER其他)',
   amount            DECIMAL(10,2)   NOT NULL COMMENT '金额',
   expense_date      DATE            NOT NULL COMMENT '费用发生日期',
+  city              VARCHAR(60)     DEFAULT NULL COMMENT '每笔费用发生城市，草稿可为空，提交必填',
   description       VARCHAR(500)    DEFAULT NULL COMMENT '费用说明',
   budget_subject_code VARCHAR(50)   DEFAULT NULL COMMENT '预算科目编码',
   budget_subject_name VARCHAR(100)  DEFAULT NULL COMMENT '预算科目名称',
@@ -1502,6 +1504,7 @@ CREATE TABLE biz_expense_item (
   vehicle_expense_id BIGINT(20)     DEFAULT NULL COMMENT '关联车辆费用ID',
   PRIMARY KEY (id),
   KEY idx_item_claim (claim_id),
+  KEY idx_item_usage (tenant_id, claim_id, expense_type, expense_date, city),
   KEY idx_item_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='报销明细表';
 
@@ -2657,7 +2660,6 @@ CREATE TABLE oa_contract_template (
   variables         JSON            DEFAULT NULL COMMENT '变量定义 [{code,name,type,required,defaultValue}]',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE/INACTIVE)',
-  usage_count       INT(11)         DEFAULT 0 COMMENT '使用次数(被合同引用次数)',
   deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
@@ -2679,9 +2681,9 @@ CREATE TABLE oa_expense_standard (
   standard_id       BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '费用标准ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   position_level    VARCHAR(60)     DEFAULT NULL COMMENT '职级编码(为空表示通用)',
-  category          VARCHAR(30)     NOT NULL COMMENT '报销类别(TRAVEL/OFFICE/ENTERTAIN/TRANSPORT/OTHER)',
-  city              VARCHAR(60)     DEFAULT NULL COMMENT '城市或区域(为空表示通用)',
-  limit_amount      DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '限额(单次)',
+  category          VARCHAR(30)     NOT NULL COMMENT '费用类型，与oa_expense_item_type字典一致',
+  city              VARCHAR(60)     DEFAULT NULL COMMENT '具体城市(为空表示通用)',
+  limit_amount      DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '对应周期的限额',
   limit_type        VARCHAR(20)     DEFAULT 'PER_ITEM' COMMENT '限额类型(PER_ITEM/DAILY/MONTHLY/YEARLY)',
   status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE/INACTIVE)',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
@@ -2692,7 +2694,8 @@ CREATE TABLE oa_expense_standard (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (standard_id),
-  KEY idx_expense_standard_match (tenant_id, category, position_level, city, status)
+  KEY idx_expense_standard_match (tenant_id, category, position_level, city, status),
+  CONSTRAINT chk_expense_standard_limit CHECK (limit_amount >= 0 AND limit_type IN ('PER_ITEM','DAILY','MONTHLY','YEARLY'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA报销费用标准';
 
 -- 注：biz_expense_claim.exceeded_* 已内嵌在 biz_expense_claim CREATE 中
@@ -2763,7 +2766,6 @@ DROP TABLE IF EXISTS oa_meeting_minutes;
 CREATE TABLE oa_meeting_minutes (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  meeting_id        BIGINT(20)      DEFAULT NULL COMMENT '会议ID(关联 sys_schedule 等)',
   meeting_title     VARCHAR(200)    DEFAULT NULL COMMENT '会议标题',
   meeting_time      DATETIME        DEFAULT NULL COMMENT '会议时间',
   room_id           VARCHAR(64)     DEFAULT NULL COMMENT '关联会议室ID',
@@ -2772,7 +2774,7 @@ CREATE TABLE oa_meeting_minutes (
   organizer_name    VARCHAR(100)    DEFAULT NULL COMMENT '召集人姓名',
   schedule_event_id BIGINT(20)      DEFAULT NULL COMMENT '关联日程事件ID',
   minutes_content   MEDIUMTEXT      DEFAULT NULL COMMENT '纪要正文(富文本HTML)',
-  decisions         JSON            DEFAULT NULL COMMENT '决议项 [{title,owner,deadline,workTaskId}]',
+  decisions         JSON            DEFAULT NULL COMMENT '决议项 [{title,ownerId,dueDate,remark,priority,workTaskId}]',
   attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL列表(逗号分隔)',
   status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/CONFIRMED)',
   confirmed_time    DATETIME        DEFAULT NULL COMMENT '确认时间',
@@ -2783,7 +2785,7 @@ CREATE TABLE oa_meeting_minutes (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  KEY idx_meeting_minutes_meeting (tenant_id, meeting_id),
+  KEY idx_meeting_minutes_event (tenant_id, schedule_event_id),
   KEY idx_meeting_minutes_status (tenant_id, status, meeting_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA会议纪要';
 
@@ -2792,7 +2794,6 @@ CREATE TABLE oa_meeting_attendance (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   minutes_id        BIGINT(20)      DEFAULT NULL COMMENT '纪要ID，会议开始前接受邀请时可为空',
-  meeting_id        BIGINT(20)      DEFAULT NULL COMMENT '关联会议ID(冗余便于查询)',
   schedule_event_id BIGINT(20)      DEFAULT NULL COMMENT '明确关联的实际会议日程ID',
   acceptance_status VARCHAR(20)    NOT NULL DEFAULT 'NONE' COMMENT 'NONE或ACCEPTED或DECLINED或TENTATIVE',
   response_time     DATETIME        DEFAULT NULL COMMENT '邀请回应时间',

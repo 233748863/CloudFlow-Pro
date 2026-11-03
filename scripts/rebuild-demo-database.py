@@ -110,9 +110,9 @@ def main():
                     raise RuntimeError('Services must remain stopped for import')
             files = [next(DB.glob(f'0{i}.*.sql')) for i in range(1, 8)]
             # Check that fixtures still cover the current schema before dropping.
-            from demo_seed_completion import SUPPLEMENT
+            from demo_seed_completion import SUPPLEMENT, DERIVED_ONLY
             generated = files[6].read_text(encoding='utf-8-sig')
-            missing = [table for table in schema() if not re.search(r'INSERT(?: IGNORE)? INTO (?:cloud_flow_db\.)?`?'+table+r'`?\s*\(', generated, re.I) and table not in SUPPLEMENT]
+            missing = [table for table in schema() if not re.search(r'INSERT(?: IGNORE)? INTO (?:cloud_flow_db\.)?`?'+table+r'`?\s*\(', generated, re.I) and table not in SUPPLEMENT | DERIVED_ONLY]
             if missing:
                 raise RuntimeError('Seed coverage missing: ' + repr(missing))
             if args.phase == 'import':

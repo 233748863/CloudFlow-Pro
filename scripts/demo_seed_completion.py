@@ -25,6 +25,8 @@ sys_tenant_package_sync sys_tenant_package_sync_item sys_im_config sys_im_user_m
 sys_im_dept_mapping sys_im_todo_mapping sys_im_sync_run sys_im_callback_event
 hr_severance_rule hr_severance_rule_slab hr_final_settlement hr_final_settlement_item
 hr_training_recovery hr_exit_interview'''.split())
+# These records must arise from real send attempts or an existing completion history.
+DERIVED_ONLY = {'sys_message_delivery_attempt', 'wf_urge_effect'}
 REFS, UNKNOWN = relationships(MODEL)
 if UNKNOWN:
     raise RuntimeError(UNKNOWN)
@@ -140,10 +142,28 @@ def expression_map():
         result[f'{table}.{column}'] = value
     # Source history rows identify their original task, even after it is retired.
     result['wf_task_history.task_id'] = identity('wf_task')
+    # Meeting minutes reference only MEETING events; match the explicit fixture rule.
+    meeting_row = '(MOD(3-MOD(t.n,3),3)+3*MOD(r.n,16))'
+    result['oa_meeting_minutes.schedule_event_id'] = identity('oa_schedule_event', row=meeting_row)
+    result['oa_meeting_minutes.room_id'] = identity('oa_meeting_room', row=meeting_row)
     result['outbox_event.event_id'] = identity('outbox_event', 'event_id')
     result['outbox_event.aggregate_type'] = "'CUSTOMER'"
     result['outbox_event.aggregate_id'] = identity('crm_customer')
     result['outbox_event.status'] = "'PUBLISHED'"
+    event_payload = f"CAST(JSON_OBJECT('customerId',{identity('crm_customer')},'remark','演示已归档事件') AS CHAR)"
+    result['outbox_event.event_type'] = "'DemoCustomerSnapshotEvent'"
+    result['outbox_event.payload_json'] = (
+        f"JSON_OBJECT('eventId',{identity('outbox_event', 'event_id')},"
+        f"'eventType','DemoCustomerSnapshotEvent','sourceModule','cloudflow-crm',"
+        f"'sourceId',{identity('crm_customer')},'tenantId',100000+t.n,"
+        f"'payload',{event_payload},'payloadDigest',SHA2({event_payload},256),"
+        "'occurredAt',CONCAT(DATE_FORMAT(CURRENT_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%f'),'000'))"
+    )
+    for field in ('created_at', 'published_at', 'next_retry_at'):
+        result['outbox_event.' + field] = 'CURRENT_TIMESTAMP'
+    for field in ('locked_by', 'locked_until', 'last_error'):
+        result['outbox_event.' + field] = 'NULL'
+    result['outbox_event.retry_count'] = '0'
     result['wf_reconcile_alert.biz_module'] = "'oa'"
     result['wf_reconcile_alert.biz_id'] = identity('oa_contract')
     for (table,column),(discriminator,targets) in POLYMORPHIC.items():
@@ -326,6 +346,16 @@ def sql():
     # Clone the canonical 2026 template rather than inventing a second calendar.
     out.append('DELETE FROM sys_holiday_date WHERE calendar_id<>100 AND create_by=\'demo50\';')
     out.append('INSERT INTO sys_holiday_date (tenant_id,calendar_id,holiday_date,date_type,holiday_name,triple_pay_flag,year_no,remark,deleted,version,create_by,create_time) SELECT c.tenant_id,c.calendar_id,d.holiday_date,d.date_type,d.holiday_name,d.triple_pay_flag,2026,d.remark,0,0,\'demo50\',NOW() FROM sys_holiday_calendar c CROSS JOIN (SELECT holiday_date,date_type,holiday_name,triple_pay_flag,remark FROM sys_holiday_date WHERE calendar_id=100 AND year_no=2026) d WHERE c.calendar_id<>100 AND c.tenant_id BETWEEN 100000 AND 100049;')
+    # Record only completion histories with an actual preceding reminder. Synthetic display
+    # history is not enough unless the corresponding task and reminder are linked already.
+    out.append("""INSERT IGNORE INTO wf_urge_effect (history_id, tenant_id, urge_id)
+SELECT history.history_id, history.tenant_id, urge.id
+FROM wf_task_history history
+JOIN wf_task_urge urge ON urge.tenant_id=history.tenant_id AND urge.task_id=history.task_id
+WHERE history.action IN ('APPROVE','REJECT') AND urge.create_time<=history.create_time
+  AND NOT EXISTS (SELECT 1 FROM wf_task_urge later
+    WHERE later.tenant_id=urge.tenant_id AND later.task_id=urge.task_id AND later.create_time<=history.create_time
+      AND (later.create_time>urge.create_time OR (later.create_time=urge.create_time AND later.id>urge.id)));""")
     from demo_seed_retirement import sql as retirement_sql
     out.append(retirement_sql())
     for source in ('sys_log','sys_api_error_log'):

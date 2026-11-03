@@ -1,4 +1,4 @@
-﻿-- =========================================================
+-- =========================================================
 -- CloudFlow Pro - 公共基础模块数据库脚本
 -- 模块：用户管理、角色权限、部门组织、菜单、多租户、文件管理
 -- 版本：v1.0
@@ -130,7 +130,7 @@ CREATE TABLE sys_dept (
   ancestors         VARCHAR(50)     DEFAULT '' COMMENT '祖级列表',
   dept_name         VARCHAR(30)     DEFAULT '' COMMENT '部门名称',
   order_num         INT(4)          DEFAULT 0 COMMENT '显示顺序',
-  leader            VARCHAR(20)     DEFAULT NULL COMMENT '负责人',
+  leader_user_id    BIGINT(20)      DEFAULT NULL COMMENT '负责人用户ID，同租户sys_user.user_id',
   phone             VARCHAR(11)     DEFAULT NULL COMMENT '联系电话',
   email             VARCHAR(50)     DEFAULT NULL COMMENT '邮箱',
   holiday_calendar_id BIGINT(20)    DEFAULT NULL COMMENT '节假日日历ID（空=继承租户默认）',
@@ -218,7 +218,6 @@ CREATE TABLE sys_role (
   role_name         VARCHAR(30)     NOT NULL COMMENT '角色名称',
   role_key          VARCHAR(100)    NOT NULL COMMENT '角色权限字符串',
   role_sort         INT(4)          NOT NULL COMMENT '显示顺序',
-  data_scope        CHAR(1)         DEFAULT '1' COMMENT '数据范围（1：全部数据权限 2：自定数据权限 3：本部门数据权限 4：本部门及以下数据权限）',
   ds_type           INT(1)          DEFAULT 1 COMMENT '数据权限类型（0全部 1自定义 2本级及下级 3本级 4本人）',
   ds_scope          VARCHAR(500)    DEFAULT NULL COMMENT '自定义数据权限（部门ID列表，逗号分隔）',
   status            CHAR(1)         DEFAULT '0' COMMENT '角色状态（0正常 1停用）',
@@ -1024,6 +1023,18 @@ CREATE TABLE sys_message_delivery (
   KEY idx_message_delivery_due (status, next_attempt_time, claim_until),
   KEY idx_message_delivery_provider (tenant_id, provider_message_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='先持久占位后外发且保留结果未明状态的投递记录';
+
+-- 每次进入渠道发送边界的真实尝试；按开始时间统计限额，失败或未知结果保留占额。
+DROP TABLE IF EXISTS sys_message_delivery_attempt;
+CREATE TABLE sys_message_delivery_attempt (
+  tenant_id BIGINT NOT NULL,
+  delivery_id BIGINT NOT NULL,
+  attempt_no INT NOT NULL,
+  channel_id BIGINT NOT NULL,
+  started_at DATETIME(6) NOT NULL,
+  PRIMARY KEY (tenant_id, delivery_id, attempt_no),
+  KEY idx_message_attempt_channel_time (tenant_id, channel_id, started_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息渠道发送尝试';
 
 -- 38. 消息订阅配置表
 DROP TABLE IF EXISTS sys_message_subscribe;
